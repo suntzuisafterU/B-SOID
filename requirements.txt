@@ -1,5 +1,6 @@
 bhtsne
 matplotlib
+numpy
 pandas
 opencv-python
 seaborn
