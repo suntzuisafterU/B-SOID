@@ -1,0 +1,7 @@
+bhtsne
+matplotlib
+pandas
+opencv-python
+seaborn
+scikit-learn
+tqdm
