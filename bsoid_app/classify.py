@@ -23,12 +23,12 @@ def bsoid_extract(data, fps):
     win_len = np.int(np.round(0.05 / (1 / fps)) * 2 - 1)
     feats = []
     for m in range(len(data)):
-        logging.info('Extracting features from CSV file {}...'.format(m + 1))
-        dataRange = len(data[m])
+        logging.info(f'Extracting features from CSV file {m+1}...')
+        data_range = len(data[m])
         dxy_r = []
         dis_r = []
-        for r in range(dataRange):
-            if r < dataRange - 1:
+        for r in range(data_range):
+            if r < data_range - 1:
                 dis = []
                 for c in range(0, data[m].shape[1], 2):
                     dis.append(np.linalg.norm(data[m][r + 1, c:c + 2] - data[m][r, c:c + 2]))
@@ -40,16 +40,16 @@ def bsoid_extract(data, fps):
         dis_r = np.array(dis_r)
         dxy_r = np.array(dxy_r)
         dis_smth = []
-        dxy_eu = np.zeros([dataRange, dxy_r.shape[1]])
-        ang = np.zeros([dataRange - 1, dxy_r.shape[1]])
+        dxy_eu = np.zeros([data_range, dxy_r.shape[1]])
+        ang = np.zeros([data_range - 1, dxy_r.shape[1]])
         dxy_smth = []
         ang_smth = []
         for l in range(dis_r.shape[1]):
             dis_smth.append(boxcar_center(dis_r[:, l], win_len))
         for k in range(dxy_r.shape[1]):
-            for kk in range(dataRange):
+            for kk in range(data_range):
                 dxy_eu[kk, k] = np.linalg.norm(dxy_r[kk, k, :])
-                if kk < dataRange - 1:
+                if kk < data_range - 1:
                     b_3d = np.hstack([dxy_r[kk + 1, k, :], 0])
                     a_3d = np.hstack([dxy_r[kk, k, :], 0])
                     c = np.cross(b_3d, a_3d)
@@ -62,7 +62,7 @@ def bsoid_extract(data, fps):
         dxy_smth = np.array(dxy_smth)
         ang_smth = np.array(ang_smth)
         feats.append(np.vstack((dxy_smth[:, 1:], ang_smth, dis_smth)))
-    logging.info('Done extracting features from a total of {} training CSV files.'.format(len(data)))
+    logging.info(f'Done extracting features from a total of {len(data)} training CSV files.')
     f_10fps = []
     for n in range(0, len(feats)):
         feats1 = np.zeros(len(data[n]))
@@ -80,12 +80,12 @@ def bsoid_extract(data, fps):
                                                     axis=1),
                                             np.sum((feats[n][dxy_smth.shape[0]:feats[n].shape[0],
                                                     range(k - round(fps / 10), k)]), axis=1))).reshape(len(feats[0]), 1)
-            logging.info('Done integrating features into 100ms bins from CSV file {}.'.format(n + 1))
+            logging.info('Done integrating features into 100ms bins from CSV file {n + 1}.')
             f_10fps.append(feats1)
     return f_10fps
 
 
-def bsoid_predict(feats, clf):
+def bsoid_predict(feats, clf) -> list:
     """
     :param feats: list, multiple feats (original feature space)
     :param clf: Obj, MLP classifier
@@ -94,10 +94,9 @@ def bsoid_predict(feats, clf):
     labels_fslow = []
     for i in range(0, len(feats)):
         labels = clf.predict(feats[i].T)
-        logging.info('Done predicting file {} with {} instances in {} D space.'.format(i + 1, feats[i].shape[1],
-                                                                                       feats[i].shape[0]))
+        logging.info(f'Done predicting file {i+1} with {feats[i].shape[1]} instances in {feats[i].shape[0]} D space.')
         labels_fslow.append(labels)
-    logging.info('Done predicting a total of {} files.'.format(len(feats)))
+    logging.info(f'Done predicting a total of {len(feats)} files.')
     return labels_fslow
 
 
@@ -132,6 +131,6 @@ def bsoid_frameshift(data_new, fps, clf):
         for l in range(math.floor(fps / 10)):
             labels_fs2.append(labels_fs[k][l])
         labels_fshigh.append(np.array(labels_fs2).flatten('F'))
-    logging.info('Done frameshift-predicting a total of {} files.'.format(len(data_new)))
+    logging.info(f'Done frameshift-predicting a total of {len(data_new)} files.')
     return labels_fshigh
 
