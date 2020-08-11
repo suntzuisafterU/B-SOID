@@ -1,4 +1,5 @@
 bhtsne
+joblib
 matplotlib
 numpy
 pandas
