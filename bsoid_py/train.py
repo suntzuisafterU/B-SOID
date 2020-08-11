@@ -181,7 +181,7 @@ def bsoid_svm(feats, labels, comp=COMP, hldout=HLDOUT, cv_it=CV_IT, svm_params=S
         classifier.fit(feats_train, labels_train)
         logging.info(f'Done training SVM mapping {feats_train.shape} features to {labels_train.shape} assignments.')
         logging.info(f'Predicting randomly sampled (non-overlapped) assignments '
-                     'using the remaining {HLDOUT * 100}%...')
+                     f'using the remaining {HLDOUT * 100}%...')
         scores = cross_val_score(classifier, feats_test, labels_test, cv=cv_it, n_jobs=-1)
         timestr = time.strftime("_%Y%m%d_%H%M")
         if PLOT_TRAINING:
@@ -198,7 +198,7 @@ def bsoid_svm(feats, labels, comp=COMP, hldout=HLDOUT, cv_it=CV_IT, svm_params=S
                 print(title)
                 print(disp.confusion_matrix)
                 my_file = f'confusion_matrix_{titlenames[j]}'
-                disp.figure_.savefig(os.path.join(OUTPUT_PATH, str.join('', (my_file, timestr, '.svg'))))
+                disp.figure_.savefig(os.path.join(OUTPUT_PATH, my_file+timestr+'.svg'))
                 j += 1
             plt.show()
     else:
@@ -230,7 +230,7 @@ def bsoid_svm(feats, labels, comp=COMP, hldout=HLDOUT, cv_it=CV_IT, svm_params=S
                     print(title)
                     print(disp.confusion_matrix)
                     my_file = f'confusion_matrix_clf{i}_{titlenames[j]}'
-                    disp.figure_.savefig(os.path.join(OUTPUT_PATH, str.join('', (my_file, timestr, '.svg'))))
+                    disp.figure_.savefig(os.path.join(OUTPUT_PATH, my_file+timestr+'.svg'))
                     j += 1
                 plt.show()
     logging.info('Scored cross-validated SVM performance.'.format(feats_train.shape, labels_train.shape))  # TODO: low: .format() called but variables never used
