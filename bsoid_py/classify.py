@@ -3,10 +3,13 @@ Classify behaviors based on (x,y) using trained B-SOiD behavioral model.
 B-SOiD behavioral model has been developed using bsoid_py.main.build()
 """
 
+# # # General imports # # #
+from typing import Tuple
+import logging
 import math
-
 import numpy as np
 
+# # # B-SOID imports # # #
 from bsoid_py.utils import videoprocessing
 from bsoid_py.utils.likelihoodprocessing import boxcar_center
 from bsoid_py.utils.visuals import *
@@ -20,11 +23,12 @@ def bsoid_extract(data, bodyparts=BODYPARTS, fps=FPS):
     :param fps: scalar, input for camera frame-rate
     :return f_10fps: 2D array, extracted features
     """
-    win_len = np.int(np.round(0.05 / (1 / fps)) * 2 - 1)
+    # TODO: med: rename variables for CLARITY
+    win_len = np.int(np.round(0.05 / (1 / fps)) * 2 - 1)  # TODO: low: uses np.round, np.int ... can it use round() and int() instead?
     feats = []
     for m in range(len(data)):
-        logging.info('Extracting features from CSV file {}...'.format(m + 1))
-        dataRange = len(data[m])
+        logging.info(f'Extracting features from CSV file {m + 1}...')
+        data_range = len(data[m])
         fpd = data[m][:, 2 * bodyparts.get('Forepaw/Shoulder1'):2 * bodyparts.get('Forepaw/Shoulder1') + 2] - \
               data[m][:, 2 * bodyparts.get('Forepaw/Shoulder2'):2 * bodyparts.get('Forepaw/Shoulder2') + 2]
         cfp = np.vstack(((data[m][:, 2 * bodyparts.get('Forepaw/Shoulder1')] +
@@ -41,12 +45,12 @@ def bsoid_extract(data, bodyparts=BODYPARTS, fps=FPS):
                              chp[:, 1] - data[m][:, 2 * bodyparts.get('Tailbase') + 1]])).T
         sn_pt = np.vstack(([data[m][:, 2 * bodyparts.get('Snout/Head')] - data[m][:, 2 * bodyparts.get('Tailbase')],
                             data[m][:, 2 * bodyparts.get('Snout/Head') + 1] - data[m][:,
-                                                                              2 * bodyparts.get('Tailbase') + 1]])).T
-        fpd_norm = np.zeros(dataRange)
-        cfp_pt_norm = np.zeros(dataRange)
-        chp_pt_norm = np.zeros(dataRange)
-        sn_pt_norm = np.zeros(dataRange)
-        for i in range(1, dataRange):
+                                                                              -2 * bodyparts.get('Tailbase') + 1]])).T
+        fpd_norm = np.zeros(data_range)
+        cfp_pt_norm = np.zeros(data_range)
+        chp_pt_norm = np.zeros(data_range)
+        sn_pt_norm = np.zeros(data_range)
+        for i in range(1, data_range):
             fpd_norm[i] = np.array(np.linalg.norm(fpd[i, :]))
             cfp_pt_norm[i] = np.linalg.norm(cfp_pt[i, :])
             chp_pt_norm[i] = np.linalg.norm(chp_pt[i, :])
@@ -55,10 +59,10 @@ def bsoid_extract(data, bodyparts=BODYPARTS, fps=FPS):
         sn_cfp_norm_smth = boxcar_center(sn_pt_norm - cfp_pt_norm, win_len)
         sn_chp_norm_smth = boxcar_center(sn_pt_norm - chp_pt_norm, win_len)
         sn_pt_norm_smth = boxcar_center(sn_pt_norm, win_len)
-        sn_pt_ang = np.zeros(dataRange - 1)
-        sn_disp = np.zeros(dataRange - 1)
-        pt_disp = np.zeros(dataRange - 1)
-        for k in range(0, dataRange - 1):
+        sn_pt_ang = np.zeros(data_range - 1)
+        sn_disp = np.zeros(data_range - 1)
+        pt_disp = np.zeros(data_range - 1)
+        for k in range(0, data_range - 1):  # TODO: low: address range starts at 0
             b_3d = np.hstack([sn_pt[k + 1, :], 0])
             a_3d = np.hstack([sn_pt[k, :], 0])
             c = np.cross(b_3d, a_3d)
@@ -75,9 +79,9 @@ def bsoid_extract(data, bodyparts=BODYPARTS, fps=FPS):
         pt_disp_smth = boxcar_center(pt_disp, win_len)
         feats.append(np.vstack((sn_cfp_norm_smth[1:], sn_chp_norm_smth[1:], fpd_norm_smth[1:],
                                 sn_pt_norm_smth[1:], sn_pt_ang_smth[:], sn_disp_smth[:], pt_disp_smth[:])))
-    logging.info('Done extracting features from a total of {} training CSV files.'.format(len(data)))
+    logging.info(f'Done extracting features from a total of {len(data)} training CSV files.')
     f_10fps = []
-    for n in range(0, len(feats)):
+    for n in range(0, len(feats)):  # TODO: low: address range starts at 0
         feats1 = np.zeros(len(data[n]))
         for k in range(round(fps / 10) - 1, len(feats[n][0]), round(fps / 10)):
             if k > round(fps / 10) - 1:
@@ -89,7 +93,7 @@ def bsoid_extract(data, bodyparts=BODYPARTS, fps=FPS):
                 feats1 = np.hstack((np.mean((feats[n][0:4, range(k - round(fps / 10), k)]), axis=1),
                                     np.sum((feats[n][4:7, range(k - round(fps / 10), k)]), axis=1))).reshape(
                     len(feats[0]), 1)
-        logging.info('Done integrating features into 100ms bins from CSV file {}.'.format(n + 1))
+        logging.info(f'Done integrating features into 100ms bins from CSV file {n + 1}.')
         f_10fps.append(feats1)
     return f_10fps
 
@@ -101,15 +105,14 @@ def bsoid_predict(feats, scaler, model):
     :return labels_fslow: list, label/100ms
     """
     labels_fslow = []
-    for i in range(0, len(feats)):
-        logging.info('Predicting file {} with {} instances '
-                     'using learned classifier: {}{}...'.format(i + 1, feats[i].shape[1], 'bsoid_', MODEL_NAME))
+    for i in range(0, len(feats)):  # TODO: low: address range starts at 0
+        logging.info(f'Predicting file {i + 1} with {feats[i].shape[1]} instances using '
+                     f'learned classifier: bsoid_{MODEL_NAME}...')
         feats_sc = scaler.transform(feats[i].T).T
         labels = model.predict(feats_sc.T)
-        logging.info('Done predicting file {} with {} instances in {} D space.'.format(i + 1, feats[i].shape[1],
-                                                                                       feats[i].shape[0]))
+        logging.info(f'Done predicting file {i + 1} with {feats[i].shape[1]} instances in {feats[i].shape[0]} D space.')
         labels_fslow.append(labels)
-    logging.info('Done predicting a total of {} files.'.format(len(feats)))
+    logging.info(f'Done predicting a total of {len(feats)} files.')
     return labels_fslow
 
 
@@ -117,14 +120,15 @@ def bsoid_frameshift(data_new, scaler, fps, model):
     """
     Frame-shift paradigm to output behavior/frame
     :param data_new: list, new data from predict_folders
+    :param scaler: TODO
     :param fps: scalar, argument specifying camera frame-rate in LOCAL_CONFIG
     :param model: Obj, SVM classifier
     :return labels_fshigh, 1D array, label/frame
     """
     labels_fs = []
-    labels_fs2 = []
+    labels_fs2 = []  # TODO: low: unused variable
     labels_fshigh = []
-    for i in range(0, len(data_new)):
+    for i in range(0, len(data_new)):  # TODO: low: address range starts at 0
         data_offset = []
         for j in range(math.floor(fps / 10)):
             data_offset.append(data_new[i][j:, :])
@@ -144,19 +148,21 @@ def bsoid_frameshift(data_new, scaler, fps, model):
         for l in range(math.floor(fps / 10)):
             labels_fs2.append(labels_fs[k][l])
         labels_fshigh.append(np.array(labels_fs2).flatten('F'))
-    logging.info('Done frameshift-predicting a total of {} files.'.format(len(data_new)))
+    logging.info(f'Done frameshift-predicting a total of {len(data_new)} files.')
     return labels_fshigh
 
 
-def main(predict_folders, scaler, fps, behv_model):
+def main(predict_folders, scaler, fps, behv_model) -> Tuple:
     """
+    TODO: low: purpose
     :param predict_folders: list, data folders
     :param fps: scalar, camera frame-rate
-    :behv_model: object, SVM classifier
-    :return data_new: list, csv data
-    :return feats_new: 2D array, extracted features
-    :return labels_fslow, 1D array, label/100ms
-    :return labels_fshigh, 1D array, label/frame
+    :param behv_model: object, SVM classifier
+    :return Tuple:
+        data_new: list, csv data
+        feats_new: 2D array, extracted features
+        labels_fslow, 1D array, label/100ms
+        labels_fshigh, 1D array, label/frame
     """
     import bsoid_py.utils.likelihoodprocessing
     filenames, data_new, perc_rect = bsoid_py.utils.likelihoodprocessing.main(predict_folders)
