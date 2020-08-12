@@ -1,6 +1,7 @@
 ################### THINGS YOU MAY WANT TO CHANGE ###################
 import os
 
+# Specify where the OST project lives. Modify on your local machine as necessary.
 OST_BASE_PROJECT_PATH = '/home/aaron/Documents/OST-with-DLC'
 
 BASE_PATH = '/home/aaron/Documents/OST-with-DLC/GUI_projects/OST-DLC-projects/pwd-may11-2020-john-howland-2020-05-11'
@@ -9,7 +10,6 @@ BASE_PATH = '/home/aaron/Documents/OST-with-DLC/GUI_projects/OST-DLC-projects/pw
 
 # Fetch the base B-SOiD project directory regardless of clone location
 BSOID_BASE_PROJECT_PATH = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-# Specify where the OST project lives. Modify on your local machine as necessary.
 
 # TODO: for the 2 below variables, change path resolution from inside other module to inside this config file
 TRAIN_FOLDERS = [os.path.sep+'training_datasets']  # Data folders used to training neural network.
