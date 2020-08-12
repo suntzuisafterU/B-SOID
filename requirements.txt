@@ -1,9 +1,12 @@
 bhtsne
+ffmpeg
 joblib
 matplotlib
+networkx
 numpy
 pandas
 opencv-python
 seaborn
 scikit-learn
 tqdm
+umap-learn
