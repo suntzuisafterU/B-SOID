@@ -22,9 +22,19 @@ setuptools.setup(
         'matplotlib>=1.5',
         # etc...
     ],
-    classifiers=(                                  # Classifiers help people find your  # TODO: HIGH
-        "Programming Language :: Python :: 3",     # projects. See all possible classifiers
-        "License :: OSI Approved :: MIT License",  # in https://pypi.org/classifiers/
-        "Operating System :: OS Independent",
+    classifiers=(  # https://pypi.org/classifiers/  #TODO: HIGH
+        'Development Status :: 1 - Planning',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
+        # 'Intended Audience :: Education',
+        # 'Intended Audience :: Science/Research',
+        # 'License :: OSI Approved :: GNU General Public License (GPL)',
+        # 'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
+        # 'License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)',
+        'Natural Language :: English',
+        'Operating System :: OS Independent',
+        # 'Topic :: Scientific/Engineering :: Image Recognition',
+        # 'Topic :: Scientific/Engineering :: Artificial Intelligence',
     ),
 )
