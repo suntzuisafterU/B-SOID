@@ -1,12 +1,13 @@
 """
-TODO
+TODO: purpose of file
 """
+# TODO: HIGH: move all the hard math into separate module file.
 
 from psutil import virtual_memory
 from sklearn.metrics import plot_confusion_matrix
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.neural_network import MLPClassifier
-from sklearn.preprocessing._data import StandardScaler
+from sklearn.preprocessing._data import StandardScaler  # TODO: low: find proper source of StandardScaler
 import ffmpeg
 import glob
 import hdbscan
@@ -20,7 +21,6 @@ import numpy as np
 import os
 import pandas as pd
 import streamlit as st
-import sys
 import time
 import umap
 
@@ -38,8 +38,8 @@ from bsoid_app.utils.videoprocessing import create_labeled_vid, repeatingNumbers
 # Intro
 st.title('B-SOiD')
 st.header('An open-source machine learning app for parsing (spatio-temporal) patterns.')
-st.subheader(
-    'Extract behavior from pose for any organism, any camera angle! Note that keeping the checkboxes unchecked when not needed speeds up the processing.')
+st.subheader('Extract behavior from pose for any organism, any camera angle! '
+             'Note that keeping the checkboxes unchecked when not needed speeds up the processing.')
 
 demo_vids = {
     "Open-field, unrestrained, wild-type (Yttri lab @ CMU)": "./demo/ClusteredBehavior_aligned.mp4",
@@ -55,13 +55,12 @@ if st.sidebar.checkbox("Load previous run? This resumes training, or can load pr
     OUTPUT_PATH = st.sidebar.text_input('Enter the prior run output directory:')
     try:
         os.listdir(OUTPUT_PATH)
-        st.markdown(
-            'You have selected **{}** as your prior run root directory.'.format(OUTPUT_PATH))
+        st.markdown(f'You have selected **{OUTPUT_PATH}** as your prior run root directory.')
     except FileNotFoundError:
         st.error('No such directory')
     MODEL_NAME = st.sidebar.text_input('Enter your prior run variable file prefix:')
     if MODEL_NAME:
-        st.markdown('You have selected **{}_XXX.sav** as your prior variable files.'.format(str(MODEL_NAME)))
+        st.markdown(f'You have selected **{MODEL_NAME}_XXX.sav** as your prior variable files.')
     else:
         st.error('Please enter a prefix name for prior run variable file.')
     last_run = True
@@ -76,13 +75,12 @@ if not last_run:
     BASE_PATH = st.text_input('Enter a BASE PATH:')
     try:
         os.listdir(BASE_PATH)
-        st.markdown(
-            'You have selected **{}** as your root directory for training/testing sub-directories.'.format(BASE_PATH))
+        st.markdown(f'You have selected **{BASE_PATH}** as your root directory for training/testing sub-directories.')
     except FileNotFoundError:
         st.error('No such directory')
     st.write('The __sub-directory(ies)__ each contain one or more .csv files. '
              'Currently supporting _2D_ and _single_ animal.')
-    TRAIN_FOLDERS = []
+    TRAIN_FOLDERS = []  # TODO: HIGH: TRAIN_FOLDERS is instantiated here but lower down TRAIN_FOLDERS[0] is ref'd. Error
     no_dir = int(st.number_input('How many BASE_PATH/SUB-DIRECTORIES for training?', value=3))
     st.markdown('Your will be training on **{}** csv containing sub-directories.'.format(no_dir))
     for i in range(no_dir):
@@ -93,25 +91,25 @@ if not last_run:
             st.error('No such directory')
         if not training_dir in TRAIN_FOLDERS:
             TRAIN_FOLDERS.append(training_dir)
-    st.markdown('You have selected **sub-directory(ies)** *{}*.'.format(TRAIN_FOLDERS))
+    st.markdown(f'You have selected **sub-directory(ies)** *{TRAIN_FOLDERS}*.')
     st.write('Average __frame-rate__ for these processed .csv files. '
              'Your pose estimation will be integrated over 100ms. '
              'For most animal behaviors, static poses per 100ms appears to capture _sufficient information_ '
              'for behavioral clustering while maintaining _high temporal resolution._')
     FPS = int(st.number_input('What is your frame-rate?', value=60))
-    st.markdown('Your framerate is **{}** frames per second.'.format(FPS))
+    st.markdown(f'Your framerate is **{FPS}** frames per second.')
     st.write('The __output directory__ will store B-SOID clustering _variable_ files and .csv _analyses_.')
     OUTPUT_PATH = st.text_input('Enter an output directory:')
     try:
         os.listdir(OUTPUT_PATH)
-        st.markdown('You have selected **{}** to store results.'.format(str(OUTPUT_PATH)))
+        st.markdown(f'You have selected **{OUTPUT_PATH}** to store results.')
     except FileNotFoundError:
         st.error('No such directory, was there a typo or did you forget to create one?')
     st.write('For each run, computed variables are stored as __.sav files__. '
              'If you type in the same variable prefix as last run, your _workspace_ will be loaded.')
     MODEL_NAME = st.text_input('Enter a variable file name prefix:')
     if MODEL_NAME:
-        st.markdown('You have named **{}_XXX.sav** as the variable files.'.format(str(MODEL_NAME)))
+        st.markdown(f'You have named **{MODEL_NAME}_XXX.sav** as the variable files.')
     else:
         st.error('Please enter a name for your variable file name prefix.')
 
@@ -169,7 +167,7 @@ if not last_run:
     #         pass
 
 if last_run:
-    with open(os.path.join(OUTPUT_PATH, str.join('', (MODEL_NAME, '_data.sav'))), 'rb') as fr:
+    with open(os.path.join(OUTPUT_PATH, str(MODEL_NAME)+'_data.sav'), 'rb') as fr:
         BASE_PATH, FPS, BODYPARTS, filenames, rawdata_li, training_data, perc_rect_li = joblib.load(fr)
     if st.checkbox('Show % body part processed per file?', False):
         st.write('This line chart shows __% body part below file-based threshold__')
@@ -183,7 +181,7 @@ if last_run:
             ID = int(st.number_input('Enter csv/data-list index:', min_value=1, max_value=len(rawdata_li), value=1))
             st.write(rawdata_li[ID - 1])
             st.write(training_data[ID - 1])
-        except:
+        except:  # TODO: med: exception is too generalized. Add note or make more specific.
             pass
 
 # Feature extraction + UMAP
@@ -270,7 +268,8 @@ if st.button("Start dimensionality reduction"):
         trained_umap = umap.UMAP(n_neighbors=100,  # power law
                                  **UMAP_PARAMS).fit(feats_train)
     else:
-        st.info('Detecting that you are running low on available memory for this computation, setting low_memory so will take longer.')
+        st.info('Detecting that you are running low on available memory for this '
+                'computation, setting low_memory so will take longer.')
         trained_umap = umap.UMAP(n_neighbors=100, low_memory=True,  # power law
                                  **UMAP_PARAMS).fit(feats_train)
     umap_embeddings = trained_umap.embedding_
@@ -384,8 +383,8 @@ if st.checkbox("Show confusion matrix on {}% data?".format(HLDOUT * 100), False)
                       ("Normalized confusion matrix", 'true')]
     titlenames = [("counts"), ("norm")]
     j = 0
-    st.write('Below are two confusion matrices - top: raw counts, bottom: probability. '
-             'These matrices shows **true positives in diagonal**, false negatives in rows, and false positives in columns')
+    st.write('Below are two confusion matrices - top: raw counts, bottom: probability. These matrices shows '
+             '**true positives in diagonal**, false negatives in rows, and false positives in columns')
     for title, normalize in titles_options:
         cm = plot_confusion_matrix(classifier, feats_test, labels_test,
                                    cmap=plt.cm.Blues,
@@ -394,7 +393,8 @@ if st.checkbox("Show confusion matrix on {}% data?".format(HLDOUT * 100), False)
         j += 1
         st.pyplot(cm.figure_)
     st.write(
-        'If these are **NOT satisfactory**, either _increase_ the above minimum cluster size to remove noise subgroups, or include _more data_')
+        'If these are **NOT satisfactory**, either _increase_ the above minimum cluster size to '
+        'remove noise subgroups, or include _more data_')
 if st.checkbox("Show cross-validated accuracy on randomly selected {}% held-out test set?".format(HLDOUT * 100), False):
     st.write('For **overall** machine learning accuracy, a part of the error could be _cleaning up_ clustering noise.')
     with open(os.path.join(OUTPUT_PATH, str.join('', (MODEL_NAME, '_neuralnet.sav'))), 'rb') as fr:
@@ -402,9 +402,10 @@ if st.checkbox("Show cross-validated accuracy on randomly selected {}% held-out 
     fig, plt = plot_accuracy(scores)
     st.pyplot(fig)
     st.write(
-        'If this is **NOT satisfactory**, either _increase_ the above minimum cluster size to remove noise subgroups, or include _more data_')
+        'If this is **NOT satisfactory**, either _increase_ the above minimum cluster size to '
+        'remove noise subgroups, or include _more data_')
 
-st.subheader('If reasonable/satisfied, you may export analyses results to {}'.format(OUTPUT_PATH))
+st.subheader(f'If reasonable/satisfied, you may export analyses results to {OUTPUT_PATH}')
 txt5 = st.text_area('Result options descriptions:', '''
 Input features: basic statistics of these extracted pairwise distance, angle, and speed features. 
 Feature corresponding labels: these features time-locked to the labels. 
@@ -486,7 +487,7 @@ if st.sidebar.checkbox('Behavioral structure visual analysis?', False):
         diag = [tm_c_ave[i][i] for i in range(len(tm_c_ave))]
         diag_p = np.array(diag) / np.array(diag).max()
         node_sizes = [50 * i for i in diag_p]
-        A = np.matrix(tm_p_ave)
+        A = np.matrix(tm_p_ave)  # TODO: med: numpy error: the matrix subclass is not the recommended way to represent matrices or deal with linear algebra (see https://docs.scipy.org/doc/numpy/user/numpy-for-matlab-users.html). Please adjust your code to use regular ndarray.
         np.fill_diagonal(A, 0)
         A_norm = A / A.sum(axis=1)
         where_are_NaNs = np.isnan(A_norm)
@@ -523,20 +524,18 @@ else:
         csv_dir = st.text_input('Enter the testing data sub-directory within BASE PATH:')
         try:
             os.listdir(str.join('', (BASE_PATH, csv_dir)))
-            st.markdown(
-                'You have selected **{}** as your csv data sub-directory.'.format(csv_dir))
+            st.markdown(f'You have selected **{csv_dir}** as your csv data sub-directory.')
         except FileNotFoundError:
             st.error('No such directory')
-        csv_file = st.selectbox('Select the csv file', sorted(os.listdir(str.join('', (BASE_PATH, csv_dir)))))
+        csv_file = st.selectbox('Select the csv file', sorted(os.listdir(BASE_PATH+csv_dir)))
         vid_dir = st.text_input('Enter corresponding video directory (This can be outside of BASE PATH):')
         try:
             os.listdir(vid_dir)
-            st.markdown(
-                'You have selected **{}** as your video directory.'.format(vid_dir))
+            st.markdown(f'You have selected **{vid_dir}** as your video directory.')
         except FileNotFoundError:
             st.error('No such directory')
         vid_file = st.selectbox('Select the video (.mp4 or .avi)', sorted(os.listdir(vid_dir)))
-        st.markdown('You have selected **{}** as your video matching **{}**.'.format(vid_file, csv_file))
+        st.markdown(f'You have selected **{vid_file}** as your video matching **{csv_file}**.')
         csvname = os.path.basename(csv_file).rpartition('.')[0]
         try:
             os.mkdir(str.join('', (BASE_PATH, csv_dir, '/pngs')))
@@ -547,15 +546,16 @@ else:
         except FileExistsError:
             pass
         frame_dir = str.join('', (BASE_PATH, csv_dir, '/pngs', '/', csvname))
-        st.markdown('You have created **{}** as your PNG directory for video {}.'.format(frame_dir, vid_file))
+        st.markdown(f'You have created **{frame_dir}** as your PNG directory for video {vid_file}.')
         probe = ffmpeg.probe(os.path.join(vid_dir, vid_file))
         video_info = next(s for s in probe['streams'] if s['codec_type'] == 'video')
         width = int(video_info['width'])
         height = int(video_info['height'])
         num_frames = int(video_info['nb_frames'])
         bit_rate = int(video_info['bit_rate'])
-        avg_frame_rate = round(int(video_info['avg_frame_rate'].rpartition('/')[0]) / int(video_info['avg_frame_rate'].rpartition('/')[2]))
-        if st.button('Start frame extraction for {} frames at {} frames per second'.format(num_frames, avg_frame_rate)):
+        avg_frame_rate = round(int(
+            video_info['avg_frame_rate'].rpartition('/')[0]) / int(video_info['avg_frame_rate'].rpartition('/')[2]))
+        if st.button(f'Start frame extraction for {num_frames} frames at {avg_frame_rate} frames per second'):
             try:
                 (ffmpeg.input(os.path.join(vid_dir, vid_file))
                  .filter('fps', fps=avg_frame_rate)
@@ -563,7 +563,7 @@ else:
                          s=str.join('', (str(int(width * 0.5)), 'x', str(int(height * 0.5)))), sws_flags='bilinear',
                          start_number=0)
                  .run(capture_stdout=True, capture_stderr=True))
-                st.info('Done extracting **{}** frames from video **{}**.'.format(num_frames, vid_file))
+                st.info(f'Done extracting **{num_frames}** frames from video **{vid_file}**.')
             except ffmpeg.Error as e:
                 print('stdout:', e.stdout.decode('utf8'))
                 print('stderr:', e.stderr.decode('utf8'))
@@ -576,28 +576,29 @@ else:
         except FileExistsError:
             pass
         shortvid_dir = str.join('', (BASE_PATH, csv_dir, '/mp4s', '/', csvname))
-        st.markdown('You have created **{}** as your .mp4 directory '
-                    'for group examples from video {}.'.format(shortvid_dir, vid_file))
+        st.markdown(f'You have created **{shortvid_dir}** as your .mp4 directory for '
+                    f'group examples from video {vid_file}.')
         min_time = st.number_input('Enter minimum time for bout in ms:', value=100)
         min_frames = round(float(min_time) * 0.001 * float(FPS))
-        st.markdown('You have entered **{} ms** as your minimum duration per bout, '
-                    'which is equivalent to **{} frames**.'
-                    '(drop this down for more group representations)'.format(min_time, min_frames))
+        st.markdown(f'You have entered **{min_time} ms** as your minimum duration per bout, '
+                    f'which is equivalent to **{min_frames} frames**.'
+                    f'(drop this down for more group representations)')
         number_examples = st.slider('Select number of non-repeated examples', 1, 10, 3)
-        st.markdown('Your will obtain a maximum of **{}** non-repeated output examples per group.'.format(number_examples))
+        st.markdown('Your will obtain a maximum of **{number_examples}** non-repeated output examples per group.')
         out_fps = int(st.number_input('Enter output frame-rate:', value=30))
         playback_speed = float(out_fps) / float(FPS)
-        st.markdown('Your have selected to view these examples at **{} FPS**, '
-                    'which is equivalent to **{}X speed**.'.format(out_fps, playback_speed))
+        st.markdown(f'Your have selected to view these examples at **{out_fps} FPS**, which is '
+                    f'equivalent to **{playback_speed}X speed**.')
         if st.button("Predict labels and create example videos"):
-            with open(os.path.join(OUTPUT_PATH, str.join('', (MODEL_NAME, '_neuralnet.sav'))), 'rb') as fr:
+            with open(os.path.join(OUTPUT_PATH, MODEL_NAME+'_neuralnet.sav'), 'rb') as fr:
                 feats_test, labels_test, classifier, clf, scores, nn_assignments = joblib.load(fr)
-            curr_df = pd.read_csv(os.path.join(str.join('', (BASE_PATH, csv_dir, '/', csv_file))), low_memory=False)
+            curr_df = pd.read_csv(os.path.join(str.join('', (BASE_PATH, csv_dir, '/', csv_file))), low_memory=False)  # TODO: low: rework this pathing...
             curr_df_filt, perc_rect = adp_filt(curr_df, BODYPARTS)
             test_data = [curr_df_filt]
             labels_fs = []
             labels_fs2 = []
             fs_labels = []
+            # TODO: low: change loop variable names so each is unique (clarity)
             for i in range(0, len(test_data)):
                 feats_new = bsoid_extract(test_data, FPS)
                 labels = bsoid_predict(feats_new, clf)
@@ -615,14 +616,14 @@ else:
                 for l in range(math.floor(FPS / 10)):
                     labels_fs2.append(labels_fs[k][l])
                 fs_labels.append(np.array(labels_fs2).flatten('F'))
-            st.info('Done frameshift-predicting **{}**.'.format(csv_file))
+            st.info(f'Done frameshift-predicting **{csv_file}**.')
             create_labeled_vid(fs_labels[0], int(min_frames), int(number_examples), int(out_fps),
                                frame_dir, shortvid_dir)
             st.balloons()
-        if st.checkbox("Show example videos? (loading it up from {})".format(shortvid_dir), False):
+        if st.checkbox(f"Show example videos? (loading it up from {shortvid_dir})", False):
             example_vid = st.selectbox('Select the video (.mp4 or .avi)', sorted(os.listdir(shortvid_dir)))
             example_vid_file = open(os.path.join(str.join('', (shortvid_dir, '/', example_vid))), 'rb')
-            st.markdown('You have selected **{}** as your video from {}.'.format(example_vid, shortvid_dir))
+            st.markdown(f'You have selected **{example_vid}** as your video from {shortvid_dir}.')
             video_bytes = example_vid_file.read()
             st.video(video_bytes)
 
@@ -631,18 +632,18 @@ else:
                  'This includes a lot of files, long videos, and/or high frame-rates.')
         TEST_FOLDERS = []
         no_dir = int(st.number_input('How many sub-directories for bulk predictions?', value=3))
-        st.markdown('Your will be predicting on **{}** csv containing sub-directories.'.format(no_dir))
+        st.markdown(f'Your will be predicting on **{no_dir}** csv containing sub-directories.')
         for i in range(no_dir):
-            test_dir = st.text_input('Enter path to test directory number {} within base path:'.format(i + 1))
+            test_dir = st.text_input(f'Enter path to test directory number {i+1} within base path:')
             try:
                 os.listdir(str.join('', (BASE_PATH, test_dir)))
             except FileNotFoundError:
                 st.error('No such directory')
             if not test_dir in TEST_FOLDERS:
                 TEST_FOLDERS.append(test_dir)
-        st.markdown('You have selected sub-directory(ies) **{}**.'.format(TEST_FOLDERS))
+        st.markdown(f'You have selected sub-directory(ies) **{TEST_FOLDERS}**.')
         FPS = int(st.number_input('What is your framerate for these csvs?', value=60))
-        st.markdown('Your framerate is **{}** frames per second for these csvs.'.format(FPS))
+        st.markdown(f'Your framerate is **{FPS}** frames per second for these csvs.')
         st.text_area('Select the analysis of interest to you. If in doubt, select all.', '''
         Predicted labels with original pose: labels written into original .csv files (time-locked).
         Behavioral bout lengths in chronological order: the behaviors and its bouts over time. 
@@ -655,8 +656,9 @@ else:
                                           'Behavioral bout statistics', 'Transition matrix'],
                                          ['Predicted labels with original pose', 'Behavioral bout statistics'])
         if st.button("Begin bulk csv processing, potentially a long computation"):
-            st.write('These B-SOiD csv files will be saved in the original pose estimation csv containing folders, under sub-directory BSOID.')
-            with open(os.path.join(OUTPUT_PATH, str.join('', (MODEL_NAME, '_neuralnet.sav'))), 'rb') as fr:
+            st.write('These B-SOiD csv files will be saved in the original pose estimation csv containing '
+                     'folders, under sub-directory BSOID.')
+            with open(os.path.join(OUTPUT_PATH, MODEL_NAME+'_neuralnet.sav'), 'rb') as fr:
                 feats_test, labels_test, classifier, clf, scores, nn_assignments = joblib.load(fr)
             flders, filenames, data_new, perc_rect = likelihoodprocessing.main(BASE_PATH, TEST_FOLDERS, BODYPARTS)
             labels_fs = []
@@ -681,7 +683,7 @@ else:
                 for l in range(math.floor(FPS / 10)):
                     labels_fs2.append(labels_fs[k][l])
                 fs_labels.append(np.array(labels_fs2).flatten('F'))
-            st.info('Done frameshift-predicting a total of **{}** files.'.format(len(data_new)))
+            st.info(f'Done frameshift-predicting a total of **{len(data_new)}** files.')
             filenames = []
             all_df = []
             flder = []
@@ -724,12 +726,12 @@ else:
                     dur_stats.to_csv(os.path.join(
                         str.join('', (BASE_PATH, flder[i], '/BSOID')),
                         str.join('', ('bout_stats_', str(FPS), 'Hz', timestr, csvname, '.csv'))),
-                    index=True, chunksize=10000, encoding='utf-8')
+                        index=True, chunksize=10000, encoding='utf-8')
                 if any('Transition matrix' in o for o in result2_options):
                     df_tm.to_csv(os.path.join(
                         str.join('', (BASE_PATH, flder[i], '/BSOID')),
-                        str.join('', ('transitions_mat_', str(FPS), 'Hz', timestr, csvname,'.csv'))),
-                    index=True, chunksize=10000, encoding='utf-8')
-            with open(os.path.join(OUTPUT_PATH, str.join('', (MODEL_NAME, '_predictions.sav'))), 'wb') as f:
+                        str.join('', ('transitions_mat_', str(FPS), 'Hz', timestr, csvname, '.csv'))),
+                        index=True, chunksize=10000, encoding='utf-8')
+            with open(os.path.join(OUTPUT_PATH, MODEL_NAME+'_predictions.sav'), 'wb') as f:
                 joblib.dump([flders, flder, filenames, data_new, fs_labels], f)
             st.balloons()
