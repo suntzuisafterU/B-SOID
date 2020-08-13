@@ -1,27 +1,39 @@
-import itertools
-import math
+"""
+TODO
+"""
 
 from psutil import virtual_memory
-import ffmpeg
-import hdbscan
-import joblib
-import matplotlib as mpl
-import networkx as nx
-import streamlit as st
-import umap
 from sklearn.metrics import plot_confusion_matrix
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.neural_network import MLPClassifier
 from sklearn.preprocessing._data import StandardScaler
+import ffmpeg
+import glob
+import hdbscan
+import itertools
+import joblib
+import math
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import networkx as nx
+import numpy as np
+import os
+import pandas as pd
+import streamlit as st
+import sys
+import time
+import umap
 
 import bsoid_app
 import bsoid_app.utils.statistics
 from bsoid_app.classify import bsoid_extract, bsoid_predict
+from bsoid_app.config.GLOBAL_CONFIG import CV_IT, HDBSCAN_PARAMS, HLDOUT, MLP_PARAMS, UMAP_PARAMS
 from bsoid_app.utils import likelihoodprocessing
 from bsoid_app.utils.likelihoodprocessing import adp_filt, get_filenames, boxcar_center
 from bsoid_app.utils.statistics import feat_dist
+from bsoid_app.utils.visuals import plot_accuracy, plot_classes, plot_feats
 from bsoid_app.utils import statistics
-from bsoid_app.utils.videoprocessing import *
+from bsoid_app.utils.videoprocessing import create_labeled_vid, repeatingNumbers
 
 # Intro
 st.title('B-SOiD')
