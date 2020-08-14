@@ -128,7 +128,7 @@ def bsoid_tsne(data: list, bodyparts=BODYPARTS, fps=FPS, comp=COMP):
             logging.info('Done embedding into 3 D.')
     if comp == 1:
         scaler = StandardScaler()
-        scaler.fit(f_10fps.T)  # TODO: HIGH: variable `f_10fps` referenced before assignment. Error in logic above?
+        scaler.fit(f_10fps.T)  # TODO: HIGH: variable `f_10fps` referenced before assignment. Error in logic above? ########################## IMPORTANT ###############################
         f_10fps_sc = scaler.transform(f_10fps.T).T
         logging.info(f'Training t-SNE to embed {f_10fps_sc.shape[1]} instances from {f_10fps_sc.shape[0]} D '
                      'into 3 D from a total of {len(data)} CSV files...')

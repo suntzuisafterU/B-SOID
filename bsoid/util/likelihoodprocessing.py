@@ -10,6 +10,7 @@ import logging
 import numpy as np
 import pandas as pd
 import re
+import warnings
 
 from bsoid.config.LOCAL_CONFIG import BASE_PATH, TRAIN_FOLDERS
 
@@ -144,10 +145,11 @@ def main(folders: List[str]):
     :return data: list, filtered data list
     :retrun perc_rect: 1D array, percent filtered per BODYPART
     """
+    warnings.warn('This function, main(), will be deprecated in future as it adds nothing except obfuscation.')
     filenames, data, perc_rect = import_folders(folders)
     return filenames, data, perc_rect
 
 
 if __name__ == '__main__':
     # TODO: should this module even have a main if it's just a helper module?
-    main(TRAIN_FOLDERS)
+    import_folders(TRAIN_FOLDERS)
