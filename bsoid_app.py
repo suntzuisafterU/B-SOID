@@ -2,6 +2,7 @@
 TODO: purpose of file
 """
 # TODO: HIGH: move all the hard math into separate module file.
+# TODO: HIGH: encapsulate elements into functions instead of one long procedurally-run file
 
 from psutil import virtual_memory
 from sklearn.metrics import plot_confusion_matrix
@@ -24,18 +25,13 @@ import streamlit as st
 import time
 import umap
 
-import bsoid_app
-import bsoid_app.utils.statistics
-from bsoid_app.classify import bsoid_extract, bsoid_predict
-from bsoid_app.config.GLOBAL_CONFIG import CV_IT, HDBSCAN_PARAMS, HLDOUT, MLP_PARAMS, UMAP_PARAMS
-from bsoid_app.utils import likelihoodprocessing
-from bsoid_app.utils.likelihoodprocessing import adp_filt, get_filenames, boxcar_center
-from bsoid_app.utils.statistics import feat_dist
-from bsoid_app.utils.visuals import plot_accuracy, plot_classes, plot_feats
-from bsoid_app.utils import statistics
-from bsoid_app.utils.videoprocessing import create_labeled_vid, repeatingNumbers
+from bsoid import classify
+from bsoid.config.LOCAL_CONFIG import MODEL_NAME, OUTPUT_PATH, TRAIN_FOLDERS
+from bsoid.config.GLOBAL_CONFIG import CV_IT, HDBSCAN_PARAMS, HLDOUT, MLP_PARAMS, UMAP_PARAMS
+from bsoid.util import likelihoodprocessing, statistics, videoprocessing, visuals
 
-# Intro
+########################################################################################################################
+# Introduction
 st.title('B-SOiD')
 st.header('An open-source machine learning app for parsing (spatio-temporal) patterns.')
 st.subheader('Extract behavior from pose for any organism, any camera angle! '
@@ -51,7 +47,8 @@ video_bytes = video_file.read()
 st.video(video_bytes)
 
 # Load previous run?
-if st.sidebar.checkbox("Load previous run? This resumes training, or can load previously trained network for new analysis.", False):
+if st.sidebar.checkbox("Load previous run? This resumes training, or can "
+                       "load previously trained network for new analysis.", False):
     OUTPUT_PATH = st.sidebar.text_input('Enter the prior run output directory:')
     try:
         os.listdir(OUTPUT_PATH)
@@ -80,10 +77,10 @@ if not last_run:
         st.error('No such directory')
     st.write('The __sub-directory(ies)__ each contain one or more .csv files. '
              'Currently supporting _2D_ and _single_ animal.')
-    TRAIN_FOLDERS = []  # TODO: HIGH: TRAIN_FOLDERS is instantiated here but lower down TRAIN_FOLDERS[0] is ref'd. Error
-    no_dir = int(st.number_input('How many BASE_PATH/SUB-DIRECTORIES for training?', value=3))
-    st.markdown('Your will be training on **{}** csv containing sub-directories.'.format(no_dir))
-    for i in range(no_dir):
+    # TRAIN_FOLDERS = []  # TODO: HIGH: TRAIN_FOLDERS is instantiated here but lower down TRAIN_FOLDERS[0] is ref'd. Error ***
+    directory_num = int(st.number_input('How many BASE_PATH/SUB-DIRECTORIES for training?', value=3))
+    st.markdown('Your will be training on **{}** csv containing sub-directories.'.format(directory_num))
+    for i in range(directory_num):
         training_dir = st.text_input('Enter path to training directory NUMBER {} within base path:'.format(i + 1))
         try:
             os.listdir(str.join('', (BASE_PATH, training_dir)))
@@ -129,32 +126,29 @@ if not last_run:
             BODYPARTS += index
     BODYPARTS.sort()
     if st.button("Start pre-processing"):
-        filenames = []
-        rawdata_li = []
-        data_li = []
-        perc_rect_li = []
-        for i, fd in enumerate(TRAIN_FOLDERS):  # Loop through folders
-            f = get_filenames(BASE_PATH, fd)
+        filenames_list, rawdata_list, data_list, perc_rect_list = [], [], [], []
+        for i, folder in enumerate(TRAIN_FOLDERS):  # Loop through folders
+            f = likelihoodprocessing.get_filenames(folder)
             my_bar = st.progress(0)
             for j, filename in enumerate(f):
                 curr_df = pd.read_csv(filename, low_memory=False)
-                curr_df_filt, perc_rect = adp_filt(curr_df, BODYPARTS)
-                rawdata_li.append(curr_df)
-                perc_rect_li.append(perc_rect)
-                data_li.append(curr_df_filt)
+                curr_df_filt, perc_rect = likelihoodprocessing.adp_filt(curr_df, BODYPARTS)
+                rawdata_list.append(curr_df)
+                perc_rect_list.append(perc_rect)
+                data_list.append(curr_df_filt)
                 my_bar.progress(round((j + 1) / len(f) * 100))
-                filenames.append(filename)
-        training_data = np.array(data_li)
+                filenames_list.append(filename)
+        training_data = np.array(data_list)
         with open(os.path.join(OUTPUT_PATH, str.join('', (MODEL_NAME, '_data.sav'))), 'wb') as f:
-            joblib.dump([BASE_PATH, FPS, BODYPARTS, filenames, rawdata_li, training_data, perc_rect_li], f)
-        st.info('Processed a total of **{}** CSV files, and compiled into a **{}** data list.'.format(len(data_li),
+            joblib.dump([BASE_PATH, FPS, BODYPARTS, filenames_list, rawdata_list, training_data, perc_rect_list], f)
+        st.info('Processed a total of **{}** CSV files, and compiled into a **{}** data list.'.format(len(data_list),
                                                                                                       training_data.shape))
         st.balloons()
     with open(os.path.join(OUTPUT_PATH, str.join('', (MODEL_NAME, '_data.sav'))), 'rb') as fr:
-        BASE_PATH, FPS, BODYPARTS, filenames, rawdata_li, training_data, perc_rect_li = joblib.load(fr)
+        BASE_PATH, FPS, BODYPARTS, filenames, rawdata_list, training_data, perc_rect_list = joblib.load(fr)
     if st.checkbox('Show % body part processed per file?', False):
         st.write('This line chart shows __% body part below file-based threshold__')
-        subllh_percent = pd.DataFrame(perc_rect_li)
+        subllh_percent = pd.DataFrame(perc_rect_list)
         st.bar_chart(subllh_percent)
     # st.write('This allows you to scroll through and visualize raw vs processed data.')
     # if st.checkbox("Show raw & processed data?", False):
@@ -167,19 +161,19 @@ if not last_run:
     #         pass
 
 if last_run:
-    with open(os.path.join(OUTPUT_PATH, str(MODEL_NAME)+'_data.sav'), 'rb') as fr:
-        BASE_PATH, FPS, BODYPARTS, filenames, rawdata_li, training_data, perc_rect_li = joblib.load(fr)
+    with open(os.path.join(OUTPUT_PATH, f'{MODEL_NAME}_data.sav'), 'rb') as fr:
+        BASE_PATH, FPS, BODYPARTS, filenames, rawdata_list, training_data, perc_rect_list = joblib.load(fr)
     if st.checkbox('Show % body part processed per file?', False):
         st.write('This line chart shows __% body part below file-based threshold__')
-        subllh_percent = pd.DataFrame(perc_rect_li)
+        subllh_percent = pd.DataFrame(perc_rect_list)
         st.bar_chart(subllh_percent)
     st.markdown('**_CHECK POINT_**: Processed a total of **{}** CSV files, '
-                'and compiled into a **{}** data list.'.format(len(rawdata_li), training_data.shape))
+                'and compiled into a **{}** data list.'.format(len(rawdata_list), training_data.shape))
     st.write('This allows you to scroll through and visualize raw vs processed data.')
     if st.checkbox("Show raw & processed data?", False):
         try:
-            ID = int(st.number_input('Enter csv/data-list index:', min_value=1, max_value=len(rawdata_li), value=1))
-            st.write(rawdata_li[ID - 1])
+            ID = int(st.number_input('Enter csv/data-list index:', min_value=1, max_value=len(rawdata_list), value=1))
+            st.write(rawdata_list[ID - 1])
             st.write(training_data[ID - 1])
         except:  # TODO: med: exception is too generalized. Add note or make more specific.
             pass
@@ -216,7 +210,7 @@ if st.button("Start dimensionality reduction"):
         dxy_smth = []
         ang_smth = []
         for l in range(dis_r.shape[1]):
-            dis_smth.append(boxcar_center(dis_r[:, l], win_len))
+            dis_smth.append(likelihoodprocessing.boxcar_center(dis_r[:, l], win_len))
         for k in range(dxy_r.shape[1]):
             for kk in range(dataRange):
                 dxy_eu[kk, k] = np.linalg.norm(dxy_r[kk, k, :])
@@ -227,8 +221,8 @@ if st.button("Start dimensionality reduction"):
                     ang[kk, k] = np.dot(np.dot(np.sign(c[2]), 180) / np.pi,
                                         math.atan2(np.linalg.norm(c),
                                                    np.dot(dxy_r[kk, k, :], dxy_r[kk + 1, k, :])))
-            dxy_smth.append(boxcar_center(dxy_eu[:, k], win_len))
-            ang_smth.append(boxcar_center(ang[:, k], win_len))
+            dxy_smth.append(likelihoodprocessing.boxcar_center(dxy_eu[:, k], win_len))
+            ang_smth.append(likelihoodprocessing.boxcar_center(ang[:, k], win_len))
         dis_smth = np.array(dis_smth)
         dxy_smth = np.array(dxy_smth)
         ang_smth = np.array(ang_smth)
@@ -297,7 +291,7 @@ The preset (0.5-1.5%) works for most large (> 25k instances) datasets.
 It is recommended to tweak this for cluster number > 40 or < 4.
 ''')
 cluster_range = st.slider('Select range of minimum cluster size in %', 0.01, 5.0, (0.4, 1.2))
-st.markdown('Your minimum cluster size ranges between **{}%** and **{}%**.'.format(cluster_range[0], cluster_range[1]))
+st.markdown(f'Your minimum cluster size ranges between **{cluster_range[0]}%** and **{cluster_range[1]}%**.')
 if st.button("Start clustering"):
     with open(os.path.join(OUTPUT_PATH, str.join('', (MODEL_NAME, '_feats.sav'))), 'rb') as fr:
         f_10fps, f_10fps_sc, umap_embeddings = joblib.load(fr)
@@ -333,12 +327,12 @@ if st.checkbox("Show UMAP enhanced clustering plot?", True):
         f_10fps, f_10fps_sc, umap_embeddings = joblib.load(fr)
     with open(os.path.join(OUTPUT_PATH, str.join('', (MODEL_NAME, '_clusters.sav'))), 'rb') as fr:
         assignments, soft_clusters, soft_assignments = joblib.load(fr)
-    fig1, plt1 = plot_classes(umap_embeddings[assignments >= 0], assignments[assignments >= 0])
+    fig1, plt1 = visuals.plot_classes_app(umap_embeddings[assignments >= 0], assignments[assignments >= 0])
     plt1.suptitle('HDBSCAN assignment')
     st.pyplot(fig1)
     st.write('The __soft__ assignment disregards noise and attempts to fit all data points to assignments '
              'based on highest probability.')
-    fig2, plt2 = plot_classes(umap_embeddings[soft_assignments >= 0], soft_assignments[soft_assignments >= 0])
+    fig2, plt2 = visuals.plot_classes_app(umap_embeddings[soft_assignments >= 0], soft_assignments[soft_assignments >= 0])
     plt2.suptitle('HDBSCAN soft assignment')
     st.pyplot(fig2)
 
@@ -352,8 +346,8 @@ if st.button("Start training a behavioral neural network"):
         f_10fps, f_10fps_sc, umap_embeddings = joblib.load(fr)
     with open(os.path.join(OUTPUT_PATH, str.join('', (MODEL_NAME, '_clusters.sav'))), 'rb') as fr:
         assignments, soft_clusters, soft_assignments = joblib.load(fr)
-    feats_train, feats_test, labels_train, labels_test = train_test_split(f_10fps.T, soft_assignments.T,
-                                                                          test_size=HLDOUT, random_state=23)
+    feats_train, feats_test, labels_train, labels_test = train_test_split(
+        f_10fps.T, soft_assignments.T, test_size=HLDOUT, random_state=23)
     st.info(
         'Training feedforward neural network on randomly partitioned {}% of training data...'.format(
             (1 - HLDOUT) * 100))
@@ -386,12 +380,12 @@ if st.checkbox("Show confusion matrix on {}% data?".format(HLDOUT * 100), False)
     st.write('Below are two confusion matrices - top: raw counts, bottom: probability. These matrices shows '
              '**true positives in diagonal**, false negatives in rows, and false positives in columns')
     for title, normalize in titles_options:
-        cm = plot_confusion_matrix(classifier, feats_test, labels_test,
-                                   cmap=plt.cm.Blues,
-                                   normalize=normalize)
-        cm.ax_.set_title(title)
+        colormap = plot_confusion_matrix(classifier, feats_test, labels_test,
+                                         cmap=plt.cm.Blues,
+                                         normalize=normalize)
+        colormap.ax_.set_title(title)
         j += 1
-        st.pyplot(cm.figure_)
+        st.pyplot(colormap.figure_)
     st.write(
         'If these are **NOT satisfactory**, either _increase_ the above minimum cluster size to '
         'remove noise subgroups, or include _more data_')
@@ -399,7 +393,7 @@ if st.checkbox("Show cross-validated accuracy on randomly selected {}% held-out 
     st.write('For **overall** machine learning accuracy, a part of the error could be _cleaning up_ clustering noise.')
     with open(os.path.join(OUTPUT_PATH, str.join('', (MODEL_NAME, '_neuralnet.sav'))), 'rb') as fr:
         feats_test, labels_test, classifier, clf, scores, nn_assignments = joblib.load(fr)
-    fig, plt = plot_accuracy(scores)
+    fig, plt = visuals.plot_accuracy_bsoidapp(scores)
     st.pyplot(fig)
     st.write(
         'If this is **NOT satisfactory**, either _increase_ the above minimum cluster size to '
@@ -419,7 +413,7 @@ if st.button('Export'):
         with open(os.path.join(OUTPUT_PATH, str.join('', (MODEL_NAME, '_feats.sav'))), 'rb') as fr:
             f_10fps, f_10fps_sc, umap_embeddings = joblib.load(fr)
         timestr = time.strftime("_%Y%m%d_%H%M")
-        feat_range, feat_med, p_cts, edges = feat_dist(f_10fps)
+        feat_range, feat_med, p_cts, edges = statistics.feat_dist(f_10fps)
         f_range_df = pd.DataFrame(feat_range, columns=['5%tile', '95%tile'])
         f_med_df = pd.DataFrame(feat_med, columns=['median'])
         f_pcts_df = pd.DataFrame(p_cts)
@@ -445,8 +439,8 @@ if st.button('Export'):
             angle_nm.append(['angular change for points:', i + 1, j + 1])
         for i in range(int(np.sqrt(f_10fps.shape[0]))):
             disp_nm.append(['displacement for point:', i + 1, i + 1])
-        mcol = np.vstack((length_nm, angle_nm, disp_nm))
-        feat_nm_df = pd.DataFrame(f_10fps.T, columns=mcol)
+        m_columns = np.vstack((length_nm, angle_nm, disp_nm))
+        feat_nm_df = pd.DataFrame(f_10fps.T, columns=m_columns)
         umaphdb_data = np.concatenate([umap_embeddings, assignments.reshape(len(assignments), 1),
                                        soft_assignments.reshape(len(soft_assignments), 1),
                                        nn_assignments.reshape(len(nn_assignments), 1)], axis=1)
@@ -472,14 +466,14 @@ if st.sidebar.checkbox('Behavioral structure visual analysis?', False):
     with open(os.path.join(OUTPUT_PATH, str.join('', (MODEL_NAME, '_clusters.sav'))), 'rb') as fr:
         assignments, soft_clusters, soft_assignments = joblib.load(fr)
     with open(os.path.join(OUTPUT_PATH, str.join('', (MODEL_NAME, '_predictions.sav'))), 'rb') as fr:
-        flders, flder, filenames, data_new, fs_labels = joblib.load(fr)
+        flders, folders_list, filenames, data_new, fs_labels = joblib.load(fr)
     selected_flder = st.sidebar.selectbox('select folder', [*flders])
     try:
-        indices = [i for i, s in enumerate(flder) if str(selected_flder) in s]
+        indices = [i for i, s in enumerate(folders_list) if str(selected_flder) in s]
         tm_c_all = []
         tm_p_all = []
         for idx in indices:
-            runlen_df, dur_stats, B, df_tm, B_norm = statistics.main(fs_labels[idx], len(np.unique(soft_assignments)))
+            df_runlengths, df_dur_statistics, B, df_tm, B_norm = statistics.main_app(fs_labels[idx], len(np.unique(soft_assignments)))
             tm_c_all.append(B)
             tm_p_all.append(B_norm)
         tm_c_ave = np.nanmean(tm_c_all, axis=0)
@@ -518,9 +512,9 @@ else:
     Bulk process all csvs: once you have subjective definitions for labels, you can run predictions with high consistency. It will prompt for types of analysis to be exported.
     ''')
 
-    pred_options = st.selectbox('Select an option:',
-                                ('Generate predictions and corresponding videos', 'Bulk process all csvs'))
-    if pred_options == 'Generate predictions and corresponding videos':
+    prediction_options = st.selectbox('Select an option:',
+                                      ('Generate predictions and corresponding videos', 'Bulk process all csvs'))
+    if prediction_options == 'Generate predictions and corresponding videos':
         csv_dir = st.text_input('Enter the testing data sub-directory within BASE PATH:')
         try:
             os.listdir(str.join('', (BASE_PATH, csv_dir)))
@@ -593,15 +587,15 @@ else:
             with open(os.path.join(OUTPUT_PATH, MODEL_NAME+'_neuralnet.sav'), 'rb') as fr:
                 feats_test, labels_test, classifier, clf, scores, nn_assignments = joblib.load(fr)
             curr_df = pd.read_csv(os.path.join(str.join('', (BASE_PATH, csv_dir, '/', csv_file))), low_memory=False)  # TODO: low: rework this pathing...
-            curr_df_filt, perc_rect = adp_filt(curr_df, BODYPARTS)
+            curr_df_filt, perc_rect = likelihoodprocessing.adp_filt(curr_df, BODYPARTS)
             test_data = [curr_df_filt]
             labels_fs = []
             labels_fs2 = []
             fs_labels = []
             # TODO: low: change loop variable names so each is unique (clarity)
             for i in range(0, len(test_data)):
-                feats_new = bsoid_extract(test_data, FPS)
-                labels = bsoid_predict(feats_new, clf)
+                feats_new = classify.bsoid_extract_app(test_data, FPS)
+                labels = classify.bsoid_predict_app(feats_new, clf)
                 for m in range(0, len(labels)):
                     labels[m] = labels[m][::-1]
                 labels_pad = -1 * np.ones([len(labels), len(max(labels, key=lambda x: len(x)))])
@@ -617,7 +611,7 @@ else:
                     labels_fs2.append(labels_fs[k][l])
                 fs_labels.append(np.array(labels_fs2).flatten('F'))
             st.info(f'Done frameshift-predicting **{csv_file}**.')
-            create_labeled_vid(fs_labels[0], int(min_frames), int(number_examples), int(out_fps),
+            videoprocessing.create_labeled_vid(fs_labels[0], int(min_frames), int(number_examples), int(out_fps),
                                frame_dir, shortvid_dir)
             st.balloons()
         if st.checkbox(f"Show example videos? (loading it up from {shortvid_dir})", False):
@@ -627,13 +621,13 @@ else:
             video_bytes = example_vid_file.read()
             st.video(video_bytes)
 
-    if pred_options == 'Bulk process all csvs':
+    if prediction_options == 'Bulk process all csvs':
         st.write('Bulk processing will take some time for large datasets.'
                  'This includes a lot of files, long videos, and/or high frame-rates.')
         TEST_FOLDERS = []
-        no_dir = int(st.number_input('How many sub-directories for bulk predictions?', value=3))
-        st.markdown(f'Your will be predicting on **{no_dir}** csv containing sub-directories.')
-        for i in range(no_dir):
+        directory_num: int = int(st.number_input('How many sub-directories for bulk predictions?', value=3))
+        st.markdown(f'Your will be predicting on **{directory_num}** csv containing sub-directories.')
+        for i in range(directory_num):
             test_dir = st.text_input(f'Enter path to test directory number {i+1} within base path:')
             try:
                 os.listdir(str.join('', (BASE_PATH, test_dir)))
@@ -642,8 +636,8 @@ else:
             if not test_dir in TEST_FOLDERS:
                 TEST_FOLDERS.append(test_dir)
         st.markdown(f'You have selected sub-directory(ies) **{TEST_FOLDERS}**.')
-        FPS = int(st.number_input('What is your framerate for these csvs?', value=60))
-        st.markdown(f'Your framerate is **{FPS}** frames per second for these csvs.')
+        FPS = int(st.number_input('What is your framerate for these csvs?', value=60))  # TODO: Q: 60=magic variable?
+        st.markdown(f'Your frame-rate is **{FPS}** frames per second for these CSVs.')
         st.text_area('Select the analysis of interest to you. If in doubt, select all.', '''
         Predicted labels with original pose: labels written into original .csv files (time-locked).
         Behavioral bout lengths in chronological order: the behaviors and its bouts over time. 
@@ -661,13 +655,11 @@ else:
             with open(os.path.join(OUTPUT_PATH, MODEL_NAME+'_neuralnet.sav'), 'rb') as fr:
                 feats_test, labels_test, classifier, clf, scores, nn_assignments = joblib.load(fr)
             flders, filenames, data_new, perc_rect = likelihoodprocessing.main(BASE_PATH, TEST_FOLDERS, BODYPARTS)
-            labels_fs = []
-            labels_fs2 = []
-            fs_labels = []
+            labels_fs, labels_fs2, fs_labels = [], [], []  # TODO: HIGH: RE-EVALUATE VARIABLE NAMES --> `labels_fs` and `fs_labels` <-------
             bar = st.progress(0)
-            for i in range(0, len(data_new)):
-                feats_new = bsoid_extract([data_new[i]], FPS)
-                labels = bsoid_predict(feats_new, clf)
+            for i in range(len(data_new)):
+                feats_new = classify.bsoid_extract_app([data_new[i]], FPS)
+                labels = classify.bsoid_predict_app(feats_new, clf)
                 for m in range(0, len(labels)):
                     labels[m] = labels[m][::-1]
                 labels_pad = -1 * np.ones([len(labels), len(max(labels, key=lambda x: len(x)))])
@@ -678,7 +670,7 @@ else:
                         labels_pad[n][0:n] = labels_pad[n - 1][0:n]
                 labels_fs.append(labels_pad.astype(int))
                 bar.progress(round((i + 1) / len(data_new) * 100))
-            for k in range(0, len(labels_fs)):
+            for k in range(len(labels_fs)):
                 labels_fs2 = []
                 for l in range(math.floor(FPS / 10)):
                     labels_fs2.append(labels_fs[k][l])
@@ -686,15 +678,15 @@ else:
             st.info(f'Done frameshift-predicting a total of **{len(data_new)}** files.')
             filenames = []
             all_df = []
-            flder = []
-            for i, fd in enumerate(TEST_FOLDERS):  # Loop through folders
-                f = get_filenames(BASE_PATH, fd)
+            folders_list = []
+            for i, folder in enumerate(TEST_FOLDERS):  # Loop through folders
+                f = likelihoodprocessing.get_filenames(folder)
                 for j, filename in enumerate(f):
                     curr_df = pd.read_csv(filename, low_memory=False)
                     filenames.append(filename)
-                    flder.append(fd)
+                    folders_list.append(folder)
                     all_df.append(curr_df)
-            for i in range(0, len(fs_labels)):
+            for i in range(len(fs_labels)):
                 timestr = time.strftime("_%Y%m%d_%H%M_")
                 csvname = os.path.basename(filenames[i]).rpartition('.')[0]
                 fs_labels_pad = np.pad(fs_labels[i], (0, len(all_df[i]) - 2 - len(fs_labels[i])), 'edge')
@@ -707,31 +699,33 @@ else:
                 df2.loc[0] = ''
                 frames = [df2, all_df[0]]
                 xyfs_df = pd.concat(frames, axis=1)
-                runlen_df, dur_stats, B, df_tm, B_norm = statistics.main(fs_labels[i], len(np.unique(nn_assignments)))
+
+                df_runlengths, df_dur_statistics, B, df_tm, B_norm = \
+                    statistics.main_app(fs_labels[i], len(np.unique(nn_assignments)))
                 try:
-                    os.mkdir(str.join('', (BASE_PATH, flder[i], '/BSOID')))
+                    os.mkdir(str.join('', (BASE_PATH, folders_list[i], '/BSOID')))
                 except FileExistsError:
                     pass
                 if any('Predicted labels with original pose' in o for o in result2_options):
                     xyfs_df.to_csv(os.path.join(
-                        str.join('', (BASE_PATH, flder[i], '/BSOID')),
+                        BASE_PATH+folders_list[i]+'/BSOID',
                         str.join('', ('labels_pose_', str(FPS), 'Hz', timestr, csvname, '.csv'))),
                         index=True, chunksize=10000, encoding='utf-8')
                 if any('Behavioral bout lengths in chronological order' in o for o in result2_options):
-                    runlen_df.to_csv(os.path.join(
-                        str.join('', (BASE_PATH, flder[i], '/BSOID')),
+                    df_runlengths.to_csv(os.path.join(
+                        str.join('', (BASE_PATH, folders_list[i], '/BSOID')),
                         str.join('', ('bout_lengths_', str(FPS), 'Hz', timestr, csvname, '.csv'))),
                         index=True, chunksize=10000, encoding='utf-8')
                 if any('Behavioral bout statistics' in o for o in result2_options):
-                    dur_stats.to_csv(os.path.join(
-                        str.join('', (BASE_PATH, flder[i], '/BSOID')),
+                    df_dur_statistics.to_csv(os.path.join(
+                        str.join('', (BASE_PATH, folders_list[i], '/BSOID')),
                         str.join('', ('bout_stats_', str(FPS), 'Hz', timestr, csvname, '.csv'))),
                         index=True, chunksize=10000, encoding='utf-8')
                 if any('Transition matrix' in o for o in result2_options):
                     df_tm.to_csv(os.path.join(
-                        str.join('', (BASE_PATH, flder[i], '/BSOID')),
+                        str.join('', (BASE_PATH, folders_list[i], '/BSOID')),
                         str.join('', ('transitions_mat_', str(FPS), 'Hz', timestr, csvname, '.csv'))),
                         index=True, chunksize=10000, encoding='utf-8')
             with open(os.path.join(OUTPUT_PATH, MODEL_NAME+'_predictions.sav'), 'wb') as f:
-                joblib.dump([flders, flder, filenames, data_new, fs_labels], f)
+                joblib.dump([flders, folders_list, filenames, data_new, fs_labels], f)
             st.balloons()
