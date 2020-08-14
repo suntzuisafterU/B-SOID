@@ -463,15 +463,14 @@ if st.button('Export'):
     st.balloons()
 
 if st.sidebar.checkbox('Behavioral structure visual analysis?', False):
-    with open(os.path.join(OUTPUT_PATH, str.join('', (MODEL_NAME, '_clusters.sav'))), 'rb') as fr:
+    with open(os.path.join(OUTPUT_PATH, str.join('', (MODEL_NAME, '_clusters.sav'))), 'rb') as fr:  # TODO: low: refactor `str.join(...)`
         assignments, soft_clusters, soft_assignments = joblib.load(fr)
-    with open(os.path.join(OUTPUT_PATH, str.join('', (MODEL_NAME, '_predictions.sav'))), 'rb') as fr:
+    with open(os.path.join(OUTPUT_PATH, str.join('', (MODEL_NAME, '_predictions.sav'))), 'rb') as fr:  # TODO: low: refactor `str.join(...)`
         flders, folders_list, filenames, data_new, fs_labels = joblib.load(fr)
     selected_flder = st.sidebar.selectbox('select folder', [*flders])
     try:
         indices = [i for i, s in enumerate(folders_list) if str(selected_flder) in s]
-        tm_c_all = []
-        tm_p_all = []
+        tm_c_all, tm_p_all = [], []
         for idx in indices:
             df_runlengths, df_dur_statistics, B, df_tm, B_norm = statistics.main_app(fs_labels[idx], len(np.unique(soft_assignments)))
             tm_c_all.append(B)
@@ -530,16 +529,16 @@ else:
             st.error('No such directory')
         vid_file = st.selectbox('Select the video (.mp4 or .avi)', sorted(os.listdir(vid_dir)))
         st.markdown(f'You have selected **{vid_file}** as your video matching **{csv_file}**.')
-        csvname = os.path.basename(csv_file).rpartition('.')[0]
+        csv_filename = os.path.basename(csv_file).rpartition('.')[0]
         try:
-            os.mkdir(str.join('', (BASE_PATH, csv_dir, '/pngs')))
+            os.mkdir(str.join('', (BASE_PATH, csv_dir, '/pngs')))  # TODO: low: refactor `str.join(...)`
         except FileExistsError:
             pass
         try:
-            os.mkdir(str.join('', (BASE_PATH, csv_dir, '/pngs', '/', csvname)))
+            os.mkdir(str.join('', (BASE_PATH, csv_dir, '/pngs', '/', csv_filename)))  # TODO: low: refactor `str.join(...)`
         except FileExistsError:
             pass
-        frame_dir = str.join('', (BASE_PATH, csv_dir, '/pngs', '/', csvname))
+        frame_dir = str.join('', (BASE_PATH, csv_dir, '/pngs', '/', csv_filename))  # TODO: low: refactor `str.join(...)`
         st.markdown(f'You have created **{frame_dir}** as your PNG directory for video {vid_file}.')
         probe = ffmpeg.probe(os.path.join(vid_dir, vid_file))
         video_info = next(s for s in probe['streams'] if s['codec_type'] == 'video')
@@ -566,10 +565,10 @@ else:
         except FileExistsError:
             pass
         try:
-            os.mkdir(str.join('', (BASE_PATH, csv_dir, '/mp4s', '/', csvname)))
+            os.mkdir(str.join('', (BASE_PATH, csv_dir, '/mp4s', '/', csv_filename)))
         except FileExistsError:
             pass
-        shortvid_dir = str.join('', (BASE_PATH, csv_dir, '/mp4s', '/', csvname))
+        shortvid_dir = str.join('', (BASE_PATH, csv_dir, '/mp4s', '/', csv_filename))
         st.markdown(f'You have created **{shortvid_dir}** as your .mp4 directory for '
                     f'group examples from video {vid_file}.')
         min_time = st.number_input('Enter minimum time for bout in ms:', value=100)
@@ -587,7 +586,7 @@ else:
             with open(os.path.join(OUTPUT_PATH, MODEL_NAME+'_neuralnet.sav'), 'rb') as fr:
                 feats_test, labels_test, classifier, clf, scores, nn_assignments = joblib.load(fr)
             curr_df = pd.read_csv(os.path.join(str.join('', (BASE_PATH, csv_dir, '/', csv_file))), low_memory=False)  # TODO: low: rework this pathing...
-            curr_df_filt, perc_rect = likelihoodprocessing.adp_filt(curr_df, BODYPARTS)
+            curr_df_filt, perc_rect = likelihoodprocessing.adp_filt(curr_df)
             test_data = [curr_df_filt]
             labels_fs = []
             labels_fs2 = []
@@ -611,8 +610,8 @@ else:
                     labels_fs2.append(labels_fs[k][l])
                 fs_labels.append(np.array(labels_fs2).flatten('F'))
             st.info(f'Done frameshift-predicting **{csv_file}**.')
-            videoprocessing.create_labeled_vid(fs_labels[0], int(min_frames), int(number_examples), int(out_fps),
-                               frame_dir, shortvid_dir)
+            videoprocessing.create_labeled_vid_app(fs_labels[0], int(min_frames), int(number_examples), int(out_fps),
+                                                   frame_dir, shortvid_dir)
             st.balloons()
         if st.checkbox(f"Show example videos? (loading it up from {shortvid_dir})", False):
             example_vid = st.selectbox('Select the video (.mp4 or .avi)', sorted(os.listdir(shortvid_dir)))
@@ -688,7 +687,7 @@ else:
                     all_df.append(curr_df)
             for i in range(len(fs_labels)):
                 timestr = time.strftime("_%Y%m%d_%H%M_")
-                csvname = os.path.basename(filenames[i]).rpartition('.')[0]
+                csv_filename = os.path.basename(filenames[i]).rpartition('.')[0]
                 fs_labels_pad = np.pad(fs_labels[i], (0, len(all_df[i]) - 2 - len(fs_labels[i])), 'edge')
                 df2 = pd.DataFrame(fs_labels_pad, columns={'B-SOiD labels'})
                 df2.loc[len(df2)] = ''
@@ -709,22 +708,22 @@ else:
                 if any('Predicted labels with original pose' in o for o in result2_options):
                     xyfs_df.to_csv(os.path.join(
                         BASE_PATH+folders_list[i]+'/BSOID',
-                        str.join('', ('labels_pose_', str(FPS), 'Hz', timestr, csvname, '.csv'))),
+                        str.join('', ('labels_pose_', str(FPS), 'Hz', timestr, csv_filename, '.csv'))),
                         index=True, chunksize=10000, encoding='utf-8')
                 if any('Behavioral bout lengths in chronological order' in o for o in result2_options):
                     df_runlengths.to_csv(os.path.join(
                         str.join('', (BASE_PATH, folders_list[i], '/BSOID')),
-                        str.join('', ('bout_lengths_', str(FPS), 'Hz', timestr, csvname, '.csv'))),
+                        str.join('', ('bout_lengths_', str(FPS), 'Hz', timestr, csv_filename, '.csv'))),
                         index=True, chunksize=10000, encoding='utf-8')
                 if any('Behavioral bout statistics' in o for o in result2_options):
                     df_dur_statistics.to_csv(os.path.join(
                         str.join('', (BASE_PATH, folders_list[i], '/BSOID')),
-                        str.join('', ('bout_stats_', str(FPS), 'Hz', timestr, csvname, '.csv'))),
+                        str.join('', ('bout_stats_', str(FPS), 'Hz', timestr, csv_filename, '.csv'))),
                         index=True, chunksize=10000, encoding='utf-8')
                 if any('Transition matrix' in o for o in result2_options):
                     df_tm.to_csv(os.path.join(
                         str.join('', (BASE_PATH, folders_list[i], '/BSOID')),
-                        str.join('', ('transitions_mat_', str(FPS), 'Hz', timestr, csvname, '.csv'))),
+                        str.join('', ('transitions_mat_', str(FPS), 'Hz', timestr, csv_filename, '.csv'))),
                         index=True, chunksize=10000, encoding='utf-8')
             with open(os.path.join(OUTPUT_PATH, MODEL_NAME+'_predictions.sav'), 'wb') as f:
                 joblib.dump([flders, folders_list, filenames, data_new, fs_labels], f)
