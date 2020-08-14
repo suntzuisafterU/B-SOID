@@ -1,5 +1,6 @@
 bhtsne
 ffmpeg
+hdbscan
 joblib
 matplotlib
 networkx
@@ -8,5 +9,6 @@ pandas
 opencv-python
 seaborn
 scikit-learn
+streamlit
 tqdm
 umap-learn
