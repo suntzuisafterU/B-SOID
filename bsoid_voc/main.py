@@ -1,28 +1,28 @@
 """
-A master that runs BOTH
-1. Training a unsupervised machine learning model based on patterns in spatio-temporal (x,y) changes.
-2. Predicting new behaviors using (x,y) based on learned classifier.
+A master that runs BOTH:
+    1. Training a unsupervised machine learning model based on patterns in spatio-temporal (x,y) changes.
+    2. Predicting new behaviors using (x,y) based on learned classifier.
 """
 
-import os
-import time
-
+from typing import Tuple
 import joblib
 import numpy as np
+import os
 import pandas as pd
+import time
 
 from bsoid_voc.config import *
 
 
-def build(train_folders):
+def build(train_folders) -> Tuple:
     """
-    :param train_folders: list, folders to build behavioral model on
-    :returns f_10fps, trained_tsne, gmm_assignments, classifier, scores: see bsoid_voc.train
     Automatically saves single CSV file containing training outputs (in 10Hz, 100ms per row):
     1. original features (number of training data points by 7 dimensions, columns 1-7)
     2. embedded features (number of training data points by 3 dimensions, columns 8-10)
     3. em-gmm assignments (number of training data points by 1, columns 11)
     Automatically saves classifier in OUTPUTPATH with MODELNAME in LOCAL_CONFIG
+    :param train_folders: list, folders to build behavioral model on
+    :returns f_10fps, trained_tsne, gmm_assignments, classifier, scores: see bsoid_voc.train
     """
     import bsoid_voc.train
     f_10fps, trained_tsne, gmm_assignments, classifier, scores = bsoid_voc.train.main(train_folders)
@@ -31,9 +31,12 @@ def build(train_folders):
                                            ('', 'Distance between points 1 & 8'),
                                            ('', 'Angle change between points 1 & 2'),
                                            ('', 'Angle change between points 1 & 4'),
-                                           ('', 'Point 3 displacement'), ('', 'Point 7 displacement'),
-                                           ('Embedded t-SNE', 'Dimension 1'), ('', 'Dimension 2'),
-                                           ('', 'Dimension 3'), ('EM-GMM', 'Assignment No.')],
+                                           ('', 'Point 3 displacement'),
+                                           ('', 'Point 7 displacement'),
+                                           ('Embedded t-SNE', 'Dimension 1'),
+                                           ('', 'Dimension 2'),
+                                           ('', 'Dimension 3'),
+                                           ('EM-GMM', 'Assignment No.')],
                                           names=['Type', 'Frame@10Hz'])
     training_data = pd.DataFrame(alldata, columns=micolumns)
     timestr = time.strftime("_%Y%m%d_%H%M")
@@ -41,7 +44,7 @@ def build(train_folders):
                          index=True, chunksize=10000, encoding='utf-8')
     with open(os.path.join(OUTPUT_PATH, str.join('', ('bsoid_', MODEL_NAME, '.sav'))), 'wb') as f:
         joblib.dump(classifier, f)
-    logging.info('Saved.')
+    logging.info('Saved.')  # TODO: add specificity to log
     return f_10fps, trained_tsne, gmm_assignments, classifier, scores
 
 
@@ -59,8 +62,9 @@ def run(predict_folders):
     import bsoid_voc.utils.statistics
     from bsoid_voc.utils.visuals import plot_tmat
 
-    with open(os.path.join(OUTPUT_PATH, str.join('', ('bsoid_', MODEL_NAME, '.sav'))), 'rb') as fr:
+    with open(os.path.join(OUTPUT_PATH, 'bsoid_'+MODEL_NAME+'.sav'), 'rb') as fr:
         behv_model = joblib.load(fr)
+
     data_new, feats_new, labels_fslow, labels_fshigh = bsoid_voc.classify.main(predict_folders, FPS, behv_model)
     filenames = []
     all_df = []

@@ -79,7 +79,7 @@ def build(train_folders):
 #     with open(os.path.join(OUTPUT_PATH, str.join('', ('bsoid_', MODEL_NAME, '.sav'))), 'rb') as fr:
 #         f_10fps, umap_embeddings, hdb_assignments, soft_assignments, soft_clusters, nn_classifier, scores, \
 #         nn_assignments = joblib.load(fr)
-#     from bsoid_umap.utils.videoprocessing import vid2frame
+#     from bsoid_umap.util.videoprocessing import vid2frame
 #     vid2frame(VID_NAME, f_10fps[ID], FPS, FRAME_DIR)
 #     labels_df = pd.read_csv('/Users/ahsu/Sign2Speech/Notebook/labels.csv', low_memory=False)
 #

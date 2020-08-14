@@ -353,7 +353,7 @@ def bsoid_predict_umap(feats, clf):
         logging.info('Done predicting file {} with {} instances in {} D space.'.format(i + 1, feats[i].shape[1],
                                                                                        feats[i].shape[0]))
         labels_fslow.append(labels)
-    logging.info('Done predicting a total of {} files.'.format(len(feats)))
+    logging.info(f'Done predicting a total of {len(feats)} files.')
     return labels_fslow
 def bsoid_predict_voc(feats, model):
     """
@@ -369,7 +369,7 @@ def bsoid_predict_voc(feats, model):
         logging.info('Done predicting file {} with {} instances in {} D space.'.format(i + 1, feats[i].shape[1],
                                                                                        feats[i].shape[0]))
         labels_fslow.append(labels)
-    logging.info('Done predicting a total of {} files.'.format(len(feats)))
+    logging.info(f'Done predicting a total of {len(feats)} files.')
     return labels_fslow
 
 

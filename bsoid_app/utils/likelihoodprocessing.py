@@ -84,8 +84,9 @@ def import_folders(base_path, folders: list, BODYPARTS):
     return fldrs, filenames, data, perc_rect_li
 
 
-def adp_filt(currdf: object, BODYPARTS):
+def adp_filt(currdf: object, BODYPARTS):  # TODO: rename function for clarity?
     """
+    TODO: purpose
     :param currdf: object, csv data frame
     :return currdf_filt: 2D array, filtered data
     :return perc_rect: 1D array, percent filtered per BODYPART

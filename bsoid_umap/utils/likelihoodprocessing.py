@@ -3,13 +3,13 @@ likelihood processing utilities
 Forward fill low likelihood (x,y)
 """
 
+from bsoid_umap.utils.visuals import *  # TODO: remove this line and see if it still works...doesn't seem to use any of these functions
+
+from tqdm import tqdm
+from typing import Tuple
+
 import glob
 import re
-
-import numpy as np
-from tqdm import tqdm
-
-from bsoid_umap.utils.visuals import *
 
 
 def boxcar_center(a, n):
@@ -30,14 +30,13 @@ def convert_int(s):
 
 def alphanum_key(s):
     """ Turn a string into a list of string and number chunks.
-        "z23a" -> ["z", 23, "a"]
+        e.g.: "z23a" -> ["z", 23, "a"]
     """
     return [convert_int(c) for c in re.split('([0-9]+)', s)]
 
 
-def sort_nicely(l):
-    """ Sort the given list in the way that humans expect.
-    """
+def sort_nicely(l: list):
+    """ Sort the given list in the way that humans expect. """
     l.sort(key=alphanum_key)
 
 
@@ -75,36 +74,35 @@ def import_folders(folders: list):
             perc_rect_li.append(perc_rect)
             data_li.append(curr_df_filt)
         filenames.append(f)
-        logging.info('Processed {} CSV files from folder: {}'.format(len(f), fd))
+        logging.info(f'Processed {len(f)} CSV files from folder: {fd}')
     data = np.array(data_li)
-    logging.info('Processed a total of {} CSV files, and compiled into a {} data list.'.format(len(data_li),
-                                                                                               data.shape))
+    logging.info(f'Processed a total of {len(data_li)} CSV files, and compiled into a {data.shape} data list.')
     return filenames, data, perc_rect_li
 
 
-def adp_filt(currdf: object):
+def adp_filt(currdf: pd.DataFrame):
     """
     :param currdf: object, csv data frame
     :return currdf_filt: 2D array, filtered data
     :return perc_rect: 1D array, percent filtered per BODYPART
     """
-    lIndex = []
-    xIndex = []
-    yIndex = []
+    l_index = []
+    x_index = []
+    y_index = []
     currdf = np.array(currdf[1:])
     for header in range(len(currdf[0])):
         if currdf[0][header] == "likelihood":
-            lIndex.append(header)
+            l_index.append(header)
         elif currdf[0][header] == "x":
-            xIndex.append(header)
+            x_index.append(header)
         elif currdf[0][header] == "y":
-            yIndex.append(header)
+            y_index.append(header)
     logging.info('Extracting likelihood value...')
     curr_df1 = currdf[:, 1:]
-    datax = curr_df1[:, np.array(xIndex) - 1]
-    datay = curr_df1[:, np.array(yIndex) - 1]
-    data_lh = curr_df1[:, np.array(lIndex) - 1]
-    currdf_filt = np.zeros((datax.shape[0] - 1, (datax.shape[1]) * 2))
+    data_x = curr_df1[:, np.array(x_index) - 1]
+    data_y = curr_df1[:, np.array(y_index) - 1]
+    data_lh = curr_df1[:, np.array(l_index) - 1]
+    currdf_filt = np.zeros((data_x.shape[0] - 1, (data_x.shape[1]) * 2))
     perc_rect = []
     logging.info('Computing data threshold to forward fill any sub-threshold (x,y)...')
     for i in range(data_lh.shape[1]):
@@ -122,13 +120,13 @@ def adp_filt(currdf: object):
             if data_lh_float[i] < llh:
                 currdf_filt[i, (2 * x):(2 * x + 2)] = currdf_filt[i - 1, (2 * x):(2 * x + 2)]
             else:
-                currdf_filt[i, (2 * x):(2 * x + 2)] = np.hstack([datax[i, x], datay[i, x]])
+                currdf_filt[i, (2 * x):(2 * x + 2)] = np.hstack([data_x[i, x], data_y[i, x]])
     currdf_filt = np.array(currdf_filt[1:])
     currdf_filt = currdf_filt.astype(np.float)
     return currdf_filt, perc_rect
 
 
-def main(folders: list):
+def main(folders: list) -> Tuple:
     """
     :param folders: list, data folders
     :return filenames: list, data filenames

@@ -15,7 +15,7 @@ from bsoid_py.utils.likelihoodprocessing import boxcar_center
 from bsoid_py.utils.visuals import *
 
 
-def bsoid_extract(data, bodyparts=BODYPARTS, fps=FPS):
+def bsoid_extract(data, bodyparts: dict = BODYPARTS, fps: int = FPS):
     """
     Extracts features based on (x,y) positions
     :param data: list, csv data
@@ -24,7 +24,7 @@ def bsoid_extract(data, bodyparts=BODYPARTS, fps=FPS):
     :return f_10fps: 2D array, extracted features
     """
     # TODO: med: rename variables for CLARITY
-    win_len = np.int(np.round(0.05 / (1 / fps)) * 2 - 1)  # TODO: low: uses np.round, np.int ... can it use round() and int() instead?
+    win_len = np.int(np.round(0.05 / (1 / fps)) * 2 - 1)  # TODO: low: this uses np.round, np.int ... can it use round() and int() instead? Less overhead.
     feats = []
     for m in range(len(data)):
         logging.info(f'Extracting features from CSV file {m + 1}...')
@@ -164,8 +164,8 @@ def main(predict_folders, scaler, fps, behv_model) -> Tuple:
         labels_fslow, 1D array, label/100ms
         labels_fshigh, 1D array, label/frame
     """
-    import bsoid_py.utils.likelihoodprocessing
-    filenames, data_new, perc_rect = bsoid_py.utils.likelihoodprocessing.main(predict_folders)
+    import bsoid.util.likelihoodprocessing
+    filenames, data_new, perc_rect = bsoid.util.likelihoodprocessing.main(predict_folders)
     feats_new = bsoid_extract(data_new)
     labels_fslow = bsoid_predict(feats_new, scaler, behv_model)
     labels_fshigh = bsoid_frameshift(data_new, scaler, fps, behv_model)
