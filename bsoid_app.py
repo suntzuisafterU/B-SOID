@@ -189,11 +189,10 @@ if st.button("Start dimensionality reduction"):
     feats = []
     my_bar = st.progress(0)
     for m in range(len(training_data)):
-        dataRange = len(training_data[m])
-        dxy_r = []
-        dis_r = []
-        for r in range(dataRange):
-            if r < dataRange - 1:
+        data_range = len(training_data[m])
+        dis_r, dxy_r = [], []
+        for r in range(data_range):
+            if r < data_range - 1:
                 dis = []
                 for c in range(0, training_data[m].shape[1], 2):
                     dis.append(np.linalg.norm(training_data[m][r + 1, c:c + 2] - training_data[m][r, c:c + 2]))
@@ -205,16 +204,16 @@ if st.button("Start dimensionality reduction"):
         dis_r = np.array(dis_r)
         dxy_r = np.array(dxy_r)
         dis_smth = []
-        dxy_eu = np.zeros([dataRange, dxy_r.shape[1]])
-        ang = np.zeros([dataRange - 1, dxy_r.shape[1]])
+        dxy_eu = np.zeros([data_range, dxy_r.shape[1]])
+        ang = np.zeros([data_range - 1, dxy_r.shape[1]])
         dxy_smth = []
         ang_smth = []
         for l in range(dis_r.shape[1]):
             dis_smth.append(likelihoodprocessing.boxcar_center(dis_r[:, l], win_len))
         for k in range(dxy_r.shape[1]):
-            for kk in range(dataRange):
+            for kk in range(data_range):
                 dxy_eu[kk, k] = np.linalg.norm(dxy_r[kk, k, :])
-                if kk < dataRange - 1:
+                if kk < data_range - 1:
                     b_3d = np.hstack([dxy_r[kk + 1, k, :], 0])
                     a_3d = np.hstack([dxy_r[kk, k, :], 0])
                     c = np.cross(b_3d, a_3d)
@@ -228,8 +227,8 @@ if st.button("Start dimensionality reduction"):
         ang_smth = np.array(ang_smth)
         feats.append(np.vstack((dxy_smth[:, 1:], ang_smth, dis_smth)))
         my_bar.progress(round((m + 1) / len(training_data) * 100))
-    st.info('Done extracting features from a total of **{}** training CSV files. '
-            'Now reducing dimensions...'.format(len(training_data)))
+    st.info(f'Done extracting features from a total of **{len(training_data)}** training '
+            f'CSV files. Now reducing dimensions...')
     for n in range(0, len(feats)):
         feats1 = np.zeros(len(training_data[n]))
         for k in range(round(FPS / 10), len(feats[n][0]), round(FPS / 10)):
@@ -258,7 +257,7 @@ if st.button("Start dimensionality reduction"):
             f_10fps_sc = feats1_sc  # scaling is important as I've seen wildly different stdev/feat between sessions
     feats_train = f_10fps_sc.T
     mem = virtual_memory()
-    if mem.available > f_10fps_sc.shape[0] * f_10fps_sc.shape[1] * 32 * 100 + 256000000:
+    if mem.available > f_10fps_sc.shape[0] * f_10fps_sc.shape[1] * 32 * 100 + 256000000:  # TODO: low: magic variables
         trained_umap = umap.UMAP(n_neighbors=100,  # power law
                                  **UMAP_PARAMS).fit(feats_train)
     else:
@@ -267,13 +266,10 @@ if st.button("Start dimensionality reduction"):
         trained_umap = umap.UMAP(n_neighbors=100, low_memory=True,  # power law
                                  **UMAP_PARAMS).fit(feats_train)
     umap_embeddings = trained_umap.embedding_
-    st.info(
-        'Done non-linear transformation of **{}** instances from **{}** D into **{}** D.'.format(feats_train.shape[0],
-                                                                                                 feats_train.shape[1],
-                                                                                                 umap_embeddings.shape[
-                                                                                                     1]))
-    with open(os.path.join(OUTPUT_PATH, str.join('', (MODEL_NAME, '_feats.sav'))), 'wb') as f:
-        joblib.dump([f_10fps, f_10fps_sc, umap_embeddings], f)
+    st.info(f'Done non-linear transformation of **{feats_train.shape[0]}** instances '
+            f'from **{feats_train.shape[1]}** D into **{umap_embeddings.shape[1]}** D.')
+    with open(os.path.join(OUTPUT_PATH, str.join('', (MODEL_NAME, '_feats.sav'))), 'wb') as file:
+        joblib.dump([f_10fps, f_10fps_sc, umap_embeddings], file)
     st.balloons()
 
 if last_run:
@@ -307,7 +303,7 @@ if st.button("Start clustering"):
             st.info('Adjusting minimum cluster size to maximize cluster number...')
             highest_numulab = numulab[-1]
             best_clf = trained_classifier
-    assignments = best_clf.labels_
+    assignments = best_clf.labels_  # TODO: med: potential for reference before assignment
     soft_clusters = hdbscan.all_points_membership_vectors(best_clf)
     soft_assignments = np.argmax(soft_clusters, axis=1)
     st.info('Done assigning labels for **{}** instances in **{}** D space'.format(*umap_embeddings.shape))
@@ -327,12 +323,12 @@ if st.checkbox("Show UMAP enhanced clustering plot?", True):
         f_10fps, f_10fps_sc, umap_embeddings = joblib.load(fr)
     with open(os.path.join(OUTPUT_PATH, str.join('', (MODEL_NAME, '_clusters.sav'))), 'rb') as fr:
         assignments, soft_clusters, soft_assignments = joblib.load(fr)
-    fig1, plt1 = visuals.plot_classes_app(umap_embeddings[assignments >= 0], assignments[assignments >= 0])
+    fig1, plt1 = visuals.plot_classes_bsoidapp(umap_embeddings[assignments >= 0], assignments[assignments >= 0])
     plt1.suptitle('HDBSCAN assignment')
     st.pyplot(fig1)
     st.write('The __soft__ assignment disregards noise and attempts to fit all data points to assignments '
              'based on highest probability.')
-    fig2, plt2 = visuals.plot_classes_app(umap_embeddings[soft_assignments >= 0], soft_assignments[soft_assignments >= 0])
+    fig2, plt2 = visuals.plot_classes_bsoidapp(umap_embeddings[soft_assignments >= 0], soft_assignments[soft_assignments >= 0])
     plt2.suptitle('HDBSCAN soft assignment')
     st.pyplot(fig2)
 
