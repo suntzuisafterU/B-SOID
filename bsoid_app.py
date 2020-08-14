@@ -8,7 +8,7 @@ from psutil import virtual_memory
 from sklearn.metrics import plot_confusion_matrix
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.neural_network import MLPClassifier
-from sklearn.preprocessing._data import StandardScaler  # TODO: low: find proper source of StandardScaler
+from sklearn.preprocessing import StandardScaler
 import ffmpeg
 import glob
 import hdbscan
