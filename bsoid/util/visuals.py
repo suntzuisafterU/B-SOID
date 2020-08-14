@@ -1,11 +1,11 @@
 """
 Visualization functions and saving plots.
 """
-# TODO: med: Currently, the file naming that uses `timestr` does not take into account when time pases, so
+# TODO: med: Currently, the file naming pattern that uses `timestr` does not take into account when time pases, so
 #   `timestr` will only have the time recorded at program start but not the running time during runtime.
 #   Whether or not we need to ensure that the output of file timestamps needs to be exactly current should be discussed.
 
-from mpl_toolkits.mplot3d import Axes3D
+# from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.axes._axes import _log as matplotlib_axes_logger
 from typing import Tuple
 import os
@@ -23,8 +23,8 @@ timestr = time.strftime("%Y%m%d_%H%M")  # TODO: low: move this to config file
 TM = NotImplementedError('TODO: HIGH: The source of TM has not been determined. Find and fix as such.')  # TODO: HIGH
 
 def plot_classes():raise NotImplemented('disambiguate functions')
-def plot_accuracy(): raise NotImplemented()
-def plot_feats(): raise NotImplemented()
+def plot_accuracy(): raise NotImplemented('disambiguate functions')
+def plot_feats(): raise NotImplemented('disambiguate functions')
 
 #######################################################################################################################
 def plot_tsne3d(data):
@@ -112,6 +112,34 @@ def plot_classes_EMGMM_assignments(data, assignments, save_fig_to_file: bool, fi
     # my_file = 'train_assignments'
     if save_fig_to_file:
         fig.savefig(os.path.join(OUTPUT_PATH, f'{fig_file_prefix}_{timestr}.svg'))
+# def plot_classes_app(data, assignments):
+#     """ Plot umap_embeddings for HDBSCAN assignments
+#     :param data: 2D array, umap_embeddings
+#     :param assignments: 1D array, HDBSCAN assignments
+#     """
+#     uk = list(np.unique(assignments))
+#     R = np.linspace(0, 1, len(uk))
+#     cmap = plt.cm.get_cmap("Spectral")(R)
+#     umap_x, umap_y, umap_z = data[:, 0], data[:, 1], data[:, 2]
+#     # umap_x, umap_y= data[:, 0], data[:, 1]
+#     fig = plt.figure()
+#     ax = fig.add_subplot(111, projection='3d')
+#     # ax = fig.add_subplot(111)
+#     for g in np.unique(assignments):
+#         idx = np.where(np.array(assignments) == g)
+#         ax.scatter(umap_x[idx], umap_y[idx], umap_z[idx], c=cmap[g],
+#                    label=g, s=0.5, marker='o', alpha=0.8)
+#         # ax.scatter(umap_x[idx], umap_y[idx], c=cmap[g],
+#         #            label=g, s=0.5, marker='o', alpha=0.8)
+#     ax.set_xlabel('Dim. 1')
+#     ax.set_ylabel('Dim. 2')
+#     ax.set_zlabel('Dim. 3')
+#     # plt.title('UMAP enhanced clustering')
+#     plt.legend(ncol=3)
+#     # plt.show()
+#
+#     return fig, plt
+
 def plot_classes_bsoidvoc(data, assignments) -> None:
     return plot_classes_EMGMM_assignments(data, assignments, save_fig_to_file=True)
 def plot_classes_bsoidpy(data, assignments) -> None:

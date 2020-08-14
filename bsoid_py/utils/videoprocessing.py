@@ -2,15 +2,17 @@
 Extracting frames from videos
 """
 
-import glob
-import random
-
-import numpy as np
-import cv2
-from tqdm import tqdm
-
+from bsoid_py.config.LOCAL_CONFIG import BASE_PATH, FRAME_DIR, SHORTVID_DIR
 from bsoid_py.utils.likelihoodprocessing import sort_nicely
-from bsoid_py.utils.visuals import *
+
+from tqdm import tqdm
+import cv2
+import glob
+import logging
+import numpy as np
+import os
+import random
+import sys
 
 
 def get_vidnames(folder):
@@ -146,7 +148,7 @@ def create_labeled_vid(labels, crit=3, counts=3, frame_dir=FRAME_DIR, output_pat
                     video.write(cv2.imread(os.path.join(frame_dir, image)))
                 cv2.destroyAllWindows()
                 video.release()
-        except:
+        except:  # TODO: low: exception is very general. Address?
             pass
     return
 

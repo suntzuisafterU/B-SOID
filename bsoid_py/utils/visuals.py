@@ -12,7 +12,9 @@ import numpy as np
 import pandas as pd
 import seaborn as sn
 
-from bsoid_py.config import *
+from bsoid_py.config.LOCAL_CONFIG import BASE_PATH, FRAME_DIR, SHORTVID_DIR, OUTPUT_PATH
+from bsoid_py.config.GLOBAL_CONFIG import HLDOUT, SVM_PARAMS
+
 
 matplotlib_axes_logger.setLevel('ERROR')
 
@@ -140,7 +142,8 @@ def plot_feats(feats: list, labels: list):
                                  bins=np.linspace(0, np.mean(feats_k[j, :]) + 3 * np.std(feats_k[j, :]), num=50),
                                  range=(0, np.mean(feats_k[j, :]) + 3 * np.std(feats_k[j, :])),
                                  color=color[i], density=True)
-                        fig.suptitle("{} pixels".format(feat_ls[j]))
+                        fig.suptitle(f"{feat_ls[j]} pixels")
+                        
                         plt.xlim(0, np.mean(feats_k[j, :]) + 3 * np.std(feats_k[j, :]))
                         if i < len(np.unique(labels_k)) - 1:
                             plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
@@ -153,10 +156,10 @@ def plot_feats(feats: list, labels: list):
                                  color=color[i], density=True)
                         plt.xlim(np.mean(feats_k[j, :]) - 3 * np.std(feats_k[j, :]),
                                  np.mean(feats_k[j, :]) + 3 * np.std(feats_k[j, :]))
-                        fig.suptitle("{} pixels".format(feat_ls[j]))
+                        fig.suptitle(f"{feat_ls[j]} pixels")
                         if i < len(np.unique(labels_k)) - 1:
                             plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
-                my_file = 'sess{}_feat{}_hist'.format(k + 1, j + 1)
+                my_file = f'sess{k+1}_feat{j+1}_hist'
                 fig.savefig(os.path.join(OUTPUT_PATH, str.join('', (my_file, timestr, '.svg'))))
             plt.show()
     else:
@@ -174,7 +177,7 @@ def plot_feats(feats: list, labels: list):
                              bins=np.linspace(0, np.mean(feats[j, :]) + 3 * np.std(feats[j, :]), num=50),
                              range=(0, np.mean(feats[j, :]) + 3 * np.std(feats[j, :])),
                              color=color[i], density=True)
-                    fig.suptitle("{} pixels".format(feat_ls[j]))
+                    fig.suptitle(f"{feat_ls[j]} pixels")
                     plt.xlim(0, np.mean(feats[j, :]) + 3 * np.std(feats[j, :]))
                     if i < len(np.unique(labels)) - 1:
                         plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
@@ -187,7 +190,7 @@ def plot_feats(feats: list, labels: list):
                              color=color[i], density=True)
                     plt.xlim(np.mean(feats[j, :]) - 3 * np.std(feats[j, :]),
                              np.mean(feats[j, :]) + 3 * np.std(feats[j, :]))
-                    fig.suptitle("{} pixels".format(feat_ls[j]))
+                    fig.suptitle(f"{feat_ls[j]} pixels")
                     if i < len(np.unique(labels)) - 1:
                         plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
             my_file = 'feat{}_hist'.format(j + 1)

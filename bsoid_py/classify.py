@@ -10,6 +10,8 @@ import math
 import numpy as np
 
 # # # B-SOID imports # # #
+from bsoid_py.config.LOCAL_CONFIG import BODYPARTS, FPS, GEN_VIDEOS, ID, MODEL_NAME, PLOT_TRAINING, VID_NAME
+from bsoid_py.config.GLOBAL_CONFIG import HLDOUT
 from bsoid_py.utils import videoprocessing
 from bsoid_py.utils.likelihoodprocessing import boxcar_center
 from bsoid_py.utils.visuals import *

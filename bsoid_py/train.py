@@ -252,7 +252,7 @@ def main(train_folders: list):
     :return classifier: obj, SVM classifier
     :return scores: 1D array, cross-validated accuracy
     """
-    filenames, training_data, perc_rect = bsoid.utils.likelihoodprocessing.main(train_folders)
+    filenames, training_data, perc_rect = bsoid.util.likelihoodprocessing.main(train_folders)
     f_10fps, f_10fps_sc, trained_tsne, scaler = bsoid_tsne(training_data)
     gmm_assignments = bsoid_gmm(trained_tsne)
     classifier, scores = bsoid_svm(f_10fps_sc, gmm_assignments)

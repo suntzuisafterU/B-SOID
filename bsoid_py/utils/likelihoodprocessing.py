@@ -3,16 +3,25 @@ likelihood processing utilities
 Forward fill low likelihood (x,y)
 """
 
-import glob
-import re
+from bsoid_py.config.LOCAL_CONFIG import BASE_PATH, FRAME_DIR, SHORTVID_DIR, TRAIN_FOLDERS
+# from bsoid_py.utils.likelihoodprocessing import sort_nicely
 
-import numpy as np
+from typing import List, Tuple
 from tqdm import tqdm
-
-from bsoid_py.utils.visuals import *
+import glob
+import logging
+import numpy as np
+import pandas as pd
+import re
 
 
 def boxcar_center(a, n):
+    """
+    TODO
+    :param a: TODO
+    :param n: TODO
+    :return: TODO
+    """
     a1 = pd.Series(a)
     moving_avg = np.array(a1.rolling(window=n, min_periods=1, center=True).mean())
 
@@ -20,8 +29,7 @@ def boxcar_center(a, n):
 
 
 def convert_int(s):
-    """ Converts digit string to integer
-    """
+    """ Converts digit string to integer """
     if s.isdigit():
         return int(s)
     else:
@@ -30,7 +38,7 @@ def convert_int(s):
 
 def alphanum_key(s):
     """ Turn a string into a list of string and number chunks.
-        "z23a" -> ["z", 23, "a"]
+        e.g.: "z23a" -> ["z", 23, "a"]
     """
     return [convert_int(c) for c in re.split('([0-9]+)', s)]
 
@@ -67,7 +75,7 @@ def import_folders(folders: list):
     for i, fd in enumerate(folders):  # Loop through folders
         f = get_filenames(fd)
         for j, filename in enumerate(f):
-            logging.info('Importing CSV file {} from folder {}'.format(j + 1, i + 1))
+            logging.info(f'Importing CSV file {j + 1} from folder {i + 1}')
             curr_df = pd.read_csv(filename, low_memory=False)
             curr_df_filt, perc_rect = adp_filt(curr_df)
             logging.info('Done preprocessing (x,y) from file {}, folder {}.'.format(j + 1, i + 1))
@@ -128,7 +136,7 @@ def adp_filt(currdf: object):
     return currdf_filt, perc_rect
 
 
-def main(folders: list):
+def main(folders: List[str]):
     """
     :param folders: list, data folders
     :return filenames: list, data filenames

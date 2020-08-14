@@ -32,7 +32,7 @@ def feat_dist(features: np.ndarray) -> Tuple[List, List, List, List]:
     return feature_range, feature_median, p_cts, edges
 
 
-def transition_matrix(labels, n: int) -> Tuple:  # source: bsoid_app
+def transition_matrix_app(labels, n: int) -> Tuple:  # source: bsoid_app
     """
     TODO: purpose
     :param n: TODO
@@ -189,3 +189,14 @@ def main(labels) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     df_runlengths, df_dur_statistics = behv_dur(labels)
     tm = transition_matrix(labels)
     return df_runlengths, df_dur_statistics, tm
+
+def main_app(labels, n):
+    """
+    :param labels: 1D array: predicted labels
+    :param output_path: string, output directory
+    :return dur_stats: object, behavioral duration statistics data frame
+    :return tm: object, transition matrix data frame
+    """
+    runlen_df, dur_stats = behv_dur(labels)
+    B, df_tm, B_norm = transition_matrix_app(labels, n)
+    return runlen_df, dur_stats, B, df_tm, B_norm
