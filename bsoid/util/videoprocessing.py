@@ -19,7 +19,7 @@ from bsoid.util.likelihoodprocessing import sort_nicely
 
 def repeatingNumbers(labels) -> Tuple:  # TODO: rename function for clarity
     """
-    TODO: med: purpose
+    TODO: med: purpose / purpose unclear
     :param labels: 1D array, predicted labels
     :return n_list: 1D array, the label number
     :return idx: 1D array, label start index
@@ -45,7 +45,7 @@ def get_video_names(folder_name) -> List[str]:
     """
     Gets a list of .mp4 files within a folder
     :param folder_name: str, folder path. Must reside in BASE_PATH.
-    :return: list, video filenames
+    :return: (List[str]) video file names all of which have a .mp4 extension
     """
     # TODO: low: stretch goal: ensure this function works independent of OS
     path_to_folder = os.path.join(BASE_PATH, folder_name)
@@ -70,8 +70,7 @@ def vid2frame(path_to_video, labels, fps, output_path=FRAME_DIR):
     labels = np.hstack((labels[0], labels))  # fill the first frame
     count = 0  # TODO: med: rename `count` -- what is it counting? `i` already tracks iterations over the while loop
     i = 0
-    font_scale = 1
-    font = cv2.FONT_HERSHEY_COMPLEX
+    font_scale, font = 1, cv2.FONT_HERSHEY_COMPLEX
     rectangle_bgr = (0, 0, 0)
     while cv2_video_object.isOpened():
         is_frame_retrieved, frame = cv2_video_object.read()
@@ -102,20 +101,30 @@ def import_vidfolders(folders: List[str], output_path: List[str]):
     :param folders: list of folder paths
     :param output_path: list, directory to where you want to store extracted vid images in LOCAL_CONFIG
     """
-    video_names = []
-    for idx, folder in enumerate(folders):  # Loop through folders
-        v = get_video_names(folder)
-        for j, video_name in enumerate(v):
-            logging.info(f'Extracting frames from {video_name} and appending labels to these images...')
-            vid2frame(video_name, output_path)  # TODO: HIGH: missing param `FPS` *** runtime error imminent ***
-            logging.info(f'Done extracting images and writing labels, from MP4 file {j+1}')
-        video_names.append(v)
-        logging.info(f'Processed {len(v)} MP4 files from folder: {folder}')
+    list_of_lists_of_videos = []
+    for idx_folder, folder in enumerate(folders):  # Loop through folders
+        videos_list_from_current_folder: List[str] = get_video_names(folder)
+        for idx_video, video in enumerate(videos_list_from_current_folder):
+            logging.info(f'Extracting frames from {video} and appending labels to these images...')
+            vid2frame(video, output_path)  # TODO: HIGH: missing param `FPS` *** runtime error imminent ***
+            logging.info(f'Done extracting images and writing labels, from MP4 file {idx_video+1}')
+        list_of_lists_of_videos.append(videos_list_from_current_folder)
+        logging.info(f'Processed {len(videos_list_from_current_folder)} MP4 files from folder: {folder}')
     return
 
 
-###########
+#########################################################################################################################
 
+"""  # Docstring for create_labeled_vid_?()
+:param labels: 1D array, labels from training or testing
+:param crit: scalar, minimum duration for random selection of behaviors, default 300ms
+:param counts: scalar, number of randomly generated examples, default 5
+:param frame_dir: string, directory to where you extracted vid images in LOCAL_CONFIG
+:param output_path: string, directory to where you want to store short video examples in LOCAL_CONFIG
+"""
+
+####### create_labeled_vid_()
+# TODO:
 
 def create_labeled_vid_app(labels, crit, counts, output_fps, frame_dir, output_path):
     """
@@ -127,82 +136,41 @@ def create_labeled_vid_app(labels, crit, counts, output_fps, frame_dir, output_p
     """
     images = [img for img in os.listdir(frame_dir) if img.endswith(".png")]
     sort_nicely(images)
-    # fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    fourcc = cv2.VideoWriter_fourcc(*'avc1')
+    fourcc = cv2.VideoWriter_fourcc(*'avc1')  # fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     frame = cv2.imread(os.path.join(frame_dir, images[0]))
     height, width, layers = frame.shape
-    rnges = []
+    ranges = []
     n, idx, lengths = repeatingNumbers(labels)
     idx2 = []
     for i, j in enumerate(lengths):
         if j >= crit:
-            rnges.append(range(idx[i], idx[i] + j))
+            ranges.append(range(idx[i], idx[i] + j))
             idx2.append(i)
-    for b, i in enumerate(tqdm(np.unique(labels))):
+    for i in (tqdm(np.unique(labels))):
         a = []
-        for j in range(0, len(rnges)):
+        for j in range(len(ranges)):
             if n[idx2[j]] == i:
-                a.append(rnges[j])
+                a.append(ranges[j])
         try:
-            rand_rnges = random.sample(a, min(len(a), counts))
-            for k in range(0, len(rand_rnges)):
-                video_name = 'group_{}_example_{}.mp4'.format(i, k)
-                grpimages = []
-                for l in rand_rnges[k]:
-                    grpimages.append(images[l])
+            random_ranges = random.sample(a, min(len(a), counts))
+            for k in range(len(random_ranges)):
+                video_name = f'group_{i}_example_{k}.mp4'
+                grp_images = []
+                for l in random_ranges[k]:
+                    grp_images.append(images[l])
                 video = cv2.VideoWriter(os.path.join(output_path, video_name), fourcc, output_fps, (width, height))
-                for image in grpimages:
-                    video.write(cv2.imread(os.path.join(frame_dir, image)))
-                cv2.destroyAllWindows()
-                video.release()
-        except:
-            pass
-    return
-def create_labeled_vid_py(labels, crit=3, counts=3, frame_dir=FRAME_DIR, output_path=SHORTVID_DIR):
-    """
-    :param labels: 1D array, labels from training or testing
-    :param crit: scalar, minimum duration for random selection of behaviors, default 300ms
-    :param counts: scalar, number of randomly generated examples, default 5
-    :param frame_dir: string, directory to where you extracted vid images in LOCAL_CONFIG
-    :param output_path: string, directory to where you want to store short video examples in LOCAL_CONFIG
-    """
-    images = [img for img in os.listdir(frame_dir) if img.endswith(".png")]
-    sort_nicely(images)
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    frame = cv2.imread(os.path.join(frame_dir, images[0]))
-    height, width, layers = frame.shape
-    rnges = []
-    n, idx, lengths = repeatingNumbers(labels)
-    idx2 = []
-    for i, j in enumerate(lengths):
-        if j >= crit:
-            rnges.append(range(idx[i], idx[i] + j))
-            idx2.append(i)
-    for i in tqdm(range(0, len(np.unique(labels)))):
-        a = []
-        for j in range(0, len(rnges)):
-            if n[idx2[j]] == i:
-                a.append(rnges[j])
-        try:
-            rand_rnges = random.sample(a, counts)
-            for k in range(0, len(rand_rnges)):
-                video_name = 'group_{}_example_{}.mp4'.format(i, k)
-                grpimages = []
-                for l in rand_rnges[k]:
-                    grpimages.append(images[l])
-                video = cv2.VideoWriter(os.path.join(output_path, video_name), fourcc, 5, (width, height))
-                for image in grpimages:
+                for image in grp_images:
                     video.write(cv2.imread(os.path.join(frame_dir, image)))
                 cv2.destroyAllWindows()
                 video.release()
         except:  # TODO: low: exception is very general. Address?
             pass
     return
-def create_labeled_vid_umap(labels, crit=3, counts=5, frame_dir=FRAME_DIR, output_path=SHORTVID_DIR):
+def create_labeled_vid_PYVOCUMAP(labels, crit=3, counts=5, frame_dir=FRAME_DIR, output_path=SHORTVID_DIR):
     """
     :param labels: 1D array, labels from training or testing
     :param crit: scalar, minimum duration for random selection of behaviors, default 300ms
-    :param counts: scalar, number of randomly generated examples, default 5
+    :param counts: scalar, number of randomly generated examples, default 5  # TODO: default is actually 3..does counts refer to cv2.VideoWriter pathing?
     :param frame_dir: string, directory to where you extracted vid images in LOCAL_CONFIG
     :param output_path: string, directory to where you want to store short video examples in LOCAL_CONFIG
     """
@@ -211,74 +179,36 @@ def create_labeled_vid_umap(labels, crit=3, counts=5, frame_dir=FRAME_DIR, outpu
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     frame = cv2.imread(os.path.join(frame_dir, images[0]))
     height, width, layers = frame.shape
-    rnges = []
+    ranges = []
     n, idx, lengths = repeatingNumbers(labels)
     idx2 = []
     for i, j in enumerate(lengths):
         if j >= crit:
-            rnges.append(range(idx[i], idx[i] + j))
+            ranges.append(range(idx[i], idx[i] + j))
             idx2.append(i)
-    for b, i in enumerate(tqdm(np.unique(labels))):
+    for i in tqdm(range(len(np.unique(labels)))):
         a = []
-        for j in range(0, len(rnges)):
+        for j in range(len(ranges)):
             if n[idx2[j]] == i:
-                a.append(rnges[j])
+                a.append(ranges[j])
         try:
-            rand_rnges = random.sample(a, counts)
-            for k in range(0, len(rand_rnges)):
-                video_name = 'group_{}_example_{}.mp4'.format(i, k)
-                grpimages = []
-                for l in rand_rnges[k]:
-                    grpimages.append(images[l])
+            random_ranges = random.sample(a, counts)  # TODO: add a min() function to `counts` argument?
+            for k in range(len(random_ranges)):
+                video_name = f'group_{i}_example_{k}.mp4'
+                grp_images = []
+                for l in random_ranges[k]:
+                    grp_images.append(images[l])
                 video = cv2.VideoWriter(os.path.join(output_path, video_name), fourcc, 5, (width, height))
-                for image in grpimages:
+                for image in grp_images:
                     video.write(cv2.imread(os.path.join(frame_dir, image)))
                 cv2.destroyAllWindows()
                 video.release()
-        except:
-            pass
-    return
-def create_labeled_vid_voc(labels, crit=3, counts=3, frame_dir=FRAME_DIR, output_path=SHORTVID_DIR):
-    """
-    :param labels: 1D array, labels from training or testing
-    :param crit: scalar, minimum duration for random selection of behaviors, default 300ms
-    :param counts: scalar, number of randomly generated examples, default 5
-    :param frame_dir: string, directory to where you extracted vid images in LOCAL_CONFIG
-    :param output_path: string, directory to where you want to store short video examples in LOCAL_CONFIG
-    """
-    images = [img for img in os.listdir(frame_dir) if img.endswith(".png")]
-    sort_nicely(images)
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    frame = cv2.imread(os.path.join(frame_dir, images[0]))
-    height, width, layers = frame.shape
-    rnges = []
-    n, idx, lengths = repeatingNumbers(labels)
-    idx2 = []
-    for i, j in enumerate(lengths):
-        if j >= crit:
-            rnges.append(range(idx[i], idx[i] + j))
-            idx2.append(i)
-    for i in tqdm(range(0, len(np.unique(labels)))):
-        a = []
-        for j in range(0, len(rnges)):
-            if n[idx2[j]] == i:
-                a.append(rnges[j])
-        try:
-            rand_rnges = random.sample(a, counts)
-            for k in range(0, len(rand_rnges)):
-                video_name = 'group_{}_example_{}.mp4'.format(i, k)
-                grpimages = []
-                for l in rand_rnges[k]:
-                    grpimages.append(images[l])
-                video = cv2.VideoWriter(os.path.join(output_path, video_name), fourcc, 5, (width, height))
-                for image in grpimages:
-                    video.write(cv2.imread(os.path.join(frame_dir, image)))
-                cv2.destroyAllWindows()
-                video.release()
-        except:
+        except:  # TODO: low: exception is very general. Address?
             pass
     return
 
+
+####################################################################################################################################
 
 
 def main(path_to_video, labels, fps, output_path):
