@@ -42,9 +42,29 @@ def transition_matrix(labels, n):
 
 
 def rle(inarray):
-    """ run length encoding. Partial credit to R rle function.
-        Multi datatype arrays catered for including non Numpy
-        returns: tuple (runlengths, startpositions, values) """
+    """
+    Run length encoding. Partial credit to R rle function. Multi datatype arrays catered for including non Numpy.
+
+    {
+        - R Documentation excerpt -
+        Run Length Encoding (rle)
+        Description:
+        Compute the lengths and values of runs of equal values in a vector – or the reverse operation.
+
+            EXAMPLE (inputs to console denoted by '>'):
+        > x <- rev(rep(6:10, 1:5))
+        > x
+        [1] 10 10 10 10 10  9  9  9  9  8  8  8  7  7  6
+        > rle(x)
+        Run Length Encoding
+          lengths: int [1:5] 5 4 3 2 1
+          values : int [1:5] 10 9 8 7 6
+        (Author's note: 'values' at bottom occur 'lengths' times specified above each value
+    }
+    :param inarray: (ndarray) TODO
+    :returns: tuple (runlengths, startpositions, values)
+    """
+
     ia = np.asarray(inarray)  # force numpy
     n = len(ia)
     if n == 0:

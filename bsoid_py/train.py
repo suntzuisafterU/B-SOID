@@ -13,11 +13,18 @@ from sklearn.preprocessing import StandardScaler
 from tqdm import tqdm
 import logging
 import math
+import matplotlib.pyplot as plt
 import numpy as np
+import os
+import time
 
 # # # B-SOID imports # # #
-from bsoid_py.utils.likelihoodprocessing import boxcar_center
-from bsoid_py.utils.visuals import *
+import bsoid
+from bsoid_py.config.LOCAL_CONFIG import BODYPARTS, COMP, FRAME_DIR, FPS, FRAME_DIR, GEN_VIDEOS, MODEL_NAME, \
+    OUTPUT_PATH, PLOT_TRAINING, TRAIN_FOLDERS, PREDICT_FOLDERS, VID_NAME
+from bsoid_py.config.GLOBAL_CONFIG import CV_IT, EMGMM_PARAMS, HLDOUT, SVM_PARAMS
+from bsoid.util.likelihoodprocessing import boxcar_center
+from bsoid_py.utils.visuals import plot_accuracy, plot_classes, plot_feats
 
 
 def bsoid_tsne(data: list, bodyparts=BODYPARTS, fps=FPS, comp=COMP):
@@ -126,7 +133,7 @@ def bsoid_tsne(data: list, bodyparts=BODYPARTS, fps=FPS, comp=COMP):
         logging.info(f'Training t-SNE to embed {f_10fps_sc.shape[1]} instances from {f_10fps_sc.shape[0]} D '
                      'into 3 D from a total of {len(data)} CSV files...')
         trained_tsne = tsne(f_10fps_sc.T, dimensions=3, perplexity=np.sqrt(f_10fps_sc.shape[1]),
-                            theta=0.5, rand_seed=23)
+                            theta=0.5, rand_seed=23)  # TODO: low: move "rand_seed" to a config file instead of hiding here as magic variable
         logging.info('Done embedding into 3 D.')
     return f_10fps, f_10fps_sc, trained_tsne, scaler
 
@@ -192,8 +199,7 @@ def bsoid_svm(feats, labels, comp=COMP, hldout=HLDOUT, cv_it=CV_IT, svm_params=S
             j = 0
             for title, normalize in titles_options:
                 disp = plot_confusion_matrix(classifier, feats_test, labels_test,
-                                             cmap=plt.cm.Blues,
-                                             normalize=normalize)
+                                             cmap=plt.cm.Blues, normalize=normalize)
                 disp.ax_.set_title(title)
                 print(title)
                 print(disp.confusion_matrix)
@@ -246,7 +252,7 @@ def main(train_folders: list):
     :return classifier: obj, SVM classifier
     :return scores: 1D array, cross-validated accuracy
     """
-    filenames, training_data, perc_rect = bsoid_py.utils.likelihoodprocessing.main(train_folders)
+    filenames, training_data, perc_rect = bsoid.utils.likelihoodprocessing.main(train_folders)
     f_10fps, f_10fps_sc, trained_tsne, scaler = bsoid_tsne(training_data)
     gmm_assignments = bsoid_gmm(trained_tsne)
     classifier, scores = bsoid_svm(f_10fps_sc, gmm_assignments)
