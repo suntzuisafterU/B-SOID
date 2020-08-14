@@ -4,7 +4,6 @@ B-SOiD behavioral model has been developed using bsoid_voc.main.build()
 """
 
 import math
-
 import numpy as np
 
 from bsoid_voc.utils import videoprocessing

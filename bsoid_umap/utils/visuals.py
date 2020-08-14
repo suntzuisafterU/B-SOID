@@ -2,17 +2,18 @@
 Visualization functions and saving plots.
 """
 
-import os
-import time
 
-import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.axes._axes import _log as matplotlib_axes_logger
+import matplotlib.pyplot as plt
 import numpy as np
+import os
 import pandas as pd
 import seaborn as sn
+import time
 
 from bsoid_umap.config import *
+
 
 matplotlib_axes_logger.setLevel('ERROR')
 
@@ -73,7 +74,7 @@ def plot_durhist(lengths, grp):
     R = np.linspace(0, 1, len(np.unique(grp)))
     cmap = plt.cm.get_cmap("Spectral")(R)
     for i in range(0, len(np.unique(grp))):
-        fig.suptitle("Duration histogram of {} behaviors".format(len(np.unique(TM))))
+        fig.suptitle("Duration histogram of {} behaviors".format(len(np.unique(TM))))  # TODO: <--
         x = lengths[np.where(grp == i)]
         ax.hist(x, density=True, color=cmap[i], alpha=0.3, label='Group {}'.format(i))
     plt.legend(loc='upper right')
@@ -83,7 +84,7 @@ def plot_durhist(lengths, grp):
     return
 
 
-def plot_tmat(tm: object):
+def plot_tmat(tm: np.ndarray):
     """
     :param tm: object, transition matrix data frame
     :param fps: scalar, camera frame-rate
@@ -177,7 +178,7 @@ def plot_feats(feats: list, labels: list):
         plt.show()
 
 
-def main():
+def main():  # TODO: what's the point here?
     return
 
 

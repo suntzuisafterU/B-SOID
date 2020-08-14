@@ -4,23 +4,28 @@ we distill information down to 3 dimensions and run unsupervised pattern recogni
 Then, we utilize these output and original feature space to train a B-SOiD neural network model.
 """
 
-import math
-import itertools
-import random
-
-import hdbscan
-import numpy as np
 from sklearn.neural_network import MLPClassifier
 from sklearn.decomposition import PCA
 from sklearn.decomposition import FastICA
 from sklearn.metrics import plot_confusion_matrix
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.preprocessing import StandardScaler
-from tqdm import tqdm
+import hdbscan
+import math
+import matplotlib.pyplot as plt
+import numpy as np
+import itertools
+import logging
+import os
+import random
+import time
 import umap
+from tqdm import tqdm
 
+from bsoid_umap.config.LOCAL_CONFIG import FPS, OUTPUT_PATH, PLOT
+from bsoid_umap.config.GLOBAL_CONFIG import CV_IT, HDBSCAN_PARAMS, HLDOUT, MLP_PARAMS, UMAP_PARAMS
 from bsoid_umap.utils.likelihoodprocessing import boxcar_center
-from bsoid_umap.utils.visuals import *
+from bsoid_umap.utils.visuals import plot_accuracy, plot_classes
 
 
 def bsoid_feats(data: list, fps=FPS):

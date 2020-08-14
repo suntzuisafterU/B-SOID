@@ -8,7 +8,7 @@ import math
 import itertools
 import random
 
-import hdbscan
+import hdbscan  # TODO: HIGH: is this still used? Remove altogether or add to requirements?
 import numpy as np
 from sklearn.neural_network import MLPClassifier
 from sklearn.decomposition import PCA
@@ -199,5 +199,3 @@ def bsoid_nn(feats, labels, hldout=HLDOUT, cv_it=CV_IT, mlp_params=MLP_PARAMS):
     logging.info(
         'Scored cross-validated feedforward neural network performance.'.format(feats_train.shape, labels_train.shape))
     return clf, scores, nn_assignments
-
-
