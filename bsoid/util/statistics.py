@@ -69,19 +69,35 @@ def transition_matrix(labels) -> pd.DataFrame:  # source: bsoid_py, bsoid_umap, 
     return df_transition_matrix
 
 
-def rle(inarray) -> Tuple:  # TODO: rename function for clarity?
+def rle(in_array) -> Tuple:  # TODO: rename function for clarity?
     """
-    TODO: flesh out what exactly this function accomplishes?
-    run length encoding. Partial credit to R rle function.
-    Multi datatype arrays catered for including non-Numpy
+    Run length encoding. Partial credit to R rle function. Multi datatype arrays catered for including non Numpy.
 
-    :param inarray: (ndarray) TODO
-    :return:
+    {
+        - R Documentation excerpt -
+        Run Length Encoding (rle)
+        Description:
+        Compute the lengths and values of runs of equal values in a vector – or the reverse operation.
+
+            EXAMPLE (inputs to console denoted by '>'):
+        > x <- rev(rep(6:10, 1:5))
+        > x
+        [1] 10 10 10 10 10  9  9  9  9  8  8  8  7  7  6
+        > rle(x)
+        Run Length Encoding
+          lengths: int [1:5] 5 4 3 2 1
+          values : int [1:5] 10 9 8 7 6
+        (Author's note: 'values' at bottom occur 'lengths' times specified above each value
+    }
+
+    :param in_array: (ndarray) TODO
+    :returns:
         run_lengths: (list) TODO
         start_positions: (list) TODO
         values: (list) TODO
-    """
-    array = np.asarray(inarray)  # Force into numpy array type
+        """
+
+    array = np.asarray(in_array)  # Force into numpy array type
     num_array_elements = len(array)
     if num_array_elements != 0:
         y = np.array(array[1:] != array[:-1])                           # Pairwise unequal (string safe)
@@ -99,9 +115,10 @@ def behv_time(labels: np.ndarray):  # TODO: rename function for clarity?
     :param labels: 1D array, predicted labels
     :return beh_t: 1D array, percent time for each label
     """
+    # Ensure argument types
     if not isinstance(labels, np.ndarray):
-        raise TypeError('Argument `labels` was expected to be of type np.ndarray but '
-                        f'instead found {type(labels)} (value: {labels}.')
+        raise TypeError(f'Argument `labels` was expected to be of type np.ndarray but '
+                        f'instead found {type(labels)} (value: {labels}).')
     # TODO: rename variables for clarity?
     beh_t = []
     for i in range(len(np.unique(labels))):
@@ -132,7 +149,7 @@ def behv_dur(labels) -> Tuple[pd.DataFrame, pd.DataFrame]:
             dur_quantile50.append(np.quantile(run_lengths[np.where(values == i)], 0.50))
             dur_quantile75.append(np.quantile(run_lengths[np.where(values == i)], 0.75))
             dur_quantile90.append(np.quantile(run_lengths[np.where(values == i)], 0.90))
-        except:  # TODO: low: exception too broad. If it fails mid-way thru, unequal final list lengths can result. I have a feeling that the error is found at dur_quantile10 on each loop.
+        except:  # TODO: med: exception too broad. If it fails mid-way thru, unequal final list lengths can result. I have a feeling that the error is found at dur_quantile10 on each loop.
             # dur_means.append(0)
             dur_quantile10.append(0)
             dur_quantile25.append(0)
