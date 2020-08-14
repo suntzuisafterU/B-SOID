@@ -1,11 +1,11 @@
 """
 Summary statistics
-# TODO: HIGH: differentiate between transition_matrix() functions
 """
 
 from typing import Dict, List, Tuple
 import numpy as np
 import pandas as pd
+import warnings
 
 
 def feat_dist(features: np.ndarray) -> Tuple[List, List, List, List]:
@@ -13,6 +13,10 @@ def feat_dist(features: np.ndarray) -> Tuple[List, List, List, List]:
     TODO: low: purpose
     :param features: (ndarray) TODO
     :return: Tuple TODO
+        feature_range:
+        feature_median:
+        p_cts:
+        edges:
     """
     # Ensure parameter type
     if not isinstance(features, np.ndarray):
@@ -21,10 +25,10 @@ def feat_dist(features: np.ndarray) -> Tuple[List, List, List, List]:
 
     feature_range, feature_median, p_cts, edges = [], [], [], []
     for i in range(features.shape[0]):
-        feature_range.append([
-            np.quantile(features[i, :], 0.05),
-            np.quantile(features[i, :], 0.95)
-        ])
+        feature_range.append(
+            [np.quantile(features[i, :], 0.05),
+             np.quantile(features[i, :], 0.95), ]
+        )
         feature_median.append(np.quantile(features[i, :], 0.5))
         p_ct, edge = np.histogram(features[i, :], 50, density=True)
         p_cts.append(p_ct)
@@ -43,7 +47,7 @@ def transition_matrix_app(labels, n: int) -> Tuple:  # source: bsoid_app
     tm = [[0] * n for _ in range(n)]
     for (i, j) in zip(labels, labels[1:]):
         tm[i][j] += 1
-    B = np.matrix(tm)  # TODO: the matrix subclass is not the recommended way to represent matrices or deal with linear algebra (see https://docs.scipy.org/doc/numpy/user/numpy-for-matlab-users.html). Please adjust your code to use regular ndarray.
+    B = np.matrix(tm)  # TODO: HIGH: numpy error: the matrix subclass is not the recommended way to represent matrices or deal with linear algebra (see https://docs.scipy.org/doc/numpy/user/numpy-for-matlab-users.html). Please adjust your code to use regular ndarray.
     df_tm = pd.DataFrame(tm)
     B = np.matrix(tm)
     B_norm = B / B.sum(axis=1)
@@ -58,14 +62,14 @@ def transition_matrix(labels) -> pd.DataFrame:  # source: bsoid_py, bsoid_umap, 
     :return df_transition_matrix: (DataFrame) Transition matrix DataFrame
     """
     n = 1 + max(labels)
-    tm = [[0] * n for _ in range(n)]
-    for (i, j) in zip(labels, labels[1:]):
-        tm[i][j] += 1
-    for row in tm:
+    transition_matrix = [[0] * n for _ in range(n)]
+    for i, j in zip(labels, labels[1:]):
+        transition_matrix[i][j] += 1
+    for row in transition_matrix:
         s = sum(row)
         if s > 0:
             row[:] = [f / s for f in row]
-    df_transition_matrix = pd.DataFrame(tm)
+    df_transition_matrix = pd.DataFrame(transition_matrix)
     return df_transition_matrix
 
 
@@ -179,7 +183,22 @@ def behv_dur(labels) -> Tuple[pd.DataFrame, pd.DataFrame]:
 # TODO: rename main()? Should only be called "main" if this module is called at runtime as standalone file?
 def main(labels) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
-    TODO: low: purpose
+    :param labels: 1D array: predicted labels
+    :returns:
+        df_runlengths: (DataFrame)
+        df_dur_statistics: (DataFrame) behavioral duration statistics data frame
+        tm: (DataFrame) transition matrix data frame
+    """
+    warnings.warn('This function, bsoid.util.statistics.main(), will be deprecated in future. Check back for a '
+                  'renamed/refactored version later.')
+    df_runlengths, df_dur_statistics = behv_dur(labels)
+    tm = transition_matrix(labels)
+    return df_runlengths, df_dur_statistics, tm
+
+
+def get_runlengths_statistics_transition_matrix_from_labels(labels) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """
+    TODO: med: purpose
     :param labels: 1D array: predicted labels
     :returns
         df_runlengths: (DataFrame)  TODO
@@ -189,6 +208,7 @@ def main(labels) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     df_runlengths, df_dur_statistics = behv_dur(labels)
     tm = transition_matrix(labels)
     return df_runlengths, df_dur_statistics, tm
+
 
 def main_app(labels, n):
     """
