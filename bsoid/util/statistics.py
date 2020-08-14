@@ -1,5 +1,8 @@
 """
 Summary statistics
+
+    This bsoid module version of statistics.py aggregates all previous submodules which
+did not adhere to DRY standards and creates a single source of statistics utility.
 """
 
 from typing import Dict, List, Tuple
@@ -18,9 +21,8 @@ def feat_dist(features: np.ndarray) -> Tuple[List, List, List, List]:
         p_cts:
         edges:
     """
-    # Ensure parameter type
     if not isinstance(features, np.ndarray):
-        raise TypeError(f"Argument `features` expected to be of type np.ndarray but isntead "
+        raise TypeError(f"Argument `features` expected to be of type np.ndarray but instead "
                         f"found {type(features)} (value: {features}")
 
     feature_range, feature_median, p_cts, edges = [], [], [], []
@@ -183,21 +185,16 @@ def behv_dur(labels) -> Tuple[pd.DataFrame, pd.DataFrame]:
 # TODO: rename main()? Should only be called "main" if this module is called at runtime as standalone file?
 def main(labels) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
-    :param labels: 1D array: predicted labels
-    :returns:
-        df_runlengths: (DataFrame)
-        df_dur_statistics: (DataFrame) behavioral duration statistics data frame
-        tm: (DataFrame) transition matrix data frame
+    (Original function implementation across _py, _umap, and _voc submodules. Kept, for now, for
+        backwards compatibility reasons.)
     """
     warnings.warn('This function, bsoid.util.statistics.main(), will be deprecated in future. Check back for a '
                   'renamed/refactored version later.')
-    df_runlengths, df_dur_statistics = behv_dur(labels)
-    tm = transition_matrix(labels)
-    return df_runlengths, df_dur_statistics, tm
+    return get_runlengths_statistics_transition_matrix_from_labels(labels)
 
 
 def get_runlengths_statistics_transition_matrix_from_labels(labels) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    """
+    """ TODO: rename function for concision when purpose made clearer
     TODO: med: purpose
     :param labels: 1D array: predicted labels
     :returns
@@ -212,6 +209,7 @@ def get_runlengths_statistics_transition_matrix_from_labels(labels) -> Tuple[pd.
 
 def main_app(labels, n):
     """
+    TODO: why is the _app version different?
     :param labels: 1D array: predicted labels
     :param output_path: string, output directory
     :return dur_stats: object, behavioral duration statistics data frame
