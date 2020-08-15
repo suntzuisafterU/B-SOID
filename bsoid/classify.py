@@ -230,6 +230,13 @@ def bsoid_extract_py(data, bodyparts: dict = BODYPARTS, fps: int = FPS):
         f_10fps.append(feats1)
     return f_10fps
 def bsoid_extract_voc(data, bodyparts: dict = BODYPARTS, fps: int = FPS):
+    """
+    Extracts features based on (x,y) positions
+    :param data: list, csv data
+    :param bodyparts: dict, body parts with their orders
+    :param fps: scalar, input for camera frame-rate
+    :return f_10fps: 2D array, extracted features
+    """
     win_len = np.int(np.round(0.05 / (1 / fps)) * 2 - 1)
     features = []
     for m in range(len(data)):
@@ -351,9 +358,7 @@ def bsoid_frameshift_app(data_new, fps, clf_MLP):
     :param clf_MLP: Obj, MLP classifier
     :return fs_labels, 1D array, label/frame
     """
-    labels_fs = []
-    labels_fs2 = []
-    labels_fshigh = []
+    labels_fs, labels_fshigh = [], []
     for i in range(len(data_new)):
         data_offset = []
         for j in range(math.floor(fps / 10)):
@@ -376,23 +381,22 @@ def bsoid_frameshift_app(data_new, fps, clf_MLP):
         labels_fshigh.append(np.array(labels_fs2).flatten('F'))
     logging.info(f'Done frameshift-predicting a total of {len(data_new)} files.')
     return labels_fshigh
-def bsoid_frameshift_py(data_new, scaler, fps, model):
+def bsoid_frameshift_py(data_new, scaler, fps, clf_SVM):
     """
     Frame-shift paradigm to output behavior/frame
     :param data_new: list, new data from predict_folders
     :param scaler: TODO
     :param fps: scalar, argument specifying camera frame-rate in LOCAL_CONFIG
-    :param model: Obj, SVM classifier
+    :param clf_SVM: Obj, SVM classifier
     :return labels_fshigh, 1D array, label/frame
     """
-    labels_fs = []
-    labels_fshigh = []
+    labels_fs, labels_fshigh = [], []
     for i in range(len(data_new)):  # TODO: low: address range starts at 0
         data_offset = []
         for j in range(math.floor(fps / 10)):
             data_offset.append(data_new[i][j:, :])
         feats_new = bsoid_extract_py(data_offset)
-        labels = bsoid_predict_py(feats_new, scaler, model)
+        labels = bsoid_predict_py(feats_new, scaler, clf_SVM)
         for m in range(len(labels)):
             labels[m] = labels[m][::-1]
         labels_pad = -1 * np.ones([len(labels), len(max(labels, key=lambda x: len(x)))])
@@ -409,23 +413,21 @@ def bsoid_frameshift_py(data_new, scaler, fps, model):
         labels_fshigh.append(np.array(labels_fs2).flatten('F'))
     logging.info(f'Done frameshift-predicting a total of {len(data_new)} files.')
     return labels_fshigh
-def bsoid_frameshift_umap(data_new, fps: int, clf):
+def bsoid_frameshift_umap(data_new, fps: int, clf_MLP):
     """
     Frame-shift paradigm to output behavior/frame
     :param data_new: list, new data from predict_folders
     :param fps: scalar, argument specifying camera frame-rate in LOCAL_CONFIG
-    :param clf: Obj, MLP classifier
+    :param clf_MLP: Obj, MLP classifier
     :return fs_labels, 1D array, label/frame
     """
-    labels_fs = []
-    labels_fs2 = []
-    labels_fshigh = []
+    labels_fs, labels_fshigh = [], []
     for i in range(len(data_new)):
         data_offset = []
         for j in range(math.floor(fps / 10)):
             data_offset.append(data_new[i][j:, :])
         feats_new = bsoid_extract_umap(data_offset)
-        labels = bsoid_predict_umap(feats_new, clf)
+        labels = bsoid_predict_umapvoc(feats_new, clf_MLP)
         for m in range(len(labels)):
             labels[m] = labels[m][::-1]
         labels_pad = -1 * np.ones([len(labels), len(max(labels, key=lambda x: len(x)))])
@@ -442,23 +444,21 @@ def bsoid_frameshift_umap(data_new, fps: int, clf):
         labels_fshigh.append(np.array(labels_fs2).flatten('F'))
     logging.info(f'Done frameshift-predicting a total of {len(data_new)} files.')
     return labels_fshigh
-def bsoid_frameshift_voc(data_new, fps, model):
+def bsoid_frameshift_voc(data_new, fps, clf_MLP):
     """
     Frame-shift paradigm to output behavior/frame
     :param data_new: list, new data from predict_folders
     :param fps: scalar, argument specifying camera frame-rate in LOCAL_CONFIG
-    :param model: Obj, MLP classifier
+    :param clf_MLP: Obj, MLP classifier
     :return labels_fshigh, 1D array, label/frame
     """
-    labels_fs = []
-    labels_fs2 = []
-    labels_fshigh = []
+    labels_fs, labels_fshigh = [], []
     for i in range(len(data_new)):
         data_offset = []
         for j in range(math.floor(fps / 10)):
             data_offset.append(data_new[i][j:, :])
         feats_new = bsoid_extract_voc(data_offset)
-        labels = bsoid_predict_voc(feats_new, model)
+        labels = bsoid_predict_umapvoc(feats_new, clf_MLP)
         for m in range(len(labels)):
             labels[m] = labels[m][::-1]
         labels_pad = -1 * np.ones([len(labels), len(max(labels, key=lambda x: len(x)))])
@@ -489,7 +489,6 @@ def main_py(predict_folders, scaler, fps, behv_model) -> Tuple:
         labels_fslow, 1D array, label/100ms
         labels_fshigh, 1D array, label/frame
     """
-    # filenames, data_new, perc_rect = likelihoodprocessing.main(predict_folders)
     filenames, data_new, perc_rect = likelihoodprocessing.import_folders(predict_folders)
     features_new = bsoid_extract_py(data_new)
     labels_fslow = bsoid_predict_py(features_new, scaler, behv_model)
@@ -507,7 +506,6 @@ def main_umap(predict_folders, fps, clf):
     :return data_new: list, csv data
     :return fs_labels, 1D array, label/frame
     """
-    # filenames, data_new, perc_rect = likelihoodprocessing.main(predict_folders)
     filenames, data_new, perc_rect = likelihoodprocessing.import_folders(predict_folders)
     fs_labels = bsoid_frameshift_umap(data_new, fps, clf)
     if VID:
@@ -525,7 +523,7 @@ def main_voc(predict_folders, fps, behv_model):
     """
     filenames, data_new, perc_rect = likelihoodprocessing.main(predict_folders)
     feats_new = bsoid_extract_voc(data_new)
-    labels_fslow = bsoid_predict_voc(feats_new, behv_model)
+    labels_fslow = bsoid_predict_umapvoc(feats_new, behv_model)
     labels_fshigh = bsoid_frameshift_voc(data_new, fps, behv_model)
     if PLOT_TRAINING:
         visuals.plot_feats_bsoidvoc(feats_new, labels_fslow)

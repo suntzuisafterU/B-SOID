@@ -26,7 +26,7 @@ import time
 import umap
 
 from bsoid import classify
-from bsoid.config.LOCAL_CONFIG import MODEL_NAME, OUTPUT_PATH, TRAIN_FOLDERS
+from bsoid.config.LOCAL_CONFIG import BASE_PATH, MODEL_NAME, OUTPUT_PATH, TRAIN_FOLDERS
 from bsoid.config.GLOBAL_CONFIG import CV_IT, HDBSCAN_PARAMS, HLDOUT, MLP_PARAMS, UMAP_PARAMS
 from bsoid.util import likelihoodprocessing, statistics, videoprocessing, visuals
 
@@ -42,9 +42,11 @@ demo_vids = {
     "Open-field, tethered, OCD model (Ahmari lab @ UPitt)": "./demo/bsoid_grm_demo.mp4"
 }
 vid = st.selectbox("Notable examples, please contribute!", list(demo_vids.keys()), 0)
-video_file = open(demo_vids[vid], 'rb')
-video_bytes = video_file.read()
-st.video(video_bytes)
+with open(demo_vids[vid], 'rb') as video_file:
+
+    # video_file = open(demo_vids[vid], 'rb')
+    video_bytes = video_file.read()
+    st.video(video_bytes)
 
 # Load previous run?
 if st.sidebar.checkbox("Load previous run? This resumes training, or can "
@@ -65,11 +67,11 @@ else:
     last_run = False
 
 if not last_run:
-    # Setting things up
+    # # Setting things up # #
     # BASE_PATH, TRAIN_FOLDERS, FPS, OUTPUT_PATH and MODEL_NAME designations
     st.subheader('Find your data')
     st.write('The __BASE PATH__ contains multiple nested directories.')
-    BASE_PATH = st.text_input('Enter a BASE PATH:')
+    BASE_PATH = st.text_input('Enter a BASE PATH:', BASE_PATH)
     try:
         os.listdir(BASE_PATH)
         st.markdown(f'You have selected **{BASE_PATH}** as your root directory for training/testing sub-directories.')
@@ -77,7 +79,7 @@ if not last_run:
         st.error('No such directory')
     st.write('The __sub-directory(ies)__ each contain one or more .csv files. '
              'Currently supporting _2D_ and _single_ animal.')
-    # TRAIN_FOLDERS = []  # TODO: HIGH: TRAIN_FOLDERS is instantiated here but lower down TRAIN_FOLDERS[0] is ref'd. Error ***
+    TRAIN_FOLDERS = []  # TODO: HIGH: TRAIN_FOLDERS is instantiated here but lower down TRAIN_FOLDERS[0] is ref'd. Error ***
     directory_num = int(st.number_input('How many BASE_PATH/SUB-DIRECTORIES for training?', value=3))
     st.markdown('Your will be training on **{}** csv containing sub-directories.'.format(directory_num))
     for i in range(directory_num):
@@ -116,6 +118,10 @@ if not last_run:
     Within each .csv file, the algorithm finds the best likelihood cutoff for each body part.
     ''')
     csv_rep = glob.glob(BASE_PATH + TRAIN_FOLDERS[0] + '/*.csv')
+    # try:
+    #     curr_df = pd.read_csv(csv_rep[0], low_memory=False)
+    # except IndexError as e:
+    #     st.error('CSV file(s) was/were not found.')
     curr_df = pd.read_csv(csv_rep[0], low_memory=False)
     currdf = np.array(curr_df)
     BP = st.multiselect('Body parts to include', [*currdf[0, 1:-1:3]], [*currdf[0, 1:-1:3]])
@@ -127,12 +133,12 @@ if not last_run:
     BODYPARTS.sort()
     if st.button("Start pre-processing"):
         filenames_list, rawdata_list, data_list, perc_rect_list = [], [], [], []
-        for i, folder in enumerate(TRAIN_FOLDERS):  # Loop through folders
+        for idx_folder, folder in enumerate(TRAIN_FOLDERS):  # Loop through folders
             f = likelihoodprocessing.get_filenames(folder)
             my_bar = st.progress(0)
             for j, filename in enumerate(f):
                 curr_df = pd.read_csv(filename, low_memory=False)
-                curr_df_filt, perc_rect = likelihoodprocessing.adp_filt(curr_df, BODYPARTS)
+                curr_df_filt, perc_rect = likelihoodprocessing.adp_filt(curr_df)
                 rawdata_list.append(curr_df)
                 perc_rect_list.append(perc_rect)
                 data_list.append(curr_df_filt)
@@ -141,10 +147,9 @@ if not last_run:
         training_data = np.array(data_list)
         with open(os.path.join(OUTPUT_PATH, str.join('', (MODEL_NAME, '_data.sav'))), 'wb') as f:
             joblib.dump([BASE_PATH, FPS, BODYPARTS, filenames_list, rawdata_list, training_data, perc_rect_list], f)
-        st.info('Processed a total of **{}** CSV files, and compiled into a **{}** data list.'.format(len(data_list),
-                                                                                                      training_data.shape))
+        st.info(f'Processed a total of **{len(data_list)}** CSV files, and compiled into a **{training_data.shape}** data list.')
         st.balloons()
-    with open(os.path.join(OUTPUT_PATH, str.join('', (MODEL_NAME, '_data.sav'))), 'rb') as fr:
+    with open(os.path.join(OUTPUT_PATH, f'{MODEL_NAME}_data.sav'), 'rb') as fr:
         BASE_PATH, FPS, BODYPARTS, filenames, rawdata_list, training_data, perc_rect_list = joblib.load(fr)
     if st.checkbox('Show % body part processed per file?', False):
         st.write('This line chart shows __% body part below file-based threshold__')
@@ -352,8 +357,8 @@ if st.button("Start training a behavioral neural network"):
     clf = MLPClassifier(**MLP_PARAMS)
     clf.fit(f_10fps.T, soft_assignments.T)
     nn_assignments = clf.predict(f_10fps.T)
-    st.info('Done training feedforward neural network '
-            'mapping **{}** features to **{}** assignments.'.format(f_10fps.T.shape, soft_assignments.T.shape))
+    st.info(f'Done training feedforward neural network '
+            f'mapping **{f_10fps.T.shape}** features to **{soft_assignments.T.shape}** assignments.')
     scores = cross_val_score(classifier, feats_test, labels_test, cv=CV_IT, n_jobs=-1)
     with open(os.path.join(OUTPUT_PATH, str.join('', (MODEL_NAME, '_neuralnet.sav'))), 'wb') as f:
         joblib.dump([feats_test, labels_test, classifier, clf, scores, nn_assignments], f)
@@ -366,12 +371,12 @@ if last_run:
                 'mapping **{}** features to **{}** assignments.'.format(f_10fps.T.shape, soft_assignments.T.shape))
 
 if st.checkbox("Show confusion matrix on {}% data?".format(HLDOUT * 100), False):
-    with open(os.path.join(OUTPUT_PATH, str.join('', (MODEL_NAME, '_neuralnet.sav'))), 'rb') as fr:
+    with open(os.path.join(OUTPUT_PATH, f'{MODEL_NAME}_neuralnet.sav'), 'rb') as fr:
         feats_test, labels_test, classifier, clf, scores, nn_assignments = joblib.load(fr)
-    np.set_printoptions(precision=2)
+    np.set_printoptions(precision=2)  # TODO: low: move precision setting to top?
     titles_options = [("Non-normalized confusion matrix", None),
                       ("Normalized confusion matrix", 'true')]
-    titlenames = [("counts"), ("norm")]
+    titlenames = ["counts", "norm"]
     j = 0
     st.write('Below are two confusion matrices - top: raw counts, bottom: probability. These matrices shows '
              '**true positives in diagonal**, false negatives in rows, and false positives in columns')
@@ -427,10 +432,8 @@ if st.button('Export'):
         with open(os.path.join(OUTPUT_PATH, str.join('', (MODEL_NAME, '_neuralnet.sav'))), 'rb') as fr:
             feats_test, labels_test, classifier, clf, scores, nn_assignments = joblib.load(fr)
         timestr = time.strftime("_%Y%m%d_%H%M")
-        length_nm = []
-        angle_nm = []
-        disp_nm = []
-        for i, j in itertools.combinations(range(0, int(np.sqrt(f_10fps.shape[0]))), 2):
+        length_nm, angle_nm, disp_nm = [], [], []
+        for i, j in itertools.combinations(range(0, int(np.sqrt(f_10fps.shape[0]))), 2):  # TODO: low: remove range starts at 0, redundant?
             length_nm.append(['distance between points:', i + 1, j + 1])
             angle_nm.append(['angular change for points:', i + 1, j + 1])
         for i in range(int(np.sqrt(f_10fps.shape[0]))):
@@ -512,7 +515,7 @@ else:
     if prediction_options == 'Generate predictions and corresponding videos':
         csv_dir = st.text_input('Enter the testing data sub-directory within BASE PATH:')
         try:
-            os.listdir(str.join('', (BASE_PATH, csv_dir)))
+            os.listdir(os.path.join(BASE_PATH, csv_dir))  # os.listdir(str.join('', (BASE_PATH, csv_dir)))
             st.markdown(f'You have selected **{csv_dir}** as your csv data sub-directory.')
         except FileNotFoundError:
             st.error('No such directory')
