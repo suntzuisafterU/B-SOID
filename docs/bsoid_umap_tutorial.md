@@ -82,7 +82,7 @@ Then import configuration files, and the main function
 from bsoid_umap.config import *
 import bsoid_umap.main
 ```
-Build your behaviaoral model using your training csv files within your train folders (LOCAL_CONFIG.py):
+Build your behavioral model using your training csv files within your train folders (LOCAL_CONFIG.py):
 ```
 f_10fps, f_10fps_sc, umap_embeddings, hdb_assignments, soft_assignments, soft_clusters, nn_classifier, scores, nn_assignments = bsoid_umap.main.build(TRAIN_FOLDERS)
 ```
