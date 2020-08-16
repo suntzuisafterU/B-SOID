@@ -56,9 +56,21 @@ def get_filenames(folder):
     :param folder: str, folder path
     :return: list, filenames
     """
+    warnings.warn('**NOTE: this function implicitly assume the argument folder resides in BASE_PATH***. '
+                  f'`folder` argument value = {folder} . This function may be deprecated in the future.')
     filenames = glob.glob(BASE_PATH + folder + '/*.csv')
     sort_nicely(filenames)
     return filenames
+
+
+def get_filenames_csvs_from_folder_in_basepath(folder):
+    """
+    Get_filenames() makes the assumption that the folder is in BASEPATH; however, it is an obfuscated assumption
+    and bad. A new function that DOES NOT RESOLVE PATH IMPLICITLY WITHIN should be created and used.
+    :param folder:
+    :return:
+    """
+    return get_filenames(folder)
 
 
 def import_folders(folders: list) -> Tuple[List, np.ndarray, List]:
