@@ -1,5 +1,7 @@
 """
-TODO: low: purpose
+TODO: flesh out description
+This file aggregates all settings related to project and machine localization.
+The settings here are all legacy and are likely to be replaced (and combined with GLOBAL_CONFIG) in the future.
 """
 
 import os
@@ -9,13 +11,14 @@ import os
 
 # Specify where the OST project lives. Modify on your local machine as necessary.
 OST_BASE_PROJECT_PATH = '/home/aaron/Documents/OST-with-DLC'
+# OST_BASE_PROJECT_PATH = os.path.join('C:', 'Users', 'killian', 'projects', 'OST-with-DLC')
 
 BASE_PATH = '/home/aaron/Documents/OST-with-DLC/GUI_projects/OST-DLC-projects/pwd-may11-2020-john-howland-2020-05-11'
-# BASE_PATH = os.path.join('C:', 'Users', 'killian', 'projects', 'OST-with-DLC', 'GUI_projects', 'OST-DLC-projects',
-#                          'pwd-may11-2020-john-howland-2020-05-11')
+# BASE_PATH = os.path.join('C:', 'Users', 'killian', 'projects', 'OST-with-DLC', 'pwd-may11-2020-john-howland-2020-05-11')
 
 # Output directory to where you want the analysis to be stored
 OUTPUT_PATH = os.path.join(OST_BASE_PROJECT_PATH, 'B-SOID', 'OUTPUT')  # '/home/aaron/Documents/OST-with-DLC/B-SOID/OUTPUT'
+# OUTPUT_PATH = os.path.join('C:', 'Users', 'killian', 'Pictures')
 
 MODEL_NAME = 'c57bl6_n3_60min'  # Machine learning model name
 # Fetch the base B-SOiD project directory regardless of clone location
@@ -29,13 +32,13 @@ TRAIN_FOLDERS = [os.path.sep+'training_datasets', ]
 PREDICT_FOLDERS = [os.path.sep+'Data1', ]
 
 # Create a folder to store extracted images, MAKE SURE THIS FOLDER EXISTS.  # TODO: med: add in a runtime check that folder exists
-FRAME_DIR = os.path.join(OST_BASE_PROJECT_PATH, 'B-SOID', 'OUTPUT', 'frames')  # '/home/aaron/Documents/OST-with-DLC/B-SOID/OUTPUT/frames'
+FRAME_DIR = os.path.join(OST_BASE_PROJECT_PATH, 'B-SOID', 'output', 'frames')  # '/home/aaron/Documents/OST-with-DLC/B-SOID/OUTPUT/frames'
 
 # Create a folder to store created video snippets/group, MAKE SURE THIS FOLDER EXISTS.  # TODO: med: add in a runtime check that folder exists
 # Create a folder to store extracted images, make sure this folder exist.
 #   This program will predict labels and print them on these images
 # In addition, this will also create an entire sample group videos for ease of understanding
-SHORTVID_DIR = os.path.join(OST_BASE_PROJECT_PATH, 'B-SOID', 'OUTPUT', 'shortvids')  # '/home/aaron/Documents/OST-with-DLC/B-SOID/OUTPUT/shortvids'
+SHORTVID_DIR = os.path.join(OST_BASE_PROJECT_PATH, 'B-SOID', 'output', 'shortvids')  # '/home/aaron/Documents/OST-with-DLC/B-SOID/OUTPUT/shortvids'
 
 # Now, pick an example video that corresponds to one of the csv files from the PREDICT_FOLDERS
 VID_NAME = os.path.join(OST_BASE_PROJECT_PATH, 'GUI_projects', 'labelled_videos', '002_ratA_inc2_above.mp4')  # '/home/aaron/Documents/OST-with-DLC/GUI_projects/labelled_videos/002_ratA_inc2_above.mp4'
@@ -80,7 +83,7 @@ VID = True  # if this is true, make sure direct to the video below AND that you 
 
 ##############################################################################################################
 ### BSOID VOC ###
-# TODO: HIGHaddress BODYPARTS variable also found in bsoid_voc. Does it do the same as _py? Naming collision.
+# TODO: HIGH: address BODYPARTS variable also found in bsoid_voc. Does it do the same as _py? Naming collision.************
 # # Order the points that are encircling the mouth.
 # BODYPARTS = {
 #     'Point1': 0,
