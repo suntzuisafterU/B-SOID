@@ -9,3 +9,4 @@ logs
 # dev files
 tags
 typescript
+.idea/
