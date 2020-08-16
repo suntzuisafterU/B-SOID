@@ -14,7 +14,12 @@ import time
 
 # sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from bsoid_py.config import *
+# from bsoid_py.config import *
+from bsoid_py.config.LOCAL_CONFIG import BODYPARTS, COMP, FRAME_DIR, FPS, FRAME_DIR, GEN_VIDEOS, MODEL_NAME, \
+    OUTPUT_PATH, PLOT_TRAINING, TRAIN_FOLDERS, PREDICT_FOLDERS, VID_NAME
+from bsoid_py.config.GLOBAL_CONFIG import CV_IT, EMGMM_PARAMS, HLDOUT, SVM_PARAMS
+import bsoid
+import bsoid_py
 
 
 def build(train_folders):
@@ -68,7 +73,7 @@ def run(predict_folders):
     filenames = []
     all_df = []
     for i, fd in enumerate(predict_folders):  # Loop through folders
-        f = get_filenames(fd)
+        f = bsoid.util.likelihoodprocessing.get_filenames(fd)
         for j, filename in enumerate(f):
             logging.info(f'Importing CSV file {j+1} from folder {i+1}')
             curr_df = pd.read_csv(filename, low_memory=False)
@@ -89,8 +94,8 @@ def run(predict_folders):
         predictions.to_csv((os.path.join(OUTPUT_PATH, str.join('', ('bsoid_labels_10Hz', timestr, csvname,  '.csv')))),
                            index=True, chunksize=10000, encoding='utf-8')
         runlen_df1, dur_stats1, df_tm1 = bsoid.util.statistics.main(labels_fslow[i])
-        if PLOT_TRAINING:
-            plot_tmat(df_tm1, FPS)
+        # if PLOT_TRAINING:
+        #     plot_tmat(df_tm1, FPS)
         runlen_df1.to_csv((os.path.join(OUTPUT_PATH, str.join('', ('bsoid_runlen_10Hz', timestr, csvname, '.csv')))),
                          index=True, chunksize=10000, encoding='utf-8')
         dur_stats1.to_csv((os.path.join(OUTPUT_PATH, str.join('', ('bsoid_stats_10Hz', timestr, csvname, '.csv')))),
