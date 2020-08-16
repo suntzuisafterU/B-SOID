@@ -15,7 +15,7 @@ import time
 # sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # from bsoid_py.config import *
-from bsoid_py.config.LOCAL_CONFIG import BODYPARTS, COMP, FRAME_DIR, FPS, FRAME_DIR, GEN_VIDEOS, MODEL_NAME, \
+from bsoid.config.LOCAL_CONFIG import BODYPARTS, COMP, FRAME_DIR, FPS, FRAME_DIR, GEN_VIDEOS, MODEL_NAME, \
     OUTPUT_PATH, PLOT_TRAINING, TRAIN_FOLDERS, PREDICT_FOLDERS, VID_NAME
 from bsoid_py.config.GLOBAL_CONFIG import CV_IT, EMGMM_PARAMS, HLDOUT, SVM_PARAMS
 import bsoid
