@@ -58,9 +58,9 @@ def get_filenames(folder):
     """
     warnings.warn('**NOTE: this function implicitly assume the argument folder resides in BASE_PATH***. '
                   f'`folder` argument value = {folder} . This function may be deprecated in the future.')
-    path_to_check_for_csvs = BASE_PATH + folder + '/**.csv'
-    print(f'PATH TO CHECK FOR CSV FILES: {path_to_check_for_csvs}')
-    filenames = glob.glob(path_to_check_for_csvs)
+    path_to_check_for_csvs = BASE_PATH + folder + '**/*.csv'
+    logging.info(f'Path that is being checked with "glob": {path_to_check_for_csvs}')
+    filenames = glob.glob(path_to_check_for_csvs, recursive=True)
     sort_nicely(filenames)
     logging.info(f'files found: {filenames}')
     return filenames
