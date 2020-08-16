@@ -52,7 +52,7 @@ def sort_nicely(l: list):
 
 def get_filenames(folder):
     """
-    Gets a list of filenames within a folder (assuming it exists within BASE_PATH)
+    Gets a list of CSV filenames within a folder (assuming it exists within BASE_PATH)
     :param folder: str, folder path
     :return: list, filenames
     """
@@ -69,55 +69,50 @@ def import_folders(folders: list) -> Tuple[List, np.ndarray, List]:
     :return data: list, filtered csv data
     :return perc_rect_li: list, percent filtered
     """
-    filenames = []
-    rawdata_li = []
-    data_li = []
-    perc_rect_li = []
-    for i, fd in enumerate(folders):  # Loop through folders
-        f = get_filenames(fd)
-        for j, filename in enumerate(f):
-            logging.info(f'Importing CSV file {j + 1} from folder {i + 1}')
+    file_names_list, raw_data_list, data_list, perc_rect_li = [], [], [], []
+    for idx_folder, folder in enumerate(folders):  # Loop through folders
+        f = get_filenames(folder)
+        for idx_filename, filename in enumerate(f):
+            logging.info(f'Importing CSV file {idx_filename+1} from folder {idx_folder+1}')
             curr_df = pd.read_csv(filename, low_memory=False)
             curr_df_filt, perc_rect = adp_filt(curr_df)
-            logging.info('Done preprocessing (x,y) from file {}, folder {}.'.format(j + 1, i + 1))
-            rawdata_li.append(curr_df)
+            logging.info(f'Done preprocessing (x,y) from file {idx_filename+1}, folder {idx_folder+1}.')
+            raw_data_list.append(curr_df)
             perc_rect_li.append(perc_rect)
-            data_li.append(curr_df_filt)
-        filenames.append(f)
-        logging.info('Processed {} CSV files from folder: {}'.format(len(f), fd))
-    data = np.array(data_li)
-    logging.info('Processed a total of {} CSV files, and compiled into a {} data list.'.format(len(data_li),
-                                                                                               data.shape))
-    return filenames, data, perc_rect_li
+            data_list.append(curr_df_filt)
+        file_names_list.append(f)
+        logging.info(f'Processed {len(f)} CSV files from folder: {folder}')
+    data_array = np.array(data_list)
+    logging.info(f'Processed a total of {len(data_list)} CSV files, and compiled into a {data_array.shape} data list.')
+    return file_names_list, data_array, perc_rect_li
 
 
-def adp_filt(currdf: object):  # TODO: low: rename for clarity
+def adp_filt(currdf: object):  # TODO: low: rename function for clarity
     """
-    TODO: purpose
+    TODO: low: purpose
     :param currdf: object, csv data frame
     :return currdf_filt: 2D array, filtered data
     :return perc_rect: 1D array, percent filtered per BODYPART
     """
-    l_index = []
-    x_index = []
-    y_index = []
+    l_index, x_index, y_index = [], [], []
     currdf = np.array(currdf[1:])
-    for header in range(len(currdf[0])):
-        if currdf[0][header] == "likelihood":
-            l_index.append(header)
-        elif currdf[0][header] == "x":
-            x_index.append(header)
-        elif currdf[0][header] == "y":
-            y_index.append(header)
+    for header_idx in range(len(currdf[0])):
+        if currdf[0][header_idx] == "likelihood":
+            l_index.append(header_idx)
+        elif currdf[0][header_idx] == "x":
+            x_index.append(header_idx)
+        elif currdf[0][header_idx] == "y":
+            y_index.append(header_idx)
+        else: pass  # TODO: low: should this be failing silently?
     logging.info('Extracting likelihood value...')
     curr_df1 = currdf[:, 1:]
-    datax = curr_df1[:, np.array(x_index) - 1]
-    datay = curr_df1[:, np.array(y_index) - 1]
+    data_x = curr_df1[:, np.array(x_index) - 1]
+    data_y = curr_df1[:, np.array(y_index) - 1]
     data_lh = curr_df1[:, np.array(l_index) - 1]
-    currdf_filt = np.zeros((datax.shape[0] - 1, (datax.shape[1]) * 2))
+    currdf_filt: np.ndarray = np.zeros((data_x.shape[0] - 1, (data_x.shape[1]) * 2))
     perc_rect = []
     logging.info('Computing data threshold to forward fill any sub-threshold (x,y)...')
-    for i in range(data_lh.shape[1]):
+    for _ in range(data_lh.shape[1]):  # TODO: low: simplify `perc_rect` initialization as list of zeroes
         perc_rect.append(0)
     for x in tqdm(range(data_lh.shape[1])):
         a, b = np.histogram(data_lh[1:, x].astype(np.float))
@@ -132,7 +127,7 @@ def adp_filt(currdf: object):  # TODO: low: rename for clarity
             if data_lh_float[i] < llh:
                 currdf_filt[i, (2 * x):(2 * x + 2)] = currdf_filt[i - 1, (2 * x):(2 * x + 2)]
             else:
-                currdf_filt[i, (2 * x):(2 * x + 2)] = np.hstack([datax[i, x], datay[i, x]])
+                currdf_filt[i, (2 * x):(2 * x + 2)] = np.hstack([data_x[i, x], data_y[i, x]])
     currdf_filt = np.array(currdf_filt[1:])
     currdf_filt = currdf_filt.astype(np.float)
     return currdf_filt, perc_rect
@@ -145,7 +140,8 @@ def main(folders: List[str]):
     :return data: list, filtered data list
     :retrun perc_rect: 1D array, percent filtered per BODYPART
     """
-    warnings.warn('This function, main(), will be deprecated in future as it adds nothing except obfuscation.')
+    warnings.warn('This function, bsoid.util.likelihoodprocessing.main(), will be '
+                  'deprecated in future as it adds nothing except obfuscation. Directly use import_folders() instead.')
     filenames, data, perc_rect = import_folders(folders)
     return filenames, data, perc_rect
 
