@@ -58,7 +58,7 @@ def get_filenames(folder):
     """
     warnings.warn('**NOTE: this function implicitly assume the argument folder resides in BASE_PATH***. '
                   f'`folder` argument value = {folder} . This function may be deprecated in the future.')
-    filenames = glob.glob(BASE_PATH + folder + '/*.csv')
+    filenames = glob.glob(BASE_PATH + folder + '**/*.csv')
     sort_nicely(filenames)
     return filenames
 
