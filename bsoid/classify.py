@@ -1,4 +1,3 @@
-############### bsoid app###########################################################################
 """
 Classify behaviors based on (x,y) using trained B-SOiD behavioral model.
 B-SOiD behavioral model has been developed using bsoid_app.main.build()
@@ -16,14 +15,13 @@ from bsoid.util import likelihoodprocessing, statistics, videoprocessing, visual
 from bsoid.config.LOCAL_CONFIG import BASE_PATH, BODYPARTS, COMP, FPS, FRAME_DIR, ID, GEN_VIDEOS, MODEL_NAME, OUTPUT_PATH, PLOT_TRAINING, VID, VID_NAME
 from bsoid.config.GLOBAL_CONFIG import SVM_PARAMS
 
+
 """
 Extracts features based on (x,y) positions
 :param data: list, csv data
 :param fps: scalar, input for camera frame-rate
 :return f_10fps: 2D array, extracted features
 """
-
-
 def bsoid_extract_app(data, fps):
     win_len = np.int(np.round(0.05 / (1 / fps)) * 2 - 1)
     features = []
@@ -284,7 +282,7 @@ def bsoid_extract_voc(data, bodyparts: dict = BODYPARTS, fps: int = FPS):
         p7_disp_smth = likelihoodprocessing.boxcar_center(p7_disp, win_len)
         features.append(np.vstack((p15_norm_smth[1:], p18_norm_smth[1:],
                                 p12_ang_smth[:], p14_ang_smth[:], p3_disp_smth[:], p7_disp_smth[:])))
-    logging.info('Done extracting features from a total of {} training CSV files.'.format(len(data)))
+    logging.info(f'Done extracting features from a total of {len(data)} training CSV files.')
     f_10fps = []
     for n in range(len(features)):
         feats1 = np.zeros(len(data[n]))
@@ -473,7 +471,7 @@ def bsoid_frameshift_voc(data_new, fps, clf_MLP):
         for l in range(math.floor(fps / 10)):
             labels_fs2.append(labels_fs[k][l])
         labels_fshigh.append(np.array(labels_fs2).flatten('F'))
-    logging.info('Done frameshift-predicting a total of {} files.'.format(len(data_new)))
+    logging.info(f'Done frameshift-predicting a total of {len(data_new)} files.')
     return labels_fshigh
 
 
