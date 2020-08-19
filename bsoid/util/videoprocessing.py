@@ -56,7 +56,7 @@ def get_video_names(folder_name) -> List[str]:
     return video_names
 
 
-def write_annotated_frames_to_desk_from_video(path_to_video: str, labels, fps: int, output_path: str = FRAME_DIR):
+def write_annotated_frames_to_disk_from_video(path_to_video: str, labels, fps: int, output_path: str = FRAME_DIR):
     """
     This function serves to supersede the old 'vid2frame()' function for future clarity.
 
@@ -90,6 +90,7 @@ def write_annotated_frames_to_desk_from_video(path_to_video: str, labels, fps: i
                         fontFace=font, fontScale=font_scale, color=(255, 255, 255), thickness=1)
             # Write to image
             cv2.imwrite(os.path.join(output_path, 'frame{:d}.png'.format(i)), frame)
+
             # Save & set metrics, prepare for next frame, and update progress bar
             count += round(fps / 10)  # i.e. at 60fps, this skips every 5
             cv2_video_object.set(1, count)
@@ -104,7 +105,7 @@ def write_annotated_frames_to_desk_from_video(path_to_video: str, labels, fps: i
 
 def vid2frame(path_to_video: str, labels, fps: int, output_path: str = FRAME_DIR):
     """ # # # DEPRECATION WARNING # # # """
-    replacement_func = write_annotated_frames_to_desk_from_video
+    replacement_func = write_annotated_frames_to_disk_from_video
     warnings.warn(f'This function, vid2frame(), will be deprecated shortly. The replacement '
                   f'function is called "{replacement_func.__qualname__}" and aims to make usage more clear and DRY. '
                   f'If you are reading this, this function was kept for backwards compatibility reasons. ')
@@ -127,7 +128,7 @@ def import_vidfolders(folders: List[str], output_path: List[str]):
             # vid2frame does stuff
             vid2frame(video, output_path)  # TODO: HIGH: missing param `FPS` *** runtime error imminent ********************************************************
             logging.info(f'Done extracting images and writing labels, from MP4 file {idx_video+1}')
-        # After looping thru videos, save list of videos from current folder to list of lists because reasons
+        # After looping through videos, append list of videos from current folder to list of lists because reasons
         list_of_lists_of_videos += [videos_list_from_current_folder, ]  # list_of_lists_of_videos.append(videos_list_from_current_folder)
         logging.info(f'Processed {len(videos_list_from_current_folder)} MP4 files from folder: {folder}')
     return
@@ -139,11 +140,10 @@ def create_labeled_vid(labels, crit=3, num_randomly_generated_examples=5,
                        frame_dir=FRAME_DIR, output_path=SHORTVID_DIR):
     """
     (Generalized create_labeled_video() function that works between _py, _umap, and _voc submodules)
-
     TODO: low: purpose
     :param labels: 1D array, labels from training or testing
     :param crit: scalar, minimum duration for random selection of behaviors, default 300ms
-    :param num_randomly_generated_examples: scalar, number of randomly generated examples, default 5  # TODO: default is actually 3..does counts refer to cv2.VideoWriter pathing?
+    :param num_randomly_generated_examples: scalar, number of randomly generated examples, default 5  # TODO: low: default is actually 3..does counts refer to cv2.VideoWriter pathing?
     :param frame_dir: string, directory to where you extracted vid images in LOCAL_CONFIG
     :param output_path: string, directory to where you want to store short video examples in LOCAL_CONFIG
     """
@@ -176,6 +176,7 @@ def create_labeled_vid(labels, crit=3, num_randomly_generated_examples=5,
                 for a_random_range in random_ranges[idx_random_range]:
                     # Aggregate images into a list that correspond to the randomly generated numbers/ranges
                     grp_images += [images[a_random_range], ]  # grp_images.append(images[random_range])
+                grp_images = []
                 # Open video writer
                 video_writer = cv2.VideoWriter(
                     os.path.join(output_path, video_name),
@@ -196,7 +197,7 @@ def create_labeled_vid(labels, crit=3, num_randomly_generated_examples=5,
 def create_labeled_vid_app(labels, crit, counts, output_fps, frame_dir, output_path):
     """
     *** LEGACY WARNING: this function is different from the non-annotated (_py/_umap/_voc)
-    implementation(s) only with regards to the new parameter `output_fps`.
+    implementation(s) ONLY with regards to the new parameter `output_fps`.
     Since the two functions have not yet been reconciled, this function remains as
     legacy. It is not used in the submodule bsoid_app codebase but is used 2 times in .ipynb files ***
 
@@ -218,17 +219,19 @@ def create_labeled_vid_app(labels, crit, counts, output_fps, frame_dir, output_p
             ranges.append(range(idx[idx_length], idx[idx_length] + length))
             idx2.append(idx_length)
     for label in tqdm(np.unique(labels)):
-        a = []
-        for j in range(len(ranges)):
-            if n[idx2[j]] == label:
-                a.append(ranges[j])
+        # a = []
+        # for j in range(len(ranges)):
+        #     if n[idx2[j]] == label:
+        #         a.append(ranges[j])
+        a = [ranges[i] for i in range(len(ranges)) if n[idx2[i]] == label]
         try:
             random_ranges = random.sample(a, min(len(a), counts))
             for k in range(len(random_ranges)):
-                grp_images = []
+                # grp_images = []
+                # for random_range in random_ranges[k]:
+                #     grp_images.append(images[random_range])
+                grp_images = [images[random_range] for random_range in random_ranges[k]]
                 video_name = f'group_{label}_example_{k}.mp4'
-                for random_range in random_ranges[k]:
-                    grp_images.append(images[random_range])
                 video = cv2.VideoWriter(os.path.join(output_path, video_name),
                                         four_character_code, output_fps, (width, height))
                 for image in grp_images:
@@ -242,13 +245,22 @@ def create_labeled_vid_app(labels, crit, counts, output_fps, frame_dir, output_p
 ####################################################################################################################################
 
 
-def main(path_to_video, labels, fps, output_path):
-    warnings.warn('This function, bsoid.util.videoprocessing.main(), will be deprecated in the future in '
-                  'favour of a refactored, more descriptive function')  # TODO: HIGH: create alternative func. w/ more description
-    vid2frame(path_to_video, labels, fps, output_path)
+def get_frames_from_video_then_create_labeled_video(path_to_video, labels, fps, output_path) -> None:
+    """ # TODO: rename function for concision/clarity
+    TODO: Purpose
+    :param path_to_video: (str) TODO
+    :param labels: TODO
+    :param fps: (int) TODO
+    :param output_path: TODO
+    :return:
+    """
+    write_annotated_frames_to_disk_from_video(path_to_video, labels, fps, output_path)
     create_labeled_vid(labels, crit=3, num_randomly_generated_examples=5, frame_dir=output_path, output_path=SHORTVID_DIR)
 
 
-
-
-############
+def main(path_to_video, labels, fps, output_path):  # To be deprecated
+    replacement_function = get_frames_from_video_then_create_labeled_video
+    warnings.warn('This function, bsoid.util.videoprocessing.main(), will be deprecated in the future in '
+                  'favour of a refactored, more descriptive function. Currently, that function is: '
+                  f'{replacement_function.__qualname__}')
+    return replacement_function(path_to_video, labels, fps, output_path)

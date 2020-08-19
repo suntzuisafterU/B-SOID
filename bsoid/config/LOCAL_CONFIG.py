@@ -4,25 +4,29 @@ This file aggregates all settings related to project and machine localization.
 The settings here are all legacy and are likely to be replaced (and combined with GLOBAL_CONFIG) in the future.
 """
 
+
 import os
 
 
 ### BSOID PY
+# Fetch the base B-SOiD project directory regardless of clone location
+BSOID_BASE_PROJECT_PATH = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Specify where the OST project lives. Modify on your local machine as necessary.
 OST_BASE_PROJECT_PATH = '/home/aaron/Documents/OST-with-DLC'
 # OST_BASE_PROJECT_PATH = os.path.join('C:', 'Users', 'killian', 'projects', 'OST-with-DLC')
 
+# TODO: Q: what is "base path" ????
 BASE_PATH = '/home/aaron/Documents/OST-with-DLC/GUI_projects/OST-DLC-projects/pwd-may11-2020-john-howland-2020-05-11'
 # BASE_PATH = os.path.join('C:', 'Users', 'killian', 'projects', 'OST-with-DLC', 'pwd-may11-2020-john-howland-2020-05-11')
 
+### BSOID_BASE_PROJECT_PATH
 # Output directory to where you want the analysis to be stored
-OUTPUT_PATH = os.path.join(OST_BASE_PROJECT_PATH, 'B-SOID', 'OUTPUT')  # '/home/aaron/Documents/OST-with-DLC/B-SOID/OUTPUT'
+OUTPUT_PATH = os.path.join(BSOID_BASE_PROJECT_PATH, 'output')  # '/home/aaron/Documents/OST-with-DLC/B-SOID/OUTPUT'
 # OUTPUT_PATH = os.path.join('C:', 'Users', 'killian', 'Pictures')
 
 MODEL_NAME = 'c57bl6_n3_60min'  # Machine learning model name
-# Fetch the base B-SOiD project directory regardless of clone location
-BSOID_BASE_PROJECT_PATH = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 
 # TODO: med: for TRAIN_FOLDERS & PREDICT_FOLDERS, change path resolution from inside functional module to inside this config file
 # Data folders used to training neural network.

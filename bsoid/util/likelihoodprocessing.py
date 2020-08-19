@@ -56,23 +56,27 @@ def get_filenames(folder):
     :param folder: str, folder path
     :return: list, filenames
     """
+    replacement_func = get_filenames_csvs_from_folders_recursively_in_basepath
     warnings.warn('**NOTE: this function implicitly assume the argument folder resides in BASE_PATH***. '
-                  f'`folder` argument value = {folder} . This function may be deprecated in the future.')
-    path_to_check_for_csvs = BASE_PATH + folder + '**/*.csv'
-    logging.info(f'Path that is being checked with "glob": {path_to_check_for_csvs}')
-    filenames = glob.glob(path_to_check_for_csvs, recursive=True)
-    sort_nicely(filenames)
-    logging.info(f'files found: {filenames}')
-    return filenames
+                  f'`folder` argument value = {folder} . Replacement function is '
+                  f'currently: {get_filenames_csvs_from_folders_recursively_in_basepath.__qualname__}. '
+                  f'This function is likely to be deprecated in the future.')
+
+    return replacement_func(folder)
 
 
-def get_filenames_csvs_from_folder_in_basepath(folder):
+def get_filenames_csvs_from_folders_recursively_in_basepath(folder):
     """
     Get_filenames() makes the assumption that the folder is in BASEPATH; however, it is an obfuscated assumption
     and bad. A new function that DOES NOT RESOLVE PATH IMPLICITLY WITHIN should be created and used.
     :param folder:
     :return:
     """
+    path_to_check_for_csvs = BASE_PATH + folder + '**/*.csv'
+    logging.info(f'Path that is being checked with "glob": {path_to_check_for_csvs}')
+    filenames = glob.glob(path_to_check_for_csvs, recursive=True)
+    sort_nicely(filenames)
+    logging.info(f'files found: {filenames}')
     return get_filenames(folder)
 
 

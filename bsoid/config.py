@@ -13,7 +13,7 @@ Reading the key/value pair from the config object requires you to first index th
 All values read from the config.ini file are string so type conversion must be made for non-string information.
 """
 
-from ast import literal_eval
+from ast import literal_eval  # TODO: HIGH HIGH HIGH: use this to read in tuples from config file
 import configparser
 import logging
 import os
