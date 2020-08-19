@@ -1,6 +1,10 @@
 """
 TODO: low: purpose
-*** This config file will use the config.ini ***
+
+*** Do not set up any variables in this file by hand. If you need to instantiate new variables,
+    write them into the config.ini file, then parse with the ConfigParser ***
+
+
 If you want to use this file to instantiate your config options (because, for example,
 pathing may be easier), then leave the config file value blank but do not delete the key.
 
@@ -9,44 +13,73 @@ Reading the key/value pair from the config object requires you to first index th
 All values read from the config.ini file are string so type conversion must be made for non-string information.
 """
 
+from ast import literal_eval
 import configparser
 import logging
 import os
 import sys
 
 from bsoid.config import LOCAL_CONFIG, GLOBAL_CONFIG
+from bsoid.util import logger_config
+
+debug = 1
+
+###
+# Load up a configuration logger to detect config problems. Otherwise, use the general logger
+
+
+# config_logger = logging.Logger()
 
 
 ########################################################################################################################
 
-# Fetch the base B-SOiD project directory regardless of clone location
+# Fetch the B-SOiD project directory regardless of clone location
 BSOID_BASE_PROJECT_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-print(BSOID_BASE_PROJECT_PATH)
+if debug:
+    print(BSOID_BASE_PROJECT_PATH)
 
 # Load up config file
 configuration = configparser.ConfigParser()
 configuration.read(os.path.join(BSOID_BASE_PROJECT_PATH, 'config.ini'))
-print(configuration['LOGGING']['DEFAULT_LOG_FILE'])
-print(configuration.get('PATH', 'OSTPATH', fallback=None))
 
+
+
+
+# Specify where the OST project lives. Modify on your local machine as necessary.
+# OST_BASE_PROJECT_PATH = '/home/aaron/Documents/OST-with-DLC'
+OST_BASE_PROJECT_PATH = configuration['PATH']['OST_BASE_PROJECT_PATH']  # 'previously: /home/aaron/Documents/OST-with-DLC'
+# OST_BASE_PROJECT_PATH = os.path.join('C:', 'Users', 'killian', 'projects', 'OST-with-DLC')
+
+
+if debug: print(configuration['LOGGING']['DEFAULT_LOG_FILE'])
+if debug: print('OST PATH:', configuration.get('PATH', 'OSTPATH', fallback=None))
+
+# Instantiate logger
+bsoid_logger = logger_config.create_generic_logger(
+    logger_name=configuration['LOGGING']['LOG_FILE_NAME'],
+    log_format=configuration['LOGGING']['LOG_FORMAT'],
+    stdout_log_level=configuration.get('LOGGING', 'STREAM_LOG_LEVEL', fallback=None),
+
+)
+
+
+holdout_percent: float = configuration.getfloat('APP', 'HOLDOUT_TEST_PCT')
+kfold_crossvalidation: int = configuration.getint('APP', 'CROSS_VALIDATION_K')  # Number of iterations for cross-validation to show it's not over-fitting.
+fps_video: int = configuration.getint('APP', 'FRAME_RATE_VIDEO')  # ['APP']['FRAME_RATE_VIDEO']
+COMPILE_CSVS_FOR_TRAINING = int(configuration['APP']['COMPILE_CSVS_FOR_TRAINING'])
 
 ########################################################################################################################
-# LEGACY VARIABLES BELOW
-########################
+# LEGACY VARIABLES
 
-holdout_percent: float = float(configuration['APP']['HOLDOUT_TEST_PCT'])
-HLDOUT = holdout_percent  # Test partition ratio to validate clustering separation.
-
-kfold_crossvalidation: int = int(configuration['APP']['CROSS_VALIDATION_K'])  # Number of iterations for cross-validation to show it's not over-fitting.
-CV_IT = 10
+HLDOUT: float = holdout_percent  # Test partition ratio to validate clustering separation.
+CV_IT: int = kfold_crossvalidation
 
 
 # Frame-rate of your video,note that you can use a different number for new data as long as the video is same scale/view
 FPS = int(configuration['APP']['FRAME_RATE_VIDEO'])  # TODO: med: deprecate
 
 # COMP = 1: Train one classifier for all CSV files; COMP = 0: Classifier/CSV file.
-COMPILE_CSVS_FOR_TRAINING: int = 1
-COMP = COMPILE_CSVS_FOR_TRAINING  # TODO: med: deprecate
+COMP: int = COMPILE_CSVS_FOR_TRAINING  # TODO: med: deprecate
 
 # What number would be video be in terms of prediction order? (0=file 1/folder1, 1=file2/folder 1, etc.)
 ID = 0
@@ -58,17 +91,13 @@ GEN_VIDEOS = True
 
 ########################################################################################################################
 
-# Specify where the OST project lives. Modify on your local machine as necessary.
-# OST_BASE_PROJECT_PATH = '/home/aaron/Documents/OST-with-DLC'
-OST_BASE_PROJECT_PATH = LOCAL_CONFIG.OST_BASE_PROJECT_PATH
-# OST_BASE_PROJECT_PATH = os.path.join('C:', 'Users', 'killian', 'projects', 'OST-with-DLC')
 
 # BASE_PATH = '/home/aaron/Documents/OST-with-DLC/GUI_projects/OST-DLC-projects/pwd-may11-2020-john-howland-2020-05-11'
-BASE_PATH = os.path.join('C:', 'Users', 'killian', 'projects', 'OST-with-DLC', 'pwd-may11-2020-john-howland-2020-05-11')
+BASE_PATH = os.path.join('C:\\', 'Users', 'killian', 'projects', 'OST-with-DLC', 'pwd-may11-2020-john-howland-2020-05-11')
 
 # Output directory to where you want the analysis to be stored
 # OUTPUT_PATH = os.path.join(OST_BASE_PROJECT_PATH, 'B-SOID', 'OUTPUT')  # '/home/aaron/Documents/OST-with-DLC/B-SOID/OUTPUT'
-OUTPUT_PATH = os.path.join('C:', 'Users', 'killian', 'Pictures')
+OUTPUT_PATH = os.path.join('C:\\', 'Users', 'killian', 'Pictures')
 
 MODEL_NAME = 'c57bl6_n3_60min'  # Machine learning model name
 
@@ -212,3 +241,5 @@ TSNE_PARAMS = {
 
 
 # TODO: HIGH: after all config parsing done, write checks that will run ON IMPORT to ensure folders exist :)
+
+
