@@ -5,12 +5,13 @@ Then, we utilize these output and original feature space to train a B-SOiD neura
 """
 
 from bhtsne import tsne
-from sklearn import mixture, svm
+from sklearn import mixture
 from sklearn.manifold import TSNE
 from sklearn.metrics import plot_confusion_matrix
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.neural_network import MLPClassifier
 from sklearn.preprocessing import StandardScaler
+from sklearn.svm import SVC
 from tqdm import tqdm
 from typing import List, Tuple
 import hdbscan
@@ -587,7 +588,7 @@ def bsoid_svm_py(feats, labels, comp: int = COMP, holdout_pct: float = HLDOUT, c
         feats_train, feats_test, labels_train, labels_test = train_test_split(
             feats.T, labels.T, test_size=holdout_pct, random_state=23)  # TODO: med: MAGIC VARIABLES -- `random_state`
         logging.info(f'Training SVM on randomly partitioned {(1-holdout_pct)*100}% of training data...')
-        classifier = svm.SVC(**svm_params)
+        classifier = SVC(**svm_params)
         classifier.fit(feats_train, labels_train)
         logging.info(f'Done training SVM mapping {feats_train.shape} features to {labels_train.shape} assignments.')
         logging.info(f'Predicting randomly sampled (non-overlapped) assignments '
@@ -616,7 +617,7 @@ def bsoid_svm_py(feats, labels, comp: int = COMP, holdout_pct: float = HLDOUT, c
             feats_train, feats_test, labels_train, labels_test = train_test_split(
                 feats[i].T, labels[i].T, test_size=holdout_pct, random_state=23)
             logging.info(f'Training SVM on randomly partitioned {(1 - holdout_pct) * 100}% of training data...')
-            clf = svm.SVC(**svm_params)
+            clf = SVC(**svm_params)
             clf.fit(feats_train, labels_train)
             classifier.append(clf)
             logging.info(f'Done training SVM mapping {feats_train.shape} features to {labels_train.shape} assignments.')
