@@ -10,6 +10,8 @@ pathing may be easier), then leave the config file value blank but do not delete
 
 Reading the key/value pair from the config object requires you to first index the section then index the key.
     e.g.: input: config['SectionOfInterest']['KeyOfInterest'] -> output: 'value of interest'
+Another way to od it is using the object method:
+    e.g.: input: config.get('section', 'key') -> output: 'value of interest'
 All values read from the config.ini file are string so type conversion must be made for non-string information.
 """
 
@@ -17,10 +19,13 @@ from ast import literal_eval  # TODO: HIGH HIGH HIGH: use this to read in tuples
 import configparser
 import logging
 import os
+import random
 import sys
 
 from bsoid.config import LOCAL_CONFIG, GLOBAL_CONFIG
 from bsoid.util import logger_config
+
+randomly_generated_state_int: int = random.randint(1, 100_000)
 
 debug = 1
 
@@ -43,10 +48,7 @@ configuration = configparser.ConfigParser()
 configuration.read(os.path.join(BSOID_BASE_PROJECT_PATH, 'config.ini'))
 
 
-
-
 # Specify where the OST project lives. Modify on your local machine as necessary.
-# OST_BASE_PROJECT_PATH = '/home/aaron/Documents/OST-with-DLC'
 OST_BASE_PROJECT_PATH = configuration['PATH']['OST_BASE_PROJECT_PATH']  # 'previously: /home/aaron/Documents/OST-with-DLC'
 # OST_BASE_PROJECT_PATH = os.path.join('C:', 'Users', 'killian', 'projects', 'OST-with-DLC')
 
@@ -153,39 +155,31 @@ BODYPARTS = {
 
 
 #################
-
 #BSOIDAPP
-
-# TODO: med: instantiate logger explicit object instead of setting global implicit logger
-logging.basicConfig(
-    format='%(asctime)s %(levelname)-8s %(message)s',
-    level='INFO',
-    datefmt='%Y-%m-%d %H:%M:%S',
-    stream=sys.stdout)
 
 # BSOID UMAP params, nonlinear transform
 UMAP_PARAMS = {
-    'n_components': 3,
-    'min_dist': 0.0,  # small value
-    'random_state': 23,
+    'n_components': configuration.getint('UMAP', 'n_components'),
+    'min_dist': configuration.getfloat('UMAP', 'min_dist'),
+    'random_state': configuration.getint('MODEL', 'RANDOM_STATE', fallback=randomly_generated_state_int),
 }
 
 # HDBSCAN params, density based clustering
 HDBSCAN_PARAMS = {
-    'min_samples': 10  # small value
+    'min_samples': configuration.getint('HDBSCAN', 'min_samples')  # small value
 }
 
 # Feedforward neural network (MLP) params
 MLP_PARAMS = {
-    'hidden_layer_sizes': (100, 10),  # 100 units, 10 layers
-    'activation': 'logistic',  # logistics appears to outperform tanh and relu
-    'solver': 'adam',
-    'learning_rate': 'constant',
-    'learning_rate_init': 0.001,  # learning rate not too high
-    'alpha': 0.0001,  # regularization default is better than higher values.
-    'max_iter': 1000,
-    'early_stopping': False,
-    'verbose': 0  # set to 1 for tuning your feedforward neural network
+    'hidden_layer_sizes': literal_eval(configuration.get('MLP', 'hidden_layer_sizes')),
+    'activation': configuration.get('MLP', 'activation'),
+    'solver': configuration.get('MLP', 'solver'),
+    'learning_rate': configuration.getfloat('MLP', 'learning_rate'),
+    'learning_rate_init': configuration.getfloat('MLP', 'learning_rate_init'),
+    'alpha': configuration.getfloat('MLP', 'alpha'),
+    'max_iter': configuration.getint('MLP', 'max_iter'),
+    'early_stopping': configuration.getboolean('MLP', 'early_stopping'),
+    'verbose': configuration.getint('MLP', 'verbose'),
 }
 
 
@@ -194,23 +188,23 @@ MLP_PARAMS = {
 
 # EM_GMM parameters
 EMGMM_PARAMS = {
-    'n_components': 30,
-    'covariance_type': 'full',  # t-sne structure means nothing.
-    'tol': 0.001,
-    'reg_covar': 1e-06,
-    'max_iter': 100,
-    'n_init': 20,  # 20 iterations to escape poor initialization
-    'init_params': 'random',  # random initialization
-    'random_state': 23,
-    'verbose': 1  # set this to 0 if you don't want to show progress for em-gmm.
+    'n_components': configuration.getint('EM/GMM', 'n_components'),
+    'covariance_type': configuration.get('EM/GMM', 'covariance_type'),
+    'tol': configuration.getfloat('EM/GMM', 'tol'),
+    'reg_covar': configuration.getfloat('EM/GMM', 'reg_covar'),
+    'max_iter': configuration.getint('EM/GMM', 'max_iter'),
+    'n_init': configuration.getint('EM/GMM', 'n_init'),
+    'init_params': configuration.get('EMM/GMM', 'init_params'),
+    'verbose': configuration.getint('EM/GMM', 'verbose'),
+    'random_state': configuration.getint('MODEL', 'RANDOM_STATE', fallback=randomly_generated_state_int),
 }
 # Multi-class support vector machine classifier params
 SVM_PARAMS = {
-    'C': 10,  # 100 units, 10 layers
-    'gamma': 0.5,  # logistics appears to outperform tanh and relu
-    'probability': True,
-    'random_state': 0,  # adaptive or constant, not too much of a diff
-    'verbose': 0  # set to 1 for tuning your feedforward neural network
+    'C': configuration.getint('SVM', 'C'),
+    'gamma': configuration.getfloat('SVM', 'gamma'),
+    'probability': configuration.getboolean('SVM', 'probability'),
+    'verbose': configuration.getint('SVM', 'verbose'),
+    'random_state': configuration.getint('APP', 'RANDOM_STATE', fallback=randomly_generated_state_int),
 }
 
 
@@ -231,10 +225,10 @@ VID = PRODUCE_VIDEO  # if this is true, make sure direct to the video below AND 
 # TSNE parameters, can tweak if you are getting undersplit/oversplit behaviors
 # the missing perplexity is scaled with data size (1% of data for nearest neighbors)
 TSNE_PARAMS = {
-    'n_components': 3,  # 3 is good, 2 will not create unique pockets, 4 will screw GMM up (curse of dimensionality)
-    'random_state': 23,
-    'n_jobs': -1,  # all cores being used, set to -2 for all cores but one.
-    'verbose': 2  # shows check points
+    'n_components': configuration.getint('TSNE', 'n_components'),
+    'random_state': configuration.getint('APP', 'RANDOM_STATE'),
+    'n_jobs': configuration.getint('TSNE', 'n_jobs'),
+    'verbose': configuration.getint('TSNE', 'verbose'),
 }
 
 
