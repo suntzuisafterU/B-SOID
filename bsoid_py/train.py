@@ -80,6 +80,7 @@ def hard_coded_feature_extraction(data, bodyparts, win_len):
         pt_disp_smth = boxcar_center(pt_disp, win_len)
         feats.append(np.vstack((sn_cfp_norm_smth[1:], sn_chp_norm_smth[1:], fpd_norm_smth[1:],
                                 sn_pt_norm_smth[1:], sn_pt_ang_smth[:], sn_disp_smth[:], pt_disp_smth[:])))
+    logging.info(f'Done extracting features from a total of {len(data)} training CSV files.')
     return feats
 
 def bsoid_tsne(data: list, bodyparts=BODYPARTS, fps=FPS, comp=COMP):
@@ -94,52 +95,51 @@ def bsoid_tsne(data: list, bodyparts=BODYPARTS, fps=FPS, comp=COMP):
     :return trained_tsne: 2D array, trained t-SNE space
     """
     win_len = np.int(np.round(0.05 / (1 / fps)) * 2 - 1)
-    feats = hard_coded_feature_extraction(data, bodyparts, win_len)
-    logging.info(f'Done extracting features from a total of {len(data)} training CSV files.')
-
-    f_10fps = []
-    f_10fps_sc = []
-    trained_tsne_list = []
-    for n in range(0, len(feats)):  # TODO: low: refactor range
-        # NOTE: Iterate over rows???
-        feats1 = np.zeros(len(data[n]))
-        for k in range(round(fps / 10) - 1, len(feats[n][0]), round(fps / 10)):
-            if k > round(fps / 10) - 1:
+    win_len: int = int(round(0.05 / (1 / fps)) * 2 - 1)
+    # Extract features
+    features = hard_coded_feature_extraction(data, bodyparts, win_len)
+    #
+    features_10fps, features_10fps_sc, trained_tsne_list = [], [], []
+    for i in range(len(features)):
+        feats1: np.ndarray = np.zeros(len(data[i]))
+        for j in range(round(fps / 10) - 1, len(features[i][0]), round(fps / 10)):
+            if j > round(fps / 10) - 1:
                 feats1 = np.concatenate((feats1.reshape(feats1.shape[0], feats1.shape[1]),
-                                         np.hstack((np.mean((feats[n][0:4, range(k - round(fps / 10), k)]), axis=1),
-                                                    np.sum((feats[n][4:7, range(k - round(fps / 10), k)]),
-                                                           axis=1))).reshape(len(feats[0]), 1)), axis=1)
+                                         np.hstack((np.mean((features[i][0:4, range(j - round(fps / 10), j)]), axis=1),
+                                                    np.sum((features[i][4:7, range(j - round(fps / 10), j)]),
+                                                           axis=1))).reshape(len(features[0]), 1)), axis=1)
             else:
-                feats1 = np.hstack((np.mean((feats[n][0:4, range(k - round(fps / 10), k)]), axis=1),
-                                    np.sum((feats[n][4:7, range(k - round(fps / 10), k)]), axis=1))).reshape(len(feats[0]), 1)
-        logging.info(f'Done integrating features into 100ms bins from CSV file {n+1}.')
+                feats1 = np.hstack((np.mean((features[i][0:4, range(j - round(fps / 10), j)]), axis=1),
+                                    np.sum((features[i][4:7, range(j - round(fps / 10), j)]), axis=1))).reshape(len(features[0]), 1)
+        logging.info(f'Done integrating features into 100ms bins from CSV file {i+1}.')
         if comp == 1:
-            if n > 0:
-                f_10fps = np.concatenate((f_10fps, feats1), axis=1)
+            if i > 0:
+                features_10fps = np.concatenate((features_10fps, feats1), axis=1)
             else:
-                f_10fps = feats1
+                features_10fps = feats1
         else:
-            f_10fps.append(feats1)
+            features_10fps.append(feats1)
             scaler = StandardScaler()
             scaler.fit(feats1.T)
             feats1_stnd = scaler.transform(feats1.T).T
-            f_10fps_sc.append(feats1_stnd)
-            logging.info(f'Training t-SNE to embed {f_10fps_sc[n].shape[1]} instances from '
-                         f'{f_10fps_sc[n].shape[0]} D into 3 D from CSV file {n + 1}...')
-            trained_tsne_i = tsne(f_10fps_sc[n].T, dimensions=3, perplexity=np.sqrt(f_10fps_sc[n].shape[1]),
+            features_10fps_sc.append(feats1_stnd)
+            logging.info(f'Training t-SNE to embed {features_10fps_sc[i].shape[1]} instances from '
+                         f'{features_10fps_sc[i].shape[0]} D into 3 D from CSV file {i + 1}...')
+            trained_tsne_i = tsne(features_10fps_sc[i].T, dimensions=3, perplexity=np.sqrt(features_10fps_sc[i].shape[1]),
                                   theta=0.5, rand_seed=23)
             trained_tsne_list.append(trained_tsne_i)
             logging.info('Done embedding into 3 D.')
+
     if comp == 1:
         scaler = StandardScaler()
-        scaler.fit(f_10fps.T)  # TODO: HIGH: variable `f_10fps` referenced before assignment. Error in logic above? ########################## IMPORTANT ###############################
-        f_10fps_sc = scaler.transform(f_10fps.T).T
-        logging.info(f'Training t-SNE to embed {f_10fps_sc.shape[1]} instances from {f_10fps_sc.shape[0]} D '
+        scaler.fit(features_10fps.T)
+        features_10fps_sc = scaler.transform(features_10fps.T).T
+        logging.info(f'Training t-SNE to embed {features_10fps_sc.shape[1]} instances from {features_10fps_sc.shape[0]} D '
                      'into 3 D from a total of {len(data)} CSV files...')
-        trained_tsne_list = tsne(f_10fps_sc.T, dimensions=3, perplexity=np.sqrt(f_10fps_sc.shape[1]),
+        trained_tsne_list = tsne(features_10fps_sc.T, dimensions=3, perplexity=np.sqrt(features_10fps_sc.shape[1]),
                             theta=0.5, rand_seed=23)  # TODO: low: move "rand_seed" to a config file instead of hiding here as magic variable
         logging.info('Done embedding into 3 D.')
-    return f_10fps, f_10fps_sc, trained_tsne_list, scaler
+    return features_10fps, features_10fps_sc, trained_tsne_list, scaler
 
 
 def bsoid_gmm(trained_tsne, comp=COMP, emgmm_params=EMGMM_PARAMS) -> np.ndarray:
