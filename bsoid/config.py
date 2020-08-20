@@ -16,83 +16,78 @@ All values read from the config.ini file are string so type conversion must be m
 """
 
 from ast import literal_eval  # TODO: HIGH HIGH HIGH: use this to read in tuples from config file
+from pathlib import Path
 import configparser
-import logging
 import os
 import random
 import sys
 
-from bsoid.config import LOCAL_CONFIG, GLOBAL_CONFIG
 from bsoid.util import logger_config
 
-randomly_generated_state_int: int = random.randint(1, 100_000)
 
-debug = 1
+debug = 1  # TODO: delete me after debugging and implementation is done.
 
-###
-# Load up a configuration logger to detect config problems. Otherwise, use the general logger
-
-
-# config_logger = logging.Logger()
-
-
-########################################################################################################################
 
 # Fetch the B-SOiD project directory regardless of clone location
 BSOID_BASE_PROJECT_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if debug:
-    print(BSOID_BASE_PROJECT_PATH)
-
+if debug: print('BSOID_BASE_PROJECT_PATH:::', BSOID_BASE_PROJECT_PATH)
+default_log_folder_path = Path(BSOID_BASE_PROJECT_PATH, 'logs').absolute()  ##os.path.join(BSOID_BASE_PROJECT_PATH, 'logs')
+if debug: print('default_log_folder_path:::', default_log_folder_path)
+default_log_file_name = 'default.log'
+config_file_name = 'config.ini'
 # Load up config file
 configuration = configparser.ConfigParser()
-configuration.read(os.path.join(BSOID_BASE_PROJECT_PATH, 'config.ini'))
+configuration.read(os.path.join(BSOID_BASE_PROJECT_PATH, config_file_name))
 
+# Load up a configuration logger to detect config problems. Otherwise, use the general logger  # TODO
+# config_logger = logging.Logger()
+
+# Instantiate runtime variables
+random_state: int = configuration.getint('MODEL', 'RANDOM_STATE', fallback=random.randint(1, 100_000))
+holdout_percent: float = configuration.getfloat('MODEL', 'HOLDOUT_TEST_PCT')
+kfold_crossvalidation: int = configuration.getint('MODEL', 'CROSS_VALIDATION_K')  # Number of iterations for cross-validation to show it's not over-fitting.
+fps_video: int = configuration.getint('APP', 'VIDEO_FRAME_RATE')  # ['APP']['VIDEO_FRAME_RATE']
+COMPILE_CSVS_FOR_TRAINING: int = configuration.getint('APP', 'COMPILE_CSVS_FOR_TRAINING')
+
+
+########################################################################################################################
 
 # Specify where the OST project lives. Modify on your local machine as necessary.
 OST_BASE_PROJECT_PATH = configuration['PATH']['OST_BASE_PROJECT_PATH']  # 'previously: /home/aaron/Documents/OST-with-DLC'
-# OST_BASE_PROJECT_PATH = os.path.join('C:', 'Users', 'killian', 'projects', 'OST-with-DLC')
+# OST_BASE_PROJECT_PATH = os.path.join('C:\\', 'Users', 'killian', 'projects', 'OST-with-DLC')
 
 
-if debug: print(configuration['LOGGING']['DEFAULT_LOG_FILE'])
-if debug: print('OST PATH:', configuration.get('PATH', 'OSTPATH', fallback=None))
+########################################################################################################################
+
+if debug: print("configuration.get('LOGGING', 'LOG_FILE_NAME'):::", configuration.get('LOGGING', 'LOG_FILE_NAME'))
+if debug: print('OST PATH:::', configuration.get('PATH', 'OSTPATH', fallback=None))
+
+# Resolve logger variables
+config_file_log_folder_path = os.path.abspath(configuration.get('LOGGING', 'LOG_FILE_FOLDER_PATH', fallback=default_log_folder_path))
+if debug: print('config_file_log_folder_path:::', config_file_log_folder_path)
+
+config_file_name = configuration.get('LOGGING', 'LOG_FILE_NAME', fallback=default_log_file_name)
+if debug: print('config_file_name:::', config_file_name)
+
+log_file_file_path = str(Path(config_file_log_folder_path, config_file_name).absolute())
+if debug: print('log_file_file_path AKA os.path.join(config_file_log_folder_path, config_file_name):::', log_file_file_path)
+
+assert os.path.isdir(config_file_log_folder_path), f'Path does not exist: {config_file_log_folder_path}'
 
 # Instantiate logger
 bsoid_logger = logger_config.create_generic_logger(
-    logger_name=configuration['LOGGING']['LOG_FILE_NAME'],
-    log_format=configuration['LOGGING']['LOG_FORMAT'],
+    logger_name=configuration.get('LOGGING', 'LOG_FILE_NAME'),   # configuration['LOGGING']['LOG_FILE_NAME'],
+    log_format=configuration.get('LOGGING', 'LOG_FORMAT', raw=True),
     stdout_log_level=configuration.get('LOGGING', 'STREAM_LOG_LEVEL', fallback=None),
-
+    file_log_level=configuration.get('LOGGING', 'FILE_LOG_LEVEL', fallback=None),
+    file_log_file_path=log_file_file_path,
 )
 
 
-holdout_percent: float = configuration.getfloat('APP', 'HOLDOUT_TEST_PCT')
-kfold_crossvalidation: int = configuration.getint('APP', 'CROSS_VALIDATION_K')  # Number of iterations for cross-validation to show it's not over-fitting.
-fps_video: int = configuration.getint('APP', 'FRAME_RATE_VIDEO')  # ['APP']['FRAME_RATE_VIDEO']
-COMPILE_CSVS_FOR_TRAINING = int(configuration['APP']['COMPILE_CSVS_FOR_TRAINING'])
 
-########################################################################################################################
-# LEGACY VARIABLES
-
-HLDOUT: float = holdout_percent  # Test partition ratio to validate clustering separation.
-CV_IT: int = kfold_crossvalidation
-
-
-# Frame-rate of your video,note that you can use a different number for new data as long as the video is same scale/view
-FPS = int(configuration['APP']['FRAME_RATE_VIDEO'])  # TODO: med: deprecate
-
-# COMP = 1: Train one classifier for all CSV files; COMP = 0: Classifier/CSV file.
-COMP: int = COMPILE_CSVS_FOR_TRAINING  # TODO: med: deprecate
-
-# What number would be video be in terms of prediction order? (0=file 1/folder1, 1=file2/folder 1, etc.)
-ID = 0
-
-# IF YOU'D LIKE TO SKIP PLOTTING/CREATION OF VIDEOS, change below plot settings to False
-PLOT_TRAINING = True
-GEN_VIDEOS = True
 
 
 ########################################################################################################################
-
 
 # BASE_PATH = '/home/aaron/Documents/OST-with-DLC/GUI_projects/OST-DLC-projects/pwd-may11-2020-john-howland-2020-05-11'
 BASE_PATH = os.path.join('C:\\', 'Users', 'killian', 'projects', 'OST-with-DLC', 'pwd-may11-2020-john-howland-2020-05-11')
@@ -101,8 +96,7 @@ BASE_PATH = os.path.join('C:\\', 'Users', 'killian', 'projects', 'OST-with-DLC',
 # OUTPUT_PATH = os.path.join(OST_BASE_PROJECT_PATH, 'B-SOID', 'OUTPUT')  # '/home/aaron/Documents/OST-with-DLC/B-SOID/OUTPUT'
 OUTPUT_PATH = os.path.join('C:\\', 'Users', 'killian', 'Pictures')
 
-MODEL_NAME = 'c57bl6_n3_60min'  # Machine learning model name
-
+MODEL_NAME = configuration.get('APP', 'OUTPUT_MODEL_NAME')  # Machine learning model name
 
 # TODO: med: for TRAIN_FOLDERS & PREDICT_FOLDERS, change path resolution from inside functional module to inside this config file
 # Data folders used to training neural network.
@@ -161,12 +155,12 @@ BODYPARTS = {
 UMAP_PARAMS = {
     'n_components': configuration.getint('UMAP', 'n_components'),
     'min_dist': configuration.getfloat('UMAP', 'min_dist'),
-    'random_state': configuration.getint('MODEL', 'RANDOM_STATE', fallback=randomly_generated_state_int),
+    'random_state': configuration.getint('MODEL', 'RANDOM_STATE', fallback=random_state),
 }
 
 # HDBSCAN params, density based clustering
 HDBSCAN_PARAMS = {
-    'min_samples': configuration.getint('HDBSCAN', 'min_samples')  # small value
+    'min_samples': configuration.getint('HDBSCAN', 'min_samples'),  # small value
 }
 
 # Feedforward neural network (MLP) params
@@ -174,7 +168,7 @@ MLP_PARAMS = {
     'hidden_layer_sizes': literal_eval(configuration.get('MLP', 'hidden_layer_sizes')),
     'activation': configuration.get('MLP', 'activation'),
     'solver': configuration.get('MLP', 'solver'),
-    'learning_rate': configuration.getfloat('MLP', 'learning_rate'),
+    'learning_rate': configuration.get('MLP', 'learning_rate'),
     'learning_rate_init': configuration.getfloat('MLP', 'learning_rate_init'),
     'alpha': configuration.getfloat('MLP', 'alpha'),
     'max_iter': configuration.getint('MLP', 'max_iter'),
@@ -194,9 +188,9 @@ EMGMM_PARAMS = {
     'reg_covar': configuration.getfloat('EM/GMM', 'reg_covar'),
     'max_iter': configuration.getint('EM/GMM', 'max_iter'),
     'n_init': configuration.getint('EM/GMM', 'n_init'),
-    'init_params': configuration.get('EMM/GMM', 'init_params'),
+    'init_params': configuration.get('EM/GMM', 'init_params'),
     'verbose': configuration.getint('EM/GMM', 'verbose'),
-    'random_state': configuration.getint('MODEL', 'RANDOM_STATE', fallback=randomly_generated_state_int),
+    'random_state': configuration.getint('MODEL', 'RANDOM_STATE', fallback=random_state),
 }
 # Multi-class support vector machine classifier params
 SVM_PARAMS = {
@@ -204,13 +198,12 @@ SVM_PARAMS = {
     'gamma': configuration.getfloat('SVM', 'gamma'),
     'probability': configuration.getboolean('SVM', 'probability'),
     'verbose': configuration.getint('SVM', 'verbose'),
-    'random_state': configuration.getint('APP', 'RANDOM_STATE', fallback=randomly_generated_state_int),
+    'random_state': configuration.getint('APP', 'RANDOM_STATE', fallback=random_state),
 }
 
 
 ########################################################################################################################
 # # # BSDOI UMAP # # #
-
 # IF YOU'D LIKE TO SKIP PLOTS/VIDEOS, change below PLOT/VID settings to False
 PLOT_GRAPHS: bool = True  # New variable name for `PLOT`
 PLOT = PLOT_GRAPHS  # `PLOT` is likely to be deprecated in the future
@@ -226,9 +219,9 @@ VID = PRODUCE_VIDEO  # if this is true, make sure direct to the video below AND 
 # the missing perplexity is scaled with data size (1% of data for nearest neighbors)
 TSNE_PARAMS = {
     'n_components': configuration.getint('TSNE', 'n_components'),
-    'random_state': configuration.getint('APP', 'RANDOM_STATE'),
     'n_jobs': configuration.getint('TSNE', 'n_jobs'),
     'verbose': configuration.getint('TSNE', 'verbose'),
+    'random_state': configuration.getint('MODEL', 'RANDOM_STATE'),
 }
 
 
@@ -237,3 +230,22 @@ TSNE_PARAMS = {
 # TODO: HIGH: after all config parsing done, write checks that will run ON IMPORT to ensure folders exist :)
 
 
+
+########################################################################################################################
+# LEGACY VARIABLES
+
+HLDOUT: float = holdout_percent  # Test partition ratio to validate clustering separation.
+CV_IT: int = kfold_crossvalidation
+
+# Frame-rate of your video,note that you can use a different number for new data as long as the video is same scale/view
+FPS = configuration.getint('APP', 'VIDEO_FRAME_RATE')  # int(configuration['APP']['VIDEO_FRAME_RATE'])  # TODO: med: deprecate
+
+# COMP = 1: Train one classifier for all CSV files; COMP = 0: Classifier/CSV file.
+COMP: int = COMPILE_CSVS_FOR_TRAINING  # TODO: med: deprecate
+
+# What number would be video be in terms of prediction order? (0=file 1/folder1, 1=file2/folder 1, etc.)
+ID = 0
+
+# IF YOU'D LIKE TO SKIP PLOTTING/CREATION OF VIDEOS, change below plot settings to False
+PLOT_TRAINING = True
+GEN_VIDEOS = True
