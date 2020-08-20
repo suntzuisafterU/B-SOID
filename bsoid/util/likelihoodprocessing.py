@@ -12,7 +12,8 @@ import pandas as pd
 import re
 import warnings
 
-from bsoid.config.LOCAL_CONFIG import BASE_PATH, TRAIN_FOLDERS
+from bsoid import config
+# from analyses.config import BASE_PATH, TRAIN_FOLDERS
 
 
 def boxcar_center(a, n):
@@ -65,19 +66,19 @@ def get_filenames(folder):
     return replacement_func(folder)
 
 
-def get_filenames_csvs_from_folders_recursively_in_basepath(folder):
+def get_filenames_csvs_from_folders_recursively_in_basepath(folder: str):
     """
     Get_filenames() makes the assumption that the folder is in BASEPATH; however, it is an obfuscated assumption
     and bad. A new function that DOES NOT RESOLVE PATH IMPLICITLY WITHIN should be created and used.
     :param folder:
     :return:
     """
-    path_to_check_for_csvs = BASE_PATH + folder + '**/*.csv'
+    path_to_check_for_csvs = config.BASE_PATH + folder + '**/*.csv'
     logging.info(f'Path that is being checked with "glob": {path_to_check_for_csvs}')
     filenames = glob.glob(path_to_check_for_csvs, recursive=True)
     sort_nicely(filenames)
     logging.info(f'files found: {filenames}')
-    return get_filenames(folder)
+    return filenames
 
 
 def import_folders(folders: list) -> Tuple[List, np.ndarray, List]:
@@ -90,7 +91,7 @@ def import_folders(folders: list) -> Tuple[List, np.ndarray, List]:
     """
     file_names_list, raw_data_list, data_list, perc_rect_li = [], [], [], []
     for idx_folder, folder in enumerate(folders):  # Loop through folders
-        f = get_filenames(folder)
+        f = get_filenames_csvs_from_folders_recursively_in_basepath(folder)
         for idx_filename, filename in enumerate(f):
             logging.info(f'Importing CSV file {idx_filename+1} from folder {idx_folder+1}')
             curr_df = pd.read_csv(filename, low_memory=False)
@@ -114,6 +115,7 @@ def adp_filt(currdf: object):  # TODO: low: rename function for clarity
     :return perc_rect: 1D array, percent filtered per BODYPART
     """
     l_index, x_index, y_index = [], [], []
+    perc_rect = []
     currdf = np.array(currdf[1:])
     for header_idx in range(len(currdf[0])):
         if currdf[0][header_idx] == "likelihood":
@@ -129,7 +131,7 @@ def adp_filt(currdf: object):  # TODO: low: rename function for clarity
     data_y = curr_df1[:, np.array(y_index) - 1]
     data_lh = curr_df1[:, np.array(l_index) - 1]
     currdf_filt: np.ndarray = np.zeros((data_x.shape[0] - 1, (data_x.shape[1]) * 2))
-    perc_rect = []
+
     logging.info('Computing data threshold to forward fill any sub-threshold (x,y)...')
     for _ in range(data_lh.shape[1]):  # TODO: low: simplify `perc_rect` initialization as list of zeroes
         perc_rect.append(0)
@@ -167,4 +169,4 @@ def main(folders: List[str]):
 
 if __name__ == '__main__':
     # TODO: should this module even have a main if it's just a helper module?
-    import_folders(TRAIN_FOLDERS)
+    import_folders(config.TRAIN_FOLDERS)

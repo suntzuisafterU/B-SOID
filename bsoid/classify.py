@@ -22,6 +22,7 @@ Extracts features based on (x,y) positions
 :return f_10fps: 2D array, extracted features
 """
 
+
 def bsoid_extract_app(data, fps) -> List:
     win_len = np.int(np.round(0.05 / (1 / fps)) * 2 - 1)
     features = []
