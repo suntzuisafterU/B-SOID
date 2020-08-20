@@ -93,10 +93,11 @@ def bsoid_tsne(data: list, bodyparts=BODYPARTS, fps=FPS, comp=COMP):
         feats.append(np.vstack((sn_cfp_norm_smth[1:], sn_chp_norm_smth[1:], fpd_norm_smth[1:],
                                 sn_pt_norm_smth[1:], sn_pt_ang_smth[:], sn_disp_smth[:], pt_disp_smth[:])))
     logging.info(f'Done extracting features from a total of {len(data)} training CSV files.')
+
     if comp == 0:
         f_10fps = []
         f_10fps_sc = []
-        trained_tsne = []
+        trained_tsne_list = []
     for n in range(0, len(feats)):  # TODO: low: refactor range
         feats1 = np.zeros(len(data[n]))
         for k in range(round(fps / 10) - 1, len(feats[n][0]), round(fps / 10)):
@@ -124,7 +125,7 @@ def bsoid_tsne(data: list, bodyparts=BODYPARTS, fps=FPS, comp=COMP):
                          f'{f_10fps_sc[n].shape[0]} D into 3 D from CSV file {n + 1}...')
             trained_tsne_i = tsne(f_10fps_sc[n].T, dimensions=3, perplexity=np.sqrt(f_10fps_sc[n].shape[1]),
                                   theta=0.5, rand_seed=23)
-            trained_tsne.append(trained_tsne_i)
+            trained_tsne_list.append(trained_tsne_i)
             logging.info('Done embedding into 3 D.')
     if comp == 1:
         scaler = StandardScaler()
@@ -132,10 +133,10 @@ def bsoid_tsne(data: list, bodyparts=BODYPARTS, fps=FPS, comp=COMP):
         f_10fps_sc = scaler.transform(f_10fps.T).T
         logging.info(f'Training t-SNE to embed {f_10fps_sc.shape[1]} instances from {f_10fps_sc.shape[0]} D '
                      'into 3 D from a total of {len(data)} CSV files...')
-        trained_tsne = tsne(f_10fps_sc.T, dimensions=3, perplexity=np.sqrt(f_10fps_sc.shape[1]),
+        trained_tsne_list = tsne(f_10fps_sc.T, dimensions=3, perplexity=np.sqrt(f_10fps_sc.shape[1]),
                             theta=0.5, rand_seed=23)  # TODO: low: move "rand_seed" to a config file instead of hiding here as magic variable
         logging.info('Done embedding into 3 D.')
-    return f_10fps, f_10fps_sc, trained_tsne, scaler
+    return f_10fps, f_10fps_sc, trained_tsne_list, scaler
 
 
 def bsoid_gmm(trained_tsne, comp=COMP, emgmm_params=EMGMM_PARAMS) -> np.ndarray:

@@ -7,11 +7,11 @@ with open('README.md', 'r') as readme_file:
     long_description = readme_file.read()
 
 setuptools.setup(
-    name='YourModuleNameGoesHere',  # TODO: HIGH: change module name
+    name='bsoid', # This is likely the name that will be called on `pip install _`, so make it count # TODO: HIGH: change module name
     version='0.0.1',  # TODO: HIGH: change initial version as necessary
     url='https://github.com/username/repo',  # TODO: HIGH
-    author='',  # TODO: HIGH
-    author_email='',  # TODO: HIGH
+    author='Example Author',  # TODO: HIGH
+    author_email='example@example.com',  # TODO: HIGH
     description='description goes here',  # TODO: HIGH
     long_description=long_description,
     long_description_content_type='text/markdown',

@@ -14,9 +14,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sn
 
-from bsoid.config.LOCAL_CONFIG import BASE_PATH, OUTPUT_PATH
-from bsoid.config.GLOBAL_CONFIG import HLDOUT, SVM_PARAMS
-
+from bsoid import config
+# from analyses.config import OUTPUT_PATH
+# from analyses.config import HLDOUT
 
 matplotlib_axes_logger.setLevel('ERROR')
 timestr = time.strftime("%Y%m%d_%H%M")  # TODO: low: move this to config file
@@ -61,7 +61,7 @@ def plot_durhist(lengths, grp, save_fig_to_file: bool = True, fig_file_prefix='d
     plt.legend(loc='Upper right')
     plt.show()
     if save_fig_to_file:
-        fig.savefig(os.path.join(OUTPUT_PATH, f'{fig_file_prefix}_{timestr}.svg'))
+        fig.savefig(os.path.join(config.OUTPUT_PATH, f'{fig_file_prefix}_{timestr}.svg'))
     return fig
 #######################################################################################################################
 def plot_tmat(transition_matrix: np.ndarray, fps: int,
@@ -81,7 +81,7 @@ def plot_tmat(transition_matrix: np.ndarray, fps: int,
     plt.ylabel("Current frame behavior")
     plt.show()
     if save_fig_to_file:
-        fig.savefig(os.path.join(OUTPUT_PATH, f'{fig_file_prefix}{fps}.svg'))
+        fig.savefig(os.path.join(config.OUTPUT_PATH, f'{fig_file_prefix}{fps}.svg'))
     return fig
 def plot_transition_matrix(transition_matrix, fps, save_fig_to_file, fig_file_prefix):
     """New interface for original function named plot_tmat(), however plot_tmat has been kept, for now,
@@ -111,7 +111,7 @@ def plot_classes_EMGMM_assignments(data, assignments, save_fig_to_file: bool, fi
     plt.show()
     # my_file = 'train_assignments'
     if save_fig_to_file:
-        fig.savefig(os.path.join(OUTPUT_PATH, f'{fig_file_prefix}_{timestr}.svg'))
+        fig.savefig(os.path.join(config.OUTPUT_PATH, f'{fig_file_prefix}_{timestr}.svg'))
 # def plot_classes_app(data, assignments):
 #     """ Plot umap_embeddings for HDBSCAN assignments
 #     :param data: 2D array, umap_embeddings
@@ -204,7 +204,7 @@ def plot_accuracy_MLP(scores, show_plot: bool, save_fig_to_file: bool, fig_file_
         `save_fig_to_file` is False.
     """
     fig = plt.figure(facecolor='w', edgecolor='k')
-    fig.suptitle(f"Performance on {HLDOUT * 100} % data")
+    fig.suptitle(f"Performance on {config.HLDOUT * 100} % data")
     ax = fig.add_subplot(111)
     ax.boxplot(scores, notch=None)
     x = np.random.normal(1, 0.04, size=len(scores))
@@ -214,7 +214,7 @@ def plot_accuracy_MLP(scores, show_plot: bool, save_fig_to_file: bool, fig_file_
     if show_plot:
         plt.show()
     if save_fig_to_file:
-        fig.savefig(os.path.join(OUTPUT_PATH, f'{fig_file_prefix}_{timestr}.svg'))
+        fig.savefig(os.path.join(config.OUTPUT_PATH, f'{fig_file_prefix}_{timestr}.svg'))
     return fig, plt
 def plot_accuracy_bsoidvoc(scores) -> None:  # (MLP)
     # fig = plt.figure(facecolor='w', edgecolor='k')
@@ -280,7 +280,7 @@ def plot_accuracy_SVM(scores, save_fig_to_file=True, fig_file_prefix='clf_scores
     :return: None
     """
     fig = plt.figure(facecolor='w', edgecolor='k')
-    fig.suptitle(f"Performance on {HLDOUT * 100} % data")
+    fig.suptitle(f"Performance on {config.HLDOUT * 100} % data")
     ax = fig.add_subplot(111)
     ax.boxplot(scores, notch=None)
     x = np.random.normal(1, 0.04, size=len(scores))
@@ -289,7 +289,7 @@ def plot_accuracy_SVM(scores, save_fig_to_file=True, fig_file_prefix='clf_scores
     ax.set_ylabel('Accuracy')
     plt.show()
     if save_fig_to_file:
-        fig.savefig(os.path.join(OUTPUT_PATH, f'{fig_file_prefix}_{timestr}.svg'))
+        fig.savefig(os.path.join(config.OUTPUT_PATH, f'{fig_file_prefix}_{timestr}.svg'))
 
 #######################################################################################################################
 #######################################################################################################################
@@ -334,7 +334,7 @@ def plot_feats_bsoidUMAPAPP(feats: list, labels: list) -> None:
                         if i < len(np.unique(labels_k)) - 1:
                             plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
                 my_file = f'sess{k + 1}_feat{j + 1}_hist'
-                fig.savefig(os.path.join(OUTPUT_PATH, my_file+'_'+timestr+'.svg'))
+                fig.savefig(os.path.join(config.OUTPUT_PATH, my_file+'_'+timestr+'.svg'))
             plt.show()
     else:
         R = np.linspace(0, 1, len(np.unique(labels)))
@@ -368,7 +368,7 @@ def plot_feats_bsoidUMAPAPP(feats: list, labels: list) -> None:
                     if i < len(np.unique(labels)) - 1:
                         plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
             my_file = f'feat{j + 1}_hist'
-            fig.savefig(os.path.join(OUTPUT_PATH, str.join('', (my_file, '_'+timestr, '.svg'))))
+            fig.savefig(os.path.join(config.OUTPUT_PATH, str.join('', (my_file, '_'+timestr, '.svg'))))
         plt.show()
 def plot_feats_bsoidpy(feats, labels) -> None:
     """
@@ -417,7 +417,7 @@ def plot_feats_bsoidpy(feats, labels) -> None:
                         if i < len(np.unique(labels_k)) - 1:
                             plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
                 my_file = f'sess{k+1}_feat{j+1}_hist'
-                fig.savefig(os.path.join(OUTPUT_PATH, my_file+'_'+timestr+'.svg'))
+                fig.savefig(os.path.join(config.OUTPUT_PATH, my_file+'_'+timestr+'.svg'))
             plt.show()
     else:
         R = np.linspace(0, 1, len(np.unique(labels)))
@@ -448,7 +448,7 @@ def plot_feats_bsoidpy(feats, labels) -> None:
                     if i < len(np.unique(labels)) - 1:
                         plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
             my_file = f'feat{j + 1}_hist'
-            fig.savefig(os.path.join(OUTPUT_PATH, f'{my_file}_{timestr}.svg'))
+            fig.savefig(os.path.join(config.OUTPUT_PATH, f'{my_file}_{timestr}.svg'))
         plt.show()
 def plot_feats_bsoidvoc(feats: list, labels: list) -> None:
     """
@@ -491,7 +491,7 @@ def plot_feats_bsoidvoc(feats: list, labels: list) -> None:
                         if i < len(np.unique(labels_k)) - 1:
                             plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
                 my_file = f'sess{k + 1}_feat{j + 1}_hist'
-                fig.savefig(os.path.join(OUTPUT_PATH, str.join('', (my_file, '_'+timestr, '.svg'))))
+                fig.savefig(os.path.join(config.OUTPUT_PATH, str.join('', (my_file, '_'+timestr, '.svg'))))
             plt.show()
     else:
         R = np.linspace(0, 1, len(np.unique(labels)))
@@ -525,7 +525,7 @@ def plot_feats_bsoidvoc(feats: list, labels: list) -> None:
                     if i < len(np.unique(labels)) - 1:
                         plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
             my_file = f'feat{j + 1}_hist'
-            fig.savefig(os.path.join(OUTPUT_PATH, str.join('', (my_file, '_'+timestr, '.svg'))))
+            fig.savefig(os.path.join(config.OUTPUT_PATH, str.join('', (my_file, '_'+timestr, '.svg'))))
         plt.show()
 #######################################################################################################################
 

@@ -13,7 +13,8 @@ import os
 import random
 import warnings
 
-from bsoid.config.LOCAL_CONFIG import BASE_PATH, FRAME_DIR, SHORTVID_DIR
+from bsoid import config
+# from analyses.config import BASE_PATH, FRAME_DIR, SHORTVID_DIR
 from bsoid.util.likelihoodprocessing import sort_nicely
 
 
@@ -49,14 +50,14 @@ def get_video_names(folder_name) -> List[str]:
     :return: (List[str]) video file names all of which have a .mp4 extension
     """
     # TODO: low: stretch goal: ensure this function works independent of OS
-    path_to_folder = os.path.join(BASE_PATH, folder_name)
+    path_to_folder = os.path.join(config.BASE_PATH, folder_name)
     # video_names = glob.glob(BASE_PATH + folder_name + '/*.mp4')
     video_names = glob.glob(f'{path_to_folder}/*.mp4')
     sort_nicely(video_names)
     return video_names
 
 
-def write_annotated_frames_to_disk_from_video(path_to_video: str, labels, fps: int, output_path: str = FRAME_DIR):
+def write_annotated_frames_to_disk_from_video(path_to_video: str, labels, fps: int, output_path: str = config.FRAME_DIR):
     """
     This function serves to supersede the old 'vid2frame()' function for future clarity.
 
@@ -103,7 +104,7 @@ def write_annotated_frames_to_disk_from_video(path_to_video: str, labels, fps: i
     return
 
 
-def vid2frame(path_to_video: str, labels, fps: int, output_path: str = FRAME_DIR):
+def vid2frame(path_to_video: str, labels, fps: int, output_path: str = config.FRAME_DIR):
     """ # # # DEPRECATION WARNING # # # """
     replacement_func = write_annotated_frames_to_disk_from_video
     warnings.warn(f'This function, vid2frame(), will be deprecated shortly. The replacement '
@@ -137,7 +138,7 @@ def import_vidfolders(folders: List[str], output_path: List[str]):
 ########################################################################################################################
 
 def create_labeled_vid(labels, crit=3, num_randomly_generated_examples=5,
-                       frame_dir=FRAME_DIR, output_path=SHORTVID_DIR):
+                       frame_dir=config.FRAME_DIR, output_path=config.SHORTVID_DIR):
     """
     (Generalized create_labeled_video() function that works between _py, _umap, and _voc submodules)
     TODO: low: purpose
@@ -255,7 +256,7 @@ def get_frames_from_video_then_create_labeled_video(path_to_video, labels, fps, 
     :return:
     """
     write_annotated_frames_to_disk_from_video(path_to_video, labels, fps, output_path)
-    create_labeled_vid(labels, crit=3, num_randomly_generated_examples=5, frame_dir=output_path, output_path=SHORTVID_DIR)
+    create_labeled_vid(labels, crit=3, num_randomly_generated_examples=5, frame_dir=output_path, output_path=config.SHORTVID_DIR)
 
 
 def main(path_to_video, labels, fps, output_path):  # To be deprecated

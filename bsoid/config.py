@@ -25,7 +25,7 @@ import sys
 from bsoid.util import logger_config
 
 
-debug = 2 # TODO: delete me after debugging and implementation is done.
+debug = 2  # TODO: delete me after debugging and implementation is done.
 
 
 # Fetch the B-SOiD project directory regardless of clone location
@@ -46,14 +46,14 @@ configuration.read(os.path.join(BSOID_BASE_PROJECT_PATH, config_file_name))
 random_state: int = configuration.getint('MODEL', 'RANDOM_STATE', fallback=random.randint(1, 100_000))
 holdout_percent: float = configuration.getfloat('MODEL', 'HOLDOUT_TEST_PCT')
 kfold_crossvalidation: int = configuration.getint('MODEL', 'CROSS_VALIDATION_K')  # Number of iterations for cross-validation to show it's not over-fitting.
-fps_video: int = configuration.getint('APP', 'VIDEO_FRAME_RATE')  # ['APP']['VIDEO_FRAME_RATE']
-COMPILE_CSVS_FOR_TRAINING: int = configuration.getint('APP', 'COMPILE_CSVS_FOR_TRAINING')
+video_fps: int = configuration.getint('APP', 'VIDEO_FRAME_RATE')  # ['APP']['VIDEO_FRAME_RATE']
+compile_CSVs_for_training: int = configuration.getint('APP', 'COMPILE_CSVS_FOR_TRAINING')
 
 
 ########################################################################################################################
 
 # Specify where the OST project lives. Modify on your local machine as necessary.
-OST_BASE_PROJECT_PATH = configuration['PATH']['OST_BASE_PROJECT_PATH']  # 'previously: /home/aaron/Documents/OST-with-DLC'
+OST_BASE_PROJECT_PATH = configuration.get('PATH', 'OST_BASE_PROJECT_PATH')  # configuration['PATH']['OST_BASE_PROJECT_PATH']  # 'previously: /home/aaron/Documents/OST-with-DLC'
 # OST_BASE_PROJECT_PATH = os.path.join('C:\\', 'Users', 'killian', 'projects', 'OST-with-DLC')
 
 
@@ -85,33 +85,25 @@ bsoid_logger = logger_config.create_generic_logger(
 )
 
 
-
-
-
-########################################################################################################################
-
-
-
 ##############################################################################################################
 ### BSOID VOC ###
 # TODO: HIGHaddress BODYPARTS variable also found in bsoid_voc. Does it do the same as _py? Naming collision.
 # # Order the points that are encircling the mouth.
-# BODYPARTS = {
-#     'Point1': 0,
-#     'Point2': 1,
-#     'Point3': 2,
-#     'Point4': 3,
-#     'Point5': 4,
-#     'Point6': 5,
-#     'Point7': 6,
-#     'Point8': 7,
-# }
+BODYPARTS_VOC_LEGACY = {
+    'Point1': 0,
+    'Point2': 1,
+    'Point3': 2,
+    'Point4': 3,
+    'Point5': 4,
+    'Point6': 5,
+    'Point7': 6,
+    'Point8': 7,
+}
 
 
-#################
-#BSOIDAPP
+########################
+### MODEL PARAMETERS ###
 
-# BSOID UMAP params, nonlinear transform
 UMAP_PARAMS = {
     'n_components': configuration.getint('UMAP', 'n_components'),
     'min_dist': configuration.getfloat('UMAP', 'min_dist'),
@@ -121,6 +113,19 @@ UMAP_PARAMS = {
 # HDBSCAN params, density based clustering
 HDBSCAN_PARAMS = {
     'min_samples': configuration.getint('HDBSCAN', 'min_samples'),  # small value
+}
+
+# EM_GMM parameters
+EMGMM_PARAMS = {
+    'n_components': configuration.getint('EM/GMM', 'n_components'),
+    'covariance_type': configuration.get('EM/GMM', 'covariance_type'),
+    'tol': configuration.getfloat('EM/GMM', 'tol'),
+    'reg_covar': configuration.getfloat('EM/GMM', 'reg_covar'),
+    'max_iter': configuration.getint('EM/GMM', 'max_iter'),
+    'n_init': configuration.getint('EM/GMM', 'n_init'),
+    'init_params': configuration.get('EM/GMM', 'init_params'),
+    'verbose': configuration.getint('EM/GMM', 'verbose'),
+    'random_state': configuration.getint('MODEL', 'RANDOM_STATE', fallback=random_state),
 }
 
 # Feedforward neural network (MLP) params
@@ -136,22 +141,6 @@ MLP_PARAMS = {
     'verbose': configuration.getint('MLP', 'verbose'),
 }
 
-
-########################################################################################################################
-####### BSOIDPY
-
-# EM_GMM parameters
-EMGMM_PARAMS = {
-    'n_components': configuration.getint('EM/GMM', 'n_components'),
-    'covariance_type': configuration.get('EM/GMM', 'covariance_type'),
-    'tol': configuration.getfloat('EM/GMM', 'tol'),
-    'reg_covar': configuration.getfloat('EM/GMM', 'reg_covar'),
-    'max_iter': configuration.getint('EM/GMM', 'max_iter'),
-    'n_init': configuration.getint('EM/GMM', 'n_init'),
-    'init_params': configuration.get('EM/GMM', 'init_params'),
-    'verbose': configuration.getint('EM/GMM', 'verbose'),
-    'random_state': configuration.getint('MODEL', 'RANDOM_STATE', fallback=random_state),
-}
 # Multi-class support vector machine classifier params
 SVM_PARAMS = {
     'C': configuration.getfloat('SVM', 'C'),
@@ -197,7 +186,7 @@ CV_IT: int = kfold_crossvalidation
 FPS = configuration.getint('APP', 'VIDEO_FRAME_RATE')  # int(configuration['APP']['VIDEO_FRAME_RATE'])  # TODO: med: deprecate
 
 # COMP = 1: Train one classifier for all CSV files; COMP = 0: Classifier/CSV file.
-COMP: int = COMPILE_CSVS_FOR_TRAINING  # TODO: med: deprecate
+COMP: int = compile_CSVs_for_training  # TODO: med: deprecate
 
 # What number would be video be in terms of prediction order? (0=file 1/folder1, 1=file2/folder 1, etc.)
 ID = 0
@@ -239,7 +228,7 @@ VID_NAME = os.path.join(OST_BASE_PROJECT_PATH, 'GUI_projects', 'labelled_videos'
 
 
 # This version requires the six body parts Snout/Head, Forepaws/Shoulders, Hindpaws/Hips, Tailbase.
-BODYPARTS = {
+BODYPARTS_PY_LEGACY = {
     'Snout/Head': 0,
     'Neck': None,
     'Forepaw/Shoulder1': 1,

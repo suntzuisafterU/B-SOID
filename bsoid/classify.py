@@ -11,18 +11,17 @@ import math
 import numpy as np
 
 # # # B-SOiD imports # # #
-from bsoid.util import likelihoodprocessing, statistics, videoprocessing, visuals
-
-from bsoid.config.LOCAL_CONFIG import BASE_PATH, BODYPARTS, COMP, FPS, FRAME_DIR, ID, GEN_VIDEOS, MODEL_NAME, OUTPUT_PATH, PLOT_TRAINING, VID, VID_NAME
-from bsoid.config.GLOBAL_CONFIG import SVM_PARAMS
+from bsoid import config
+from bsoid.util import likelihoodprocessing, videoprocessing, visuals
 
 
-"""
+""" bsoid_extract_ _
 Extracts features based on (x,y) positions
 :param data: list, csv data
 :param fps: scalar, input for camera frame-rate
 :return f_10fps: 2D array, extracted features
 """
+
 def bsoid_extract_app(data, fps) -> List:
     win_len = np.int(np.round(0.05 / (1 / fps)) * 2 - 1)
     features = []
@@ -66,6 +65,7 @@ def bsoid_extract_app(data, fps) -> List:
         ang_smth = np.array(ang_smth)
         features.append(np.vstack((dxy_smth[:, 1:], ang_smth, dis_smth)))
     logging.info(f'Done extracting features from a total of {len(data)} training CSV files.')
+
     f_10fps = []
     for n in range(len(features)):
         feats1 = np.zeros(len(data[n]))
@@ -83,10 +83,10 @@ def bsoid_extract_app(data, fps) -> List:
                                                     axis=1),
                                             np.sum((features[n][dxy_smth.shape[0]:features[n].shape[0],
                                                     range(k - round(fps / 10), k)]), axis=1))).reshape(len(features[0]), 1)
-            logging.info('Done integrating features into 100ms bins from CSV file {n + 1}.')
+            logging.info(f'Done integrating features into 100ms bins from CSV file {n + 1}.')
             f_10fps.append(feats1)
     return f_10fps
-def bsoid_extract_umap(data, fps=FPS) -> List:
+def bsoid_extract_umap(data, fps=config.video_fps) -> List:
     win_len = np.int(np.round(0.05 / (1 / fps)) * 2 - 1)
     features = []
     for m in range(len(data)):
@@ -129,6 +129,7 @@ def bsoid_extract_umap(data, fps=FPS) -> List:
         ang_smth = np.array(ang_smth)
         features.append(np.vstack((dxy_smth[:, 1:], ang_smth, dis_smth)))
     logging.info(f'Done extracting features from a total of {len(data)} training CSV files.')
+
     f_10fps = []
     for n in range(len(features)):
         feats1 = np.zeros(len(data[n]))
@@ -145,10 +146,10 @@ def bsoid_extract_umap(data, fps=FPS) -> List:
                                             axis=1),
                                     np.sum((features[n][dxy_smth.shape[0]:features[n].shape[0],
                                             range(k - round(fps / 10), k)]), axis=1))).reshape(len(features[0]), 1)
-        logging.info(f'Done integrating features into 100ms bins from CSV file {n + 1}.')
+        logging.info(f'Done integrating features into 100ms bins from CSV file {n+1}.')
         f_10fps.append(feats1)
     return f_10fps
-def bsoid_extract_py(data, bodyparts: dict = BODYPARTS, fps: int = FPS) -> List:
+def bsoid_extract_py(data, bodyparts: dict = config.BODYPARTS_PY_LEGACY, fps: int = config.video_fps) -> List:
     win_len = np.int(np.round(0.05 / (1 / fps)) * 2 - 1)
     features = []
     for m in range(len(data)):
@@ -221,7 +222,7 @@ def bsoid_extract_py(data, bodyparts: dict = BODYPARTS, fps: int = FPS) -> List:
         logging.info(f'Done integrating features into 100ms bins from CSV file {n + 1}.')
         f_10fps.append(feats1)
     return f_10fps
-def bsoid_extract_voc(data, bodyparts: dict = BODYPARTS, fps: int = FPS) -> List:
+def bsoid_extract_voc(data, bodyparts: dict = config.BODYPARTS_VOC_LEGACY, fps: int = config.video_fps) -> List:
     win_len = np.int(np.round(0.05 / (1 / fps)) * 2 - 1)
     features = []
     for m in range(len(data)):
@@ -311,7 +312,7 @@ def bsoid_predict_py(features, scaler, clf_SVM) -> list:
     labels_fslow = []
     for i in range(len(features)):
         logging.info(f'Predicting file {i + 1} with {features[i].shape[1]} instances using '
-                     f'learned classifier: bsoid_{MODEL_NAME}...')
+                     f'learned classifier: bsoid_{config.MODEL_NAME}...')
         feats_sc = scaler.transform(features[i].T).T
         labels = clf_SVM.predict(feats_sc.T)
         logging.info(f'Done predicting file {i + 1} with {features[i].shape[1]} instances '
@@ -328,7 +329,7 @@ def bsoid_predict_umapvoc(features, clf_MLP) -> list:
     labels_fslow = []
     for i in range(len(features)):
         logging.info(f'Predicting file {i+1} with {features[i].shape[1]} instances '
-                     f'using learned classifier: bsoid_{MODEL_NAME}...')
+                     f'using learned classifier: bsoid_{config.MODEL_NAME}...')
         labels = clf_MLP.predict(features[i].T)
         logging.info(f'Done predicting file {i+1} with {features[i].shape[1]} instances '
                      f'in {features[i].shape[0]} D space.')
@@ -337,20 +338,20 @@ def bsoid_predict_umapvoc(features, clf_MLP) -> list:
     return labels_fslow
 
 
-def bsoid_frameshift_app(data_new, fps: int, clf_MLP):
+def bsoid_frameshift_app(data_new, video_fps: int, clf_MLP):
     """
     Frame-shift paradigm to output behavior/frame
     :param data_new: list, new data from predict_folders
-    :param fps: scalar, argument specifying camera frame-rate
+    :param video_fps: scalar, argument specifying camera frame-rate
     :param clf_MLP: Obj, MLP classifier
     :return fs_labels, 1D array, label/frame
     """
     labels_fs, labels_fshigh = [], []
     for i in range(len(data_new)):
         data_offset = []
-        for j in range(math.floor(fps / 10)):
+        for j in range(math.floor(video_fps / 10)):
             data_offset.append(data_new[i][j:, :])
-        feats_new = bsoid_extract_app(data_offset)
+        feats_new = bsoid_extract_app(data_offset, video_fps)
         labels = bsoid_predict_app(feats_new, clf_MLP)
         for m in range(len(labels)):
             labels[m] = labels[m][::-1]
@@ -363,7 +364,7 @@ def bsoid_frameshift_app(data_new, fps: int, clf_MLP):
         labels_fs.append(labels_pad.astype(int))
     for k in range(len(labels_fs)):
         labels_fs2 = []
-        for l in range(math.floor(fps / 10)):
+        for l in range(math.floor(video_fps / 10)):
             labels_fs2.append(labels_fs[k][l])
         labels_fshigh.append(np.array(labels_fs2).flatten('F'))
     logging.info(f'Done frameshift-predicting a total of {len(data_new)} files.')
@@ -482,7 +483,7 @@ def main_py(predict_folders: List[str], scaler, fps, behv_model) -> Tuple[Any, A
     if PLOT_TRAINING:
         visuals.plot_feats_bsoidpy(features_new, labels_fslow)
     if GEN_VIDEOS:
-        videoprocessing.main(VID_NAME, labels_fslow[ID], FPS, FRAME_DIR)
+        videoprocessing.main(VID_NAME, labels_fslow[ID], fps, FRAME_DIR)
     return data_new, features_new, labels_fslow, labels_fshigh
 def main_umap(predict_folders: List[str], fps, clf) -> Tuple[Any, Any]:
     """
@@ -495,7 +496,7 @@ def main_umap(predict_folders: List[str], fps, clf) -> Tuple[Any, Any]:
     filenames, data_new, perc_rect = likelihoodprocessing.import_folders(predict_folders)
     fs_labels = bsoid_frameshift_umap(data_new, fps, clf)
     if VID:
-        videoprocessing.main(VID_NAME, fs_labels[ID][0:-1:int(round(FPS / 10))], FPS, FRAME_DIR)
+        videoprocessing.main(VID_NAME, fs_labels[ID][0:-1:int(round(fps / 10))], fps, FRAME_DIR)
     return data_new, fs_labels
 def main_voc(predict_folders: List[str], fps, behv_model) -> Tuple[Any, Any, Any, Any]:
     """
@@ -514,5 +515,5 @@ def main_voc(predict_folders: List[str], fps, behv_model) -> Tuple[Any, Any, Any
     if PLOT_TRAINING:
         visuals.plot_feats_bsoidvoc(features_new, labels_fslow)
     if GEN_VIDEOS:
-        videoprocessing.main(VID_NAME, labels_fslow[ID], FPS, FRAME_DIR)
+        videoprocessing.main(VID_NAME, labels_fslow[ID], fps, FRAME_DIR)
     return data_new, features_new, labels_fslow, labels_fshigh

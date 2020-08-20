@@ -26,8 +26,8 @@ import time
 import umap
 
 from bsoid import classify
-from bsoid.config.LOCAL_CONFIG import BASE_PATH, MODEL_NAME, OUTPUT_PATH, TRAIN_FOLDERS
-from bsoid.config.GLOBAL_CONFIG import CV_IT, HDBSCAN_PARAMS, HLDOUT, MLP_PARAMS, UMAP_PARAMS
+from bsoid.config import BASE_PATH, MODEL_NAME, OUTPUT_PATH
+from bsoid.config import CV_IT, HDBSCAN_PARAMS, HLDOUT, MLP_PARAMS, UMAP_PARAMS
 from bsoid.util import likelihoodprocessing, statistics, videoprocessing, visuals
 
 ########################################################################################################################

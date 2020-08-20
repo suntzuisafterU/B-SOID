@@ -9,30 +9,26 @@ import logging
 import numpy as np
 import os
 import pandas as pd
-import sys
 import time
 
-# sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-# from bsoid_py.config import *
-from bsoid.config.LOCAL_CONFIG import BODYPARTS, COMP, FRAME_DIR, FPS, FRAME_DIR, GEN_VIDEOS, MODEL_NAME, \
-    OUTPUT_PATH, PLOT_TRAINING, TRAIN_FOLDERS, PREDICT_FOLDERS, VID_NAME
-from bsoid.config.GLOBAL_CONFIG import CV_IT, EMGMM_PARAMS, HLDOUT, SVM_PARAMS
+from bsoid.config import FPS, MODEL_NAME, OUTPUT_PATH, TRAIN_FOLDERS, PREDICT_FOLDERS
+# from bsoid.config.GLOBAL_CONFIG import CV_IT, EMGMM_PARAMS, HLDOUT, SVM_PARAMS
 import bsoid
+# import bsoid_py.train
 
 
 def build(train_folders):
     """
-    :param train_folders: list, folders to build behavioral model on
-    :returns f_10fps, trained_tsne, gmm_assignments, classifier, scores: see bsoid_py.train
-    Automatically saves single CSV file containing training outputs (in 10Hz, 100ms per row):
+        Automatically saves single CSV file containing training outputs (in 10Hz, 100ms per row):
     1. original features (number of training data points by 7 dimensions, columns 1-7)
     2. embedded features (number of training data points by 3 dimensions, columns 8-10)
     3. em-gmm assignments (number of training data points by 1, columns 11)
     Automatically saves classifier in OUTPUTPATH with MODELNAME in LOCAL_CONFIG
+    :param train_folders: list, folders to build behavioral model on
+    :returns f_10fps, trained_tsne, gmm_assignments, classifier, scores: see bsoid_py.train
     """
-    import bsoid_py.train
-    f_10fps, trained_tsne, scaler, gmm_assignments, classifier, scores = bsoid_py.train.main(train_folders)
+
+    f_10fps, trained_tsne, scaler, gmm_assignments, classifier, scores = bsoid.train.main_py(train_folders)
     alldata = np.concatenate([f_10fps.T, trained_tsne, gmm_assignments.reshape(len(gmm_assignments), 1)], axis=1)
     micolumns = pd.MultiIndex.from_tuples([('Features', 'Relative snout to forepaws placement'),
                                            ('', 'Relative snout to hind paws placement'),
@@ -48,7 +44,7 @@ def build(train_folders):
                                           names=['Type', 'Frame@10Hz'])
     training_data = pd.DataFrame(alldata, columns=micolumns)
     timestr = time.strftime("_%Y%m%d_%H%M")
-    training_data.to_csv((os.path.join(OUTPUT_PATH, str.join('', ('bsoid_trainlabels_10Hz', timestr, '.csv')))),
+    training_data.to_csv(os.path.join(OUTPUT_PATH, 'bsoid_trainlabels_10Hz'+timestr+'.csv'),
                          index=True, chunksize=10000, encoding='utf-8')
     with open(os.path.join(OUTPUT_PATH, str.join('', ('bsoid_', MODEL_NAME, '.sav'))), 'wb') as f:
         joblib.dump([classifier, scaler], f)
@@ -66,9 +62,9 @@ def run(predict_folders):
     2. SVM predicted labels (number of training data points by 1, columns 8)
     """
 
-    with open(os.path.join(OUTPUT_PATH, str.join('', ('bsoid_', MODEL_NAME, '.sav'))), 'rb') as fr:
+    with open(os.path.join(OUTPUT_PATH, f'bsoid_{MODEL_NAME}.sav'), 'rb') as fr:
         behv_model, scaler = joblib.load(fr)
-    data_new, feats_new, labels_fslow, labels_fshigh = bsoid.classify.main(predict_folders, scaler, FPS, behv_model)
+    data_new, feats_new, labels_fslow, labels_fshigh = bsoid.classify.main_py(predict_folders, scaler, FPS, behv_model)
     filenames = []
     all_df = []
     for i, fd in enumerate(predict_folders):  # Loop through folders
@@ -125,7 +121,7 @@ def run(predict_folders):
         df_tm2.to_csv((os.path.join(OUTPUT_PATH, str.join('', ('bsoid_transitions_', str(FPS), 'Hz', timestr, csvname,
                                                                '.csv')))),
                       index=True, chunksize=10000, encoding='utf-8')
-    with open(os.path.join(OUTPUT_PATH, str.join('', ('bsoid_predictions.sav'))), 'wb') as f:
+    with open(os.path.join(OUTPUT_PATH, 'bsoid_predictions.sav'), 'wb') as f:
         joblib.dump([labels_fslow, labels_fshigh], f)
     logging.info('All saved.')
     return data_new, feats_new, labels_fslow, labels_fshigh
@@ -147,5 +143,4 @@ def main(train_folders, predict_folders):
 
 
 if __name__ == "__main__":
-    f_10fps, trained_tsne, scaler, gmm_assignments, classifier, scores, \
-        data_new, feats_new, labels_fslow, labels_fshigh = main(TRAIN_FOLDERS, PREDICT_FOLDERS)
+    main(TRAIN_FOLDERS, PREDICT_FOLDERS)
