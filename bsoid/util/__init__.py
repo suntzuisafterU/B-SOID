@@ -1,6 +1,6 @@
 __all__ = [
     'likelihoodprocessing',
-    'logger',
+    'logger_config',
     'statistics',
     'videoprocessing',
     'visuals',

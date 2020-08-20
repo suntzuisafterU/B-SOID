@@ -1,19 +1,19 @@
 """
-TODO: purpose
+TODO: flesh out description
+This file aggregates all of the settings related to model development
 """
-
-
-#################
-
-#BSOIDAPP
 
 import logging
 import sys
 
-HLDOUT = 0.2  # Test partition ratio to validate clustering separation.
-holdout_percent: float = HLDOUT
-CV_IT = 10  # Number of iterations for cross-validation to show it's not over-fitting.
-kfold_crossvalidation: int = CV_IT
+#################
+#BSOIDAPP
+
+holdout_percent: float = 0.2  # New variable. Use this.
+HLDOUT = holdout_percent  # Test partition ratio to validate clustering separation.  # Old variable. Not descriptive, use new one below. Kept for backwards compatability reasons.
+
+kfold_crossvalidation: int = 10
+CV_IT = kfold_crossvalidation  # Number of iterations for cross-validation to show it's not over-fitting.  # Old variable. Not descriptive, use new one below. Kept for backwards compatability reasons.
 
 
 # TODO: med: instantiate logger explicit object instead of setting global implicit logger
@@ -48,9 +48,7 @@ MLP_PARAMS = {
     'verbose': 0  # set to 1 for tuning your feedforward neural network
 }
 
-
 ####### BSOIDPY
-
 # EM_GMM parameters
 EMGMM_PARAMS = {
     'n_components': 30,
@@ -72,16 +70,15 @@ SVM_PARAMS = {
     'verbose': 0  # set to 1 for tuning your feedforward neural network
 }
 
-
 ### BSOID UMAP
 # (nothing original)
 
 ### BSOID VOC
 # TSNE parameters, can tweak if you are getting undersplit/oversplit behaviors
-# the missing perplexity is scaled with data size (1% of data for nearest neighbors)
+#   the missing perplexity is scaled with data size (1% of data for nearest neighbors)
 TSNE_PARAMS = {
     'n_components': 3,  # 3 is good, 2 will not create unique pockets, 4 will screw GMM up (curse of dimensionality)
     'random_state': 23,
-    'n_jobs': -1,  # all cores being used, set to -2 for all cores but one.
+    'n_jobs': -1,  # -1 means all cores being used. Set to -2 to use all cores but one.
     'verbose': 2  # shows check points
 }
