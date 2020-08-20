@@ -81,7 +81,7 @@ def get_filenames_csvs_from_folders_recursively_in_basepath(folder: str):
     return filenames
 
 
-def import_folders(folders: list) -> Tuple[List, np.ndarray, List]:
+def import_csvs_data_from_folders_in_BASEPATH(folders: list) -> Tuple[List, np.ndarray, List]:
     """
     Import multiple folders containing .csv files and process them
     :param folders: list, data folders
@@ -91,8 +91,8 @@ def import_folders(folders: list) -> Tuple[List, np.ndarray, List]:
     """
     file_names_list, raw_data_list, data_list, perc_rect_li = [], [], [], []
     for idx_folder, folder in enumerate(folders):  # Loop through folders
-        f = get_filenames_csvs_from_folders_recursively_in_basepath(folder)
-        for idx_filename, filename in enumerate(f):
+        filenames_found_in_current_folder = get_filenames_csvs_from_folders_recursively_in_basepath(folder)
+        for idx_filename, filename in enumerate(filenames_found_in_current_folder):
             logging.info(f'Importing CSV file {idx_filename+1} from folder {idx_folder+1}')
             curr_df = pd.read_csv(filename, low_memory=False)
             curr_df_filt, perc_rect = adp_filt(curr_df)
@@ -100,9 +100,9 @@ def import_folders(folders: list) -> Tuple[List, np.ndarray, List]:
             raw_data_list.append(curr_df)
             perc_rect_li.append(perc_rect)
             data_list.append(curr_df_filt)
-        file_names_list.append(f)
-        logging.info(f'Processed {len(f)} CSV files from folder: {folder}')
-    data_array = np.array(data_list)
+        file_names_list.append(filenames_found_in_current_folder)
+        logging.info(f'Processed {len(filenames_found_in_current_folder)} CSV files from folder: {folder}')
+    data_array: np.ndarray = np.array(data_list)
     logging.info(f'Processed a total of {len(data_list)} CSV files, and compiled into a {data_array.shape} data list.')
     return file_names_list, data_array, perc_rect_li
 
@@ -163,10 +163,10 @@ def main(folders: List[str]):
     """
     warnings.warn('This function, bsoid.util.likelihoodprocessing.main(), will be '
                   'deprecated in future as it adds nothing except obfuscation. Directly use import_folders() instead.')
-    filenames, data, perc_rect = import_folders(folders)
+    filenames, data, perc_rect = import_csvs_data_from_folders_in_BASEPATH(folders)
     return filenames, data, perc_rect
 
 
 if __name__ == '__main__':
     # TODO: should this module even have a main if it's just a helper module?
-    import_folders(config.TRAIN_FOLDERS)
+    import_csvs_data_from_folders_in_BASEPATH(config.TRAIN_FOLDERS)
