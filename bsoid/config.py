@@ -25,7 +25,7 @@ import sys
 from bsoid.util import logger_config
 
 
-debug = 2  # TODO: delete me after debugging and implementation is done.
+debug = 0  # TODO: delete me after debugging and implementation is done.
 
 
 # Fetch the B-SOiD project directory regardless of clone location
@@ -59,8 +59,8 @@ OST_BASE_PROJECT_PATH = configuration.get('PATH', 'OST_BASE_PROJECT_PATH')  # co
 
 ########################################################################################################################
 
-if debug<2: print("configuration.get('LOGGING', 'LOG_FILE_NAME'):::", configuration.get('LOGGING', 'LOG_FILE_NAME'))
-if debug<2: print('OST PATH:::', configuration.get('PATH', 'OSTPATH', fallback=None))
+if debug==2: print("configuration.get('LOGGING', 'LOG_FILE_NAME'):::", configuration.get('LOGGING', 'LOG_FILE_NAME'))
+if debug==2: print('OST PATH:::', configuration.get('PATH', 'OSTPATH', fallback=None))
 
 # Resolve logger variables
 config_file_log_folder_path = configuration.get('LOGGING', 'LOG_FILE_FOLDER_PATH')
