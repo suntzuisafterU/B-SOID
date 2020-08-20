@@ -26,19 +26,7 @@ from bsoid_py.config.GLOBAL_CONFIG import CV_IT, EMGMM_PARAMS, HLDOUT, SVM_PARAM
 from bsoid.util.likelihoodprocessing import boxcar_center
 from bsoid_py.utils.visuals import plot_accuracy, plot_classes, plot_feats
 
-
-def bsoid_tsne(data: list, bodyparts=BODYPARTS, fps=FPS, comp=COMP):
-    """
-    Trains t-SNE (unsupervised) given a set of features based on (x,y) positions
-    :param data: list of 3D array
-    :param bodyparts: dict, body parts with their orders in LOCAL_CONFIG
-    :param fps: scalar, argument specifying camera frame-rate in LOCAL_CONFIG
-    :param comp: boolean (0 or 1), argument to compile data or not in LOCAL_CONFIG
-    :return f_10fps: 2D array, features
-    :return f_10fps_sc: 2D array, standardized features
-    :return trained_tsne: 2D array, trained t-SNE space
-    """
-    win_len = np.int(np.round(0.05 / (1 / fps)) * 2 - 1)
+def hard_coded_feature_extraction(data, bodyparts, win_len):
     feats = []
     for m in range(len(data)):
         logging.info(f'Extracting features from CSV file {m+1}...')
@@ -92,13 +80,28 @@ def bsoid_tsne(data: list, bodyparts=BODYPARTS, fps=FPS, comp=COMP):
         pt_disp_smth = boxcar_center(pt_disp, win_len)
         feats.append(np.vstack((sn_cfp_norm_smth[1:], sn_chp_norm_smth[1:], fpd_norm_smth[1:],
                                 sn_pt_norm_smth[1:], sn_pt_ang_smth[:], sn_disp_smth[:], pt_disp_smth[:])))
+    return feats
+
+def bsoid_tsne(data: list, bodyparts=BODYPARTS, fps=FPS, comp=COMP):
+    """
+    Trains t-SNE (unsupervised) given a set of features based on (x,y) positions
+    :param data: list of 3D array
+    :param bodyparts: dict, body parts with their orders in LOCAL_CONFIG
+    :param fps: scalar, argument specifying camera frame-rate in LOCAL_CONFIG
+    :param comp: boolean (0 or 1), argument to compile data or not in LOCAL_CONFIG
+    :return f_10fps: 2D array, features
+    :return f_10fps_sc: 2D array, standardized features
+    :return trained_tsne: 2D array, trained t-SNE space
+    """
+    win_len = np.int(np.round(0.05 / (1 / fps)) * 2 - 1)
+    feats = hard_coded_feature_extraction(data, bodyparts, win_len)
     logging.info(f'Done extracting features from a total of {len(data)} training CSV files.')
 
-    if comp == 0:
-        f_10fps = []
-        f_10fps_sc = []
-        trained_tsne_list = []
+    f_10fps = []
+    f_10fps_sc = []
+    trained_tsne_list = []
     for n in range(0, len(feats)):  # TODO: low: refactor range
+        # NOTE: Iterate over rows???
         feats1 = np.zeros(len(data[n]))
         for k in range(round(fps / 10) - 1, len(feats[n][0]), round(fps / 10)):
             if k > round(fps / 10) - 1:
