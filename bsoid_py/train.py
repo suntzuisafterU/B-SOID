@@ -2,14 +2,19 @@
 Based on the natural statistics of the mouse configuration using (x,y) positions,
 we distill information down to 3 dimensions and run pattern recognition.
 Then, we utilize these output and original feature space to train a B-SOiD behavioral model.
+
+Potential abbreviations:
+    sn: snout
+    pt: proximal tail
 """
 
 # # # General imports # # #
-from bhtsne import tsne
+from bhtsne import tsne as TSNE_bht
 from sklearn import mixture, svm
 from sklearn.metrics import plot_confusion_matrix
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.preprocessing import StandardScaler
+from typing import Any, List, Tuple
 from tqdm import tqdm
 import logging
 import math
@@ -21,18 +26,21 @@ import time
 # # # B-SOID imports # # #
 import bsoid
 from bsoid.util.likelihoodprocessing import boxcar_center
-from bsoid_py.config.LOCAL_CONFIG import BODYPARTS, COMP, FPS, OUTPUT_PATH, PLOT_TRAINING
+from bsoid_py.config.LOCAL_CONFIG import BODYPARTS, COMP, FPS, OUTPUT_PATH, PLOT_TRAINING, TRAIN_FOLDERS
 from bsoid_py.config.GLOBAL_CONFIG import CV_IT, EMGMM_PARAMS, HLDOUT, SVM_PARAMS
 from bsoid_py.utils.visuals import plot_accuracy, plot_classes, plot_feats
 
 
-def hard_coded_feature_extraction(data, bodyparts, win_len):
-    feats = []
+def hard_coded_feature_extraction(data, bodyparts: dict, win_len) -> List:
+    """
+
+    :param data: list of 3D array
+    """
+    features = []
     for m in range(len(data)):
         logging.info(f'Extracting features from CSV file {m+1}...')
         data_range = len(data[m])
-        fpd = data[m][:, 2 * bodyparts.get('Forepaw/Shoulder1'):2 * bodyparts.get('Forepaw/Shoulder1') + 2] - \
-              data[m][:, 2 * bodyparts.get('Forepaw/Shoulder2'):2 * bodyparts.get('Forepaw/Shoulder2') + 2]
+        fpd = data[m][:, 2 * bodyparts.get('Forepaw/Shoulder1'):2 * bodyparts.get('Forepaw/Shoulder1') + 2] - data[m][:, 2 * bodyparts.get('Forepaw/Shoulder2'):2 * bodyparts.get('Forepaw/Shoulder2') + 2]
         cfp = np.vstack(((data[m][:, 2 * bodyparts.get('Forepaw/Shoulder1')] +
                           data[m][:, 2 * bodyparts.get('Forepaw/Shoulder2')]) / 2,
                          (data[m][:, 2 * bodyparts.get('Forepaw/Shoulder1') + 1] +
@@ -67,8 +75,7 @@ def hard_coded_feature_extraction(data, bodyparts, win_len):
             b_3d = np.hstack([sn_pt[k + 1, :], 0])
             a_3d = np.hstack([sn_pt[k, :], 0])
             c = np.cross(b_3d, a_3d)
-            sn_pt_ang[k] = np.dot(np.dot(np.sign(c[2]), 180) / np.pi,
-                                  math.atan2(np.linalg.norm(c), np.dot(sn_pt[k, :], sn_pt[k + 1, :])))
+            sn_pt_ang[k] = np.dot(np.dot(np.sign(c[2]), 180) / np.pi, math.atan2(np.linalg.norm(c), np.dot(sn_pt[k, :], sn_pt[k + 1, :])))
             sn_disp[k] = np.linalg.norm(
                 data[m][k + 1, 2 * bodyparts.get('Snout/Head'):2 * bodyparts.get('Snout/Head') + 1] -
                 data[m][k, 2 * bodyparts.get('Snout/Head'):2 * bodyparts.get('Snout/Head') + 1])
@@ -78,12 +85,12 @@ def hard_coded_feature_extraction(data, bodyparts, win_len):
         sn_pt_ang_smth = boxcar_center(sn_pt_ang, win_len)
         sn_disp_smth = boxcar_center(sn_disp, win_len)
         pt_disp_smth = boxcar_center(pt_disp, win_len)
-        feats.append(np.vstack((sn_cfp_norm_smth[1:], sn_chp_norm_smth[1:], fpd_norm_smth[1:],
-                                sn_pt_norm_smth[1:], sn_pt_ang_smth[:], sn_disp_smth[:], pt_disp_smth[:])))
+        features.append(np.vstack((sn_cfp_norm_smth[1:], sn_chp_norm_smth[1:], fpd_norm_smth[1:], sn_pt_norm_smth[1:], sn_pt_ang_smth[:], sn_disp_smth[:], pt_disp_smth[:])))
     logging.info(f'Done extracting features from a total of {len(data)} training CSV files.')
-    return feats
+    return features
 
-def bsoid_tsne(data: list, bodyparts=BODYPARTS, fps=FPS, comp=COMP):
+
+def bsoid_tsne(data: list, bodyparts=BODYPARTS, fps=FPS) -> Tuple[List, List, Any, object]:
     """
     Trains t-SNE (unsupervised) given a set of features based on (x,y) positions
     :param data: list of 3D array
@@ -94,52 +101,55 @@ def bsoid_tsne(data: list, bodyparts=BODYPARTS, fps=FPS, comp=COMP):
     :return f_10fps_sc: 2D array, standardized features
     :return trained_tsne: 2D array, trained t-SNE space
     """
-    win_len = np.int(np.round(0.05 / (1 / fps)) * 2 - 1)
+    # win_len = np.int(np.round(0.05 / (1 / fps)) * 2 - 1)
     win_len: int = int(round(0.05 / (1 / fps)) * 2 - 1)
+
     # Extract features
     features = hard_coded_feature_extraction(data, bodyparts, win_len)
-    #
-    features_10fps, features_10fps_sc, trained_tsne_list = [], [], []
+
+    features_10fps, features_10fps_scaled, trained_tsne_list = [], [], []
+    # Loop over the number of features (as found from the hard-coded extraction)
     for i in range(len(features)):
-        feats1: np.ndarray = np.zeros(len(data[i]))
+        features_i = np.zeros(len(data[i]))
+
         for j in range(round(fps / 10) - 1, len(features[i][0]), round(fps / 10)):
             if j > round(fps / 10) - 1:
-                feats1 = np.concatenate((feats1.reshape(feats1.shape[0], feats1.shape[1]),
+                features_i = np.concatenate((features_i.reshape(features_i.shape[0], features_i.shape[1]),
                                          np.hstack((np.mean((features[i][0:4, range(j - round(fps / 10), j)]), axis=1),
                                                     np.sum((features[i][4:7, range(j - round(fps / 10), j)]),
                                                            axis=1))).reshape(len(features[0]), 1)), axis=1)
             else:
-                feats1 = np.hstack((np.mean((features[i][0:4, range(j - round(fps / 10), j)]), axis=1),
-                                    np.sum((features[i][4:7, range(j - round(fps / 10), j)]), axis=1))).reshape(len(features[0]), 1)
+                features_i = np.hstack((np.mean((features[i][0:4, range(j - round(fps / 10), j)]), axis=1),
+                                        np.sum((features[i][4:7, range(j - round(fps / 10), j)]), axis=1))).reshape(len(features[0]), 1)
         logging.info(f'Done integrating features into 100ms bins from CSV file {i+1}.')
-        if comp == 1:
-            if i > 0:
-                features_10fps = np.concatenate((features_10fps, feats1), axis=1)
-            else:
-                features_10fps = feats1
-        else:
-            features_10fps.append(feats1)
-            scaler = StandardScaler()
-            scaler.fit(feats1.T)
-            feats1_stnd = scaler.transform(feats1.T).T
-            features_10fps_sc.append(feats1_stnd)
-            logging.info(f'Training t-SNE to embed {features_10fps_sc[i].shape[1]} instances from '
-                         f'{features_10fps_sc[i].shape[0]} D into 3 D from CSV file {i + 1}...')
-            trained_tsne_i = tsne(features_10fps_sc[i].T, dimensions=3, perplexity=np.sqrt(features_10fps_sc[i].shape[1]),
-                                  theta=0.5, rand_seed=23)
-            trained_tsne_list.append(trained_tsne_i)
-            logging.info('Done embedding into 3 D.')
 
-    if comp == 1:
-        scaler = StandardScaler()
-        scaler.fit(features_10fps.T)
-        features_10fps_sc = scaler.transform(features_10fps.T).T
-        logging.info(f'Training t-SNE to embed {features_10fps_sc.shape[1]} instances from {features_10fps_sc.shape[0]} D '
-                     'into 3 D from a total of {len(data)} CSV files...')
-        trained_tsne_list = tsne(features_10fps_sc.T, dimensions=3, perplexity=np.sqrt(features_10fps_sc.shape[1]),
-                            theta=0.5, rand_seed=23)  # TODO: low: move "rand_seed" to a config file instead of hiding here as magic variable
-        logging.info('Done embedding into 3 D.')
-    return features_10fps, features_10fps_sc, trained_tsne_list, scaler
+        # if comp == 1:
+        if i > 0:
+            features_10fps = np.concatenate((features_10fps, features_i), axis=1)
+        else:
+            features_10fps = features_i
+        # else:
+        #     features_10fps.append(feats1)
+        #     scaler = StandardScaler()
+        #     scaler.fit(feats1.T)
+        #     feats1_stnd = scaler.transform(feats1.T).T
+        #     features_10fps_sc.append(feats1_stnd)
+        #     logging.info(f'Training t-SNE to embed {features_10fps_sc[i].shape[1]} instances from '
+        #                  f'{features_10fps_sc[i].shape[0]} D into 3 D from CSV file {i + 1}...')
+        #     trained_tsne_i = TSNE_bht(features_10fps_sc[i].T, dimensions=3, perplexity=np.sqrt(features_10fps_sc[i].shape[1]),
+        #                               theta=0.5, rand_seed=23)
+        #     trained_tsne_list.append(trained_tsne_i)
+        #     logging.info('Done embedding into 3 D.')
+
+    # if comp == 1:
+    scaler = StandardScaler()
+    scaler.fit(features_10fps.T)
+    features_10fps_scaled = scaler.transform(features_10fps.T).T
+    logging.info(f'Training t-SNE to embed {features_10fps_scaled.shape[1]} instances '
+                 f'from {features_10fps_scaled.shape[0]} D into 3 D from a total of {len(data)} CSV files...')
+    trained_tsne_list = TSNE_bht(features_10fps_scaled.T, dimensions=3, perplexity=np.sqrt(features_10fps_scaled.shape[1]), theta=0.5, rand_seed=23)  # TODO: low: move "rand_seed" to a config file instead of hiding here as magic variable
+    logging.info('Done embedding into 3 D.')
+    return features_10fps, features_10fps_scaled, trained_tsne_list, scaler
 
 
 def bsoid_gmm(trained_tsne, comp=COMP, emgmm_params=EMGMM_PARAMS) -> np.ndarray:
@@ -173,10 +183,10 @@ def bsoid_gmm(trained_tsne, comp=COMP, emgmm_params=EMGMM_PARAMS) -> np.ndarray:
     return assignments
 
 
-def bsoid_svm(feats, labels, comp=COMP, hldout=HLDOUT, cv_it=CV_IT, svm_params=SVM_PARAMS):
+def bsoid_svm(features, labels, comp=COMP, hldout=HLDOUT, cv_it=CV_IT, svm_params=SVM_PARAMS):
     """
     Trains SVM classifier
-    :param feats: 2D array, original feature space, standardized
+    :param features: 2D array, original feature space, standardized
     :param labels: 1D array, GMM output assignments
     :param hldout: scalar, test partition ratio for validating SVM performance in GLOBAL_CONFIG
     :param cv_it: scalar, iterations for cross-validation in GLOBAL_CONFIG
@@ -186,7 +196,7 @@ def bsoid_svm(feats, labels, comp=COMP, hldout=HLDOUT, cv_it=CV_IT, svm_params=S
     """
     if comp == 1:
         feats_train, feats_test, labels_train, labels_test = train_test_split(
-            feats.T, labels.T, test_size=hldout, random_state=23)
+            features.T, labels.T, test_size=hldout, random_state=23)
         logging.info(f'Training SVM on randomly partitioned {(1 - hldout) * 100}% of training data...')
         classifier = svm.SVC(**svm_params)
         classifier.fit(feats_train, labels_train)
@@ -199,7 +209,7 @@ def bsoid_svm(feats, labels, comp=COMP, hldout=HLDOUT, cv_it=CV_IT, svm_params=S
             np.set_printoptions(precision=2)
             titles_options = [("Non-normalized confusion matrix", None),
                               ("Normalized confusion matrix", 'true')]
-            titlenames = [("counts"), ("norm")]  # TODO: low: redundant parentheses
+            titlenames = ["counts", "norm"]
             j = 0
             for title, normalize in titles_options:
                 disp = plot_confusion_matrix(classifier, feats_test, labels_test,
@@ -214,9 +224,9 @@ def bsoid_svm(feats, labels, comp=COMP, hldout=HLDOUT, cv_it=CV_IT, svm_params=S
     else:
         classifier = []
         scores = []
-        for i in range(len(feats)):
+        for i in range(len(features)):
             feats_train, feats_test, labels_train, labels_test = train_test_split(
-                feats[i].T, labels[i].T, test_size=hldout, random_state=23)
+                features[i].T, labels[i].T, test_size=hldout, random_state=23)
             logging.info(f'Training SVM on randomly partitioned {(1 - hldout) * 100}% of training data...')
             clf = svm.SVC(**svm_params)
             clf.fit(feats_train, labels_train)
@@ -231,7 +241,7 @@ def bsoid_svm(feats, labels, comp=COMP, hldout=HLDOUT, cv_it=CV_IT, svm_params=S
                 titles_options = [("Non-normalized confusion matrix", None),
                                   ("Normalized confusion matrix", 'true')]
                 j = 0
-                titlenames = [("counts"), ("norm")]
+                titlenames = ["counts", "norm"]
                 for title, normalize in titles_options:
                     disp = plot_confusion_matrix(classifier, feats_test, labels_test,
                                                  cmap=plt.cm.Blues,
@@ -256,12 +266,26 @@ def main(train_folders: list):
     :return classifier: obj, SVM classifier
     :return scores: 1D array, cross-validated accuracy
     """
-    filenames, training_data, perc_rect = bsoid.util.likelihoodprocessing.main(train_folders)
-    f_10fps, f_10fps_sc, trained_tsne, scaler = bsoid_tsne(training_data)
-    gmm_assignments = bsoid_gmm(trained_tsne)
-    classifier, scores = bsoid_svm(f_10fps_sc, gmm_assignments)
+    assert isinstance(train_folders, list)
+    # Get data
+    filenames, training_data, perc_rect = bsoid.util.likelihoodprocessing.import_csvs_data_from_folders_in_BASEPATH(train_folders)
+    if len(filenames) == 0:
+        raise ValueError('Zero training folders were specified. Check your config file!!!!')
+    if len(filenames[0]) == 0:
+        logging.error('train.py::main()::Zero filenames were found.')
+        raise ValueError('UNEXPECTEDLY ZERO FILES. ARE YOU SURE BASE_PATH IS SET CORRECTLY? OR GLOB PATH CHECKING MAY NEED SOME WORK')
+    # Train TSNE
+    features_10fps, features_10fps_scaled, trained_tsne_list, scaler = bsoid_tsne(training_data)
+    # Train GMM
+    gmm_assignments = bsoid_gmm(trained_tsne_list)
+    # Train SVM
+    classifier, scores = bsoid_svm(features_10fps_scaled, gmm_assignments)
+    # Plot to view progress if necessary
     if PLOT_TRAINING:
-        plot_classes(trained_tsne, gmm_assignments)
+        plot_classes(trained_tsne_list, gmm_assignments)
         plot_accuracy(scores)
-        plot_feats(f_10fps, gmm_assignments)
-    return f_10fps, trained_tsne, scaler, gmm_assignments, classifier, scores
+        plot_feats(features_10fps, gmm_assignments)
+    return features_10fps, trained_tsne_list, scaler, gmm_assignments, classifier, scores
+
+
+main(TRAIN_FOLDERS)
