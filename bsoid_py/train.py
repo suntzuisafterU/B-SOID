@@ -20,11 +20,11 @@ import time
 
 # # # B-SOID imports # # #
 import bsoid
-from bsoid_py.config.LOCAL_CONFIG import BODYPARTS, COMP, FRAME_DIR, FPS, FRAME_DIR, GEN_VIDEOS, MODEL_NAME, \
-    OUTPUT_PATH, PLOT_TRAINING, TRAIN_FOLDERS, PREDICT_FOLDERS, VID_NAME
-from bsoid_py.config.GLOBAL_CONFIG import CV_IT, EMGMM_PARAMS, HLDOUT, SVM_PARAMS
 from bsoid.util.likelihoodprocessing import boxcar_center
+from bsoid_py.config.LOCAL_CONFIG import BODYPARTS, COMP, FPS, OUTPUT_PATH, PLOT_TRAINING
+from bsoid_py.config.GLOBAL_CONFIG import CV_IT, EMGMM_PARAMS, HLDOUT, SVM_PARAMS
 from bsoid_py.utils.visuals import plot_accuracy, plot_classes, plot_feats
+
 
 def hard_coded_feature_extraction(data, bodyparts, win_len):
     feats = []
