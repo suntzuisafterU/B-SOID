@@ -11,8 +11,6 @@ import os
 import sys
 
 project_relative_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-# print(project_relative_path)
-# if project_relative_path not in sys.path:
 sys.path.append(project_relative_path)
 # print(sys.path)
 

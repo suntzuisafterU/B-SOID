@@ -18,7 +18,7 @@ OUTPUT_PATH = os.path.join(OST_BASE_PROJECT_PATH, 'B-SOID', 'OUTPUT')  # '/home/
 
 # TODO: for TRAIN_FOLDERS & PREDICT_FOLDERS, change path resolution from inside other module to inside this config file
 # Data folders used to training neural network.
-TRAIN_FOLDERS = [os.path.sep+'training-datasets']
+TRAIN_FOLDERS = [os.path.sep+'evaluation-results',]
 # C:\Users\killian\projects\OST-DLC-projects\pwd-may11-2020-john-howland-2020-05-11
 # Data folders, can contain the same as training or new data for consistency.
 PREDICT_FOLDERS = [os.path.sep+'Data1']
