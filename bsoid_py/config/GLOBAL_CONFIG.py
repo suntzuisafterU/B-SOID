@@ -32,4 +32,4 @@ SVM_PARAMS = {
 }
 
 HLDOUT = 0.2  # Test partition ratio to validate clustering separation.
-CV_IT = 10  # Number of iterations for cross-validation to show it's not over-fitting.
+CV_IT = 5  # Number of iterations for cross-validation to show it's not over-fitting.
