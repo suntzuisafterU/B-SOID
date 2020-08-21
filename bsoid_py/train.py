@@ -51,7 +51,7 @@ def hard_coded_feature_extraction(data, bodyparts: dict, win_len: int) -> List:
         data_range = len(data[m])
         fpd = data[m][:, 2 * bodyparts.get('Forepaw/Shoulder1'):2 * bodyparts.get('Forepaw/Shoulder1') + 2] - data[m][:, 2 * bodyparts.get('Forepaw/Shoulder2'):2 * bodyparts.get('Forepaw/Shoulder2') + 2]
         cfp = np.vstack(((data[m][:, 2 * bodyparts.get('Forepaw/Shoulder1')] +
-                          data[m][:, 2 * bodyparts.get('Fore-paw/Shoulder2')]) / 2,
+                          data[m][:, 2 * bodyparts.get('Forepaw/Shoulder2')]) / 2,
                          (data[m][:, 2 * bodyparts.get('Forepaw/Shoulder1') + 1] +
                           data[m][:, 2 * bodyparts.get('Forepaw/Shoulder1') + 1]) / 2)).T
         cfp_pt = np.vstack(([cfp[:, 0] - data[m][:, 2 * bodyparts.get('Tailbase')],
