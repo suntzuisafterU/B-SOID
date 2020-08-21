@@ -11,6 +11,7 @@ from tqdm import tqdm
 import glob
 import logging
 import numpy as np
+import os
 import pandas as pd
 import re
 import warnings
@@ -72,7 +73,7 @@ def get_filenames_csvs_from_folders_recursively_in_basepath(folder: str):
     :param folder:
     :return:
     """
-    path_to_check_for_csvs = BASE_PATH + folder + '**/*.csv'
+    path_to_check_for_csvs = BASE_PATH + folder + os.path.sep+'**/*.csv'
     logging.debug(f'Path that is being checked with "glob": {path_to_check_for_csvs}')
     filenames = glob.glob(path_to_check_for_csvs, recursive=True)
     sort_nicely(filenames)
