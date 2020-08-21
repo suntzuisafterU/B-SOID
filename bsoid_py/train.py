@@ -25,14 +25,15 @@ import os
 import time
 
 # # # B-SOID imports # # #
-import bsoid
+# import bsoid
+from bsoid_py.utils import likelihoodprocessing
 from bsoid.util.likelihoodprocessing import boxcar_center
 from bsoid_py.config.LOCAL_CONFIG import BODYPARTS, COMP, FPS, OUTPUT_PATH, PLOT_TRAINING, TRAIN_FOLDERS
 from bsoid_py.config.GLOBAL_CONFIG import CV_IT, EMGMM_PARAMS, HLDOUT, SVM_PARAMS
 from bsoid_py.utils.visuals import plot_accuracy, plot_classes, plot_feats
 
 
-def hard_coded_feature_extraction(data, bodyparts: dict, win_len) -> List:
+def hard_coded_feature_extraction(data, bodyparts: dict, win_len: int) -> List:
     """
 
     :param data: list of 3D array
@@ -43,7 +44,7 @@ def hard_coded_feature_extraction(data, bodyparts: dict, win_len) -> List:
         data_range = len(data[m])
         fpd = data[m][:, 2 * bodyparts.get('Forepaw/Shoulder1'):2 * bodyparts.get('Forepaw/Shoulder1') + 2] - data[m][:, 2 * bodyparts.get('Forepaw/Shoulder2'):2 * bodyparts.get('Forepaw/Shoulder2') + 2]
         cfp = np.vstack(((data[m][:, 2 * bodyparts.get('Forepaw/Shoulder1')] +
-                          data[m][:, 2 * bodyparts.get('Forepaw/Shoulder2')]) / 2,
+                          data[m][:, 2 * bodyparts.get('Fore-paw/Shoulder2')]) / 2,
                          (data[m][:, 2 * bodyparts.get('Forepaw/Shoulder1') + 1] +
                           data[m][:, 2 * bodyparts.get('Forepaw/Shoulder1') + 1]) / 2)).T
         cfp_pt = np.vstack(([cfp[:, 0] - data[m][:, 2 * bodyparts.get('Tailbase')],
@@ -261,7 +262,7 @@ def bsoid_svm(features, labels, comp=COMP, hldout=HLDOUT, cv_it=CV_IT, svm_param
     return classifier, scores
 
 
-def main(train_folders: list):
+def run_train_py(train_folders: list):
     """
     :param train_folders: list, training data folders
     :return f_10fps: 2D array, features
@@ -272,7 +273,7 @@ def main(train_folders: list):
     """
     assert isinstance(train_folders, list)
     # Get data
-    filenames, training_data, perc_rect = bsoid.util.likelihoodprocessing.import_csvs_data_from_folders_in_BASEPATH(train_folders)
+    filenames, training_data, perc_rect = likelihoodprocessing.import_csvs_data_from_folders_in_BASEPATH(train_folders)
     if len(filenames) == 0:
         raise ValueError('Zero training folders were specified. Check your config file!!!!')
     if len(filenames[0]) == 0:
@@ -297,5 +298,5 @@ def main(train_folders: list):
 
 
 if __name__ == '__main__':
-    main(TRAIN_FOLDERS)
+    run_train_py(TRAIN_FOLDERS)
 
