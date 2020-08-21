@@ -15,7 +15,7 @@ Another way to od it is using the object method:
 All values read from the config.ini file are string so type conversion must be made for non-string information.
 """
 
-from ast import literal_eval  # TODO: HIGH HIGH HIGH: use this to read in tuples from config file
+from ast import literal_eval
 from pathlib import Path
 import configparser
 import os
@@ -197,7 +197,8 @@ GEN_VIDEOS = True
 
 
 # BASE_PATH = '/home/aaron/Documents/OST-with-DLC/GUI_projects/OST-DLC-projects/pwd-may11-2020-john-howland-2020-05-11'
-BASE_PATH = os.path.join('C:\\', 'Users', 'killian', 'projects', 'OST-with-DLC', 'pwd-may11-2020-john-howland-2020-05-11')
+# BASE_PATH = os.path.join('C:\\', 'Users', 'killian', 'projects', 'OST-with-DLC', 'pwd-may11-2020-john-howland-2020-05-11')
+BASE_PATH = 'C:\\Users\\killian\\projects\\OST-DLC-projects\\pwd-may11-2020-john-howland-2020-05-11'
 
 # Output directory to where you want the analysis to be stored
 # OUTPUT_PATH = os.path.join(OST_BASE_PROJECT_PATH, 'B-SOID', 'OUTPUT')  # '/home/aaron/Documents/OST-with-DLC/B-SOID/OUTPUT'

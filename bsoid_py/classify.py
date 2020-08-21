@@ -27,7 +27,7 @@ def bsoid_extract(data, bodyparts: dict = BODYPARTS, fps: int = FPS):
     """
     # TODO: med: rename variables for CLARITY
     win_len = np.int(np.round(0.05 / (1 / fps)) * 2 - 1)  # TODO: low: this uses np.round, np.int ... can it use round() and int() instead? Less overhead.
-    feats = []
+    features = []
     for m in range(len(data)):
         logging.info(f'Extracting features from CSV file {m + 1}...')
         data_range = len(data[m])
@@ -79,25 +79,27 @@ def bsoid_extract(data, bodyparts: dict = BODYPARTS, fps: int = FPS):
         sn_pt_ang_smth = boxcar_center(sn_pt_ang, win_len)
         sn_disp_smth = boxcar_center(sn_disp, win_len)
         pt_disp_smth = boxcar_center(pt_disp, win_len)
-        feats.append(np.vstack((sn_cfp_norm_smth[1:], sn_chp_norm_smth[1:], fpd_norm_smth[1:],
+        features.append(np.vstack((sn_cfp_norm_smth[1:], sn_chp_norm_smth[1:], fpd_norm_smth[1:],
                                 sn_pt_norm_smth[1:], sn_pt_ang_smth[:], sn_disp_smth[:], pt_disp_smth[:])))
     logging.info(f'Done extracting features from a total of {len(data)} training CSV files.')
-    f_10fps = []
-    for n in range(0, len(feats)):  # TODO: low: address range starts at 0
+
+    # Iterate over the number of features
+    features_10fps = []
+    for n in range(len(features)):
         feats1 = np.zeros(len(data[n]))
-        for k in range(round(fps / 10) - 1, len(feats[n][0]), round(fps / 10)):
+        for k in range(round(fps / 10) - 1, len(features[n][0]), round(fps / 10)):
             if k > round(fps / 10) - 1:
                 feats1 = np.concatenate((feats1.reshape(feats1.shape[0], feats1.shape[1]),
-                                         np.hstack((np.mean((feats[n][0:4, range(k - round(fps / 10), k)]), axis=1),
-                                                    np.sum((feats[n][4:7, range(k - round(fps / 10), k)]),
-                                                           axis=1))).reshape(len(feats[0]), 1)), axis=1)
+                                         np.hstack((np.mean((features[n][0:4, range(k - round(fps / 10), k)]), axis=1),
+                                                    np.sum((features[n][4:7, range(k - round(fps / 10), k)]),
+                                                           axis=1))).reshape(len(features[0]), 1)), axis=1)
             else:
-                feats1 = np.hstack((np.mean((feats[n][0:4, range(k - round(fps / 10), k)]), axis=1),
-                                    np.sum((feats[n][4:7, range(k - round(fps / 10), k)]), axis=1))).reshape(
-                    len(feats[0]), 1)
+                feats1 = np.hstack((np.mean((features[n][0:4, range(k - round(fps / 10), k)]), axis=1),
+                                    np.sum((features[n][4:7, range(k - round(fps / 10), k)]), axis=1))).reshape(
+                    len(features[0]), 1)
         logging.info(f'Done integrating features into 100ms bins from CSV file {n + 1}.')
-        f_10fps.append(feats1)
-    return f_10fps
+        features_10fps.append(feats1)
+    return features_10fps
 
 
 def bsoid_predict(feats, scaler, model):
@@ -106,16 +108,16 @@ def bsoid_predict(feats, scaler, model):
     :param model: Obj, SVM classifier
     :return labels_fslow: list, label/100ms
     """
-    labels_fslow = []
-    for i in range(0, len(feats)):  # TODO: low: address range starts at 0
+    labels_fs_low = []
+    for i in range(len(feats)):  # TODO: low: address range starts at 0
         logging.info(f'Predicting file {i + 1} with {feats[i].shape[1]} instances using '
                      f'learned classifier: bsoid_{MODEL_NAME}...')
-        feats_sc = scaler.transform(feats[i].T).T
-        labels = model.predict(feats_sc.T)
+        features_sc = scaler.transform(feats[i].T).T
+        labels = model.predict(features_sc.T)
         logging.info(f'Done predicting file {i + 1} with {feats[i].shape[1]} instances in {feats[i].shape[0]} D space.')
-        labels_fslow.append(labels)
+        labels_fs_low.append(labels)
     logging.info(f'Done predicting a total of {len(feats)} files.')
-    return labels_fslow
+    return labels_fs_low
 
 
 def bsoid_frameshift(data_new, scaler, fps, model):

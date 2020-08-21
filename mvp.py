@@ -1,7 +1,9 @@
 """
 Proof of concept that MVP works and changing things is relatively easy
 """
+
 import bsoid
+
 
 # Import csvs data
 

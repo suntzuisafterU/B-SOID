@@ -24,7 +24,7 @@ import numpy as np
 import os
 import time
 
-# # # B-SOID imports # # #
+# # # B-SOID imports # # #BN
 # import bsoid
 from bsoid_py.utils import likelihoodprocessing
 from bsoid.util.likelihoodprocessing import boxcar_center
@@ -298,5 +298,7 @@ def run_train_py(train_folders: list):
 
 
 if __name__ == '__main__':
+    # import sys
+    # print('SYS PATH:', sys.path)
     run_train_py(TRAIN_FOLDERS)
 

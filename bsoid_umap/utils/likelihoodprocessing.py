@@ -63,18 +63,18 @@ def import_folders(folders: list):
     rawdata_li = []
     data_li = []
     perc_rect_li = []
-    for i, fd in enumerate(folders):  # Loop through folders
-        f = get_filenames(fd)
-        for j, filename in enumerate(f):
-            logging.info('Importing CSV file {} from folder {}'.format(j + 1, i + 1))
+    for idx_folder, folder in enumerate(folders):  # Loop through folders
+        f = get_filenames(folder)
+        for idx_file, filename in enumerate(f):
+            logging.info('Importing CSV file {} from folder {}'.format(idx_file + 1, idx_folder + 1))
             curr_df = pd.read_csv(filename, low_memory=False)
             curr_df_filt, perc_rect = adp_filt(curr_df)
-            logging.info('Done preprocessing (x,y) from file {}, folder {}.'.format(j + 1, i + 1))
+            logging.info('Done preprocessing (x,y) from file {}, folder {}.'.format(idx_file + 1, idx_folder + 1))
             rawdata_li.append(curr_df)
             perc_rect_li.append(perc_rect)
             data_li.append(curr_df_filt)
         filenames.append(f)
-        logging.info(f'Processed {len(f)} CSV files from folder: {fd}')
+        logging.info(f'Processed {len(f)} CSV files from folder: {folder}')
     data = np.array(data_li)
     logging.info(f'Processed a total of {len(data_li)} CSV files, and compiled into a {data.shape} data list.')
     return filenames, data, perc_rect_li
