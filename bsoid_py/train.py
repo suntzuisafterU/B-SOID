@@ -10,10 +10,11 @@ Potential abbreviations:
 
 # # # General imports # # #
 from bhtsne import tsne as TSNE_bht
-from sklearn import mixture, svm
 from sklearn.metrics import plot_confusion_matrix
+from sklearn.mixture import GaussianMixture
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.preprocessing import StandardScaler
+from sklearn.svm import SVC
 from typing import Any, List, Tuple
 from tqdm import tqdm
 import logging
@@ -162,24 +163,27 @@ def bsoid_gmm(trained_tsne, comp=COMP, emgmm_params=EMGMM_PARAMS) -> np.ndarray:
     """
     if comp == 1:
         logging.info('Running EM-GMM on {} instances in {} D space...'.format(*trained_tsne.shape))
-        gmm = mixture.GaussianMixture(**emgmm_params).fit(trained_tsne)
+        gmm = GaussianMixture(**emgmm_params).fit(trained_tsne)
         logging.info('Predicting labels for {} instances in {} D space...'.format(*trained_tsne.shape))
         assigns = gmm.predict(trained_tsne)
     else:
         assigns = []
         for i in tqdm(range(len(trained_tsne))):
             logging.info('Running EM-GMM on {} instances in {} D space...'.format(*trained_tsne[i].shape))
-            gmm = mixture.GaussianMixture(**emgmm_params).fit(trained_tsne[i])
+            gmm = GaussianMixture(**emgmm_params).fit(trained_tsne[i])
             logging.info('Predicting labels for {} instances in {} D space...'.format(*trained_tsne[i].shape))
             assign = gmm.predict(trained_tsne[i])
             assigns.append(assign)
     logging.info('Done predicting labels for {} instances in {} D space...'.format(*trained_tsne.shape))
     uk = list(np.unique(assigns))
-    assignments_li = []
+
+    assignments_list = []
     for i in assigns:
         indexVal = uk.index(i)
-        assignments_li.append(indexVal)
-    assignments = np.array(assignments_li)
+        assignments_list.append(indexVal)
+
+    # Coerce to array and return
+    assignments = np.array(assignments_list)
     return assignments
 
 
@@ -198,7 +202,7 @@ def bsoid_svm(features, labels, comp=COMP, hldout=HLDOUT, cv_it=CV_IT, svm_param
         feats_train, feats_test, labels_train, labels_test = train_test_split(
             features.T, labels.T, test_size=hldout, random_state=23)
         logging.info(f'Training SVM on randomly partitioned {(1 - hldout) * 100}% of training data...')
-        classifier = svm.SVC(**svm_params)
+        classifier = SVC(**svm_params)
         classifier.fit(feats_train, labels_train)
         logging.info(f'Done training SVM mapping {feats_train.shape} features to {labels_train.shape} assignments.')
         logging.info(f'Predicting randomly sampled (non-overlapped) assignments '
@@ -228,7 +232,7 @@ def bsoid_svm(features, labels, comp=COMP, hldout=HLDOUT, cv_it=CV_IT, svm_param
             feats_train, feats_test, labels_train, labels_test = train_test_split(
                 features[i].T, labels[i].T, test_size=hldout, random_state=23)
             logging.info(f'Training SVM on randomly partitioned {(1 - hldout) * 100}% of training data...')
-            clf = svm.SVC(**svm_params)
+            clf = SVC(**svm_params)
             clf.fit(feats_train, labels_train)
             classifier.append(clf)
             logging.info(f'Done training SVM mapping {feats_train.shape} features to {labels_train.shape} assignments.')
@@ -274,12 +278,16 @@ def main(train_folders: list):
     if len(filenames[0]) == 0:
         logging.error('train.py::main()::Zero filenames were found.')
         raise ValueError('UNEXPECTEDLY ZERO FILES. ARE YOU SURE BASE_PATH IS SET CORRECTLY? OR GLOB PATH CHECKING MAY NEED SOME WORK')
+
     # Train TSNE
     features_10fps, features_10fps_scaled, trained_tsne_list, scaler = bsoid_tsne(training_data)
+
     # Train GMM
     gmm_assignments = bsoid_gmm(trained_tsne_list)
+
     # Train SVM
     classifier, scores = bsoid_svm(features_10fps_scaled, gmm_assignments)
+
     # Plot to view progress if necessary
     if PLOT_TRAINING:
         plot_classes(trained_tsne_list, gmm_assignments)
@@ -288,4 +296,6 @@ def main(train_folders: list):
     return features_10fps, trained_tsne_list, scaler, gmm_assignments, classifier, scores
 
 
-main(TRAIN_FOLDERS)
+if __name__ == '__main__':
+    main(TRAIN_FOLDERS)
+
