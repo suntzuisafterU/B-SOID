@@ -215,6 +215,7 @@ def bsoid_svm(features, labels, comp=COMP, hldout=HLDOUT, cv_it=CV_IT, svm_param
         logging.info(f'Done training SVM mapping {feats_train.shape} features to {labels_train.shape} assignments.')
         logging.info(f'Predicting randomly sampled (non-overlapped) assignments '
                      f'using the remaining {HLDOUT * 100}%...')
+
         scores = cross_val_score(classifier, feats_test, labels_test, cv=cv_it, n_jobs=-1)
         timestr = time.strftime("_%Y%m%d_%H%M")
         if PLOT_TRAINING:

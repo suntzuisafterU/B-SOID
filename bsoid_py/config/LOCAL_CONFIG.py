@@ -6,22 +6,24 @@ BSOID_BASE_PROJECT_PATH = os.path.dirname(os.path.dirname(os.path.dirname(os.pat
 
 # Specify where the OST project lives. Modify on your local machine as necessary.
 OST_BASE_PROJECT_PATH = '/home/aaron/Documents/OST-with-DLC'
-# OST_BASE_PROJECT_PATH = os.path.join('C:\\', 'Users', 'killian', 'projects', 'OST-with-DLC')
+OST_BASE_PROJECT_PATH = os.path.join('C:\\', 'Users', 'killian', 'projects', 'OST-with-DLC')
 
 # TODO: med: what is "BASE_PATH" relative to? Rename it?
 BASE_PATH = '/home/aaron/Documents/OST-with-DLC/GUI_projects/OST-DLC-projects/pwd-may11-2020-john-howland-2020-05-11'
-# BASE_PATH = os.path.join('C:\\', 'Users', 'killian', 'projects', 'OST-with-DLC', 'GUI_projects', 'OST-DLC-projects',
-#                          'pwd-may11-2020-john-howland-2020-05-11')
+BASE_PATH = os.path.join('C:\\', 'Users', 'killian', 'projects', 'OST-with-DLC', 'GUI_projects', 'OST-DLC-projects',
+                         'pwd-may11-2020-john-howland-2020-05-11')
 
 # Output directory to where you want the analysis to be stored
 OUTPUT_PATH = os.path.join(OST_BASE_PROJECT_PATH, 'B-SOID', 'OUTPUT')  # '/home/aaron/Documents/OST-with-DLC/B-SOID/OUTPUT'
-OUTPUT_PATH = os.path.join(OST_BASE_PROJECT_PATH, 'B-SOID', 'output')  # '/home/aaron/Documents/OST-with-DLC/B-SOID/OUTPUT'
+OUTPUT_PATH = os.path.join(BSOID_BASE_PROJECT_PATH, 'output')  # '/home/aaron/Documents/OST-with-DLC/B-SOID/OUTPUT'
 
 # TODO: for TRAIN_FOLDERS & PREDICT_FOLDERS, change path resolution from inside other module to inside this config file
 # Data folders used to training neural network.
-TRAIN_FOLDERS = [os.path.sep+'NOT_DLC_OUTPUT_FOR_HACK_TESTING', ]
+TRAIN_FOLDERS = [os.path.sep+'NOT_DLC_OUTPUT__ALL_TEST_FILES', ]
+TRAIN_FOLDERS = [os.path.sep+'NOT_DLC_OUTPUT__SAMPLE_WITH_INDEX', ]
 # C:\Users\killian\projects\OST-with-DLC\GUI_projects\OST-DLC-projects\pwd-may11-2020-john-howland-2020-05-11\
 # C:\Users\killian\projects\OST-DLC-projects\pwd-may11-2020-john-howland-2020-05-11
+
 # Data folders, can contain the same as training or new data for consistency.
 PREDICT_FOLDERS = [os.path.sep+'Data1']
 
@@ -36,7 +38,7 @@ ID = 0
 COMP = 1
 
 # Machine learning model name
-MODEL_NAME = 'my_first_model'
+MODEL_NAME = 'Default_Model_Name__Check_LOCAL_CONFIG'
 
 # Pick a video  # TODO: Q: KS: is the VIDNAME for training or labeling?
 VID_NAME = os.path.join(OST_BASE_PROJECT_PATH, 'GUI_projects', 'labelled_videos', '002_ratA_inc2_above.mp4')  # originally: '/home/aaron/Documents/OST-with-DLC/GUI_projects/labelled_videos/002_ratA_inc2_above.mp4'
