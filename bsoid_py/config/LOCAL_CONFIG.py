@@ -11,14 +11,14 @@ OST_BASE_PROJECT_PATH = '/home/aaron/Documents/OST-with-DLC'
 BASE_PATH = '/home/aaron/Documents/OST-with-DLC/GUI_projects/OST-DLC-projects/pwd-may11-2020-john-howland-2020-05-11'
 # BASE_PATH = os.path.join('C:\\', 'Users', 'killian', 'projects', 'OST-with-DLC', 'GUI_projects', 'OST-DLC-projects',
 #                          'pwd-may11-2020-john-howland-2020-05-11')
-# BASE_PATH = os.path.
 
 # Output directory to where you want the analysis to be stored
 OUTPUT_PATH = os.path.join(OST_BASE_PROJECT_PATH, 'B-SOID', 'OUTPUT')  # '/home/aaron/Documents/OST-with-DLC/B-SOID/OUTPUT'
 
 # TODO: for TRAIN_FOLDERS & PREDICT_FOLDERS, change path resolution from inside other module to inside this config file
 # Data folders used to training neural network.
-TRAIN_FOLDERS = [os.path.sep+'evaluation-results',]
+TRAIN_FOLDERS = [os.path.sep+'NOT_DLC_OUTPUT_FOR_HACK_TESTING', ]
+# C:\Users\killian\projects\OST-with-DLC\GUI_projects\OST-DLC-projects\pwd-may11-2020-john-howland-2020-05-11\
 # C:\Users\killian\projects\OST-DLC-projects\pwd-may11-2020-john-howland-2020-05-11
 # Data folders, can contain the same as training or new data for consistency.
 PREDICT_FOLDERS = [os.path.sep+'Data1']
