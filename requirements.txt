@@ -11,5 +11,6 @@ opencv-python
 seaborn
 scikit-learn
 streamlit
+tables
 tqdm
 umap-learn
