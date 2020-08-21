@@ -13,6 +13,7 @@ import logging
 import numpy as np
 import pandas as pd
 import re
+import warnings
 
 
 def boxcar_center(a, n):
@@ -51,16 +52,35 @@ def sort_nicely(l):
 
 def get_filenames(folder):
     """
-    Gets a list of filenames within a folder
+    Gets a list of CSV filenames within a folder (assuming it exists within BASE_PATH)
     :param folder: str, folder path
     :return: list, filenames
     """
-    filenames = glob.glob(BASE_PATH + folder + '/*.csv')
+    replacement_func = get_filenames_csvs_from_folders_recursively_in_basepath
+    warnings.warn('**NOTE: this function implicitly assume the argument folder resides in BASE_PATH***. '
+                  f'`folder` argument value = {folder} . Replacement function is '
+                  f'currently: {get_filenames_csvs_from_folders_recursively_in_basepath.__qualname__}. '
+                  f'This function is likely to be deprecated in the future.')
+
+    return replacement_func(folder)
+
+
+def get_filenames_csvs_from_folders_recursively_in_basepath(folder: str):
+    """
+    Get_filenames() makes the assumption that the folder is in BASEPATH; however, it is an obfuscated assumption
+    and bad. A new function that DOES NOT RESOLVE PATH IMPLICITLY WITHIN should be created and used.
+    :param folder:
+    :return:
+    """
+    path_to_check_for_csvs = BASE_PATH + folder + '**/*.csv'
+    logging.debug(f'Path that is being checked with "glob": {path_to_check_for_csvs}')
+    filenames = glob.glob(path_to_check_for_csvs, recursive=True)
     sort_nicely(filenames)
+    logging.info(f'files found: {filenames}')
     return filenames
 
 
-def import_folders(folders: list):
+def import_csvs_data_from_folders_in_BASEPATH(folders: list) -> Tuple[List, np.ndarray, List]:
     """
     Import multiple folders containing .csv files and process them
     :param folders: list, data folders
@@ -68,26 +88,23 @@ def import_folders(folders: list):
     :return data: list, filtered csv data
     :return perc_rect_li: list, percent filtered
     """
-    filenames = []
-    rawdata_li = []
-    data_li = []
-    perc_rect_li = []
-    for i, fd in enumerate(folders):  # Loop through folders
-        f = get_filenames(fd)
-        for j, filename in enumerate(f):
-            logging.info(f'Importing CSV file {j + 1} from folder {i + 1}')
-            curr_df = pd.read_csv(filename, low_memory=False)
-            curr_df_filt, perc_rect = adp_filt(curr_df)
-            logging.info('Done preprocessing (x,y) from file {}, folder {}.'.format(j + 1, i + 1))
-            rawdata_li.append(curr_df)
+    # TODO: what does `raw_data_list` do? It looks like a variable without a purpose. It appends but does not return.
+    file_names_list, raw_data_list, data_list, perc_rect_li = [], [], [], []
+    for idx_folder, folder in enumerate(folders):  # Loop through folders
+        filenames_found_in_current_folder = get_filenames_csvs_from_folders_recursively_in_basepath(folder)
+        for idx_filename, filename in enumerate(filenames_found_in_current_folder):
+            logging.info(f'Importing CSV file {idx_filename+1} from folder {idx_folder+1}')
+            df_current_file = pd.read_csv(filename, low_memory=False)
+            curr_df_filt, perc_rect = adp_filt(df_current_file)
+            logging.info(f'Done preprocessing (x,y) from file {idx_filename+1}, folder {idx_folder+1}.')
+            raw_data_list.append(df_current_file)
             perc_rect_li.append(perc_rect)
-            data_li.append(curr_df_filt)
-        filenames.append(f)
-        logging.info('Processed {} CSV files from folder: {}'.format(len(f), fd))
-    data = np.array(data_li)
-    logging.info('Processed a total of {} CSV files, and compiled into a {} data list.'.format(len(data_li),
-                                                                                               data.shape))
-    return filenames, data, perc_rect_li
+            data_list.append(curr_df_filt)
+        file_names_list.append(filenames_found_in_current_folder)
+        logging.info(f'Processed {len(filenames_found_in_current_folder)} CSV files from folder: {folder}')
+    data_array: np.ndarray = np.array(data_list)
+    logging.info(f'Processed a total of {len(data_list)} CSV files, and compiled into a {data_array.shape} data list.')
+    return file_names_list, data_array, perc_rect_li
 
 
 def adp_filt(currdf: object):
@@ -143,7 +160,7 @@ def main(folders: List[str]):
     :return data: list, filtered data list
     :retrun perc_rect: 1D array, percent filtered per BODYPART
     """
-    filenames, data, perc_rect = import_folders(folders)
+    filenames, data, perc_rect = import_csvs_data_from_folders_in_BASEPATH(folders)
     return filenames, data, perc_rect
 
 

@@ -8,6 +8,7 @@ from tqdm import tqdm
 import glob
 import logging
 import numpy as np
+import os
 import pandas as pd
 import re
 import warnings
@@ -73,8 +74,8 @@ def get_filenames_csvs_from_folders_recursively_in_basepath(folder: str):
     :param folder:
     :return:
     """
-    path_to_check_for_csvs = config.BASE_PATH + folder + '**/*.csv'
-    logging.info(f'Path that is being checked with "glob": {path_to_check_for_csvs}')
+    path_to_check_for_csvs = config.BASE_PATH + folder + os.path.sep + '**/*.csv'
+    logging.debug(f'Path that is being checked with "glob": {path_to_check_for_csvs}')
     filenames = glob.glob(path_to_check_for_csvs, recursive=True)
     sort_nicely(filenames)
     logging.info(f'files found: {filenames}')
@@ -89,15 +90,16 @@ def import_csvs_data_from_folders_in_BASEPATH(folders: list) -> Tuple[List, np.n
     :return data: list, filtered csv data
     :return perc_rect_li: list, percent filtered
     """
+    # TODO: what does `raw_data_list` do? It looks like a variable without a purpose. It appends but does not return.
     file_names_list, raw_data_list, data_list, perc_rect_li = [], [], [], []
     for idx_folder, folder in enumerate(folders):  # Loop through folders
         filenames_found_in_current_folder = get_filenames_csvs_from_folders_recursively_in_basepath(folder)
         for idx_filename, filename in enumerate(filenames_found_in_current_folder):
             logging.info(f'Importing CSV file {idx_filename+1} from folder {idx_folder+1}')
-            curr_df = pd.read_csv(filename, low_memory=False)
-            curr_df_filt, perc_rect = adp_filt(curr_df)
+            df_current_file = pd.read_csv(filename, low_memory=False)
+            curr_df_filt, perc_rect = adp_filt(df_current_file)
             logging.info(f'Done preprocessing (x,y) from file {idx_filename+1}, folder {idx_folder+1}.')
-            raw_data_list.append(curr_df)
+            raw_data_list.append(df_current_file)
             perc_rect_li.append(perc_rect)
             data_list.append(curr_df_filt)
         file_names_list.append(filenames_found_in_current_folder)
@@ -161,12 +163,14 @@ def main(folders: List[str]):
     :return data: list, filtered data list
     :retrun perc_rect: 1D array, percent filtered per BODYPART
     """
+    replacement_func = import_csvs_data_from_folders_in_BASEPATH
     warnings.warn('This function, bsoid.util.likelihoodprocessing.main(), will be '
-                  'deprecated in future as it adds nothing except obfuscation. Directly use import_folders() instead.')
-    filenames, data, perc_rect = import_csvs_data_from_folders_in_BASEPATH(folders)
+                  f'deprecated in future as it adds nothing except obfuscation. Directly '
+                  f'use {replacement_func.__qualname__} instead.')
+    filenames, data, perc_rect = replacement_func(folders)
     return filenames, data, perc_rect
 
 
-if __name__ == '__main__':
-    # TODO: should this module even have a main if it's just a helper module?
-    import_csvs_data_from_folders_in_BASEPATH(config.TRAIN_FOLDERS)
+# if __name__ == '__main__':
+#     # TODO: should this module even have a main if it's just a helper module?
+#     import_csvs_data_from_folders_in_BASEPATH(config.TRAIN_FOLDERS)

@@ -5,7 +5,7 @@ import sys
 
 logging.basicConfig(
     format='%(asctime)s %(levelname)-8s %(message)s',
-    level='INFO',
+    level='DEBUG',
     datefmt='%Y-%m-%d %H:%M:%S',
     stream=sys.stdout)
 
