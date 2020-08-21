@@ -7,6 +7,15 @@ Potential abbreviations:
     sn: snout
     pt: proximal tail
 """
+import os
+import sys
+
+project_relative_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+print(project_relative_path)
+# if project_relative_path not in sys.path:
+sys.path.insert(0, project_relative_path)
+print(sys.path)
+
 
 # # # General imports # # #
 from bhtsne import tsne as TSNE_bht
