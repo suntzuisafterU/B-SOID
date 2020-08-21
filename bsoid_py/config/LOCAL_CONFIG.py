@@ -49,7 +49,7 @@ FRAME_DIR = os.path.join(OST_BASE_PROJECT_PATH, 'B-SOID', 'OUTPUT', 'frames')  #
 SHORTVID_DIR = os.path.join(OST_BASE_PROJECT_PATH, 'B-SOID', 'OUTPUT', 'shortvids')  # originally: '/home/aaron/Documents/OST-with-DLC/B-SOID/OUTPUT/shortvids'
 
 # IF YOU'D LIKE TO SKIP PLOTTING/CREATION OF VIDEOS, change below plot settings to False
-PLOT_TRAINING = False
+PLOT_TRAINING = True
 GEN_VIDEOS = True
 
 
