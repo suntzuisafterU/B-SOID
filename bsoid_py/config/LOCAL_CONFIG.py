@@ -6,12 +6,12 @@ BSOID_BASE_PROJECT_PATH = os.path.dirname(os.path.dirname(os.path.dirname(os.pat
 
 # Specify where the OST project lives. Modify on your local machine as necessary.
 OST_BASE_PROJECT_PATH = '/home/aaron/Documents/OST-with-DLC'
-OST_BASE_PROJECT_PATH = os.path.join('C:\\', 'Users', 'killian', 'projects', 'OST-with-DLC')
+# OST_BASE_PROJECT_PATH = os.path.join('C:\\', 'Users', 'killian', 'projects', 'OST-with-DLC')
 
 # TODO: med: what is "BASE_PATH" relative to? Rename it?
 BASE_PATH = '/home/aaron/Documents/OST-with-DLC/GUI_projects/OST-DLC-projects/pwd-may11-2020-john-howland-2020-05-11'
-BASE_PATH = os.path.join('C:\\', 'Users', 'killian', 'projects', 'OST-with-DLC', 'GUI_projects', 'OST-DLC-projects',
-                         'pwd-may11-2020-john-howland-2020-05-11')
+# BASE_PATH = os.path.join('C:\\', 'Users', 'killian', 'projects', 'OST-with-DLC', 'GUI_projects', 'OST-DLC-projects',
+#                          'pwd-may11-2020-john-howland-2020-05-11')
 
 # Output directory to where you want the analysis to be stored
 OUTPUT_PATH = os.path.join(OST_BASE_PROJECT_PATH, 'B-SOID', 'OUTPUT')  # '/home/aaron/Documents/OST-with-DLC/B-SOID/OUTPUT'
