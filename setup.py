@@ -16,13 +16,33 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type='text/markdown',
     license='',  # TODO: HIGH
-    packages=['YourModuleNameHere. Restructuring will probably need to occur first.', ],  # TODO: HIGH
+    packages=setuptools.find_packages(include=['bsoid_py']),
     install_requires=[  # TODO: HIGH: re-evaluate necessary minimum versions of packages in requirements.txt
+        'Cython',
         'numpy>=1.1',
         'matplotlib>=1.5',
+        'bhtsne',
+        'ffmpeg',
+        'hdbscan',
+        'joblib',
+        'matplotlib',
+        'networkx',
+        'numpy',
+        'pandas',
+        'psutil',
+        'opencv-python',
+        'seaborn',
+        'scikit-learn',
+        'streamlit',
+        'tables',
+        'tqdm',
+        'umap-learn',
         # etc...
     ],
-    classifiers=(  # https://pypi.org/classifiers/  #TODO: HIGH
+    setup_requires=['pytest-runner'],
+    tests_require=['pytest'],
+    test_suite='tests',
+    classifiers=[ # https://pypi.org/classifiers/  #TODO: HIGH
         'Development Status :: 1 - Planning',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.7',
@@ -36,5 +56,5 @@ setuptools.setup(
         'Operating System :: OS Independent',
         # 'Topic :: Scientific/Engineering :: Image Recognition',
         # 'Topic :: Scientific/Engineering :: Artificial Intelligence',
-    ),
+        ],
 )
