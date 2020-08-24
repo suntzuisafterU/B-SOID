@@ -22,7 +22,7 @@ setuptools.setup(
     install_requires=[  # TODO: HIGH: re-evaluate necessary minimum versions of packages in requirements.txt
         'Cython',
         'numpy>=1.1',
-        'matplotlib>=1.5',
+        'matplotlib>=1.5',  # TODO: re-evaluate matplotlib being version above 3.1. ??? Recall problems plotting on Linux and needing matplotlib to be a certain version
         'bhtsne',
         'ffmpeg',
         'hdbscan',
