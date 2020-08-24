@@ -16,7 +16,8 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type='text/markdown',
     license='',  # TODO: HIGH
-    packages=setuptools.find_packages(include=['bsoid_py']),
+    packages=setuptools.find_packages(include=['bsoid_py']), 
+    # TODO: Use the __init__ script inside bsoid_py to 'import' all modules/functions to be included in the library.
     install_requires=[  # TODO: HIGH: re-evaluate necessary minimum versions of packages in requirements.txt
         'Cython',
         'numpy>=1.1',
