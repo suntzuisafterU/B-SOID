@@ -18,6 +18,7 @@ setuptools.setup(
     license='',  # TODO: HIGH
     packages=setuptools.find_packages(include=['bsoid_py']), 
     # TODO: Use the __init__ script inside bsoid_py to 'import' all modules/functions to be included in the library.
+    #       For example see deeplabcut, or any other python libraries source code.
     install_requires=[  # TODO: HIGH: re-evaluate necessary minimum versions of packages in requirements.txt
         'Cython',
         'numpy>=1.1',
