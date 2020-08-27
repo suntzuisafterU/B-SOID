@@ -108,8 +108,6 @@ def train_umap_unsupervised_with_xy_features_umapapp(data: list, fps: int = conf
     return f_10fps, f_10fps_sc
 
 
-
-
 def bsoid_umap_embed_umapapp(f_10fps_sc, umap_params=config.UMAP_PARAMS):
     """
     Trains UMAP (unsupervised) given a set of features based on (x,y) positions
@@ -695,7 +693,7 @@ def main_py(train_folders: list):
         raise ValueError('UNEXPECTEDLY ZERO FILES. ARE YOU SURE BASE_PATH IS SET CORRECTLY? OR GLOB PATH CHECKING MAY NEED SOME WORK')
 
     # Train TSNE
-    features_10fps, features_10fps_scaled, trained_tsne_list, scaler = bsoid_tsne(training_data)
+    features_10fps, features_10fps_scaled, trained_tsne_list, scaler = bsoid_tsne_py(training_data)
 
     # Train GMM
     gmm_assignments = bsoid_gmm_pyvoc(trained_tsne_list)
