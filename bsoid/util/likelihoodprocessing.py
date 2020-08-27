@@ -74,7 +74,7 @@ def get_filenames_csvs_from_folders_recursively_in_basepath(folder: str):
     :param folder:
     :return:
     """
-    path_to_check_for_csvs = config.BASE_PATH + folder + os.path.sep + '**/*.csv'
+    path_to_check_for_csvs = config.BASE_PATH + folder + f'{os.path.sep}**{os.path.sep}*.csv'
     config.bsoid_logger.debug(f'Path that is being checked with "glob": {path_to_check_for_csvs}')
     filenames = glob.glob(path_to_check_for_csvs, recursive=True)
     sort_nicely(filenames)
@@ -92,6 +92,8 @@ def import_csvs_data_from_folders_in_BASEPATH(folders: list) -> Tuple[List, np.n
     """
     # TODO: what does `raw_data_list` do? It looks like a variable without a purpose. It appends but does not return.
     file_names_list, raw_data_list, data_list, perc_rect_li = [], [], [], []
+    if len(folders) == 0:
+        raise ValueError(f'submitted folders list is empty')
     for idx_folder, folder in enumerate(folders):  # Loop through folders
         filenames_found_in_current_folder = get_filenames_csvs_from_folders_recursively_in_basepath(folder)
         for idx_filename, filename in enumerate(filenames_found_in_current_folder):
