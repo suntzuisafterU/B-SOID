@@ -77,7 +77,7 @@ assert os.path.isdir(config_file_log_folder_path), f'Path does not exist: {confi
 
 # Instantiate logger
 bsoid_logger = logger_config.create_generic_logger(
-    logger_name=configuration.get('LOGGING', 'LOG_FILE_NAME'),   # configuration['LOGGING']['LOG_FILE_NAME'],
+    logger_name=configuration.get('LOGGING', 'LOGGER_NAME'),   # configuration['LOGGING']['LOG_FILE_NAME'],
     log_format=configuration.get('LOGGING', 'LOG_FORMAT', raw=True),
     stdout_log_level=configuration.get('LOGGING', 'STREAM_LOG_LEVEL', fallback=None),
     file_log_level=configuration.get('LOGGING', 'FILE_LOG_LEVEL', fallback=None),

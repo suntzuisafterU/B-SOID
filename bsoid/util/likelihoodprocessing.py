@@ -75,10 +75,10 @@ def get_filenames_csvs_from_folders_recursively_in_basepath(folder: str):
     :return:
     """
     path_to_check_for_csvs = config.BASE_PATH + folder + os.path.sep + '**/*.csv'
-    logging.debug(f'Path that is being checked with "glob": {path_to_check_for_csvs}')
+    config.bsoid_logger.debug(f'Path that is being checked with "glob": {path_to_check_for_csvs}')
     filenames = glob.glob(path_to_check_for_csvs, recursive=True)
     sort_nicely(filenames)
-    logging.info(f'files found: {filenames}')
+    config.bsoid_logger.info(f'files found: {filenames}')
     return filenames
 
 
@@ -95,17 +95,17 @@ def import_csvs_data_from_folders_in_BASEPATH(folders: list) -> Tuple[List, np.n
     for idx_folder, folder in enumerate(folders):  # Loop through folders
         filenames_found_in_current_folder = get_filenames_csvs_from_folders_recursively_in_basepath(folder)
         for idx_filename, filename in enumerate(filenames_found_in_current_folder):
-            logging.info(f'Importing CSV file {idx_filename+1} from folder {idx_folder+1}')
+            config.bsoid_logger.info(f'Importing CSV file {idx_filename+1} from folder {idx_folder+1}')
             df_current_file = pd.read_csv(filename, low_memory=False)
             curr_df_filt, perc_rect = adp_filt(df_current_file)
-            logging.info(f'Done preprocessing (x,y) from file {idx_filename+1}, folder {idx_folder+1}.')
+            config.bsoid_logger.info(f'Done preprocessing (x,y) from file {idx_filename+1}, folder {idx_folder+1}.')
             raw_data_list.append(df_current_file)
             perc_rect_li.append(perc_rect)
             data_list.append(curr_df_filt)
         file_names_list.append(filenames_found_in_current_folder)
-        logging.info(f'Processed {len(filenames_found_in_current_folder)} CSV files from folder: {folder}')
+        config.bsoid_logger.info(f'Processed {len(filenames_found_in_current_folder)} CSV files from folder: {folder}')
     data_array: np.ndarray = np.array(data_list)
-    logging.info(f'Processed a total of {len(data_list)} CSV files, and compiled into a {data_array.shape} data list.')
+    config.bsoid_logger.info(f'Processed a total of {len(data_list)} CSV files, and compiled into a {data_array.shape} data list.')
     return file_names_list, data_array, perc_rect_li
 
 
@@ -127,14 +127,14 @@ def adp_filt(currdf: object):  # TODO: low: rename function for clarity
         elif currdf[0][header_idx] == "y":
             y_index.append(header_idx)
         else: pass  # TODO: low: should this be failing silently?
-    logging.info('Extracting likelihood value...')
+    config.bsoid_logger.info('Extracting likelihood value...')
     curr_df1 = currdf[:, 1:]
     data_x = curr_df1[:, np.array(x_index) - 1]
     data_y = curr_df1[:, np.array(y_index) - 1]
     data_lh = curr_df1[:, np.array(l_index) - 1]
     currdf_filt: np.ndarray = np.zeros((data_x.shape[0] - 1, (data_x.shape[1]) * 2))
 
-    logging.info('Computing data threshold to forward fill any sub-threshold (x,y)...')
+    config.bsoid_logger.info('Computing data threshold to forward fill any sub-threshold (x,y)...')
     for _ in range(data_lh.shape[1]):  # TODO: low: simplify `perc_rect` initialization as list of zeroes
         perc_rect.append(0)
     for x in tqdm(range(data_lh.shape[1])):

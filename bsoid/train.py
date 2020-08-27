@@ -689,7 +689,7 @@ def main_py(train_folders: list):
     if len(filenames) == 0:
         raise ValueError('Zero training folders were specified. Check your config file!!!!')
     if len(filenames[0]) == 0:
-        logging.error('train.py::main()::Zero filenames were found.')
+        config.bsoid_logger.error('train.py::main()::Zero filenames were found.')
         raise ValueError('UNEXPECTEDLY ZERO FILES. ARE YOU SURE BASE_PATH IS SET CORRECTLY? OR GLOB PATH CHECKING MAY NEED SOME WORK')
 
     # Train TSNE
