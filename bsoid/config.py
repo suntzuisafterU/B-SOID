@@ -217,13 +217,13 @@ TRAIN_FOLDERS = [os.path.sep+'NOT_DLC_OUTPUT__SAMPLE_WITH_INDEX', ]
 PREDICT_FOLDERS = [os.path.sep+'Data1', ]
 
 # Create a folder to store extracted images, MAKE SURE THIS FOLDER EXISTS.  # TODO: med: add in a runtime check that folder exists
-FRAME_DIR = os.path.join(OST_BASE_PROJECT_PATH, 'B-SOID', 'OUTPUT', 'frames')  # '/home/aaron/Documents/OST-with-DLC/B-SOID/OUTPUT/frames'
+FRAME_DIR = os.path.join(OUTPUT_PATH, 'frames')  # '/home/aaron/Documents/OST-with-DLC/B-SOID/OUTPUT/frames'
 
 # Create a folder to store created video snippets/group, MAKE SURE THIS FOLDER EXISTS.  # TODO: med: add in a runtime check that folder exists
 # Create a folder to store extracted images, make sure this folder exist.
 #   This program will predict labels and print them on these images
 # In addition, this will also create an entire sample group videos for ease of understanding
-SHORTVID_DIR = os.path.join(OST_BASE_PROJECT_PATH, 'B-SOID', 'OUTPUT', 'shortvids')  # '/home/aaron/Documents/OST-with-DLC/B-SOID/OUTPUT/shortvids'
+SHORTVID_DIR = os.path.join(OUTPUT_PATH, 'shortvids')  # '/home/aaron/Documents/OST-with-DLC/B-SOID/OUTPUT/shortvids'
 # assert os.path.isdir(SHORTVID_DIR), f'`SHORTVID` dir. (value={SHORTVID_DIR}) must exist for runtime but does not.'
 
 # Now, pick an example video that corresponds to one of the csv files from the PREDICT_FOLDERS
