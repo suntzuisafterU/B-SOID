@@ -208,7 +208,8 @@ MODEL_NAME = configuration.get('APP', 'OUTPUT_MODEL_NAME')  # Machine learning m
 
 # TODO: med: for TRAIN_FOLDERS & PREDICT_FOLDERS, change path resolution from inside functional module to inside this config file
 # Data folders used to training neural network.
-TRAIN_FOLDERS = [os.path.sep+'training_datasets', ]
+# TRAIN_FOLDERS = [os.path.sep+'training-datasets', ]
+TRAIN_FOLDERS = [os.path.sep+'NOT_DLC_OUTPUT__SAMPLE_WITH_INDEX', ]
 
 # Data folders, can contain the same as training or new data for consistency.
 PREDICT_FOLDERS = [os.path.sep+'Data1', ]

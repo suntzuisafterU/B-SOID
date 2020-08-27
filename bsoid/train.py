@@ -668,15 +668,47 @@ def bsoid_feats_umapapp(data: list, fps: int = config.video_fps) -> Tuple:
 
 
 def main_py(train_folders: list):
+    """
+    :param train_folders: list, training data folders
+    :return f_10fps: 2D array, features
+    :return trained_tsne: 2D array, trained t-SNE space
+    :return gmm_assignments: Converged EM-GMM group assignments
+    :return classifier: obj, SVM classifier
+    :return scores: 1D array, cross-validated accuracy
+    """
+    # filenames, training_data, perc_rect = likelihoodprocessing.import_csvs_data_from_folders_in_BASEPATH(train_folders)
+    # f_10fps, f_10fps_sc, trained_tsne, scaler = bsoid_tsne_py(training_data)
+    # gmm_assignments = bsoid_gmm_pyvoc(trained_tsne)
+    # classifier, scores = bsoid_svm_py(f_10fps_sc, gmm_assignments)
+    # if config.PLOT_TRAINING:
+    #     visuals.plot_classes_umap(trained_tsne, gmm_assignments)
+    #     visuals.plot_accuracy_umap(scores)
+    #     visuals.plot_feats_umap(f_10fps, gmm_assignments)
+    # return f_10fps, trained_tsne, scaler, gmm_assignments, classifier, scores
+    assert isinstance(train_folders, list)
+    # Get data
     filenames, training_data, perc_rect = likelihoodprocessing.import_csvs_data_from_folders_in_BASEPATH(train_folders)
-    f_10fps, f_10fps_sc, trained_tsne, scaler = bsoid_tsne_py(training_data)
-    gmm_assignments = bsoid_gmm_pyvoc(trained_tsne)
-    classifier, scores = bsoid_svm_py(f_10fps_sc, gmm_assignments)
+    if len(filenames) == 0:
+        raise ValueError('Zero training folders were specified. Check your config file!!!!')
+    if len(filenames[0]) == 0:
+        logging.error('train.py::main()::Zero filenames were found.')
+        raise ValueError('UNEXPECTEDLY ZERO FILES. ARE YOU SURE BASE_PATH IS SET CORRECTLY? OR GLOB PATH CHECKING MAY NEED SOME WORK')
+
+    # Train TSNE
+    features_10fps, features_10fps_scaled, trained_tsne_list, scaler = bsoid_tsne(training_data)
+
+    # Train GMM
+    gmm_assignments = bsoid_gmm_pyvoc(trained_tsne_list)
+
+    # Train SVM
+    classifier, scores = bsoid_svm_py(features_10fps_scaled, gmm_assignments)
+
+    # Plot to view progress if necessary
     if config.PLOT_TRAINING:
-        visuals.plot_classes_umap(trained_tsne, gmm_assignments)
-        visuals.plot_accuracy_umap(scores)
-        visuals.plot_feats_umap(f_10fps, gmm_assignments)
-    return f_10fps, trained_tsne, scaler, gmm_assignments, classifier, scores
+        visuals.plot_classes_bsoidpy(trained_tsne_list, gmm_assignments)
+        visuals.plot_accuracy_bsoidpy(scores)
+        visuals.plot_feats_bsoidpy(features_10fps, gmm_assignments)
+    return features_10fps, trained_tsne_list, scaler, gmm_assignments, classifier, scores
 
 
 def main_umap(train_folders: list):
@@ -705,3 +737,6 @@ def main_voc(train_folders: list):
         visuals.plot_accuracy_bsoidvoc(scores)
         visuals.plot_feats_bsoidvoc(f_10fps, gmm_assignments)
     return f_10fps, trained_tsne, gmm_assignments, classifier, scores
+
+if __name__ == '__main__':
+    main_py(config.TRAIN_FOLDERS)
