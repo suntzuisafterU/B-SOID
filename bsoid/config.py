@@ -203,8 +203,8 @@ GEN_VIDEOS = True
 BASE_PATH = '/home/aaron/Documents/OST-with-DLC/GUI_projects/OST-DLC-projects/pwd-may11-2020-john-howland-2020-05-11'
 
 # Output directory to where you want the analysis to be stored
-# OUTPUT_PATH = os.path.join(OST_BASE_PROJECT_PATH, 'B-SOID', 'OUTPUT')  # '/home/aaron/Documents/OST-with-DLC/B-SOID/OUTPUT'
-OUTPUT_PATH = os.path.join('C:\\', 'Users', 'killian', 'Pictures')
+OUTPUT_PATH = os.path.join(OST_BASE_PROJECT_PATH, 'B-SOID', 'output')  # '/home/aaron/Documents/OST-with-DLC/B-SOID/OUTPUT'
+# OUTPUT_PATH = os.path.join('C:\\', 'Users', 'killian', 'Pictures')
 
 MODEL_NAME = configuration.get('APP', 'OUTPUT_MODEL_NAME')  # Machine learning model name
 
