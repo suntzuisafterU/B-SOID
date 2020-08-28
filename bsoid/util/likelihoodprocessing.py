@@ -6,7 +6,6 @@ Forward fill low likelihood (x,y)
 from typing import Any, List, Tuple
 from tqdm import tqdm
 import glob
-import logging
 import numpy as np
 import os
 import pandas as pd
@@ -79,7 +78,7 @@ def get_filenames_csvs_from_folders_recursively_in_basepath(folder: str) -> List
     :param folder:
     :return:
     """
-    path_to_check_for_csvs = f'{config.BASE_PATH}{folder}{os.path.sep}**{os.path.sep}*.csv'
+    path_to_check_for_csvs = f'{config.BASE_PATH}{os.path.sep}{folder}{os.path.sep}**{os.path.sep}*.csv'
     logger.debug(f'Path that is being checked with using glob selection: {path_to_check_for_csvs}')
     filenames = glob.glob(path_to_check_for_csvs, recursive=True)
     sort_list_nicely_in_place(filenames)
