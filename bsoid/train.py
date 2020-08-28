@@ -31,6 +31,8 @@ import warnings
 from bsoid import config
 from bsoid.util import likelihoodprocessing, visuals
 
+logger = config.bsoid_logger
+
 
 ########################################################################################################################
 
@@ -176,7 +178,7 @@ def bsoid_hdbscan_umapapp(umap_embeddings, hdbscan_params=config.HDBSCAN_PARAMS)
     return assignments, soft_clusters, soft_assignments
 
 
-def bsoid_nn_appumap(feats, labels, holdout_pct: float = config.holdout_percent, cv_it: int = config.kfold_crossvalidation, mlp_params=config.MLP_PARAMS):
+def bsoid_nn_appumap(feats, labels, holdout_pct: float = config.holdout_percent, cv_it: int = config.crossvalidation_k, mlp_params=config.MLP_PARAMS):
     """
     Trains MLP classifier
     :param feats: 2D array, original feature space, standardized
@@ -227,7 +229,7 @@ def bsoid_nn_appumap(feats, labels, holdout_pct: float = config.holdout_percent,
 def train_mlp_classifier_voc(feats, labels,
                              comp: int = config.compile_CSVs_for_training,
                              holdout_percent: float = config.holdout_percent,
-                             cv_it=config.kfold_crossvalidation, mlp_params=config.MLP_PARAMS) -> Tuple[Any, Any]:
+                             cv_it=config.crossvalidation_k, mlp_params=config.MLP_PARAMS) -> Tuple[Any, Any]:
     """
     Trains MLP classifier
     :param feats: 2D array, original feature space, standardized
@@ -432,6 +434,11 @@ def bsoid_tsne_voc(data: list, bodyparts=config.BODYPARTS_VOC_LEGACY, fps=config
     :retrun f_10fps_sc: 2D array, standardized features
     :return trained_tsne: 2D array, trained t-SNE space
     """
+    if len(data) <= 0:
+        err = f'`data` was expected to be list of data (specifically arrays) but no data was found. ' \
+              f'data = {data}'
+        logger.error(err)
+        raise ValueError(err)
     win_len = np.int(np.round(0.05 / (1 / fps)) * 2 - 1)
     feats = []
     for m in range(len(data)):
@@ -562,7 +569,7 @@ def train_emgmm_with_learned_tsne_space(trained_tsne_array, comp=config.compile_
     assignments = np.array(assignments_list)
     return assignments
 
-def bsoid_svm_py(feats, labels, comp: int = config.compile_CSVs_for_training, holdout_pct: float = config.holdout_percent, cv_it: int = config.compile_CSVs_for_training, svm_params: dict = config.SVM_PARAMS):
+def bsoid_svm_py(feats, labels, comp: int = config.compile_CSVs_for_training, holdout_pct: float = config.holdout_percent, cv_it: int = config.crossvalidation_k, svm_params: dict = config.SVM_PARAMS):
     # TODO: low: depending on COMP value, could return two lists or a classifier and a list...consistency?!!!!
     """
     Train SVM classifier
@@ -585,7 +592,7 @@ def bsoid_svm_py(feats, labels, comp: int = config.compile_CSVs_for_training, ho
         config.bsoid_logger.info(f'Done training SVM mapping {feats_train.shape} features to {labels_train.shape} assignments.')
         config.bsoid_logger.info(f'Predicting randomly sampled (non-overlapped) assignments '
                      f'using the remaining {holdout_pct * 100}%...')
-        scores = cross_val_score(classifier, feats_test, labels_test, cv=cv_it, n_jobs=-1)
+        scores = cross_val_score(classifier, feats_test, labels_test, cv=cv_it, n_jobs=config.crossvalidation_n_jobs)
         time_str = time.strftime("_%Y%m%d_%H%M")
         if config.PLOT_TRAINING:
             np.set_printoptions(precision=2)
@@ -641,7 +648,7 @@ def bsoid_svm_py(feats, labels, comp: int = config.compile_CSVs_for_training, ho
 
 ### Legacy functions -- keep them for now
 
-def bsoid_nn_voc(feats, labels, comp: int = config.compile_CSVs_for_training, hldout: float = config.holdout_percent, cv_it=config.kfold_crossvalidation, mlp_params=config.MLP_PARAMS):
+def bsoid_nn_voc(feats, labels, comp: int = config.compile_CSVs_for_training, hldout: float = config.holdout_percent, cv_it=config.crossvalidation_k, mlp_params=config.MLP_PARAMS):
     # WARNING: DEPRECATION IMMINENT
     replacement_func = train_mlp_classifier_voc
     warnings.warn(f'This function will be deprecated in the future. If you still need this function to use, '
@@ -678,8 +685,6 @@ def bsoid_feats_umapapp(data: list, fps: int = config.video_fps) -> Tuple:
 :return classifier: obj, MLP classifier
 :return scores: 1D array, cross-validated accuracy
 """
-
-
 def main_py(train_folders: list):
     if not isinstance(train_folders, list):
         raise ValueError(f'`train_folders` arg was expected to be list but instead found '
@@ -714,20 +719,27 @@ def main_umap(train_folders: list):
     if not isinstance(train_folders, list):
         raise ValueError(f'`train_folders` arg was expected to be list but instead found '
                          f'type: {type(train_folders)} (value:  {train_folders}')
+    time_str = time.strftime("_%Y%m%d_%H%M")
 
-    filenames, training_data, perc_rect = likelihoodprocessing.import_csvs_data_from_folders_in_BASEPATH_and_process_data(train_folders)
+    filenames, training_data, perc_rect = likelihoodprocessing.\
+        import_csvs_data_from_folders_in_BASEPATH_and_process_data(train_folders)
     f_10fps, f_10fps_sc = train_umap_unsupervised_with_xy_features_umapapp(training_data)
+
+    # Train UMAP (unsupervised) given a set of features based on (x,y) positions
     trained_umap, umap_embeddings = bsoid_umap_embed_umapapp(f_10fps_sc)
+    # Train HDBSCAN (unsupervised) given learned UMAP space
     hdb_assignments, soft_clusters, soft_assignments = bsoid_hdbscan_umapapp(umap_embeddings)
+
     nn_classifier, scores, nn_assignments = bsoid_nn_appumap(f_10fps, soft_assignments)
+
     if config.PLOT_GRAPHS:
-        time_str = time.strftime("_%Y%m%d_%H%M")
         fig1 = visuals.plot_classes_umap(umap_embeddings[hdb_assignments >= 0], hdb_assignments[hdb_assignments >= 0])
         my_file1 = 'hdb_soft_assignments'
         fig1.savefig(os.path.join(config.OUTPUT_PATH, str.join('', (my_file1, time_str, '.svg'))))
         visuals.plot_accuracy_umap(scores)
+
     return f_10fps, f_10fps_sc, umap_embeddings, hdb_assignments, soft_assignments, soft_clusters, \
-           nn_classifier, scores, nn_assignments
+        nn_classifier, scores, nn_assignments
 
 
 def main_voc(train_folders: list):
