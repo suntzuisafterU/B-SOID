@@ -14,7 +14,6 @@ import time
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sn
-import warnings
 
 from bsoid import config
 logger = config.bsoid_logger
