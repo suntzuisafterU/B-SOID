@@ -15,7 +15,7 @@ import warnings
 
 from bsoid import config
 # from analyses.config import BASE_PATH, FRAME_DIR, SHORTVID_DIR
-from bsoid.util.likelihoodprocessing import sort_nicely
+from bsoid.util.likelihoodprocessing import sort_list_nicely_in_place
 
 
 def repeatingNumbers(labels) -> Tuple[List, List, List]:  # TODO: rename function for clarity
@@ -53,7 +53,7 @@ def get_video_names(folder_name) -> List[str]:
     path_to_folder = os.path.join(config.BASE_PATH, folder_name)
     # video_names = glob.glob(BASE_PATH + folder_name + '/*.mp4')
     video_names = glob.glob(f'{path_to_folder}/*.mp4')
-    sort_nicely(video_names)
+    sort_list_nicely_in_place(video_names)
     return video_names
 
 
@@ -150,7 +150,7 @@ def create_labeled_vid(labels, crit=3, num_randomly_generated_examples=5,
     """
     # Create list of only .png images found in `frame_dir`
     images = [img for img in os.listdir(frame_dir) if img.endswith(".png")]
-    sort_nicely(images)
+    sort_list_nicely_in_place(images)
     four_character_code = cv2.VideoWriter_fourcc(*'mp4v')
     frame = cv2.imread(os.path.join(frame_dir, images[0]))
     height, width, layers = frame.shape
@@ -209,7 +209,7 @@ def create_labeled_vid_app(labels, crit, counts, output_fps, frame_dir, output_p
     :param output_path: string, directory to where you want to store short video examples in LOCAL_CONFIG
     """
     images = [img for img in os.listdir(frame_dir) if img.endswith(".png")]
-    sort_nicely(images)
+    sort_list_nicely_in_place(images)
     four_character_code = cv2.VideoWriter_fourcc(*'avc1')  # fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     frame = cv2.imread(os.path.join(frame_dir, images[0]))
     height, width, layers = frame.shape
