@@ -6,7 +6,8 @@ from logging.handlers import SMTPHandler
 import logging
 
 
-def create_generic_logger(logger_name: str, log_format: str, stdout_log_level: str = None,
+def create_generic_logger(logger_name: str, log_format: str,
+                          stdout_log_level: str = None,
                           file_log_level: str = None, file_log_file_path: str = None,
                           email_log_level: str = None) -> logging.Logger:
     """

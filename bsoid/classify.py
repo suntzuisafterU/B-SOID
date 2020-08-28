@@ -477,7 +477,7 @@ def main_py(predict_folders: List[str], scaler, fps, behv_model) -> Tuple[Any, A
         labels_fslow, 1D array, label/100ms
         labels_fshigh, 1D array, label/frame
     """
-    filenames, data_new, perc_rect = likelihoodprocessing.import_csvs_data_from_folders_in_BASEPATH(predict_folders)
+    filenames, data_new, perc_rect = likelihoodprocessing.import_csvs_data_from_folders_in_BASEPATH_and_process_data(predict_folders)
     features_new = bsoid_extract_py(data_new)
     labels_fslow = bsoid_predict_py(features_new, scaler, behv_model)
     labels_fshigh = bsoid_frameshift_py(data_new, scaler, fps, behv_model)
@@ -494,7 +494,7 @@ def main_umap(predict_folders: List[str], fps, clf) -> Tuple[Any, Any]:
     :return data_new: list, csv data
     :return fs_labels, 1D array, label/frame
     """
-    filenames, data_new, perc_rect = likelihoodprocessing.import_csvs_data_from_folders_in_BASEPATH(predict_folders)
+    filenames, data_new, perc_rect = likelihoodprocessing.import_csvs_data_from_folders_in_BASEPATH_and_process_data(predict_folders)
     fs_labels = bsoid_frameshift_umap(data_new, fps, clf)
     if VID:
         videoprocessing.main(VID_NAME, fs_labels[ID][0:-1:int(round(fps / 10))], fps, FRAME_DIR)
@@ -509,7 +509,7 @@ def main_voc(predict_folders: List[str], fps, behv_model) -> Tuple[Any, Any, Any
     :return labels_fslow, 1D array, label/100ms
     :return labels_fshigh, 1D array, label/frame
     """
-    filenames, data_new, perc_rect = likelihoodprocessing.import_csvs_data_from_folders_in_BASEPATH(predict_folders)
+    filenames, data_new, perc_rect = likelihoodprocessing.import_csvs_data_from_folders_in_BASEPATH_and_process_data(predict_folders)
     features_new = bsoid_extract_voc(data_new)
     labels_fslow: list = bsoid_predict_umapvoc(features_new, behv_model)
     labels_fshigh = bsoid_frameshift_voc(data_new, fps, behv_model)

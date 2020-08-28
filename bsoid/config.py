@@ -17,10 +17,12 @@ All values read from the config.ini file are string so type conversion must be m
 
 from ast import literal_eval
 from pathlib import Path
+from typing import List
 import configparser
 import os
 import random
 import sys
+
 
 from bsoid.util import logger_config
 
@@ -43,7 +45,7 @@ configuration.read(os.path.join(BSOID_BASE_PROJECT_PATH, config_file_name))
 # config_logger = logging.Logger()
 
 # Instantiate runtime variables
-random_state: int = configuration.getint('MODEL', 'RANDOM_STATE', fallback=random.randint(1, 100_000))
+random_state: int = configuration.getint('MODEL', 'RANDOM_STATE', fallback=random.randint(1, 100_000_000))
 holdout_percent: float = configuration.getfloat('MODEL', 'HOLDOUT_TEST_PCT')
 kfold_crossvalidation: int = configuration.getint('MODEL', 'CROSS_VALIDATION_K')  # Number of iterations for cross-validation to show it's not over-fitting.
 video_fps: int = configuration.getint('APP', 'VIDEO_FRAME_RATE')  # ['APP']['VIDEO_FRAME_RATE']
@@ -53,26 +55,26 @@ compile_CSVs_for_training: int = configuration.getint('APP', 'COMPILE_CSVS_FOR_T
 ########################################################################################################################
 
 # Specify where the OST project lives. Modify on your local machine as necessary.
-OST_BASE_PROJECT_PATH = configuration.get('PATH', 'OST_BASE_PROJECT_PATH')  # configuration['PATH']['OST_BASE_PROJECT_PATH']  # 'previously: /home/aaron/Documents/OST-with-DLC'
+OST_BASE_PROJECT_PATH = configuration.get('PATH', 'OST_BASE_PROJECT_PATH')  # 'previously: /home/aaron/Documents/OST-with-DLC'
 # OST_BASE_PROJECT_PATH = os.path.join('C:\\', 'Users', 'killian', 'projects', 'OST-with-DLC')
 BASE_PATH = '/home/aaron/Documents/OST-with-DLC/GUI_projects/OST-DLC-projects/pwd-may11-2020-john-howland-2020-05-11'
 
 
 ########################################################################################################################
 
-if debug==2: print("configuration.get('LOGGING', 'LOG_FILE_NAME'):::", configuration.get('LOGGING', 'LOG_FILE_NAME'))
-if debug==2: print('OST PATH:::', configuration.get('PATH', 'OSTPATH', fallback=None))
+if debug == 2: print("configuration.get('LOGGING', 'LOG_FILE_NAME'):::", configuration.get('LOGGING', 'LOG_FILE_NAME'))
+if debug == 2: print('OST PATH:::', configuration.get('PATH', 'OSTPATH', fallback=None))
 
 # Resolve logger variables
 config_file_log_folder_path = configuration.get('LOGGING', 'LOG_FILE_FOLDER_PATH')
 config_file_log_folder_path = config_file_log_folder_path if config_file_log_folder_path else default_log_folder_path
-if debug>=2: print('config_file_log_folder_path:::', config_file_log_folder_path)
+if debug >= 2: print('config_file_log_folder_path:::', config_file_log_folder_path)
 
 config_file_name = configuration.get('LOGGING', 'LOG_FILE_NAME', fallback=default_log_file_name)
-if debug>=2: print('config_file_name:::', config_file_name)
+if debug >= 2: print('config_file_name:::', config_file_name)
 
 log_file_file_path = str(Path(config_file_log_folder_path, config_file_name).absolute())
-if debug>=2: print('log_file_file_path AKA os.path.join(config_file_log_folder_path, config_file_name):::', log_file_file_path)
+if debug >= 2: print('log_file_file_path AKA os.path.join(config_file_log_folder_path, config_file_name):::', log_file_file_path)
 
 assert os.path.isdir(config_file_log_folder_path), f'Path does not exist: {config_file_log_folder_path}'
 
@@ -156,7 +158,7 @@ SVM_PARAMS = {
 # # # BSDOI UMAP # # #
 # IF YOU'D LIKE TO SKIP PLOTS/VIDEOS, change below PLOT/VID settings to False
 PLOT_GRAPHS: bool = True  # New variable name for `PLOT`
-PLOT = PLOT_GRAPHS  # `PLOT` is likely to be deprecated in the future
+# PLOT = PLOT_GRAPHS  # `PLOT` is likely to be deprecated in the future
 PRODUCE_VIDEO: bool = True
 VID = PRODUCE_VIDEO  # if this is true, make sure direct to the video below AND that you created the two specified folders!
 
@@ -211,7 +213,7 @@ MODEL_NAME = configuration.get('APP', 'OUTPUT_MODEL_NAME')  # Machine learning m
 # TODO: med: for TRAIN_FOLDERS & PREDICT_FOLDERS, change path resolution from inside functional module to inside this config file
 # Data folders used to training neural network.
 # TRAIN_FOLDERS = [os.path.sep+'training-datasets', ]
-TRAIN_FOLDERS = [os.path.sep+'NOT_DLC_OUTPUT__SAMPLE_WITH_INDEX', ]
+TRAIN_FOLDERS: List[str] = [os.path.sep+'NOT_DLC_OUTPUT__SAMPLE_WITH_INDEX', ]
 
 # Data folders, can contain the same as training or new data for consistency.
 PREDICT_FOLDERS = [os.path.sep+'Data1', ]

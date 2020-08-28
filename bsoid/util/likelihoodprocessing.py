@@ -3,7 +3,7 @@ likelihood processing utilities
 Forward fill low likelihood (x,y)
 """
 
-from typing import List, Tuple
+from typing import Any, List, Tuple
 from tqdm import tqdm
 import glob
 import logging
@@ -14,10 +14,11 @@ import re
 import warnings
 
 from bsoid import config
-# from analyses.config import BASE_PATH, TRAIN_FOLDERS
 
 
-def boxcar_center(a, n):
+########################################################################################################################
+
+def boxcar_center(a, n) -> np.ndarray:
     """
     TODO
     :param a: TODO
@@ -30,7 +31,7 @@ def boxcar_center(a, n):
     return moving_avg
 
 
-def convert_int(s):
+def convert_int(s: str):
     """ Converts digit string to integer """
     if s.isdigit():
         return int(s)
@@ -39,17 +40,19 @@ def convert_int(s):
 
 
 def alphanum_key(s) -> List:
-    """ Turn a string into a list of string and number chunks.
+    """
+    Turn a string into a list of string and number chunks.
         e.g.: input: "z23a" -> output: ["z", 23, "a"]
     """
     return [convert_int(c) for c in re.split('([0-9]+)', s)]
 
 
-def sort_nicely(l: list):
-    """ Sort the given list in the way that humans expect. """
-    if not isinstance(l, list):
-        raise TypeError(f'argument `l` expected to be of type list but instead found: {type(l)} (value: {l})')
-    l.sort(key=alphanum_key)
+def sort_nicely(list_input: list) -> None:
+    """ Sort the given list (in place) in the way that humans expect. """
+    if not isinstance(list_input, list):
+        raise TypeError(f'argument `l` expected to be of type list but '
+                        f'instead found: {type(list_input)} (value: {list_input}).')
+    list_input.sort(key=alphanum_key)
 
 
 def get_filenames(folder):
@@ -74,15 +77,15 @@ def get_filenames_csvs_from_folders_recursively_in_basepath(folder: str):
     :param folder:
     :return:
     """
-    path_to_check_for_csvs = config.BASE_PATH + folder + f'{os.path.sep}**{os.path.sep}*.csv'
+    path_to_check_for_csvs = f'{config.BASE_PATH}{folder}{os.path.sep}**{os.path.sep}*.csv'
     config.bsoid_logger.debug(f'Path that is being checked with "glob": {path_to_check_for_csvs}')
     filenames = glob.glob(path_to_check_for_csvs, recursive=True)
     sort_nicely(filenames)
-    config.bsoid_logger.info(f'files found: {filenames}')
+    config.bsoid_logger.info(f'List of files found: {filenames}. Total files found : {len(filenames)}.')
     return filenames
 
 
-def import_csvs_data_from_folders_in_BASEPATH(folders: list) -> Tuple[List, np.ndarray, List]:
+def import_csvs_data_from_folders_in_BASEPATH_and_process_data(folders: list) -> Tuple[List, np.ndarray, List]:
     """
     Import multiple folders containing .csv files and process them
     :param folders: list, data folders
@@ -91,7 +94,7 @@ def import_csvs_data_from_folders_in_BASEPATH(folders: list) -> Tuple[List, np.n
     :return perc_rect_li: list, percent filtered
     """
     # TODO: what does `raw_data_list` do? It looks like a variable without a purpose. It appends but does not return.
-    file_names_list, raw_data_list, data_list, perc_rect_li = [], [], [], []
+    file_names_list, raw_data_list, data_list, perc_rect_list = [], [], [], []
     if len(folders) == 0:
         raise ValueError(f'submitted folders list is empty')
     for idx_folder, folder in enumerate(folders):  # Loop through folders
@@ -99,28 +102,29 @@ def import_csvs_data_from_folders_in_BASEPATH(folders: list) -> Tuple[List, np.n
         for idx_filename, filename in enumerate(filenames_found_in_current_folder):
             config.bsoid_logger.info(f'Importing CSV file {idx_filename+1} from folder {idx_folder+1}')
             df_current_file = pd.read_csv(filename, low_memory=False)
-            curr_df_filt, perc_rect = adp_filt(df_current_file)
+            curr_df_filt, perc_rect = adaptive_filter_data(df_current_file)
             config.bsoid_logger.info(f'Done preprocessing (x,y) from file {idx_filename+1}, folder {idx_folder+1}.')
             raw_data_list.append(df_current_file)
-            perc_rect_li.append(perc_rect)
+            perc_rect_list.append(perc_rect)
             data_list.append(curr_df_filt)
         file_names_list.append(filenames_found_in_current_folder)
         config.bsoid_logger.info(f'Processed {len(filenames_found_in_current_folder)} CSV files from folder: {folder}')
     data_array: np.ndarray = np.array(data_list)
-    config.bsoid_logger.info(f'Processed a total of {len(data_list)} CSV files, and compiled into a {data_array.shape} data list.')
-    return file_names_list, data_array, perc_rect_li
+    config.bsoid_logger.info(f'Processed a total of {len(data_list)} CSV files and '
+                             f'compiled into a {data_array.shape} data list.')
+    return file_names_list, data_array, perc_rect_list
 
 
-def adp_filt(currdf: object):  # TODO: low: rename function for clarity
+def adaptive_filter_data(df_input: pd.DataFrame) -> Tuple[np.ndarray, List]:
     """
     TODO: low: purpose
+    :param df_input:
     :param currdf: object, csv data frame
     :return currdf_filt: 2D array, filtered data
     :return perc_rect: 1D array, percent filtered per BODYPART
     """
-    l_index, x_index, y_index = [], [], []
-    perc_rect = []
-    currdf = np.array(currdf[1:])
+    l_index, x_index, y_index, perc_rect = [], [], [], []
+    currdf = np.array(df_input[1:])
     for header_idx in range(len(currdf[0])):
         if currdf[0][header_idx] == "likelihood":
             l_index.append(header_idx)
@@ -158,21 +162,25 @@ def adp_filt(currdf: object):  # TODO: low: rename function for clarity
     return currdf_filt, perc_rect
 
 
-def main(folders: List[str]):
+# Legacy functions. Will be potentially deleted later.
+
+def main(folders: List[str]) -> Tuple[Any, Any, Any]:
     """
     :param folders: list, data folders
     :return filenames: list, data filenames
     :return data: list, filtered data list
     :retrun perc_rect: 1D array, percent filtered per BODYPART
     """
-    replacement_func = import_csvs_data_from_folders_in_BASEPATH
+    replacement_func = import_csvs_data_from_folders_in_BASEPATH_and_process_data
     warnings.warn('This function, bsoid.util.likelihoodprocessing.main(), will be '
-                  f'deprecated in future as it adds nothing except obfuscation. Directly '
-                  f'use {replacement_func.__qualname__} instead.')
+                  f'deprecated in future. Directly use {replacement_func.__qualname__} instead.')
     filenames, data, perc_rect = replacement_func(folders)
     return filenames, data, perc_rect
 
 
-# if __name__ == '__main__':
-#     # TODO: should this module even have a main if it's just a helper module?
-#     import_csvs_data_from_folders_in_BASEPATH(config.TRAIN_FOLDERS)
+########################################################################################################################
+
+if __name__ == '__main__':
+    # TODO: should this module even have a main if it's just a helper module?
+    # import_csvs_data_from_folders_in_BASEPATH(config.TRAIN_FOLDERS)
+    pass

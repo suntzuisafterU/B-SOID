@@ -13,21 +13,22 @@ import time
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sn
+import warnings
 
 from bsoid import config
 # from analyses.config import OUTPUT_PATH
 # from analyses.config import HLDOUT
 
 matplotlib_axes_logger.setLevel('ERROR')
-timestr = time.strftime("%Y%m%d_%H%M")  # TODO: low: move this to config file
+
 TM = NotImplementedError('TODO: HIGH: The source of TM has not been determined. Find and fix as such.')  # TODO: HIGH
 
-def plot_classes():raise NotImplemented('disambiguate functions')
-def plot_accuracy(): raise NotImplemented('disambiguate functions')
-def plot_feats(): raise NotImplemented('disambiguate functions')
+# def plot_classes():raise NotImplemented('disambiguate functions')
+# def plot_accuracy(): raise NotImplemented('disambiguate functions')
+# def plot_feats(): raise NotImplemented('disambiguate functions')
 
 #######################################################################################################################
-def plot_tsne3d(data):
+def plot_tsne_in_3d(data):
     """
     Plot trained tsne
     :param data: trained_tsne TODO: expand desc. and include type
@@ -43,7 +44,7 @@ def plot_tsne3d(data):
     plt.title('Embedding of the training set by t-SNE')
     plt.show()
 #######################################################################################################################
-def plot_durhist(lengths, grp, save_fig_to_file: bool = True, fig_file_prefix='duration_hist_100msbins'):
+def plot_duration_histogram(lengths, grp, save_fig_to_file: bool = True, fig_file_prefix='duration_hist_100msbins'):
     """
     TODO: purpose
     :param lengths: 1D array, run lengths of each bout.
@@ -60,6 +61,7 @@ def plot_durhist(lengths, grp, save_fig_to_file: bool = True, fig_file_prefix='d
         ax.hist(x, density=True, color=colormap[i], alpha=0.3, label=f'Group {i}')
     plt.legend(loc='Upper right')
     plt.show()
+    timestr = time.strftime("%Y%m%d_%H%M")  # TODO: low: move this to config file
     if save_fig_to_file:
         fig.savefig(os.path.join(config.OUTPUT_PATH, f'{fig_file_prefix}_{timestr}.svg'))
     return fig
@@ -93,6 +95,7 @@ def plot_classes_EMGMM_assignments(data, assignments, save_fig_to_file: bool, fi
     :param data: 2D array, trained_tsne
     :param assignments: 1D array, EM-GMM assignments
     """
+    timestr = time.strftime("%Y%m%d_%H%M")
     uk = list(np.unique(assignments))
     R = np.linspace(0, 1, len(uk))
     colormap = plt.cm.get_cmap("Spectral")(R)
@@ -143,7 +146,9 @@ def plot_classes_EMGMM_assignments(data, assignments, save_fig_to_file: bool, fi
 def plot_classes_bsoidvoc(data, assignments) -> None:
     return plot_classes_EMGMM_assignments(data, assignments, save_fig_to_file=True)
 def plot_classes_bsoidpy(data, assignments) -> None:
-    return plot_classes_EMGMM_assignments(data, assignments, save_fig_to_file=True)
+    replacement_func = plot_classes_EMGMM_assignments
+    warnings.warn(f'This function will be deprecated. Instead, replace its use with: {replacement_func.__qualname__}')
+    return replacement_func(data, assignments, save_fig_to_file=True)
 
 # TODO: central difference b/w APP and UMAP is what is returned -- Tuple or solely a Fig
 def plot_classes_bsoidapp(data, assignments) -> Tuple:
@@ -214,6 +219,7 @@ def plot_accuracy_MLP(scores, show_plot: bool, save_fig_to_file: bool, fig_file_
     if show_plot:
         plt.show()
     if save_fig_to_file:
+        timestr = time.strftime("%Y%m%d_%H%M")
         fig.savefig(os.path.join(config.OUTPUT_PATH, f'{fig_file_prefix}_{timestr}.svg'))
     return fig, plt
 def plot_accuracy_bsoidvoc(scores) -> None:  # (MLP)
@@ -279,6 +285,7 @@ def plot_accuracy_SVM(scores, save_fig_to_file=True, fig_file_prefix='clf_scores
     :param fig_file_prefix:
     :return: None
     """
+    timestr = time.strftime("%Y%m%d_%H%M")
     fig = plt.figure(facecolor='w', edgecolor='k')
     fig.suptitle(f"Performance on {config.HLDOUT * 100} % data")
     ax = fig.add_subplot(111)
@@ -298,6 +305,7 @@ def plot_feats_bsoidUMAPAPP(feats: list, labels: list) -> None:
     :param feats: list, features for multiple sessions
     :param labels: list, labels for multiple sessions
     """
+    timestr = time.strftime("%Y%m%d_%H%M")
     result = isinstance(labels, list)
     if result:
         for k in range(0, len(feats)):
@@ -375,6 +383,7 @@ def plot_feats_bsoidpy(feats, labels) -> None:
     :param feats: list, features for multiple sessions
     :param labels: list, labels for multiple sessions
     """
+    timestr = time.strftime("%Y%m%d_%H%M")
     feat_ls = ("Relative snout to forepaws placement",
                "Relative snout to hind paws placement",
                "Inter-forepaw distance",
@@ -417,6 +426,7 @@ def plot_feats_bsoidpy(feats, labels) -> None:
                         if i < len(np.unique(labels_k)) - 1:
                             plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
                 my_file = f'sess{k+1}_feat{j+1}_hist'
+                timestr = time.strftime("%Y%m%d_%H%M")
                 fig.savefig(os.path.join(config.OUTPUT_PATH, my_file+'_'+timestr+'.svg'))
             plt.show()
     else:
@@ -455,6 +465,7 @@ def plot_feats_bsoidvoc(feats: list, labels: list) -> None:
     :param feats: list, features for multiple sessions
     :param labels: list, labels for multiple sessions
     """
+    timestr = time.strftime("%Y%m%d_%H%M")
     is_labels_type_list = isinstance(labels, list)
     if is_labels_type_list:
         for k in range(0, len(feats)):
@@ -528,4 +539,6 @@ def plot_feats_bsoidvoc(feats: list, labels: list) -> None:
             fig.savefig(os.path.join(config.OUTPUT_PATH, str.join('', (my_file, '_'+timestr, '.svg'))))
         plt.show()
 #######################################################################################################################
+
+# Legacy functions
 
