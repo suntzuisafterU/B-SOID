@@ -19,6 +19,7 @@ from ast import literal_eval
 from pathlib import Path
 from typing import List
 import configparser
+import logging
 import os
 import random
 import sys
@@ -27,15 +28,22 @@ import sys
 from bsoid.util import logger_config
 
 
+logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s', level='INFO', datefmt='%Y-%m-%d %H:%M:%S', stream=sys.stdout)
+
+
 debug = 0  # TODO: delete me after debugging and implementation is done.
 
 
 # Fetch the B-SOiD project directory regardless of clone location
 BSOID_BASE_PROJECT_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if debug>=2: print('BSOID_BASE_PROJECT_PATH:::', BSOID_BASE_PROJECT_PATH)
-default_log_folder_path = Path(BSOID_BASE_PROJECT_PATH, 'logs').absolute()  ##os.path.join(BSOID_BASE_PROJECT_PATH, 'logs')
-if debug>=2: print('default_log_folder_path:::', default_log_folder_path)
+# logging.info(f'BSOID_BASE_PROJECT_PATH:::{BSOID_BASE_PROJECT_PATH}')
+# Output directory to where you want the analysis to be stored
+OUTPUT_PATH = os.path.join(BSOID_BASE_PROJECT_PATH, 'output')
+# Set loggers default vars
+default_log_folder_path = Path(BSOID_BASE_PROJECT_PATH, 'logs').absolute()
+# logging.info(f'default_log_folder_path:::{default_log_folder_path}')
 default_log_file_name = 'default.log'
+# set default config file name
 config_file_name = 'config.ini'
 # Load up config file
 configuration = configparser.ConfigParser()
@@ -47,9 +55,60 @@ configuration.read(os.path.join(BSOID_BASE_PROJECT_PATH, config_file_name))
 # Instantiate runtime variables
 random_state: int = configuration.getint('MODEL', 'RANDOM_STATE', fallback=random.randint(1, 100_000_000))
 holdout_percent: float = configuration.getfloat('MODEL', 'HOLDOUT_TEST_PCT')
-kfold_crossvalidation: int = configuration.getint('MODEL', 'CROSS_VALIDATION_K')  # Number of iterations for cross-validation to show it's not over-fitting.
+crossvalidation_k: int = configuration.getint('MODEL', 'CROSS_VALIDATION_K')  # Number of iterations for cross-validation to show it's not over-fitting.
+crossvalidation_n_jobs: int = configuration.getint('MODEL', 'CROSS_VALIDATION_N_JOBS')
 video_fps: int = configuration.getint('APP', 'VIDEO_FRAME_RATE')  # ['APP']['VIDEO_FRAME_RATE']
-compile_CSVs_for_training: int = configuration.getint('APP', 'COMPILE_CSVS_FOR_TRAINING')
+compile_CSVs_for_training: int = configuration.getint('APP', 'COMPILE_CSVS_FOR_TRAINING')  # COMP = 1: Train one classifier for all CSV files; COMP = 0: Classifier/CSV file.
+identification_order: int = configuration.getint('APP', 'FILE_IDENTIFICATION_ORDER_LEGACY')  # TODO: low: assess whether we can remove this from module altogether.
+# IF YOU'D LIKE TO SKIP PLOTTING/CREATION OF VIDEOS, change below plot settings to False
+PLOT_GRAPHS: bool = configuration.getboolean('APP', 'PLOT_GRAPHS')
+PLOT_TRAINING: bool = configuration.getboolean('APP', 'PLOT_TRAINING')
+GENERATE_VIDEOS: bool = configuration.getboolean('APP', 'GENERATE_VIDEOS')
+PRODUCE_VIDEO: bool = configuration.getboolean('APP', 'PRODUCE_VIDEO')
+
+
+
+# BASE_PATH = '/home/aaron/Documents/OST-with-DLC/GUI_projects/OST-DLC-projects/pwd-may11-2020-john-howland-2020-05-11'
+# BASE_PATH = os.path.join('C:\\', 'Users', 'killian', 'projects', 'OST-with-DLC', 'pwd-may11-2020-john-howland-2020-05-11')
+BASE_PATH = 'C:\\Users\\killian\\projects\\OST-with-DLC\\GUI_projects\\OST-DLC-projects\\pwd-may11-2020-john-howland-2020-05-11'
+# BASE_PATH = '/home/aaron/Documents/OST-with-DLC/GUI_projects/OST-DLC-projects/pwd-may11-2020-john-howland-2020-05-11'
+
+MODEL_NAME = configuration.get('APP', 'OUTPUT_MODEL_NAME')  # Machine learning model name
+
+# TODO: med: for TRAIN_FOLDERS & PREDICT_FOLDERS, change path resolution from inside functional module to inside this config file
+# Data folders used to training neural network.
+# TRAIN_FOLDERS = [os.path.sep+'training-datasets', ]
+TRAIN_FOLDERS: List[str] = ['NOT_DLC_OUTPUT__SAMPLE_WITH_INDEX', ]
+
+# Data folders, can contain the same as training or new data for consistency.
+PREDICT_FOLDERS = [os.path.sep+'Data1', ]
+
+# Create a folder to store extracted images, MAKE SURE THIS FOLDER EXISTS.  # TODO: med: add in a runtime check that folder exists
+FRAME_DIR = os.path.join(OUTPUT_PATH, 'frames')  # '/home/aaron/Documents/OST-with-DLC/B-SOID/OUTPUT/frames'
+
+# Create a folder to store created video snippets/group, MAKE SURE THIS FOLDER EXISTS.  # TODO: med: add in a runtime check that folder exists
+# Create a folder to store extracted images, make sure this folder exist.
+#   This program will predict labels and print them on these images
+# In addition, this will also create an entire sample group videos for ease of understanding
+SHORTVID_DIR = os.path.join(OUTPUT_PATH, 'shortvids')  # '/home/aaron/Documents/OST-with-DLC/B-SOID/OUTPUT/shortvids'
+# assert os.path.isdir(SHORTVID_DIR), f'`SHORTVID` dir. (value={SHORTVID_DIR}) must exist for runtime but does not.'
+
+# Now, pick an example video that corresponds to one of the csv files from the PREDICT_FOLDERS
+
+# VID_NAME = os.path.join(OST_BASE_PROJECT_PATH, 'GUI_projects', 'labelled_videos', '002_ratA_inc2_above.mp4')  # '/home/aaron/Documents/OST-with-DLC/GUI_projects/labelled_videos/002_ratA_inc2_above.mp4'
+
+
+
+
+
+
+
+# GEN_VIDEOS = GENERATE_VIDEOS  # Deprecate GEN_VIDEOS
+# FPS = video_fps  # DEPRECATE # FPS: Frame-rate of your video,note that you can use a different number for new data as long as the video is same scale/view
+# HLDOUT: float = holdout_percent  # Test partition ratio to validate clustering separation.  # DEPRECATE
+# CV_IT: int = kfold_crossvalidation  # DEPRECATE
+# COMP: int = compile_CSVs_for_training  # TODO: med: deprecate
+# ID = identification_order  # DEPRECATE
 
 
 ########################################################################################################################
@@ -57,13 +116,14 @@ compile_CSVs_for_training: int = configuration.getint('APP', 'COMPILE_CSVS_FOR_T
 # Specify where the OST project lives. Modify on your local machine as necessary.
 OST_BASE_PROJECT_PATH = configuration.get('PATH', 'OST_BASE_PROJECT_PATH')  # 'previously: /home/aaron/Documents/OST-with-DLC'
 # OST_BASE_PROJECT_PATH = os.path.join('C:\\', 'Users', 'killian', 'projects', 'OST-with-DLC')
-BASE_PATH = '/home/aaron/Documents/OST-with-DLC/GUI_projects/OST-DLC-projects/pwd-may11-2020-john-howland-2020-05-11'
+# BASE_PATH = '/home/aaron/Documents/OST-with-DLC/GUI_projects/OST-DLC-projects/pwd-may11-2020-john-howland-2020-05-11'
 
 
 ########################################################################################################################
 
-if debug == 2: print("configuration.get('LOGGING', 'LOG_FILE_NAME'):::", configuration.get('LOGGING', 'LOG_FILE_NAME'))
-if debug == 2: print('OST PATH:::', configuration.get('PATH', 'OSTPATH', fallback=None))
+# logging.info(f"configuration.get('LOGGING', 'LOG_FILE_NAME'):::{configuration.get('LOGGING', 'LOG_FILE_NAME')}")
+
+# if debug == 2: print('OST PATH:::', configuration.get('PATH', 'OSTPATH', fallback=None))
 
 # Resolve logger variables
 config_file_log_folder_path = configuration.get('LOGGING', 'LOG_FILE_FOLDER_PATH')
@@ -90,7 +150,6 @@ bsoid_logger = logger_config.create_generic_logger(
 
 ##############################################################################################################
 ### BSOID VOC ###
-# TODO: HIGHaddress BODYPARTS variable also found in bsoid_voc. Does it do the same as _py? Naming collision.
 # # Order the points that are encircling the mouth.
 BODYPARTS_VOC_LEGACY = {
     'Point1': 0,
@@ -155,17 +214,6 @@ SVM_PARAMS = {
 
 
 ########################################################################################################################
-# # # BSDOI UMAP # # #
-# IF YOU'D LIKE TO SKIP PLOTS/VIDEOS, change below PLOT/VID settings to False
-PLOT_GRAPHS: bool = True  # New variable name for `PLOT`
-# PLOT = PLOT_GRAPHS  # `PLOT` is likely to be deprecated in the future
-PRODUCE_VIDEO: bool = True
-VID = PRODUCE_VIDEO  # if this is true, make sure direct to the video below AND that you created the two specified folders!
-
-# for semi-supervised portion
-# CSV_PATH =
-
-########################################################################################################################
 ### BSOID VOC
 # TSNE parameters, can tweak if you are getting undersplit/oversplit behaviors
 # the missing perplexity is scaled with data size (1% of data for nearest neighbors)
@@ -181,56 +229,6 @@ TSNE_PARAMS = {
 
 ########################################################################################################################
 # LEGACY VARIABLES
-
-HLDOUT: float = holdout_percent  # Test partition ratio to validate clustering separation.
-CV_IT: int = kfold_crossvalidation
-
-# Frame-rate of your video,note that you can use a different number for new data as long as the video is same scale/view
-FPS = configuration.getint('APP', 'VIDEO_FRAME_RATE')  # int(configuration['APP']['VIDEO_FRAME_RATE'])  # TODO: med: deprecate
-
-# COMP = 1: Train one classifier for all CSV files; COMP = 0: Classifier/CSV file.
-COMP: int = compile_CSVs_for_training  # TODO: med: deprecate
-
-# What number would be video be in terms of prediction order? (0=file 1/folder1, 1=file2/folder 1, etc.)
-ID = 0
-
-# IF YOU'D LIKE TO SKIP PLOTTING/CREATION OF VIDEOS, change below plot settings to False
-PLOT_TRAINING = True
-GEN_VIDEOS = True
-
-
-# BASE_PATH = '/home/aaron/Documents/OST-with-DLC/GUI_projects/OST-DLC-projects/pwd-may11-2020-john-howland-2020-05-11'
-# BASE_PATH = os.path.join('C:\\', 'Users', 'killian', 'projects', 'OST-with-DLC', 'pwd-may11-2020-john-howland-2020-05-11')
-# BASE_PATH = 'C:\\Users\\killian\\projects\\OST-with-DLC\\GUI_projects\\OST-DLC-projects\\pwd-may11-2020-john-howland-2020-05-11'
-BASE_PATH = '/home/aaron/Documents/OST-with-DLC/GUI_projects/OST-DLC-projects/pwd-may11-2020-john-howland-2020-05-11'
-
-# Output directory to where you want the analysis to be stored
-OUTPUT_PATH = os.path.join(OST_BASE_PROJECT_PATH, 'B-SOID', 'output')
-# OUTPUT_PATH = os.path.join('C:\\', 'Users', 'killian', 'Pictures')
-
-MODEL_NAME = configuration.get('APP', 'OUTPUT_MODEL_NAME')  # Machine learning model name
-
-# TODO: med: for TRAIN_FOLDERS & PREDICT_FOLDERS, change path resolution from inside functional module to inside this config file
-# Data folders used to training neural network.
-# TRAIN_FOLDERS = [os.path.sep+'training-datasets', ]
-TRAIN_FOLDERS: List[str] = [os.path.sep+'NOT_DLC_OUTPUT__SAMPLE_WITH_INDEX', ]
-
-# Data folders, can contain the same as training or new data for consistency.
-PREDICT_FOLDERS = [os.path.sep+'Data1', ]
-
-# Create a folder to store extracted images, MAKE SURE THIS FOLDER EXISTS.  # TODO: med: add in a runtime check that folder exists
-FRAME_DIR = os.path.join(OUTPUT_PATH, 'frames')  # '/home/aaron/Documents/OST-with-DLC/B-SOID/OUTPUT/frames'
-
-# Create a folder to store created video snippets/group, MAKE SURE THIS FOLDER EXISTS.  # TODO: med: add in a runtime check that folder exists
-# Create a folder to store extracted images, make sure this folder exist.
-#   This program will predict labels and print them on these images
-# In addition, this will also create an entire sample group videos for ease of understanding
-SHORTVID_DIR = os.path.join(OUTPUT_PATH, 'shortvids')  # '/home/aaron/Documents/OST-with-DLC/B-SOID/OUTPUT/shortvids'
-# assert os.path.isdir(SHORTVID_DIR), f'`SHORTVID` dir. (value={SHORTVID_DIR}) must exist for runtime but does not.'
-
-# Now, pick an example video that corresponds to one of the csv files from the PREDICT_FOLDERS
-
-VID_NAME = os.path.join(OST_BASE_PROJECT_PATH, 'GUI_projects', 'labelled_videos', '002_ratA_inc2_above.mp4')  # '/home/aaron/Documents/OST-with-DLC/GUI_projects/labelled_videos/002_ratA_inc2_above.mp4'
 
 
 # This version requires the six body parts Snout/Head, Forepaws/Shoulders, Hindpaws/Hips, Tailbase.
