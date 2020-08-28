@@ -188,9 +188,11 @@ def main(labels) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     (Original function implementation across _py, _umap, and _voc submodules. Kept, for now, for
         backwards compatibility reasons.)
     """
+    replacement_func = get_runlengths_statistics_transition_matrix_from_labels
     warnings.warn('This function, bsoid.util.statistics.main(), will be deprecated in future. Check back for a '
-                  'renamed/refactored version later.')
-    return get_runlengths_statistics_transition_matrix_from_labels(labels)
+                  f'renamed/refactored version later. '
+                  f'Current replacement: {get_runlengths_statistics_transition_matrix_from_labels.__qualname__}.')
+    return replacement_func(labels)
 
 
 def get_runlengths_statistics_transition_matrix_from_labels(labels) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
