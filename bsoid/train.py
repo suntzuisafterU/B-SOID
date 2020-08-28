@@ -709,9 +709,9 @@ def main_py(train_folders: list):
 
     # Plot to view progress if necessary
     if config.PLOT_TRAINING:
-        visuals.plot_classes_bsoidpy(trained_tsne_list, gmm_assignments)
+        visuals.plot_classes_EMGMM_assignments(trained_tsne_list, gmm_assignments, True)  # TODO: HIGH: save fig to file is a magic variable
         visuals.plot_accuracy_bsoidpy(scores)
-        visuals.plot_feats_bsoidpy(features_10fps, gmm_assignments)
+        visuals.plot_accuracy_SVM(features_10fps, gmm_assignments)
     return features_10fps, trained_tsne_list, scaler, gmm_assignments, classifier, scores
 
 

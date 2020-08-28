@@ -273,10 +273,8 @@ def vid2frame(path_to_video: str, labels, fps: int, output_path: str = config.FR
     return replacement_func(path_to_video, labels, fps, output_path)
 
 
-
-########################################################################################################################
-
 def main(path_to_video, labels, fps, output_path):  # To be deprecated
+    # DEPRECATION WARNING
     replacement_function = get_frames_from_video_then_create_labeled_video
     warnings.warn('This function, bsoid.util.videoprocessing.main(), will be deprecated in the future in '
                   'favour of a refactored, more descriptive function. Currently, that function is: '

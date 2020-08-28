@@ -64,7 +64,10 @@ identification_order: int = configuration.getint('APP', 'FILE_IDENTIFICATION_ORD
 PLOT_GRAPHS: bool = configuration.getboolean('APP', 'PLOT_GRAPHS')
 PLOT_TRAINING: bool = configuration.getboolean('APP', 'PLOT_TRAINING')
 GENERATE_VIDEOS: bool = configuration.getboolean('APP', 'GENERATE_VIDEOS')
-PRODUCE_VIDEO: bool = configuration.getboolean('APP', 'PRODUCE_VIDEO')
+
+
+VIDEO_TO_LABEL_PATH: str = configuration.get('APP', 'VIDEO_TO_LABEL_PATH')
+
 
 
 

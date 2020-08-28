@@ -7,6 +7,7 @@ Visualization functions and saving plots.
 
 # from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.axes._axes import _log as matplotlib_axes_logger
+from mpl_toolkits.mplot3d import Axes3D  # <-- This seemeingly unused import is NECESSARY for 3d plotting. Keep as is.
 from typing import Tuple
 import os
 import time
@@ -21,6 +22,7 @@ logger = config.bsoid_logger
 #
 
 matplotlib_axes_logger.setLevel('ERROR')
+
 
 TM = NotImplementedError('TODO: HIGH: The source of TM has not been determined. Find and fix as such.')  # TODO: HIGH
 
@@ -73,7 +75,7 @@ def plot_tmat(transition_matrix: np.ndarray, fps: int, save_fig_to_file=True, fi
     warning = f'This function, plot_tmat(), will be deprecated soon. Instead, use: ' \
               f'{replacement_func.__qualname__}.'
     logger.warning(warning)
-    warnings.warn(warning)
+    # warnings.warn(warning)
     return replacement_func(transition_matrix, fps, save_fig_to_file, fig_file_prefix)
 
 def plot_transition_matrix(transition_matrix, fps, save_fig_to_file, fig_file_prefix):
@@ -102,7 +104,7 @@ def plot_classes_EMGMM_assignments(data, assignments, save_fig_to_file: bool, fi
     :param data: 2D array, trained_tsne
     :param assignments: 1D array, EM-GMM assignments
     """
-    timestr = time.strftime("%Y%m%d_%H%M")
+    time_str = time.strftime("%Y%m%d_%H%M")
     uk = list(np.unique(assignments))
     R = np.linspace(0, 1, len(uk))
     colormap = plt.cm.get_cmap("Spectral")(R)
@@ -121,7 +123,7 @@ def plot_classes_EMGMM_assignments(data, assignments, save_fig_to_file: bool, fi
     plt.show()
     # my_file = 'train_assignments'
     if save_fig_to_file:
-        fig.savefig(os.path.join(config.OUTPUT_PATH, f'{fig_file_prefix}_{timestr}.svg'))
+        fig.savefig(os.path.join(config.OUTPUT_PATH, f'{fig_file_prefix}_{time_str}.svg'))
 # def plot_classes_app(data, assignments):
 #     """ Plot umap_embeddings for HDBSCAN assignments
 #     :param data: 2D array, umap_embeddings
@@ -152,10 +154,12 @@ def plot_classes_EMGMM_assignments(data, assignments, save_fig_to_file: bool, fi
 
 def plot_classes_bsoidvoc(data, assignments) -> None:
     return plot_classes_EMGMM_assignments(data, assignments, save_fig_to_file=True)
-def plot_classes_bsoidpy(data, assignments) -> None:
-    replacement_func = plot_classes_EMGMM_assignments
-    warnings.warn(f'This function will be deprecated. Instead, replace its use with: {replacement_func.__qualname__}')
-    return replacement_func(data, assignments, save_fig_to_file=True)
+# def plot_classes_bsoidpy(data, assignments) -> None:
+#     replacement_func = plot_classes_EMGMM_assignments
+#     warn = f'This function will be deprecated. Instead, replace its use with: {replacement_func.__qualname__}'
+#     # warnings.warn(warn)
+#     logger.warning(warn)
+#     return replacement_func(data, assignments, save_fig_to_file=True)
 
 # TODO: central difference b/w APP and UMAP is what is returned -- Tuple or solely a Fig
 def plot_classes_bsoidapp(data, assignments) -> Tuple:
@@ -216,7 +220,7 @@ def plot_accuracy_MLP(scores, show_plot: bool, save_fig_to_file: bool, fig_file_
         `save_fig_to_file` is False.
     """
     fig = plt.figure(facecolor='w', edgecolor='k')
-    fig.suptitle(f"Performance on {config.HLDOUT * 100} % data")
+    fig.suptitle(f"Performance on {config.holdout_percent * 100} % data")
     ax = fig.add_subplot(111)
     ax.boxplot(scores, notch=None)
     x = np.random.normal(1, 0.04, size=len(scores))
@@ -268,7 +272,6 @@ def plot_accuracy_bsoidumap(scores) -> None:
     # my_file = 'clf_scores'
     # fig.savefig(os.path.join(OUTPUT_PATH, f'{fig_file_prefix}_{timestr}.svg'))
     plot_accuracy_MLP(scores, show_plot=True, save_fig_to_file=True)
-
 def plot_accuracy_bsoidpy(scores) -> None:
     """ *** NOTE: Do not alter or remove this function. It's a trace
              back to the original bsoid_py function. First ensure that the new function works, then jettison garbage"""
@@ -283,7 +286,10 @@ def plot_accuracy_bsoidpy(scores) -> None:
     # plt.show()
     # if save_fig_to_file:
     #     fig.savefig(os.path.join(OUTPUT_PATH, fig_file_prefix+'_'+timestr+'.svg'))
-    return plot_accuracy_SVM(scores, True, 'clf_scores')
+    replacement_func = plot_accuracy_SVM
+    logger.warning(f'This function, plot_accuracy_bsoidpy(), will be deprecated.'
+                   f'Instead use: {replacement_func.__qualname__}')
+    return replacement_func(scores, True, 'clf_scores')
 def plot_accuracy_SVM(scores, save_fig_to_file=True, fig_file_prefix='clf_scores'):
     """
     This is the new interface for plotting accuracy for an SVM classifier.
@@ -294,7 +300,7 @@ def plot_accuracy_SVM(scores, save_fig_to_file=True, fig_file_prefix='clf_scores
     """
     timestr = time.strftime("%Y%m%d_%H%M")
     fig = plt.figure(facecolor='w', edgecolor='k')
-    fig.suptitle(f"Performance on {config.HLDOUT * 100} % data")
+    fig.suptitle(f"Performance on {config.holdout_percent * 100} % data")
     ax = fig.add_subplot(111)
     ax.boxplot(scores, notch=None)
     x = np.random.normal(1, 0.04, size=len(scores))
@@ -312,7 +318,7 @@ def plot_feats_bsoidUMAPAPP(feats: list, labels: list) -> None:
     :param feats: list, features for multiple sessions
     :param labels: list, labels for multiple sessions
     """
-    timestr = time.strftime("%Y%m%d_%H%M")
+    time_str = time.strftime("%Y%m%d_%H%M")
     result = isinstance(labels, list)
     if result:
         for k in range(0, len(feats)):
@@ -349,7 +355,7 @@ def plot_feats_bsoidUMAPAPP(feats: list, labels: list) -> None:
                         if i < len(np.unique(labels_k)) - 1:
                             plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
                 my_file = f'sess{k + 1}_feat{j + 1}_hist'
-                fig.savefig(os.path.join(config.OUTPUT_PATH, my_file+'_'+timestr+'.svg'))
+                fig.savefig(os.path.join(config.OUTPUT_PATH, my_file+'_'+time_str+'.svg'))
             plt.show()
     else:
         R = np.linspace(0, 1, len(np.unique(labels)))
@@ -382,8 +388,8 @@ def plot_feats_bsoidUMAPAPP(feats: list, labels: list) -> None:
                     fig.suptitle(f"{feat_ls[j]} pixels")
                     if i < len(np.unique(labels)) - 1:
                         plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
-            my_file = f'feat{j + 1}_hist'
-            fig.savefig(os.path.join(config.OUTPUT_PATH, str.join('', (my_file, '_'+timestr, '.svg'))))
+            my_file = f'feat{j+1}_hist'
+            fig.savefig(os.path.join(config.OUTPUT_PATH, f'{my_file}_{time_str}.svg'))
         plt.show()
 def plot_feats_bsoidpy(feats, labels) -> None:
     """
