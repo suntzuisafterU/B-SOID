@@ -16,8 +16,9 @@ import seaborn as sn
 import warnings
 
 from bsoid import config
-# from analyses.config import OUTPUT_PATH
-# from analyses.config import HLDOUT
+logger = config.bsoid_logger
+
+#
 
 matplotlib_axes_logger.setLevel('ERROR')
 
@@ -46,7 +47,7 @@ def plot_tsne_in_3d(data):
 #######################################################################################################################
 def plot_duration_histogram(lengths, grp, save_fig_to_file: bool = True, fig_file_prefix='duration_hist_100msbins'):
     """
-    TODO: purpose
+    TODO: low: purpose
     :param lengths: 1D array, run lengths of each bout.
     :param grp: 1D array, corresponding label.
     :param save_fig_to_file: (bool)
@@ -66,10 +67,19 @@ def plot_duration_histogram(lengths, grp, save_fig_to_file: bool = True, fig_fil
         fig.savefig(os.path.join(config.OUTPUT_PATH, f'{fig_file_prefix}_{timestr}.svg'))
     return fig
 #######################################################################################################################
-def plot_tmat(transition_matrix: np.ndarray, fps: int,
-              save_fig_to_file=True, fig_file_prefix='transition_matrix'):
+def plot_tmat(transition_matrix: np.ndarray, fps: int, save_fig_to_file=True, fig_file_prefix='transition_matrix'):
+    """Original implementation as plot_tmat()"""
+    replacement_func = plot_transition_matrix
+    warning = f'This function, plot_tmat(), will be deprecated soon. Instead, use: ' \
+              f'{replacement_func.__qualname__}.'
+    logger.warning(warning)
+    warnings.warn(warning)
+    return replacement_func(transition_matrix, fps, save_fig_to_file, fig_file_prefix)
+
+def plot_transition_matrix(transition_matrix, fps, save_fig_to_file, fig_file_prefix):
     """
-    TODO: low: purpose
+    New interface for original function named plot_tmat()
+        TODO: low: purpose
     :param transition_matrix: object, transition matrix data frame  TODO: Q: what is it transitioning from?
     :param fps: scalar, camera frame-rate
     :param save_fig_to_file: bool,
@@ -85,10 +95,7 @@ def plot_tmat(transition_matrix: np.ndarray, fps: int,
     if save_fig_to_file:
         fig.savefig(os.path.join(config.OUTPUT_PATH, f'{fig_file_prefix}{fps}.svg'))
     return fig
-def plot_transition_matrix(transition_matrix, fps, save_fig_to_file, fig_file_prefix):
-    """New interface for original function named plot_tmat(), however plot_tmat has been kept, for now,
-    for backwards compatibility reasons"""
-    return plot_tmat(transition_matrix, fps, save_fig_to_file, fig_file_prefix)
+
 #######################################################################################################################
 def plot_classes_EMGMM_assignments(data, assignments, save_fig_to_file: bool, fig_file_prefix='train_assignments'):
     """ Plot trained tsne for EM-GMM assignments

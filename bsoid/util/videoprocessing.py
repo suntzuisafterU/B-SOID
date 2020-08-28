@@ -7,15 +7,15 @@ from typing import List, Tuple
 from tqdm import tqdm
 import cv2
 import glob
-import logging
 import numpy as np
 import os
 import random
 import warnings
 
 from bsoid import config
-# from analyses.config import BASE_PATH, FRAME_DIR, SHORTVID_DIR
 from bsoid.util.likelihoodprocessing import sort_list_nicely_in_place
+
+logger = config.bsoid_logger
 
 
 def repeatingNumbers(labels) -> Tuple[List, List, List]:  # TODO: rename function for clarity
@@ -35,7 +35,7 @@ def repeatingNumbers(labels) -> Tuple[List, List, List]:  # TODO: rename functio
         start_index = i
         idx.append(i)
         while i < len(labels) - 1 and labels[i] == labels[i + 1]:
-            i = i + 1
+            i += 1
         end_index = i
         length = end_index - start_index
         lengths.append(length)
@@ -43,17 +43,24 @@ def repeatingNumbers(labels) -> Tuple[List, List, List]:  # TODO: rename functio
     return n_list, idx, lengths
 
 
-def get_video_names(folder_name) -> List[str]:
+def get_mp4_videos_from_folder_in_BASEPATH(folder_name: str) -> List[str]:
     """
+    Previously named `get_video_names()`
     Gets a list of .mp4 files within a folder
     :param folder_name: str, folder path. Must reside in BASE_PATH.
     :return: (List[str]) video file names all of which have a .mp4 extension
     """
-    # TODO: low: stretch goal: ensure this function works independent of OS
+    if not isinstance(folder_name, str):
+        err = f'`folder_name` was expected to be of type str but instead found {type(folder_name)}.'
+        logger.error(err)
+        raise TypeError(err)
+
     path_to_folder = os.path.join(config.BASE_PATH, folder_name)
-    # video_names = glob.glob(BASE_PATH + folder_name + '/*.mp4')
-    video_names = glob.glob(f'{path_to_folder}/*.mp4')
+    path_to_folder_with_glob = f'{path_to_folder}/*.mp4'
+    logger.debug(f'get_mp4_videos_from_folder_in_BASEPATH():Path to check for videos: {path_to_folder_with_glob}')
+    video_names = glob.glob(path_to_folder_with_glob)
     sort_list_nicely_in_place(video_names)
+
     return video_names
 
 
@@ -68,10 +75,14 @@ def write_annotated_frames_to_disk_from_video(path_to_video: str, labels, fps: i
     :param output_path: string, path to output
     # TODO: med: analyze use of magic variables in func.
     """
+    if not os.path.isfile(path_to_video):
+        err = f'Path to video was not found. Path = {path_to_video}'
+        logger.error(err)
+        raise ValueError(err)
     cv2_video_object = cv2.VideoCapture(path_to_video)
     progress_bar = tqdm(total=int(cv2_video_object.get(cv2.CAP_PROP_FRAME_COUNT)))
-    width = cv2_video_object.get(3)  # TODO: low: unused variable
-    height = cv2_video_object.get(4)  # TODO: low: unused variable
+    # width = cv2_video_object.get(3)  # TODO: low: address unused variable
+    # height = cv2_video_object.get(4)  # TODO: low: address unused variable
     labels = np.hstack((labels[0], labels))  # fill the first frame
     count = 0  # TODO: med: rename `count` -- what is it counting? `i` already tracks iterations over the while loop
     i = 0
@@ -90,7 +101,7 @@ def write_annotated_frames_to_disk_from_video(path_to_video: str, labels, fps: i
             cv2.putText(img=frame, text=text_to_be_inserted, org=(text_offset_x, text_offset_y),
                         fontFace=font, fontScale=font_scale, color=(255, 255, 255), thickness=1)
             # Write to image
-            cv2.imwrite(os.path.join(output_path, 'frame{:d}.png'.format(i)), frame)
+            cv2.imwrite(os.path.join(output_path, f'frame{i}.png'), frame)
 
             # Save & set metrics, prepare for next frame, and update progress bar
             count += round(fps / 10)  # i.e. at 60fps, this skips every 5
@@ -104,17 +115,9 @@ def write_annotated_frames_to_disk_from_video(path_to_video: str, labels, fps: i
     return
 
 
-def vid2frame(path_to_video: str, labels, fps: int, output_path: str = config.FRAME_DIR):
-    """ # # # DEPRECATION WARNING # # # """
-    replacement_func = write_annotated_frames_to_disk_from_video
-    warnings.warn(f'This function, vid2frame(), will be deprecated shortly. The replacement '
-                  f'function is called "{replacement_func.__qualname__}" and aims to make usage more clear and DRY. '
-                  f'If you are reading this, this function was kept for backwards compatibility reasons. ')
-    return replacement_func(path_to_video, labels, fps, output_path)
-
-
 def import_vidfolders(folders: List[str], output_path: List[str]):
     """
+    Previously called `import_vidfolders()`
     Import multiple folders containing .mp4 files and extract frames from them
     :param folders: list of folder paths
     :param output_path: list, directory to where you want to store extracted vid images in LOCAL_CONFIG
@@ -122,23 +125,23 @@ def import_vidfolders(folders: List[str], output_path: List[str]):
     list_of_lists_of_videos: List[List[str]] = []  # TODO: Q: why does this variable exist? It tracks but does not contribute to anything
     # Loop through folders
     for idx_folder, folder in enumerate(folders):
-        videos_list_from_current_folder: List[str] = get_video_names(folder)
+        videos_list_from_current_folder: List[str] = get_mp4_videos_from_folder_in_BASEPATH(folder)
         # Loop through videos
         for idx_video, video in enumerate(videos_list_from_current_folder):
-            logging.info(f'Extracting frames from {video} and appending labels to these images...')
-            # vid2frame does stuff
-            vid2frame(video, output_path)  # TODO: HIGH: missing param `FPS` *** runtime error imminent ********************************************************
-            logging.info(f'Done extracting images and writing labels, from MP4 file {idx_video+1}')
+            logger.info(f'Extracting frames from {video} and appending labels to these images...')
+            #
+            write_annotated_frames_to_disk_from_video(video, output_path)  # TODO: HIGH: missing param `FPS` *** runtime error imminent ********************************************************
+            logger.info(f'Done extracting images and writing labels, from MP4 file {idx_video+1}')
         # After looping through videos, append list of videos from current folder to list of lists because reasons
-        list_of_lists_of_videos += [videos_list_from_current_folder, ]  # list_of_lists_of_videos.append(videos_list_from_current_folder)
-        logging.info(f'Processed {len(videos_list_from_current_folder)} MP4 files from folder: {folder}')
+        list_of_lists_of_videos.append(videos_list_from_current_folder)  # list_of_lists_of_videos.append(videos_list_from_current_folder)
+        logger.info(f'Processed {len(videos_list_from_current_folder)} mp4 files from folder: {folder}.')
     return
 
 
 ########################################################################################################################
 
 def create_labeled_vid(labels, crit=3, num_randomly_generated_examples=5,
-                       frame_dir=config.FRAME_DIR, output_path=config.SHORTVID_DIR):
+                       frame_dir=config.FRAME_DIR, output_path=config.SHORTVID_DIR) -> None:
     """
     (Generalized create_labeled_video() function that works between _py, _umap, and _voc submodules)
     TODO: low: purpose
@@ -243,7 +246,7 @@ def create_labeled_vid_app(labels, crit, counts, output_fps, frame_dir, output_p
             pass
     return
 
-####################################################################################################################################
+########################################################################################################################
 
 
 def get_frames_from_video_then_create_labeled_video(path_to_video, labels, fps, output_path) -> None:
@@ -258,6 +261,20 @@ def get_frames_from_video_then_create_labeled_video(path_to_video, labels, fps, 
     write_annotated_frames_to_disk_from_video(path_to_video, labels, fps, output_path)
     create_labeled_vid(labels, crit=3, num_randomly_generated_examples=5, frame_dir=output_path, output_path=config.SHORTVID_DIR)
 
+
+###
+# Legacy functions (some of which will be deprecated)
+def vid2frame(path_to_video: str, labels, fps: int, output_path: str = config.FRAME_DIR):
+    """ # # # DEPRECATION WARNING # # # """
+    replacement_func = write_annotated_frames_to_disk_from_video
+    warnings.warn(f'This function, vid2frame(), will be deprecated shortly. The replacement '
+                  f'function is called "{replacement_func.__qualname__}" and aims to make usage more clear and DRY. '
+                  f'If you are reading this, this function was kept for backwards compatibility reasons. ')
+    return replacement_func(path_to_video, labels, fps, output_path)
+
+
+
+########################################################################################################################
 
 def main(path_to_video, labels, fps, output_path):  # To be deprecated
     replacement_function = get_frames_from_video_then_create_labeled_video
