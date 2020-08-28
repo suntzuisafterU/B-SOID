@@ -7,7 +7,7 @@ Visualization functions and saving plots.
 
 # from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.axes._axes import _log as matplotlib_axes_logger
-from mpl_toolkits.mplot3d import Axes3D  # <-- This seemeingly unused import is NECESSARY for 3d plotting. Keep as is.
+from mpl_toolkits.mplot3d import Axes3D  # <-- This seemingly unused import is NECESSARY for 3d plotting. Keep as is.
 from typing import Tuple
 import os
 import time
