@@ -245,4 +245,4 @@ def main(train_folders: list):
         fig1.savefig(os.path.join(OUTPUT_PATH, str.join('', (my_file1, timestr, '.svg'))))
         plot_accuracy(scores)
     return f_10fps, f_10fps_sc, umap_embeddings, hdb_assignments, soft_assignments, soft_clusters, \
-           nn_classifier, scores, nn_assignments
+        nn_classifier, scores, nn_assignments
