@@ -47,7 +47,7 @@ def alphanum_key(s) -> List:
     return [convert_int(c) for c in re.split('([0-9]+)', s)]
 
 
-def sort_nicely(list_input: list) -> None:
+def sort_list_nicely_in_place(list_input: list) -> None:
     """ Sort the given list (in place) in the way that humans expect. """
     if not isinstance(list_input, list):
         raise TypeError(f'argument `l` expected to be of type list but '
@@ -80,7 +80,7 @@ def get_filenames_csvs_from_folders_recursively_in_basepath(folder: str):
     path_to_check_for_csvs = f'{config.BASE_PATH}{folder}{os.path.sep}**{os.path.sep}*.csv'
     config.bsoid_logger.debug(f'Path that is being checked with "glob": {path_to_check_for_csvs}')
     filenames = glob.glob(path_to_check_for_csvs, recursive=True)
-    sort_nicely(filenames)
+    sort_list_nicely_in_place(filenames)
     config.bsoid_logger.info(f'List of files found: {filenames}. Total files found : {len(filenames)}.')
     return filenames
 
@@ -103,7 +103,7 @@ def import_csvs_data_from_folders_in_BASEPATH_and_process_data(folders: list) ->
             config.bsoid_logger.info(f'Importing CSV file {idx_filename+1} from folder {idx_folder+1}')
             df_current_file = pd.read_csv(filename, low_memory=False)
             curr_df_filt, perc_rect = adaptive_filter_data(df_current_file)
-            config.bsoid_logger.info(f'Done preprocessing (x,y) from file {idx_filename+1}, folder {idx_folder+1}.')
+            config.bsoid_logger.info(f'Done preprocessing (x,y) from file #{idx_filename+1}, folder #{idx_folder+1}.')
             raw_data_list.append(df_current_file)
             perc_rect_list.append(perc_rect)
             data_list.append(curr_df_filt)
@@ -123,6 +123,11 @@ def adaptive_filter_data(df_input: pd.DataFrame) -> Tuple[np.ndarray, List]:
     :return currdf_filt: 2D array, filtered data
     :return perc_rect: 1D array, percent filtered per BODYPART
     """
+    # Type checking args
+    if not isinstance(df_input, pd.DataFrame):
+        raise TypeError(f'`df_input` was expected to be of type pandas.DataFrame but '
+                        f'instead found: {type(df_input)}.')
+    # Continue if valid
     l_index, x_index, y_index, perc_rect = [], [], [], []
     currdf = np.array(df_input[1:])
     for header_idx in range(len(currdf[0])):
