@@ -28,7 +28,7 @@ import sys
 from bsoid.util import logger_config
 
 
-logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s', level='INFO', datefmt='%Y-%m-%d %H:%M:%S', stream=sys.stdout)
+# logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s', level='INFO', datefmt='%Y-%m-%d %H:%M:%S', stream=sys.stdout)
 
 
 debug = 0  # TODO: delete me after debugging and implementation is done.
