@@ -7,6 +7,7 @@ from typing import List, Tuple
 from tqdm import tqdm
 import cv2
 import glob
+import inspect
 import numpy as np
 import os
 import random
@@ -18,7 +19,7 @@ from bsoid.util.likelihoodprocessing import sort_list_nicely_in_place
 logger = config.bsoid_logger
 
 
-def repeatingNumbers(labels) -> Tuple[List, List, List]:  # TODO: rename function for clarity
+def repeating_numbers(labels) -> Tuple[List, List, List]:  # TODO: low: rename function for clarity
     """
     TODO: med: purpose // purpose unclear
     :param labels: (list) predicted labels
@@ -76,7 +77,7 @@ def write_annotated_frames_to_disk_from_video(path_to_video: str, labels, fps: i
     # TODO: med: analyze use of magic variables in func.
     """
     if not os.path.isfile(path_to_video):
-        err = f'Path to video was not found. Path = {path_to_video}'
+        err = f'{__name__}:{inspect.stack()[0][3]}Path to video was not found. Path = {path_to_video}'
         logger.error(err)
         raise ValueError(err)
     cv2_video_object = cv2.VideoCapture(path_to_video)
@@ -158,7 +159,7 @@ def create_labeled_vid(labels, crit=3, num_randomly_generated_examples=5,
     frame = cv2.imread(os.path.join(frame_dir, images[0]))
     height, width, layers = frame.shape
     ranges_list, idx2_list = [], []
-    n, idx, lengths = repeatingNumbers(labels)
+    n, idx, lengths = repeating_numbers(labels)
     #
     for idx_length, length in enumerate(lengths):
         if length >= crit:
@@ -198,7 +199,7 @@ def create_labeled_vid(labels, crit=3, num_randomly_generated_examples=5,
     return
 
 
-def create_labeled_vid_app(labels, crit, counts, output_fps, frame_dir, output_path):
+def create_labeled_vid_app(labels, crit, counts, output_fps, video_frames_directory, output_path) -> None:
     """
     *** LEGACY WARNING: this function is different from the non-annotated (_py/_umap/_voc)
     implementation(s) ONLY with regards to the new parameter `output_fps`.
@@ -208,16 +209,16 @@ def create_labeled_vid_app(labels, crit, counts, output_fps, frame_dir, output_p
     :param labels: 1D array, labels from training or testing
     :param crit: scalar, minimum duration for random selection of behaviors, default 300ms
     :param counts: scalar, number of randomly generated examples, default 5
-    :param frame_dir: string, directory to where you extracted vid images in LOCAL_CONFIG
+    :param video_frames_directory: string, directory to where you extracted vid images in LOCAL_CONFIG
     :param output_path: string, directory to where you want to store short video examples in LOCAL_CONFIG
     """
-    images = [img for img in os.listdir(frame_dir) if img.endswith(".png")]
+    images = [img for img in os.listdir(video_frames_directory) if img.endswith(".png")]
     sort_list_nicely_in_place(images)
     four_character_code = cv2.VideoWriter_fourcc(*'avc1')  # fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    frame = cv2.imread(os.path.join(frame_dir, images[0]))
+    frame = cv2.imread(os.path.join(video_frames_directory, images[0]))
     height, width, layers = frame.shape
     ranges, idx2 = [], []
-    n, idx, lengths = repeatingNumbers(labels)
+    n, idx, lengths = repeating_numbers(labels)
     for idx_length, length in enumerate(lengths):
         if length >= crit:
             ranges.append(range(idx[idx_length], idx[idx_length] + length))
@@ -239,7 +240,7 @@ def create_labeled_vid_app(labels, crit, counts, output_fps, frame_dir, output_p
                 video = cv2.VideoWriter(os.path.join(output_path, video_name),
                                         four_character_code, output_fps, (width, height))
                 for image in grp_images:
-                    video.write(cv2.imread(os.path.join(frame_dir, image)))
+                    video.write(cv2.imread(os.path.join(video_frames_directory, image)))
                 cv2.destroyAllWindows()
                 video.release()
         except:  # TODO: low: exception is very general. Address?
@@ -274,7 +275,7 @@ def vid2frame(path_to_video: str, labels, fps: int, output_path: str = config.FR
 
 
 def main(path_to_video, labels, fps, output_path):  # To be deprecated
-    # DEPRECATION WARNING
+    """# # # DEPRECATION WARNING # # #"""
     replacement_function = get_frames_from_video_then_create_labeled_video
     warnings.warn('This function, bsoid.util.videoprocessing.main(), will be deprecated in the future in '
                   'favour of a refactored, more descriptive function. Currently, that function is: '
