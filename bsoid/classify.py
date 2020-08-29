@@ -227,7 +227,7 @@ def bsoid_extract_voc(data, bodyparts: dict = config.BODYPARTS_VOC_LEGACY, fps: 
     win_len = np.int(np.round(0.05 / (1 / fps)) * 2 - 1)
     features = []
     for m in range(len(data)):
-        logging.info('Extracting features from CSV file {}...'.format(m + 1))
+        logging.info(f'Extracting features from CSV file {m+1}...')
         dataRange = len(data[m])
         p12 = data[m][:, 2 * bodyparts.get('Point1'):2 * bodyparts.get('Point1') + 2] - \
               data[m][:, 2 * bodyparts.get('Point2'):2 * bodyparts.get('Point2') + 2]
@@ -327,19 +327,19 @@ def bsoid_predict_umapvoc(features, clf_MLP) -> list:
     :param clf_MLP: Obj, MLP classifier
     :return labels_fslow: list, label/100ms
     """
-    labels_fslow = []
+    labels_fs_low = []
     for i in range(len(features)):
         logging.info(f'Predicting file {i+1} with {features[i].shape[1]} instances '
                      f'using learned classifier: bsoid_{config.MODEL_NAME}...')
         labels = clf_MLP.predict(features[i].T)
         logging.info(f'Done predicting file {i+1} with {features[i].shape[1]} instances '
                      f'in {features[i].shape[0]} D space.')
-        labels_fslow.append(labels)
+        labels_fs_low.append(labels)
     logging.info(f'Done predicting a total of {len(features)} files.')
-    return labels_fslow
+    return labels_fs_low
 
 
-def bsoid_frameshift_app(data_new, video_fps: int, clf_MLP):
+def bsoid_frameshift_app(data_new, video_fps: int, clf_MLP) -> List:
     """
     Frame-shift paradigm to output behavior/frame
     :param data_new: list, new data from predict_folders
@@ -370,7 +370,7 @@ def bsoid_frameshift_app(data_new, video_fps: int, clf_MLP):
         labels_fshigh.append(np.array(labels_fs2).flatten('F'))
     logging.info(f'Done frameshift-predicting a total of {len(data_new)} files.')
     return labels_fshigh
-def bsoid_frameshift_py(data_new, scaler, fps: int, clf_SVM):
+def bsoid_frameshift_py(data_new, scaler, fps: int, clf_SVM) -> List:
     """
     Frame-shift paradigm to output behavior/frame
     :param data_new: list, new data from predict_folders
@@ -433,7 +433,7 @@ def bsoid_frameshift_umap(data_new, fps: int, clf_MLP):
         labels_fshigh.append(np.array(labels_fs2).flatten('F'))
     logging.info(f'Done frameshift-predicting a total of {len(data_new)} files.')
     return labels_fshigh
-def bsoid_frameshift_voc(data_new, fps: int, clf_MLP):
+def bsoid_frameshift_voc(data_new, fps: int, clf_MLP) -> List:
     """
     Frame-shift paradigm to output behavior/frame
     :param data_new: list, new data from predict_folders
@@ -484,7 +484,8 @@ def main_py(predict_folders: List[str], scaler, fps, behv_model) -> Tuple[Any, A
     if config.PLOT_TRAINING:
         visuals.plot_feats_bsoidpy(features_new, labels_fs_low)
     if config.GENERATE_VIDEOS:
-        videoprocessing.get_frames_from_video_then_create_labeled_video(config.VIDEO_TO_LABEL_PATH, labels_fs_low[ID], fps, config.FRAME_DIR)
+
+        videoprocessing.get_frames_from_video_then_create_labeled_video(config.VIDEO_TO_LABEL_PATH, labels_fs_low[config.ID], fps, config.FRAME_DIR)
     return data_new, features_new, labels_fs_low, labels_fs_high
 def main_umap(predict_folders: List[str], fps, clf) -> Tuple[Any, Any]:
     """
@@ -497,7 +498,7 @@ def main_umap(predict_folders: List[str], fps, clf) -> Tuple[Any, Any]:
     filenames, data_new, perc_rect = likelihoodprocessing.import_csvs_data_from_folders_in_BASEPATH_and_process_data(predict_folders)
     labels_fs = bsoid_frameshift_umap(data_new, fps, clf)
     if config.GENERATE_VIDEOS:
-        videoprocessing.get_frames_from_video_then_create_labeled_video(config.VIDEO_TO_LABEL_PATH, labels_fs[ID][0:-1:int(round(fps / 10))], fps, config.FRAME_DIR)
+        videoprocessing.get_frames_from_video_then_create_labeled_video(config.VIDEO_TO_LABEL_PATH, labels_fs[config.ID][0:-1:int(round(fps / 10))], fps, config.FRAME_DIR)
     return data_new, labels_fs
 def main_voc(predict_folders: List[str], fps, behv_model) -> Tuple[Any, Any, Any, Any]:
     """
@@ -516,5 +517,5 @@ def main_voc(predict_folders: List[str], fps, behv_model) -> Tuple[Any, Any, Any
     if config.PLOT_TRAINING:
         visuals.plot_feats_bsoidvoc(features_new, labels_fs_low)
     if config.GENERATE_VIDEOS:
-        videoprocessing.get_frames_from_video_then_create_labeled_video(config.VIDEO_TO_LABEL_PATH, labels_fs_low[ID], fps, config.FRAME_DIR)
+        videoprocessing.get_frames_from_video_then_create_labeled_video(config.VIDEO_TO_LABEL_PATH, labels_fs_low[config.ID], fps, config.FRAME_DIR)
     return data_new, features_new, labels_fs_low, labels_fs_high
