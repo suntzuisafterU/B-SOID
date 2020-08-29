@@ -1,5 +1,5 @@
 """
-TODO: low: purpose
+Set up runtime configuration here.
 
 *** Do not set up any variables in this file by hand. If you need to instantiate new variables,
     write them into the config.ini file, then parse with the ConfigParser ***
@@ -28,12 +28,6 @@ import sys
 from bsoid.util import logger_config
 
 
-# logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s', level='INFO', datefmt='%Y-%m-%d %H:%M:%S', stream=sys.stdout)
-
-
-debug = 0  # TODO: delete me after debugging and implementation is done.
-
-
 # Fetch the B-SOiD project directory regardless of clone location
 BSOID_BASE_PROJECT_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # logging.info(f'BSOID_BASE_PROJECT_PATH:::{BSOID_BASE_PROJECT_PATH}')
@@ -49,9 +43,8 @@ config_file_name = 'config.ini'
 configuration = configparser.ConfigParser()
 configuration.read(os.path.join(BSOID_BASE_PROJECT_PATH, config_file_name))
 
-# Load up a configuration logger to detect config problems. Otherwise, use the general logger  # TODO
-# config_logger = logging.Logger()
 
+########################################################################################################################
 # Instantiate runtime variables
 random_state: int = configuration.getint('MODEL', 'RANDOM_STATE', fallback=random.randint(1, 100_000_000))
 holdout_percent: float = configuration.getfloat('MODEL', 'HOLDOUT_TEST_PCT')
@@ -66,12 +59,13 @@ PLOT_TRAINING: bool = configuration.getboolean('APP', 'PLOT_TRAINING')
 GENERATE_VIDEOS: bool = configuration.getboolean('APP', 'GENERATE_VIDEOS')
 
 
+
 VIDEO_TO_LABEL_PATH: str = configuration.get('APP', 'VIDEO_TO_LABEL_PATH')
 
 
+ID = identification_order  # DEPRECATE. ID WAS A MISTAKE, BUT NOT SURE WHY/WHAT IT DOES
 
 
-# BASE_PATH = '/home/aaron/Documents/OST-with-DLC/GUI_projects/OST-DLC-projects/pwd-may11-2020-john-howland-2020-05-11'
 # BASE_PATH = os.path.join('C:\\', 'Users', 'killian', 'projects', 'OST-with-DLC', 'pwd-may11-2020-john-howland-2020-05-11')
 BASE_PATH = 'C:\\Users\\killian\\projects\\OST-with-DLC\\GUI_projects\\OST-DLC-projects\\pwd-may11-2020-john-howland-2020-05-11'
 # BASE_PATH = '/home/aaron/Documents/OST-with-DLC/GUI_projects/OST-DLC-projects/pwd-may11-2020-john-howland-2020-05-11'
@@ -81,28 +75,26 @@ MODEL_NAME = configuration.get('APP', 'OUTPUT_MODEL_NAME')  # Machine learning m
 # TODO: med: for TRAIN_FOLDERS & PREDICT_FOLDERS, change path resolution from inside functional module to inside this config file
 # Data folders used to training neural network.
 # TRAIN_FOLDERS = [os.path.sep+'training-datasets', ]
-TRAIN_FOLDERS: List[str] = ['NOT_DLC_OUTPUT__SAMPLE_WITH_INDEX', ]
+TRAIN_FOLDERS: List[str] = ['NOT_DLC_OUTPUT__SAMPLE_WITHOUT_INDEX', ]
 
 # Data folders, can contain the same as training or new data for consistency.
-PREDICT_FOLDERS = [os.path.sep+'Data1', ]
+PREDICT_FOLDERS: List[str] = ['Data1', ]
 
 # Create a folder to store extracted images, MAKE SURE THIS FOLDER EXISTS.  # TODO: med: add in a runtime check that folder exists
 FRAME_DIR = os.path.join(OUTPUT_PATH, 'frames')  # '/home/aaron/Documents/OST-with-DLC/B-SOID/OUTPUT/frames'
+assert os.path.isdir(FRAME_DIR), f'`FRAME_DIR` does not exist. FRAME_DIR = {FRAME_DIR}.'
 
 # Create a folder to store created video snippets/group, MAKE SURE THIS FOLDER EXISTS.  # TODO: med: add in a runtime check that folder exists
 # Create a folder to store extracted images, make sure this folder exist.
 #   This program will predict labels and print them on these images
 # In addition, this will also create an entire sample group videos for ease of understanding
-SHORTVID_DIR = os.path.join(OUTPUT_PATH, 'shortvids')  # '/home/aaron/Documents/OST-with-DLC/B-SOID/OUTPUT/shortvids'
-# assert os.path.isdir(SHORTVID_DIR), f'`SHORTVID` dir. (value={SHORTVID_DIR}) must exist for runtime but does not.'
+short_video_output_directory = os.path.join(OUTPUT_PATH, 'short_videos')
+SHORTVID_DIR = short_video_output_directory
+assert os.path.isdir(short_video_output_directory), f'`short_video_output_directory` dir. (value={short_video_output_directory}) must exist for runtime but does not.'
 
 # Now, pick an example video that corresponds to one of the csv files from the PREDICT_FOLDERS
 
 # VID_NAME = os.path.join(OST_BASE_PROJECT_PATH, 'GUI_projects', 'labelled_videos', '002_ratA_inc2_above.mp4')  # '/home/aaron/Documents/OST-with-DLC/GUI_projects/labelled_videos/002_ratA_inc2_above.mp4'
-
-
-
-
 
 
 
@@ -111,7 +103,6 @@ SHORTVID_DIR = os.path.join(OUTPUT_PATH, 'shortvids')  # '/home/aaron/Documents/
 # HLDOUT: float = holdout_percent  # Test partition ratio to validate clustering separation.  # DEPRECATE
 # CV_IT: int = kfold_crossvalidation  # DEPRECATE
 # COMP: int = compile_CSVs_for_training  # TODO: med: deprecate
-# ID = identification_order  # DEPRECATE
 
 
 ########################################################################################################################
@@ -131,19 +122,19 @@ OST_BASE_PROJECT_PATH = configuration.get('PATH', 'OST_BASE_PROJECT_PATH')  # 'p
 # Resolve logger variables
 config_file_log_folder_path = configuration.get('LOGGING', 'LOG_FILE_FOLDER_PATH')
 config_file_log_folder_path = config_file_log_folder_path if config_file_log_folder_path else default_log_folder_path
-if debug >= 2: print('config_file_log_folder_path:::', config_file_log_folder_path)
+# if debug >= 2: print('config_file_log_folder_path:::', config_file_log_folder_path)
 
 config_file_name = configuration.get('LOGGING', 'LOG_FILE_NAME', fallback=default_log_file_name)
-if debug >= 2: print('config_file_name:::', config_file_name)
+#  debug >= 2: print('config_file_name:::', config_file_name)
 
 log_file_file_path = str(Path(config_file_log_folder_path, config_file_name).absolute())
-if debug >= 2: print('log_file_file_path AKA os.path.join(config_file_log_folder_path, config_file_name):::', log_file_file_path)
+# if debug >= 2: print('log_file_file_path AKA os.path.join(config_file_log_folder_path, config_file_name):::', log_file_file_path)
 
 assert os.path.isdir(config_file_log_folder_path), f'Path does not exist: {config_file_log_folder_path}'
 
 # Instantiate logger
 bsoid_logger = logger_config.create_generic_logger(
-    logger_name=configuration.get('LOGGING', 'LOGGER_NAME'),   # configuration['LOGGING']['LOG_FILE_NAME'],
+    logger_name=configuration.get('LOGGING', 'LOGGER_NAME'),
     log_format=configuration.get('LOGGING', 'LOG_FORMAT', raw=True),
     stdout_log_level=configuration.get('LOGGING', 'STREAM_LOG_LEVEL', fallback=None),
     file_log_level=configuration.get('LOGGING', 'FILE_LOG_LEVEL', fallback=None),
@@ -152,18 +143,7 @@ bsoid_logger = logger_config.create_generic_logger(
 
 
 ##############################################################################################################
-### BSOID VOC ###
-# # Order the points that are encircling the mouth.
-BODYPARTS_VOC_LEGACY = {
-    'Point1': 0,
-    'Point2': 1,
-    'Point3': 2,
-    'Point4': 3,
-    'Point5': 4,
-    'Point6': 5,
-    'Point7': 6,
-    'Point8': 7,
-}
+
 
 
 ########################
@@ -212,7 +192,7 @@ SVM_PARAMS = {
     'gamma': configuration.getfloat('SVM', 'gamma'),
     'probability': configuration.getboolean('SVM', 'probability'),
     'verbose': configuration.getint('SVM', 'verbose'),
-    'random_state': configuration.getint('APP', 'RANDOM_STATE', fallback=random_state),
+    'random_state': configuration.getint('MODEL', 'RANDOM_STATE', fallback=random_state),
 }
 
 
@@ -232,8 +212,6 @@ TSNE_PARAMS = {
 
 ########################################################################################################################
 # LEGACY VARIABLES
-
-
 # This version requires the six body parts Snout/Head, Forepaws/Shoulders, Hindpaws/Hips, Tailbase.
 BODYPARTS_PY_LEGACY = {
     'Snout/Head': 0,
@@ -246,3 +224,17 @@ BODYPARTS_PY_LEGACY = {
     'Tailbase': 5,
     'Tailroot': None,
 }
+
+### BSOID VOC ###
+# # Order the points that are encircling the mouth.
+BODYPARTS_VOC_LEGACY = {
+    'Point1': 0,
+    'Point2': 1,
+    'Point3': 2,
+    'Point4': 3,
+    'Point5': 4,
+    'Point6': 5,
+    'Point7': 6,
+    'Point8': 7,
+}
+
