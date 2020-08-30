@@ -6,12 +6,18 @@ did not adhere to DRY standards and creates a single source of statistics utilit
 """
 
 from typing import Dict, List, Tuple
+import inspect
 import numpy as np
 import pandas as pd
 import warnings
 
+from bsoid import config
 
-def feat_dist(features: np.ndarray) -> Tuple[List, List, List, List]:
+
+logger = config.create_file_specific_logger(__name__)
+
+
+def get_feature_distribution(features: np.ndarray):
     """
     TODO: low: purpose
     :param features: (ndarray) TODO
@@ -23,7 +29,7 @@ def feat_dist(features: np.ndarray) -> Tuple[List, List, List, List]:
     """
     if not isinstance(features, np.ndarray):
         raise TypeError(f"Argument `features` expected to be of type np.ndarray but instead "
-                        f"found {type(features)} (value: {features}")
+                        f"found {type(features)} (value: {features}).")
 
     feature_range, feature_median, p_cts, edges = [], [], [], []
     for i in range(features.shape[0]):
@@ -38,7 +44,7 @@ def feat_dist(features: np.ndarray) -> Tuple[List, List, List, List]:
     return feature_range, feature_median, p_cts, edges
 
 
-def transition_matrix_app(labels, n: int) -> Tuple:  # source: bsoid_app
+def transition_matrix_app(labels, n: int) -> Tuple:
     """
     TODO: purpose
     :param n: TODO
@@ -108,7 +114,7 @@ def rle(in_array) -> Tuple:  # TODO: rename function for clarity?
     if num_array_elements != 0:
         y = np.array(array[1:] != array[:-1])                           # Pairwise unequal (string safe)
         i = np.append(np.where(y), num_array_elements - 1)              # Must include last element position
-        run_lengths = np.diff(np.append(-1, i))                         # Run lengths  # TODO: med: REVIEW: np.append signature is different from usage here
+        run_lengths = np.diff(np.append(-1, i))                         # Run lengths  # TODO: low: REVIEW: np.append signature is different from usage here
         start_positions = np.cumsum(np.append(0, run_lengths))[:-1]     # Positions
         values = array[i]
         return run_lengths, start_positions, values
@@ -189,9 +195,9 @@ def main(labels) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         backwards compatibility reasons.)
     """
     replacement_func = get_runlengths_statistics_transition_matrix_from_labels
-    warnings.warn('This function, bsoid.util.statistics.main(), will be deprecated in future. Check back for a '
-                  f'renamed/refactored version later. '
-                  f'Current replacement: {get_runlengths_statistics_transition_matrix_from_labels.__qualname__}.')
+    logger.warning('This function, bsoid.util.statistics.main(), will be deprecated in future. Check back for a '
+                   f'renamed/refactored version later. '
+                   f'Current replacement: {get_runlengths_statistics_transition_matrix_from_labels.__qualname__}.')
     return replacement_func(labels)
 
 
@@ -220,3 +226,15 @@ def main_app(labels, n):
     runlen_df, dur_stats = behv_dur(labels)
     B, df_tm, B_norm = transition_matrix_app(labels, n)
     return runlen_df, dur_stats, B, df_tm, B_norm
+
+
+########################################################################################################################
+### LEGACY FUNCTIONS
+
+def feat_dist(features: np.ndarray) -> Tuple[List, List, List, List]:
+    """   *** DEPRECATION WARNING ***   """
+    replacement_func = get_feature_distribution
+    err = f'This function, feat_dist, will be deprecated in future. Instead, replace its use with ' \
+          f'{replacement_func.__qualname__} (potential caller of this function = {inspect.stack()[1][3]}).'
+    logger.warning(err)
+    return replacement_func(features)

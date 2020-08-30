@@ -25,7 +25,7 @@ import time
 from bsoid import classify, config, train, util
 from bsoid.config import video_fps as video_fps, OUTPUT_PATH as OUTPUT_PATH, TRAIN_FOLDERS as TRAIN_FOLDERS, PREDICT_FOLDERS as PREDICT_FOLDERS
 
-logger = config.bsoid_logger
+logger = config.create_file_specific_logger(__name__)
 
 """ py
     Automatically saves single CSV file containing training outputs (in 10Hz, 100ms per row):
@@ -58,7 +58,7 @@ def build_py(train_folders) -> Tuple[Any, Any, Any, Any, Any, Any]:
     training_data.to_csv(os.path.join(OUTPUT_PATH, f'bsoid_trainlabels_10Hz{time_str}.csv'),
                          index=True, chunksize=10000, encoding='utf-8')
     
-    with open(os.path.join(OUTPUT_PATH, f'bsoid_{config.MODEL_NAME}.csv'), 'wb') as f:
+    with open(os.path.join(OUTPUT_PATH, f'bsoid_{config.MODEL_NAME}.sav'), 'wb') as f:
         joblib.dump([classifier, scaler], f)
     
     logger.info('Saved stuff...elaborate on this message later. Check build() or something like it.')  # TODO: elaborate on log message
@@ -74,7 +74,7 @@ def build_umap(train_folders):
     # from bsoid_umap.utils.statistics import feat_dist
     f_10fps, f_10fps_sc, umap_embeddings, hdb_assignments, soft_assignments, soft_clusters, nn_classifier, scores, nn_assignments = train.main_umap(train_folders)
     timestr = time.strftime("_%Y%m%d_%H%M")
-    feat_range, feat_med, p_cts, edges = util.statistics.feat_dist(f_10fps)  #     feat_range, feat_med, p_cts, edges = feat_dist(f_10fps)
+    feat_range, feat_med, p_cts, edges = util.statistics.feat_dist(f_10fps)  # feat_range, feat_med, p_cts, edges = feat_dist(f_10fps)
     f_range_df = pd.DataFrame(feat_range, columns=['5%tile', '95%tile'])
     f_med_df = pd.DataFrame(feat_med, columns=['median'])
     f_pcts_df = pd.DataFrame(p_cts)
@@ -83,13 +83,12 @@ def build_umap(train_folders):
     f_edge_df.columns = pd.MultiIndex.from_product([f_edge_df.columns, ['edge']])
     f_dist_data = pd.concat((f_range_df, f_med_df, f_pcts_df, f_edge_df), axis=1)
     # Write data to csv
-    f_dist_data.to_csv((os.path.join(OUTPUT_PATH, f'bsoid_featdist_10Hz{timestr}.csv')),
-                       index=True, chunksize=10000, encoding='utf-8')
+    f_dist_data.to_csv((os.path.join(OUTPUT_PATH, f'bsoid_featdist_10Hz{timestr}.csv')), index=True, chunksize=10000, encoding='utf-8')
 
     length_nm, angle_nm, disp_nm = [], [], []
-    for i, j in itertools.combinations(range(0, int(np.sqrt(f_10fps.shape[0]))), 2):
-        length_nm.append(['distance between points:', i+1, j+1])
-        angle_nm.append(['angular change for points:', i+1, j+1])
+    for m, n in itertools.combinations(range(0, int(np.sqrt(f_10fps.shape[0]))), 2):
+        length_nm.append(['distance between points:', m+1, n+1])
+        angle_nm.append(['angular change for points:', m+1, n+1])
     for i in range(int(np.sqrt(f_10fps.shape[0]))):
         disp_nm.append(['displacement for point:', i+1, i+1])
     mcol = np.vstack((length_nm, angle_nm, disp_nm))
@@ -97,24 +96,29 @@ def build_umap(train_folders):
     umaphdb_data = np.concatenate([umap_embeddings, hdb_assignments.reshape(len(hdb_assignments), 1),
                               soft_assignments.reshape(len(soft_assignments), 1),
                               nn_assignments.reshape(len(nn_assignments), 1)], axis=1)
-    multi_index_columns = pd.MultiIndex.from_tuples([('UMAP embeddings', 'Dimension 1'), ('', 'Dimension 2'),
-                                           ('', 'Dimension 3'), ('HDBSCAN', 'Assignment No.'),
-                                           ('HDBSCAN*SOFT', 'Assignment No.'), ('Neural Net', 'Assignment No.')],
-                                          names=['Type', 'Frame@10Hz'])
-    umaphdb_df = pd.DataFrame(umaphdb_data, columns=multi_index_columns)
-    training_data = pd.concat((feat_nm_df, umaphdb_df), axis=1)
-    soft_clust_prob = pd.DataFrame(soft_clusters)
-    training_data.to_csv((os.path.join(OUTPUT_PATH, str.join('', ('bsoid_trainlabels_10Hz', timestr, '.csv')))),
-                         index=True, chunksize=10000, encoding='utf-8')
-    soft_clust_prob.to_csv((os.path.join(OUTPUT_PATH, str.join('', ('bsoid_labelprob_10Hz', timestr, '.csv')))),
-                           index=True, chunksize=10000, encoding='utf-8')
-    with open(os.path.join(OUTPUT_PATH, str.join('', ('bsoid_', config.MODEL_NAME, '.sav'))), 'wb') as f:
+    multi_index_columns = pd.MultiIndex.from_tuples([
+        ('UMAP embeddings', 'Dimension 1'),
+        ('', 'Dimension 2'),
+        ('', 'Dimension 3'),
+        ('HDBSCAN', 'Assignment No.'),
+        ('HDBSCAN*SOFT', 'Assignment No.'),
+        ('Neural Net', 'Assignment No.')],
+        names=['Type', 'Frame@10Hz'])
+    df_umaphdb = pd.DataFrame(umaphdb_data, columns=multi_index_columns)
+
+    # Add columns (add frames sideways)
+    df_training_data: pd.DataFrame = pd.concat((feat_nm_df, df_umaphdb), axis=1)
+    df_soft_clust_prob = pd.DataFrame(soft_clusters)
+    # Save DataFrames to CSV
+    df_training_data.to_csv((os.path.join(OUTPUT_PATH, f'bsoid_trainlabels_10Hz{timestr}.csv')), index=True, chunksize=10000, encoding='utf-8')
+    df_soft_clust_prob.to_csv((os.path.join(OUTPUT_PATH, f'bsoid_labelprob_10Hz{timestr}.csv')), index=True, chunksize=10000, encoding='utf-8')
+    with open(os.path.join(OUTPUT_PATH, f'bsoid_{config.MODEL_NAME}.sav'), 'wb') as f:
         joblib.dump([f_10fps, f_10fps_sc, umap_embeddings, hdb_assignments, soft_assignments, soft_clusters,
                      nn_classifier, scores, nn_assignments], f)
     logger.info('Saved. Expand on this info message.')
     return f_10fps, f_10fps_sc, umap_embeddings, hdb_assignments, soft_assignments, soft_clusters, nn_classifier, \
            scores, nn_assignments
-def build_voc(train_folders) -> Tuple:
+def build_voc(train_folders) -> Tuple[Any, Any, Any, Any, List]:
     """
     Automatically saves single CSV file containing training outputs (in 10Hz, 100ms per row):
     1. original features (number of training data points by 7 dimensions, columns 1-7)
@@ -126,7 +130,7 @@ def build_voc(train_folders) -> Tuple:
     """
     # import bsoid_voc.train
     f_10fps, trained_tsne, gmm_assignments, classifier, scores = train.main_voc(train_folders)
-    alldata = np.concatenate([f_10fps.T, trained_tsne, gmm_assignments.reshape(len(gmm_assignments), 1)], axis=1)
+    all_data_as_array = np.concatenate([f_10fps.T, trained_tsne, gmm_assignments.reshape(len(gmm_assignments), 1)], axis=1)
     micolumns = pd.MultiIndex.from_tuples([('Features', 'Distance between points 1 & 5'),
                                            ('', 'Distance between points 1 & 8'),
                                            ('', 'Angle change between points 1 & 2'),
@@ -138,10 +142,10 @@ def build_voc(train_folders) -> Tuple:
                                            ('', 'Dimension 3'),
                                            ('EM-GMM', 'Assignment No.')],
                                           names=['Type', 'Frame@10Hz'])
-    training_data = pd.DataFrame(alldata, columns=micolumns)
+    df_training_data = pd.DataFrame(all_data_as_array, columns=micolumns)
     timestr = time.strftime("_%Y%m%d_%H%M")
-    training_data.to_csv((os.path.join(OUTPUT_PATH, f'bsoid_trainlabels_10Hz{timestr}.csv')),
-                         index=True, chunksize=10000, encoding='utf-8')
+    # Save DataFrames to CSV
+    df_training_data.to_csv((os.path.join(OUTPUT_PATH, f'bsoid_trainlabels_10Hz{timestr}.csv')), index=True, chunksize=10000, encoding='utf-8')
     with open(os.path.join(OUTPUT_PATH, f'bsoid_{config.MODEL_NAME}.csv'), 'wb') as f:
         joblib.dump(classifier, f)
     logger.info('Saved.')  # TODO: add specificity to log
@@ -152,11 +156,13 @@ def run_py(predict_folders):
     """
     :param predict_folders: list, folders to run prediction using behavioral model
     :returns labels_fslow, labels_fshigh: see bsoid_py.classify
-    Automatically loads classifier in OUTPUTPATH with MODELNAME in LOCAL_CONFIG
+    Automatically loads classifier in OUTPUTPATH with MODELNAME in config
     Automatically saves CSV files containing new outputs (1 in 10Hz, 1 in video_fps, both with same format):
     1. original features (number of training data points by 7 dimensions, columns 1-7)
     2. SVM predicted labels (number of training data points by 1, columns 8)
     """
+
+    # TODO: HIGH: why does it expect this .sav file? Is this a bad way to start a func?
     with open(os.path.join(OUTPUT_PATH, f'bsoid_{config.MODEL_NAME}.sav'), 'rb') as fr:
         behv_model, scaler = joblib.load(fr)
     data_new, feats_new, labels_fslow, labels_fshigh = classify.main_py(predict_folders, scaler, video_fps, behv_model)
@@ -174,7 +180,9 @@ def run_py(predict_folders):
         micolumns = pd.MultiIndex.from_tuples([('Features', 'Relative snout to forepaws placement'),
                                                ('', 'Relative snout to hind paws placement'),
                                                ('', 'Inter-forepaw distance'),
-                                               ('', 'Body length'), ('', 'Body angle'), ('', 'Snout displacement'),
+                                               ('', 'Body length'),
+                                               ('', 'Body angle'),
+                                               ('', 'Snout displacement'),
                                                ('', 'Tail-base displacement'),
                                                ('SVM classifier', 'B-SOiD labels')],
                                               names=['Type', 'Frame@10Hz'])

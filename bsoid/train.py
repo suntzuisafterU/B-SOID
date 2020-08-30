@@ -19,6 +19,7 @@ from sklearn.svm import SVC
 from tqdm import tqdm
 from typing import Any, Tuple
 import hdbscan
+import inspect
 import itertools
 import math
 import matplotlib.pyplot as plt
@@ -31,7 +32,7 @@ import warnings
 from bsoid import config
 from bsoid.util import likelihoodprocessing, visuals
 
-logger = config.bsoid_logger
+logger = config.create_file_specific_logger(__name__)
 
 
 ########################################################################################################################
@@ -99,7 +100,7 @@ def train_umap_unsupervised_with_xy_features_umapapp(data: list, fps: int = conf
                 feats1 = np.hstack((np.mean((features[n][0:dxy_smth.shape[0], range(k - round(fps / 10), k)]), axis=1),
                                     np.sum((features[n][dxy_smth.shape[0]:features[n].shape[0],
                                             range(k - round(fps / 10), k)]), axis=1))).reshape(len(features[0]), 1)
-        config.bsoid_logger.info(f'Done integrating features into 100ms bins from CSV file {n+1}.')
+        config.bsoid_logger.info(f'{inspect.stack()[0][3]}::Done integrating features into 100ms bins from CSV file {n+1}.')
         if n > 0:  # For any index value of n that isn't the very first run
             f_10fps = np.concatenate((f_10fps, feats1), axis=1)
             scaler = StandardScaler()
@@ -168,7 +169,7 @@ def bsoid_hdbscan_umapapp(umap_embeddings, hdbscan_params=config.HDBSCAN_PARAMS)
                                             .fit(umap_embeddings)
         numulab.append(len(np.unique(trained_classifier.labels_)))
         if numulab[-1] > highest_numulab:
-            config.bsoid_logger.info('Adjusting minimum cluster size to maximize cluster number...')
+            config.bsoid_logger.info(f'Adjusting minimum cluster size to maximize cluster number...')
             highest_numulab = numulab[-1]
             best_clf = trained_classifier
     assignments = best_clf.labels_
@@ -229,14 +230,15 @@ def bsoid_nn_appumap(feats, labels, holdout_pct: float = config.holdout_percent,
 def train_mlp_classifier_voc(feats, labels,
                              comp: int = config.compile_CSVs_for_training,
                              holdout_percent: float = config.holdout_percent,
-                             cv_it=config.crossvalidation_k, mlp_params=config.MLP_PARAMS) -> Tuple[Any, Any]:
+                             crossvalidation_k:int = config.crossvalidation_k,
+                             mlp_params=config.MLP_PARAMS) -> Tuple[Any, Any]:
     """
     Trains MLP classifier
     :param feats: 2D array, original feature space, standardized
     :param labels: 1D array, GMM output assignments
     :param comp: TODO
     :param holdout_percent: scalar, test partition ratio for validating MLP performance in GLOBAL_CONFIG
-    :param cv_it: scalar, iterations for cross-validation in GLOBAL_CONFIG
+    :param crossvalidation_k: scalar, iterations for cross-validation in GLOBAL_CONFIG
     :param mlp_params: dict, MLP parameters in GLOBAL_CONFIG
     :return classifier: obj, MLP classifier
     :return scores: 1D array, cross-validated accuracy
@@ -251,8 +253,8 @@ def train_mlp_classifier_voc(feats, labels,
         classifier.fit(feats_train, labels_train)
         config.bsoid_logger.info(f'Done training feedforward neural network mapping {feats_train.shape} features to {labels_train.shape} assignments.')
         config.bsoid_logger.info('Predicting randomly sampled (non-overlapped) assignments '
-                     'using the remaining {}%...'.format(holdout_percent * 100))
-        scores = cross_val_score(classifier, feats_test, labels_test, cv=cv_it, n_jobs=-1)
+                                 f'using the remaining {holdout_percent * 100}%...')
+        scores = cross_val_score(classifier, feats_test, labels_test, cv=crossvalidation_k, n_jobs=-1)
         time_str = time.strftime("_%Y%m%d_%H%M")
         if config.PLOT_TRAINING:
             np.set_printoptions(precision=2)
@@ -288,7 +290,7 @@ def train_mlp_classifier_voc(feats, labels,
                     feats_train.shape, labels_train.shape))
             config.bsoid_logger.info('Predicting randomly sampled (non-overlapped) assignments '
                          'using the remaining {}%...'.format(holdout_percent * 100))
-            sc = cross_val_score(classifier, feats_test, labels_test, cv=cv_it, n_jobs=-1)
+            sc = cross_val_score(classifier, feats_test, labels_test, cv=crossvalidation_k, n_jobs=-1)
             time_str = time.strftime("_%Y%m%d_%H%M")
             if config.PLOT_TRAINING:
                 np.set_printoptions(precision=2)
@@ -378,7 +380,7 @@ def bsoid_tsne_py(data: list, bodyparts=config.BODYPARTS_PY_LEGACY, fps=config.v
         pt_disp_smth = likelihoodprocessing.boxcar_center(pt_disp, win_len)
         features.append(np.vstack((sn_cfp_norm_smth[1:], sn_chp_norm_smth[1:], fpd_norm_smth[1:],
                                 sn_pt_norm_smth[1:], sn_pt_ang_smth[:], sn_disp_smth[:], pt_disp_smth[:])))
-    config.bsoid_logger.info(f'Done extracting features from a total of {len(data)} training CSV files.')
+    config.bsoid_logger.info(f'{inspect.stack()[0][3]}:Done extracting features from a total of {len(data)} training CSV files.')
     if comp == 0:
         f_10fps = []
         f_10fps_sc = []
@@ -410,7 +412,7 @@ def bsoid_tsne_py(data: list, bodyparts=config.BODYPARTS_PY_LEGACY, fps=config.v
             config.bsoid_logger.info(f'Training t-SNE to embed {f_10fps_sc[n].shape[1]} instances from '
                                      f'{f_10fps_sc[n].shape[0]} D into 3 D from CSV file {n + 1}...')
             trained_tsne_i = tsne(f_10fps_sc[n].T, dimensions=3, perplexity=np.sqrt(f_10fps_sc[n].shape[1]),
-                                  theta=0.5, rand_seed=23)
+                                  theta=0.5, rand_seed=config.random_state)
             trained_tsne.append(trained_tsne_i)
             config.bsoid_logger.info('Done embedding into 3 D.')
     if comp == 1:
@@ -420,8 +422,8 @@ def bsoid_tsne_py(data: list, bodyparts=config.BODYPARTS_PY_LEGACY, fps=config.v
         config.bsoid_logger.info(f'Training t-SNE to embed {f_10fps_sc.shape[1]} instances'
                                  f'from {f_10fps_sc.shape[0]} D into 3 D from a total of {len(data)} CSV files...')
         trained_tsne = tsne(f_10fps_sc.T, dimensions=3, perplexity=np.sqrt(f_10fps_sc.shape[1]),
-                            theta=0.5, rand_seed=23)  # TODO: low: move "rand_seed" to a config file instead of hiding here as magic variable
-        config.bsoid_logger.info('Done embedding into 3 D.')
+                            theta=0.5, rand_seed=config.random_state)  # TODO: low: move "rand_seed" to a config file instead of hiding here as magic variable
+        config.bsoid_logger.info(f'{inspect.stack()[0][3]}::Done embedding into 3 D.')
     return f_10fps, f_10fps_sc, trained_tsne, scaler
 def bsoid_tsne_voc(data: list, bodyparts=config.BODYPARTS_VOC_LEGACY, fps=config.video_fps, comp: int = config.compile_CSVs_for_training, tsne_params=config.TSNE_PARAMS):
     """
@@ -585,7 +587,7 @@ def bsoid_svm_py(feats, labels, comp: int = config.compile_CSVs_for_training, ho
     """
     if comp == 1:
         feats_train, feats_test, labels_train, labels_test = train_test_split(
-            feats.T, labels.T, test_size=holdout_pct, random_state=23)  # TODO: med: MAGIC VARIABLES -- `random_state`
+            feats.T, labels.T, test_size=holdout_pct, random_state=config.random_state)  # TODO: med: MAGIC VARIABLES -- `random_state`
         config.bsoid_logger.info(f'Training SVM on randomly partitioned {(1-holdout_pct)*100}% of training data...')
         classifier = SVC(**svm_params)
         classifier.fit(feats_train, labels_train)
@@ -614,7 +616,7 @@ def bsoid_svm_py(feats, labels, comp: int = config.compile_CSVs_for_training, ho
         classifier, scores = [], []
         for i in range(len(feats)):
             feats_train, feats_test, labels_train, labels_test = train_test_split(
-                feats[i].T, labels[i].T, test_size=holdout_pct, random_state=23)
+                feats[i].T, labels[i].T, test_size=holdout_pct, random_state=config.random_state)
             config.bsoid_logger.info(f'Training SVM on randomly partitioned {(1 - holdout_pct) * 100}% of training data...')
             clf = SVC(**svm_params)
             clf.fit(feats_train, labels_train)

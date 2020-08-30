@@ -4,6 +4,42 @@ Encapsulate logging for BSOID
 
 from logging.handlers import SMTPHandler
 import logging
+import re
+
+
+def preload_logger_with_config_vars(logger_name: str, log_format: str,
+                                    stdout_log_level: str = None, file_log_level: str = None,
+                                    file_log_file_path: str = None, email_log_level: str = None):
+    """Create a meta logger """
+    def argument_loaded_function(current_python_file_name: str, log_format: str = log_format):
+        """Load in """
+        print(log_format)
+        name_regex_result = re.search(r'%\(name\)-?\w*s', log_format)
+        if name_regex_result:
+            log_format = log_format[:name_regex_result.start()] + f'{current_python_file_name}' + log_format[name_regex_result.end():]
+        final_result = create_generic_logger(
+            logger_name=logger_name,
+            log_format=log_format,
+            stdout_log_level=stdout_log_level,
+            file_log_level=file_log_level,
+            file_log_file_path=file_log_file_path,
+            email_log_level=email_log_level,
+        )
+        return final_result
+    return argument_loaded_function
+
+
+def log_function_decorator(decorator_arg=None):
+    def decorator(func):
+        def function_wrapper(*args, **kwargs):
+            # create_generic_logger()
+            # logger.debug('args: {} / kwargs: {}'.format(args, kwargs))
+            result = create_generic_logger(*args, **kwargs)
+            # logger.debug('result: {}'.format(result))
+            return result
+
+        return function_wrapper
+    return decorator
 
 
 def create_generic_logger(logger_name: str, log_format: str,
@@ -72,3 +108,19 @@ def create_generic_logger(logger_name: str, log_format: str,
     #     logger.addHandler(smtp_handler)
     return logger
 
+
+def decorator_example(func):
+    # TODO:
+    def function_wrapper(*args, **kwargs):
+        print(f'args: {args} / kwargs: {kwargs}')
+        result = func(*args, **kwargs)
+        print(f'result: {result}')
+        return result
+
+    return function_wrapper
+
+
+if __name__ == '__main__':
+    # logger = create_generic_logger(__name__)
+    # logger.debug(f'Debugging stuff')  # TODO
+    pass

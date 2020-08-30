@@ -16,7 +16,8 @@ import numpy as np
 import seaborn as sn
 
 from bsoid import config
-logger = config.bsoid_logger
+
+logger = config.create_file_specific_logger(__name__)
 
 #
 

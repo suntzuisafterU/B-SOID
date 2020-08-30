@@ -14,7 +14,7 @@ import warnings
 
 from bsoid import config
 
-logger = config.bsoid_logger
+logger = config.create_file_specific_logger(__name__)
 
 
 ########################################################################################################################

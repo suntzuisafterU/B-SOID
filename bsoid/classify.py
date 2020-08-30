@@ -15,7 +15,7 @@ import numpy as np
 from bsoid import config
 from bsoid.util import likelihoodprocessing, videoprocessing, visuals
 
-logger = config.bsoid_logger
+logger = config.create_file_specific_logger(__name__)
 
 """ bsoid_extract_ _
 Extracts features based on (x,y) positions
@@ -404,7 +404,7 @@ def bsoid_frameshift_py(data_new, scaler, fps: int, clf_SVM) -> List:
         labels_fshigh.append(np.array(labels_fs2).flatten('F'))
     logger.info(f'Done frameshift-predicting a total of {len(data_new)} files.')
     return labels_fshigh
-def bsoid_frameshift_umap(data_new, fps: int, clf_MLP):
+def bsoid_frameshift_umap(data_new, fps: int, clf_MLP) -> List:
     """
     Frame-shift paradigm to output behavior/frame
     :param data_new: list, new data from predict_folders
@@ -412,7 +412,7 @@ def bsoid_frameshift_umap(data_new, fps: int, clf_MLP):
     :param clf_MLP: Obj, MLP classifier
     :return fs_labels, 1D array, label/frame
     """
-    labels_fs, labels_fshigh = [], []
+    labels_fs, labels_fs_high = [], []
     for i in range(len(data_new)):
         data_offset = []
         for j in range(math.floor(fps / 10)):
@@ -432,9 +432,9 @@ def bsoid_frameshift_umap(data_new, fps: int, clf_MLP):
         labels_fs2 = []
         for l in range(math.floor(fps / 10)):
             labels_fs2.append(labels_fs[k][l])
-        labels_fshigh.append(np.array(labels_fs2).flatten('F'))
+        labels_fs_high.append(np.array(labels_fs2).flatten('F'))
     logger.info(f'Done frameshift-predicting a total of {len(data_new)} files.')
-    return labels_fshigh
+    return labels_fs_high
 def bsoid_frameshift_voc(data_new, fps: int, clf_MLP) -> List:
     """
     Frame-shift paradigm to output behavior/frame
@@ -443,7 +443,7 @@ def bsoid_frameshift_voc(data_new, fps: int, clf_MLP) -> List:
     :param clf_MLP: Obj, MLP classifier
     :return labels_fshigh, 1D array, label/frame
     """
-    labels_fs, labels_fshigh = [], []
+    labels_fs, labels_fs_high = [], []
     for i in range(len(data_new)):
         data_offset = []
         for j in range(math.floor(fps / 10)):
@@ -463,9 +463,9 @@ def bsoid_frameshift_voc(data_new, fps: int, clf_MLP) -> List:
         labels_fs2 = []
         for l in range(math.floor(fps / 10)):
             labels_fs2.append(labels_fs[k][l])
-        labels_fshigh.append(np.array(labels_fs2).flatten('F'))
+        labels_fs_high.append(np.array(labels_fs2).flatten('F'))
     logger.info(f'Done frameshift-predicting a total of {len(data_new)} files.')
-    return labels_fshigh
+    return labels_fs_high
 
 
 def main_py(predict_folders: List[str], scaler, fps, behv_model) -> Tuple[Any, Any, Any, Any]:
