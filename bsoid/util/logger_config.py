@@ -13,7 +13,6 @@ def preload_logger_with_config_vars(logger_name: str, log_format: str,
     """Create a meta logger """
     def argument_loaded_function(current_python_file_name: str, log_format: str = log_format):
         """Load in """
-        print(log_format)
         name_regex_result = re.search(r'%\(name\)-?\w*s', log_format)
         if name_regex_result:
             log_format = log_format[:name_regex_result.start()] + f'{current_python_file_name}' + log_format[name_regex_result.end():]
