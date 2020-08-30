@@ -47,7 +47,7 @@ configuration.read(os.path.join(BSOID_BASE_PROJECT_PATH, config_file_name))
 ## *NOTE*: BASE_PATH: is likely to be deprecated in the future
 # BASE_PATH = 'C:\\Users\\killian\\projects\\OST-with-DLC\\GUI_projects\\OST-DLC-projects\\pwd-may11-2020-john-howland-2020-05-11'  # TODO: HIGH: bad!!!! magic variable
 # BASE_PATH = '/home/aaron/Documents/OST-with-DLC/GUI_projects/OST-DLC-projects/pwd-may11-2020-john-howland-2020-05-11'
-BASE_PATH = configuration.get('PATH', 'BASE_PATH')
+DLC_PROJECT_PATH = configuration.get('PATH', 'DLC_PROJECT_PATH')
 
 MODEL_NAME = configuration.get('APP', 'OUTPUT_MODEL_NAME')  # Machine learning model name
 random_state: int = configuration.getint('MODEL', 'RANDOM_STATE', fallback=random.randint(1, 100_000_000))
@@ -74,7 +74,7 @@ SHORTVID_DIR = short_video_output_directory  # LEGACY. To be deprecated.
 ID = identification_order  # TODO: DEPRECATE. ID WAS A MISTAKE, BUT NOT SURE WHY/WHAT IT DOES
 
 
-assert os.path.isdir(BASE_PATH), f'BASEPATH DOES NOT EXIST: {BASE_PATH}'
+assert os.path.isdir(DLC_PROJECT_PATH), f'BASEPATH DOES NOT EXIST: {DLC_PROJECT_PATH}'
 assert os.path.isdir(OUTPUT_PATH), f'OUTPUT PATH DOES NOT EXIST: {OUTPUT_PATH}'
 assert os.path.isfile(VIDEO_TO_LABEL_PATH) or not VIDEO_TO_LABEL_PATH, \
     f'Video does not exist: {VIDEO_TO_LABEL_PATH}. Amend pathing in config.ini file.'
@@ -86,15 +86,16 @@ assert os.path.isfile(VIDEO_TO_LABEL_PATH) or not VIDEO_TO_LABEL_PATH, \
 
 # Data folders used to training neural network.
 TRAIN_FOLDERS: List[str] = ['NOT_DLC_OUTPUT__SAMPLE_WITHOUT_INDEX', ]  # TRAIN_FOLDERS = [os.path.sep+'training-datasets', ]
+TRAIN_FOLDERS = ['EPM-csv']
 for folder in TRAIN_FOLDERS:
-    compiled_folder_path = os.path.join(BASE_PATH, folder)
+    compiled_folder_path = os.path.join(DLC_PROJECT_PATH, folder)
     assert os.path.isdir(compiled_folder_path), f'Training folder does not exist: {compiled_folder_path}'
 
 PREDICT_FOLDERS: List[str] = [
     # 'Data1',
 ]
 for folder in PREDICT_FOLDERS:
-    compiled_folder_path = os.path.join(BASE_PATH, folder)
+    compiled_folder_path = os.path.join(DLC_PROJECT_PATH, folder)
     assert os.path.isdir(compiled_folder_path), f'Prediction folder does not exist: {compiled_folder_path}'
 
 # Create a folder to store extracted images.

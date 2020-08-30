@@ -56,7 +56,7 @@ def get_mp4_videos_from_folder_in_BASEPATH(folder_name: str) -> List[str]:
         logger.error(err)
         raise TypeError(err)
 
-    path_to_folder = os.path.join(config.BASE_PATH, folder_name)
+    path_to_folder = os.path.join(config.DLC_PROJECT_PATH, folder_name)
     path_to_folder_with_glob = f'{path_to_folder}/*.mp4'
     logger.debug(f'get_mp4_videos_from_folder_in_BASEPATH():Path to check for videos: {path_to_folder_with_glob}')
     video_names = glob.glob(path_to_folder_with_glob)

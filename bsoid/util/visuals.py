@@ -5,7 +5,6 @@ Visualization functions and saving plots.
 #   `timestr` will only have the time recorded at program start but not the running time during runtime.
 #   Whether or not we need to ensure that the output of file timestamps needs to be exactly current should be discussed.
 
-# from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.axes._axes import _log as matplotlib_axes_logger
 from mpl_toolkits.mplot3d import Axes3D  # <-- This seemingly unused import is NECESSARY for 3d plotting. Keep as is.
 from typing import Tuple
@@ -304,7 +303,7 @@ def plot_accuracy_SVM(scores, save_fig_to_file=True, fig_file_prefix='clf_scores
     ax = fig.add_subplot(111)
     ax.boxplot(scores, notch=None)
     x = np.random.normal(1, 0.04, size=len(scores))
-    plt.scatter(x, scores, s=40, c='r', alpha=0.5)
+    plt.scatter(x, scores, s=40, c='r', alpha=0.5)  # TODO: HIGH!!!! Why does this error occur?:
     ax.set_xlabel('SVM classifier')
     ax.set_ylabel('Accuracy')
     plt.show()

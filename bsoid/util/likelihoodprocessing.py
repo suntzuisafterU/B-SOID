@@ -78,7 +78,7 @@ def get_filenames_csvs_from_folders_recursively_in_basepath(folder: str) -> List
     :param folder:
     :return:
     """
-    path_to_check_for_csvs = f'{config.BASE_PATH}{os.path.sep}{folder}{os.path.sep}**{os.path.sep}*.csv'
+    path_to_check_for_csvs = f'{config.DLC_PROJECT_PATH}{os.path.sep}{folder}{os.path.sep}**{os.path.sep}*.csv'
     logger.debug(f'Path that is being checked with using glob selection: {path_to_check_for_csvs}')
     filenames = glob.glob(path_to_check_for_csvs, recursive=True)
     sort_list_nicely_in_place(filenames)
@@ -98,6 +98,7 @@ def import_csvs_data_from_folders_in_BASEPATH_and_process_data(folders: list) ->
     file_names_list, raw_data_list, data_list, perc_rect_list = [], [], [], []
     if len(folders) == 0:
         raise ValueError(f'submitted folders list is empty')
+        # pass
     for idx_folder, folder in enumerate(folders):  # Loop through folders
         filenames_found_in_current_folder = get_filenames_csvs_from_folders_recursively_in_basepath(folder)
         for idx_filename, filename in enumerate(filenames_found_in_current_folder):
