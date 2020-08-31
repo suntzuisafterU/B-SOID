@@ -6,11 +6,11 @@ Forward fill low likelihood (x,y)
 from typing import Any, List, Tuple
 from tqdm import tqdm
 import glob
+import inspect
 import numpy as np
 import os
 import pandas as pd
 import re
-import warnings
 
 from bsoid import config
 
@@ -63,10 +63,10 @@ def get_filenames(folder):
     :return: list, filenames
     """
     replacement_func = get_filenames_csvs_from_folders_recursively_in_basepath
-    warnings.warn('**NOTE: this function implicitly assume the argument folder resides in BASE_PATH***. '
+    logger.warn('**NOTE: this function implicitly assume the argument folder resides in BASE_PATH***. '
                   f'`folder` argument value = {folder} . Replacement function is '
                   f'currently: {get_filenames_csvs_from_folders_recursively_in_basepath.__qualname__}. '
-                  f'This function is likely to be deprecated in the future.')
+                  f'This function is likely to be deprecated in the future. Caller = {inspect.stack()[1][3]}')
 
     return replacement_func(folder)
 
@@ -179,8 +179,9 @@ def main(folders: List[str]) -> Tuple[Any, Any, Any]:
     :retrun perc_rect: 1D array, percent filtered per BODYPART
     """
     replacement_func = import_csvs_data_from_folders_in_BASEPATH_and_process_data
-    warnings.warn('This function, bsoid.util.likelihoodprocessing.main(), will be '
-                  f'deprecated in future. Directly use {replacement_func.__qualname__} instead.')
+    logger.warn('This function, bsoid.util.likelihoodprocessing.main(), will be '
+                f'deprecated in future. Directly use {replacement_func.__qualname__} instead. '
+                f'Caller = {inspect.stack()[1][3]}')
     filenames, data, perc_rect = replacement_func(folders)
     return filenames, data, perc_rect
 

@@ -9,7 +9,6 @@ from typing import Dict, List, Tuple
 import inspect
 import numpy as np
 import pandas as pd
-import warnings
 
 from bsoid import config
 

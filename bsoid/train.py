@@ -27,7 +27,6 @@ import numpy as np
 import os
 import time
 import umap
-import warnings
 
 from bsoid import config
 from bsoid.util import likelihoodprocessing, visuals
@@ -116,7 +115,7 @@ def train_umap_unsupervised_with_xy_features_umapapp(data: list, fps: int = conf
     return f_10fps, f_10fps_sc
 
 
-def bsoid_umap_embed_umapapp(f_10fps_sc, umap_params=config.UMAP_PARAMS):
+def bsoid_umap_embed_umapapp(f_10fps_sc, umap_params=config.UMAP_PARAMS) -> Tuple[umap.UMAP, Any]:
     """
     Trains UMAP (unsupervised) given a set of features based on (x,y) positions
     :param f_10fps_sc: 2D array, standardized/session features
@@ -600,7 +599,7 @@ def bsoid_svm_py(feats, labels, comp: int = config.compile_CSVs_for_training, ho
             np.set_printoptions(precision=2)
             titles_options = [("Non-normalized confusion matrix", None),
                               ("Normalized confusion matrix", 'true')]
-            titlenames = ["counts", "norm"]
+            title_names = ["counts", "norm"]
             j = 0
             for title, normalize in titles_options:
                 display = plot_confusion_matrix(classifier, feats_test, labels_test,
@@ -608,7 +607,7 @@ def bsoid_svm_py(feats, labels, comp: int = config.compile_CSVs_for_training, ho
                 display.ax_.set_title(title)
                 print(title)
                 print(display.confusion_matrix)
-                my_file = f'confusion_matrix_{titlenames[j]}'
+                my_file = f'confusion_matrix_{title_names[j]}'
                 display.figure_.savefig(os.path.join(config.OUTPUT_PATH, f'{my_file}{time_str}.svg'))
                 j += 1
             plt.show()
@@ -632,19 +631,18 @@ def bsoid_svm_py(feats, labels, comp: int = config.compile_CSVs_for_training, ho
                 titles_options = [("Non-normalized confusion matrix", None),
                                   ("Normalized confusion matrix", 'true')]
                 j = 0
-                titlenames = ["counts", "norm"]
+                title_names = ["counts", "norm"]
                 for title, normalize in titles_options:
                     display = plot_confusion_matrix(classifier, feats_test, labels_test,
                                                     cmap=plt.cm.Blues, normalize=normalize)
                     display.ax_.set_title(title)
                     print(title)
                     print(display.confusion_matrix)
-                    my_file = f'confusion_matrix_clf{i}_{titlenames[j]}'
+                    my_file = f'confusion_matrix_clf{i}_{title_names[j]}'
                     display.figure_.savefig(os.path.join(config.OUTPUT_PATH, f'{my_file}{time_str}.svg'))
                     j += 1
                 plt.show()
-    logger.info('Scored cross-validated SVM performance.'.format(feats_train.shape,
-                                                                  labels_train.shape))  # TODO: low: .format() called but variables never used
+    logger.info('Scored cross-validated SVM performance.'.format(feats_train.shape, labels_train.shape))  # TODO: low: .format() called but variables never used
     return classifier, scores
 
 
@@ -653,8 +651,8 @@ def bsoid_svm_py(feats, labels, comp: int = config.compile_CSVs_for_training, ho
 def bsoid_nn_voc(feats, labels, comp: int = config.compile_CSVs_for_training, hldout: float = config.holdout_percent, cv_it=config.crossvalidation_k, mlp_params=config.MLP_PARAMS):
     # WARNING: DEPRECATION IMMINENT
     replacement_func = train_mlp_classifier_voc
-    warnings.warn(f'This function will be deprecated in the future. If you still need this function to use, '
-                  f'think about using {replacement_func.__qualname__} instead.')
+    logger.warn(f'This function will be deprecated in the future. If you still need this function to use, '
+                  f'think about using {replacement_func.__qualname__} instead. Caller = {inspect.stack()[1][3]}.')
     return replacement_func(feats, labels, comp, hldout, cv_it, mlp_params)
 def bsoid_gmm_pyvoc(trained_tsne_array, comp=config.compile_CSVs_for_training, emgmm_params=config.EMGMM_PARAMS) -> np.ndarray:
     """
@@ -671,9 +669,11 @@ def bsoid_gmm_pyvoc(trained_tsne_array, comp=config.compile_CSVs_for_training, e
 def bsoid_feats_umapapp(data: list, fps: int = config.video_fps) -> Tuple:
     # WARNING: DEPRECATION IMMINENT
     replacement_func = train_umap_unsupervised_with_xy_features_umapapp
-    warnings.warn(f'DEPRECATION WARNING. This function will be deprecated in favour of a more clear '
-                  f'and concise function. Current replacement is: {replacement_func.__qualname__}. '
-                  f'This function only still exists to ensure dependencies aren\'t broken on updating entire module')
+    logger.warn(f'DEPRECATION WARNING. This function, {inspect.stack()[0][3]}, will be deprecated in'
+                f' favour of a more clear '
+                f'and concise function. Caller = {inspect.stack()[1][3]}. '
+                f'Current replacement is: {replacement_func.__qualname__}. '
+                f'This function only still exists to ensure dependencies aren\'t broken on updating entire module')
     return replacement_func(data, fps)
 
 
@@ -739,8 +739,7 @@ def main_umap(train_folders: list):
         fig1.savefig(os.path.join(config.OUTPUT_PATH, f'{my_file1}{time_str}.svg'))  # fig1.savefig(os.path.join(config.OUTPUT_PATH, str.join('', (my_file1, time_str, '.svg'))))
         visuals.plot_accuracy_umap(scores)
 
-    return features_10fps, features_10fps_scaled, umap_embeddings, hdb_assignments, soft_assignments, soft_clusters, \
-        nn_classifier, scores, nn_assignments
+    return features_10fps, features_10fps_scaled, umap_embeddings, hdb_assignments, soft_assignments, soft_clusters, nn_classifier, scores, nn_assignments
 
 
 def main_voc(train_folders: list):

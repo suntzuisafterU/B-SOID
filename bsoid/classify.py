@@ -513,8 +513,14 @@ def main_umap(predict_folders: List[str], fps, clf) -> Tuple[np.ndarray, List]:
 
     labels_fs: List = bsoid_frameshift_umap(data_new, fps, clf)
 
+    # if config.GENERATE_VIDEOS:
+    #     videoprocessing.get_frames_from_video_then_create_labeled_video(config.VIDEO_TO_LABEL_PATH, labels_fs[config.ID][0:-1:int(round(fps / 10))], fps, config.FRAME_DIR)
     if config.GENERATE_VIDEOS:
-        videoprocessing.get_frames_from_video_then_create_labeled_video(config.VIDEO_TO_LABEL_PATH, labels_fs[config.ID][0:-1:int(round(fps / 10))], fps, config.FRAME_DIR)
+        videoprocessing.get_frames_from_video_then_create_labeled_video(
+            path_to_video=config.VIDEO_TO_LABEL_PATH,
+            labels=labels_fs[config.ID][:-1:int(round(fps / 10))],
+            fps=fps,
+            output_path=config.FRAME_DIR)
 
     return data_new, labels_fs
 def main_voc(predict_folders: List[str], fps, behv_model) -> Tuple[np.ndarray, Any, Any, Any]:
@@ -537,6 +543,10 @@ def main_voc(predict_folders: List[str], fps, behv_model) -> Tuple[np.ndarray, A
     if config.PLOT_TRAINING:
         visuals.plot_feats_bsoidvoc(features_new, labels_fs_low)
     if config.GENERATE_VIDEOS:
-        videoprocessing.get_frames_from_video_then_create_labeled_video(config.VIDEO_TO_LABEL_PATH, labels_fs_low[config.ID], fps, config.FRAME_DIR)
+        videoprocessing.get_frames_from_video_then_create_labeled_video(
+            path_to_video=config.VIDEO_TO_LABEL_PATH,
+            labels=labels_fs_low[config.ID],
+            fps=fps,
+            output_path=config.FRAME_DIR)
 
     return data_new, features_new, labels_fs_low, labels_fs_high

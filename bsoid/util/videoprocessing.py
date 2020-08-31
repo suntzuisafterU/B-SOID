@@ -11,7 +11,6 @@ import inspect
 import numpy as np
 import os
 import random
-import warnings
 
 from bsoid import config
 from bsoid.util.likelihoodprocessing import sort_list_nicely_in_place
@@ -268,16 +267,17 @@ def get_frames_from_video_then_create_labeled_video(path_to_video, labels, fps, 
 def vid2frame(path_to_video: str, labels, fps: int, output_path: str = config.FRAME_DIR):
     """ # # # DEPRECATION WARNING # # # """
     replacement_func = write_annotated_frames_to_disk_from_video
-    warnings.warn(f'This function, vid2frame(), will be deprecated shortly. The replacement '
-                  f'function is called "{replacement_func.__qualname__}" and aims to make usage more clear and DRY. '
-                  f'If you are reading this, this function was kept for backwards compatibility reasons. ')
+    logger.warn(f'This function, vid2frame(), will be deprecated shortly. The replacement '
+                f'function is called "{replacement_func.__qualname__}" and aims to make usage more clear and DRY. '
+                f'If you are reading this, this function was kept for backwards compatibility reasons. '
+                f'Caller = {inspect.stack()[1][3]}')
     return replacement_func(path_to_video, labels, fps, output_path)
 
 
 def main(path_to_video, labels, fps, output_path):  # To be deprecated
     """# # # DEPRECATION WARNING # # #"""
     replacement_function = get_frames_from_video_then_create_labeled_video
-    warnings.warn('This function, bsoid.util.videoprocessing.main(), will be deprecated in the future in '
-                  'favour of a refactored, more descriptive function. Currently, that function is: '
-                  f'{replacement_function.__qualname__}')
+    logger.warn('This function, bsoid.util.videoprocessing.main(), will be deprecated in the future in '
+                'favour of a refactored, more descriptive function. Currently, that function is: '
+                f'{replacement_function.__qualname__}. Caller = {inspect.stack()[1][3]}')
     return replacement_function(path_to_video, labels, fps, output_path)
