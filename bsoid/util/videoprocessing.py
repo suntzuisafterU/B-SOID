@@ -267,7 +267,7 @@ def get_frames_from_video_then_create_labeled_video(path_to_video, labels, fps, 
 def vid2frame(path_to_video: str, labels, fps: int, output_path: str = config.FRAME_DIR):
     """ # # # DEPRECATION WARNING # # # """
     replacement_func = write_annotated_frames_to_disk_from_video
-    logger.warn(f'This function, vid2frame(), will be deprecated shortly. The replacement '
+    logger.error(f'This function, vid2frame(), will be deprecated shortly. The replacement '
                 f'function is called "{replacement_func.__qualname__}" and aims to make usage more clear and DRY. '
                 f'If you are reading this, this function was kept for backwards compatibility reasons. '
                 f'Caller = {inspect.stack()[1][3]}')
@@ -277,7 +277,7 @@ def vid2frame(path_to_video: str, labels, fps: int, output_path: str = config.FR
 def main(path_to_video, labels, fps, output_path):  # To be deprecated
     """# # # DEPRECATION WARNING # # #"""
     replacement_function = get_frames_from_video_then_create_labeled_video
-    logger.warn('This function, bsoid.util.videoprocessing.main(), will be deprecated in the future in '
+    logger.error('This function, bsoid.util.videoprocessing.main(), will be deprecated in the future in '
                 'favour of a refactored, more descriptive function. Currently, that function is: '
                 f'{replacement_function.__qualname__}. Caller = {inspect.stack()[1][3]}')
     return replacement_function(path_to_video, labels, fps, output_path)

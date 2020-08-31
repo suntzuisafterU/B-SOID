@@ -183,15 +183,5 @@ def main(folders: List[str]) -> None:
           f'deprecated in future. Directly use {replacement_func.__qualname__} instead. '\
           f'Caller = {inspect.stack()[1][3]}'
     logger.error(err)
-    # raise NotImplementedError(err)
-    # logger.warn()
     # filenames, data, perc_rect = replacement_func(folders)
     # return filenames, data, perc_rect
-
-
-########################################################################################################################
-
-if __name__ == '__main__':
-    # TODO: should this module even have a main if it's just a helper module?
-    # import_csvs_data_from_folders_in_BASEPATH(config.TRAIN_FOLDERS)
-    pass

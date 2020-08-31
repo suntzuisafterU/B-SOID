@@ -550,16 +550,16 @@ def train_emgmm_with_learned_tsne_space(trained_tsne_array, comp=config.compile_
     """
     if comp == 1:
         logger.info('Running EM-GMM on {} instances in {} D space...'.format(*trained_tsne_array.shape))
-        gmm = mixture.GaussianMixture(**emgmm_params).fit(trained_tsne_array)
+        clf_gmm = mixture.GaussianMixture(**emgmm_params).fit(trained_tsne_array)
         logger.info('Predicting labels for {} instances in {} D space...'.format(*trained_tsne_array.shape))
-        assigns = gmm.predict(trained_tsne_array)
+        assigns = clf_gmm.predict(trained_tsne_array)
     else:
         assigns = []
         for i in tqdm(range(len(trained_tsne_array))):
             logger.info('Running EM-GMM on {} instances in {} D space...'.format(*trained_tsne_array[i].shape))
-            gmm = mixture.GaussianMixture(**emgmm_params).fit(trained_tsne_array[i])
+            clf_gmm = mixture.GaussianMixture(**emgmm_params).fit(trained_tsne_array[i])
             logger.info('Predicting labels for {} instances in {} D space...'.format(*trained_tsne_array[i].shape))
-            assign = gmm.predict(trained_tsne_array[i])
+            assign = clf_gmm.predict(trained_tsne_array[i])
             assigns.append(assign)
     logger.info('Done predicting labels for {} instances in {} D space...'.format(*trained_tsne_array.shape))
     uk = list(np.unique(assigns))
@@ -574,7 +574,6 @@ def bsoid_svm_py(feats, labels, comp: int = config.compile_CSVs_for_training, ho
     # TODO: low: depending on COMP value, could return two lists or a classifier and a list...consistency?!!!!
     """
     Train SVM classifier
-    
     :param comp:
     :param feats: 2D array, original feature space, standardized
     :param labels: 1D array, GMM output assignments
@@ -592,7 +591,7 @@ def bsoid_svm_py(feats, labels, comp: int = config.compile_CSVs_for_training, ho
         classifier.fit(feats_train, labels_train)
         logger.info(f'Done training SVM mapping {feats_train.shape} features to {labels_train.shape} assignments.')
         logger.info(f'Predicting randomly sampled (non-overlapped) assignments '
-                     f'using the remaining {holdout_pct * 100}%...')
+                    f'using the remaining {holdout_pct * 100}%...')
         scores = cross_val_score(classifier, feats_test, labels_test, cv=cv_it, n_jobs=config.crossvalidation_n_jobs)
         time_str = time.strftime("_%Y%m%d_%H%M")
         if config.PLOT_TRAINING:
@@ -642,7 +641,7 @@ def bsoid_svm_py(feats, labels, comp: int = config.compile_CSVs_for_training, ho
                     display.figure_.savefig(os.path.join(config.OUTPUT_PATH, f'{my_file}{time_str}.svg'))
                     j += 1
                 plt.show()
-    logger.info('Scored cross-validated SVM performance.'.format(feats_train.shape, labels_train.shape))  # TODO: low: .format() called but variables never used
+    logger.info('Scored cross-validated SVM performance.')  # .format(feats_train.shape, labels_train.shape))  # TODO: low: .format() called but variables never used
     return classifier, scores
 
 
@@ -655,16 +654,9 @@ def bsoid_nn_voc(feats, labels, comp: int = config.compile_CSVs_for_training, hl
                   f'think about using {replacement_func.__qualname__} instead. Caller = {inspect.stack()[1][3]}.')
     return replacement_func(feats, labels, comp, hldout, cv_it, mlp_params)
 def bsoid_gmm_pyvoc(trained_tsne_array, comp=config.compile_CSVs_for_training, emgmm_params=config.EMGMM_PARAMS) -> np.ndarray:
-    """
-    Trains EM-GMM (unsupervised) given learned t-SNE space
-    :param trained_tsne_array: 2D array, trained t-SNE space
-    :param comp: boolean (0 or 1), argument to compile data or not in LOCAL_CONFIG
-    :param emgmm_params: dict, EMGMM_PARAMS in GLOBAL_CONFIG
-    :return assignments: Converged EM-GMM group assignments
-    """
     replacement_func = train_emgmm_with_learned_tsne_space
-    warnings.warn(f'This function will be deprecated in the future. To resolve this warning, replace this '
-                  f'function with {replacement_func.__qualname__} instead.')
+    logger.warn(f'This function will be deprecated in the future. To resolve this warning, replace this '
+                f'function with {replacement_func.__qualname__} instead.')
     return replacement_func(trained_tsne_array, comp=config.compile_CSVs_for_training, emgmm_params=config.EMGMM_PARAMS)
 def bsoid_feats_umapapp(data: list, fps: int = config.video_fps) -> Tuple:
     # WARNING: DEPRECATION IMMINENT
@@ -747,23 +739,22 @@ def main_voc(train_folders: list):
         raise ValueError(f'`train_folders` arg was expected to be list but instead found '
                          f'type: {type(train_folders)} (value:  {train_folders}')
 
-    filenames, training_data, perc_rect = likelihoodprocessing.\
-        import_csvs_data_from_folders_in_BASEPATH_and_process_data(train_folders)
+    file_names, training_data, perc_rect = likelihoodprocessing.import_csvs_data_from_folders_in_BASEPATH_and_process_data(train_folders)
 
     # Train T-SNE
-    f_10fps, f_10fps_sc, trained_tsne = bsoid_tsne_voc(training_data)
+    features_10fps, features_10fps_scaled, trained_tsne = bsoid_tsne_voc(training_data)
 
     # Train GMM
     # gmm_assignments = bsoid_gmm_pyvoc(trained_tsne)  # replaced with below
     gmm_assignments = train_emgmm_with_learned_tsne_space(trained_tsne)
 
     # Train classifier
-    classifier, scores = train_mlp_classifier_voc(f_10fps, gmm_assignments)
+    classifier, scores = train_mlp_classifier_voc(features_10fps, gmm_assignments)
     if config.PLOT_TRAINING:
         visuals.plot_classes_bsoidvoc(trained_tsne, gmm_assignments)
         visuals.plot_accuracy_bsoidvoc(scores)
-        visuals.plot_feats_bsoidvoc(f_10fps, gmm_assignments)
-    return f_10fps, trained_tsne, gmm_assignments, classifier, scores
+        visuals.plot_feats_bsoidvoc(features_10fps, gmm_assignments)
+    return features_10fps, trained_tsne, gmm_assignments, classifier, scores
 
 
 if __name__ == '__main__':
