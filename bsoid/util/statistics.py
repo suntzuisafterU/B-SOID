@@ -14,7 +14,7 @@ import warnings
 from bsoid import config
 
 
-logger = config.create_file_specific_logger(__name__)
+logger = config.initialize_logger(__name__)
 
 
 def get_feature_distribution(features: np.ndarray):

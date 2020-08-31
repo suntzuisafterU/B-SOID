@@ -15,7 +15,7 @@ import numpy as np
 from bsoid import config
 from bsoid.util import likelihoodprocessing, videoprocessing, visuals
 
-logger = config.create_file_specific_logger(__name__)
+logger = config.initialize_logger(__name__)
 
 """ bsoid_extract_ _
 Extracts features based on (x,y) positions

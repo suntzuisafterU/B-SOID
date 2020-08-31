@@ -15,7 +15,7 @@ import time
 from bsoid import classify, config, train, util
 from bsoid.config import video_fps as video_fps, OUTPUT_PATH as OUTPUT_PATH, TRAIN_FOLDERS as TRAIN_FOLDERS, PREDICT_FOLDERS as PREDICT_FOLDERS
 
-logger = config.create_file_specific_logger(__name__)
+logger = config.initialize_logger(__name__)
 
 
 """

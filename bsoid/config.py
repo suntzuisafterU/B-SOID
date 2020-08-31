@@ -148,6 +148,8 @@ file_log_level = configuration.get('LOGGING', 'FILE_LOG_LEVEL', fallback=None)
 log_file_file_path = str(Path(config_file_log_folder_path, config_file_name).absolute())
 # if debug >= 2: print('log_file_file_path AKA os.path.join(config_file_log_folder_path, config_file_name):::', log_file_file_path)
 assert os.path.isdir(config_file_log_folder_path), f'Path does not exist: {config_file_log_folder_path}'
+
+
 # Instantiate logger
 # bsoid_logger: logging.Logger = logger_config.create_generic_logger(
 #     logger_name=logger_name,
@@ -157,7 +159,7 @@ assert os.path.isdir(config_file_log_folder_path), f'Path does not exist: {confi
 #     file_log_file_path=log_file_file_path,
 # )
 
-create_file_specific_logger: callable = logger_config.preload_logger_with_config_vars(
+initialize_logger: callable = logger_config.preload_logger_with_config_vars(
     logger_name, log_format, stdout_log_level, file_log_level, log_file_file_path)
 
 

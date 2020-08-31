@@ -16,7 +16,7 @@ import seaborn as sn
 
 from bsoid import config
 
-logger = config.create_file_specific_logger(__name__)
+logger = config.initialize_logger(__name__)
 
 #
 

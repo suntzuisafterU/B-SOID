@@ -14,20 +14,20 @@ import warnings
 
 from bsoid import config
 
-logger = config.create_file_specific_logger(__name__)
+logger = config.initialize_logger(__name__)
 
 
 ########################################################################################################################
 
-def boxcar_center(a, n) -> np.ndarray:
+def boxcar_center(input_array, n) -> np.ndarray:
     """
     TODO
-    :param a: TODO
+    :param input_array: TODO
     :param n: TODO
     :return: TODO
     """
-    a_as_Series = pd.Series(a)
-    moving_avg = np.array(a_as_Series.rolling(window=n, min_periods=1, center=True).mean())
+    input_array_as_series = pd.Series(input_array)
+    moving_avg = np.array(input_array_as_series.rolling(window=n, min_periods=1, center=True).mean())
 
     return moving_avg
 

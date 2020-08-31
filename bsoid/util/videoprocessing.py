@@ -16,7 +16,7 @@ import warnings
 from bsoid import config
 from bsoid.util.likelihoodprocessing import sort_list_nicely_in_place
 
-logger = config.create_file_specific_logger(__name__)
+logger = config.initialize_logger(__name__)
 
 
 def repeating_numbers(labels) -> Tuple[List, List, List]:  # TODO: low: rename function for clarity

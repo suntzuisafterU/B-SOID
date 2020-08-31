@@ -32,7 +32,7 @@ import warnings
 from bsoid import config
 from bsoid.util import likelihoodprocessing, visuals
 
-logger = config.create_file_specific_logger(__name__)
+logger = config.initialize_logger(__name__)
 
 
 ########################################################################################################################
