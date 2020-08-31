@@ -80,6 +80,15 @@ assert os.path.isfile(VIDEO_TO_LABEL_PATH) or not VIDEO_TO_LABEL_PATH, \
     f'Video does not exist: {VIDEO_TO_LABEL_PATH}. Amend pathing in config.ini file.'
 
 
+# Specify where the OST project lives. Modify on your local machine as necessary.
+OST_BASE_PROJECT_PATH = configuration.get('PATH', 'OST_BASE_PROJECT_PATH')
+# OST_BASE_PROJECT_PATH = os.path.join('C:\\', 'Users', 'killian', 'projects', 'OST-with-DLC')
+# BASE_PATH = '/home/aaron/Documents/OST-with-DLC/GUI_projects/OST-DLC-projects/pwd-may11-2020-john-howland-2020-05-11'
+
+
+
+
+
 ########################################################################################################################
 ##### TRAIN_FOLDERS, PREDICT_FOLDERS
 # TRAIN_FOLDERS, PREDICT_FOLDERS are lists of folders that are implicitly understood to exist within BASE_PATH
@@ -116,11 +125,6 @@ assert os.path.isdir(config_value_alternate_output_path_for_annotated_frames), \
     f'\'{config_value_alternate_output_path_for_annotated_frames}\'. Check config.ini pathing.'
 ########################################################################################################################
 
-# Specify where the OST project lives. Modify on your local machine as necessary.
-OST_BASE_PROJECT_PATH = configuration.get('PATH', 'OST_BASE_PROJECT_PATH')
-# OST_BASE_PROJECT_PATH = os.path.join('C:\\', 'Users', 'killian', 'projects', 'OST-with-DLC')
-# BASE_PATH = '/home/aaron/Documents/OST-with-DLC/GUI_projects/OST-DLC-projects/pwd-may11-2020-john-howland-2020-05-11'
-
 
 ########################################################################################################################
 ##### CREATE LOGGER #####
@@ -145,13 +149,13 @@ log_file_file_path = str(Path(config_file_log_folder_path, config_file_name).abs
 # if debug >= 2: print('log_file_file_path AKA os.path.join(config_file_log_folder_path, config_file_name):::', log_file_file_path)
 assert os.path.isdir(config_file_log_folder_path), f'Path does not exist: {config_file_log_folder_path}'
 # Instantiate logger
-bsoid_logger: logging.Logger = logger_config.create_generic_logger(
-    logger_name=logger_name,
-    log_format=log_format,
-    stdout_log_level=stdout_log_level,
-    file_log_level=file_log_level,
-    file_log_file_path=log_file_file_path,
-)
+# bsoid_logger: logging.Logger = logger_config.create_generic_logger(
+#     logger_name=logger_name,
+#     log_format=log_format,
+#     stdout_log_level=stdout_log_level,
+#     file_log_level=file_log_level,
+#     file_log_file_path=log_file_file_path,
+# )
 
 create_file_specific_logger: callable = logger_config.preload_logger_with_config_vars(
     logger_name, log_format, stdout_log_level, file_log_level, log_file_file_path)

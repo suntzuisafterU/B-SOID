@@ -49,7 +49,7 @@ def train_umap_unsupervised_with_xy_features_umapapp(data: list, fps: int = conf
     win_len = np.int(np.round(0.05 / (1 / fps)) * 2 - 1)
     features = []
     for m in range(len(data)):
-        config.bsoid_logger.info(f'Extracting features from CSV file {m + 1}...')
+        logger.info(f'Extracting features from CSV file {m + 1}...')
         data_range = len(data[m])
         dis_r, dxy_r = [], []
         for r in range(data_range):
@@ -84,8 +84,8 @@ def train_umap_unsupervised_with_xy_features_umapapp(data: list, fps: int = conf
         dis_smth = np.array(dis_smth)
         dxy_smth = np.array(dxy_smth)
         ang_smth = np.array(ang_smth)
-        features.append(np.vstack((dxy_smth[:, 1:], ang_smth, dis_smth)))
-    config.bsoid_logger.info(f'Done extracting features from a total of {len(data)} training CSV files.')
+        features.append(np.vstack((dxy_smth[:, 1:], ang_smth, dis_smth)))  # TODO: med: sometimes this line causes an error when dx_smth is indexed (IndexError: too many indicies for array)
+    logger.info(f'Done extracting features from a total of {len(data)} training CSV files.')
     for n in range(len(features)):
         feats1 = np.zeros(len(data[n]))
         for k in range(round(fps / 10), len(features[n][0]), round(fps / 10)):
@@ -100,7 +100,7 @@ def train_umap_unsupervised_with_xy_features_umapapp(data: list, fps: int = conf
                 feats1 = np.hstack((np.mean((features[n][0:dxy_smth.shape[0], range(k - round(fps / 10), k)]), axis=1),
                                     np.sum((features[n][dxy_smth.shape[0]:features[n].shape[0],
                                             range(k - round(fps / 10), k)]), axis=1))).reshape(len(features[0]), 1)
-        config.bsoid_logger.info(f'{inspect.stack()[0][3]}::Done integrating features into 100ms bins from CSV file {n+1}.')
+        logger.info(f'{inspect.stack()[0][3]}::Done integrating features into 100ms bins from CSV file {n+1}.')
         if n > 0:  # For any index value of n that isn't the very first run
             f_10fps = np.concatenate((f_10fps, feats1), axis=1)
             scaler = StandardScaler()
@@ -126,25 +126,25 @@ def bsoid_umap_embed_umapapp(f_10fps_sc, umap_params=config.UMAP_PARAMS):
     """
     ###### So far, use of PCA is not necessary. If, however, features go beyond 100, consider taking top 50 PCs #####
     # if f_10fps_sc.shape[0] > 50:
-    #     config.bsoid_logger.info('Compressing {} instances from {} D '
+    #     logger.info('Compressing {} instances from {} D '
     #                  'into {} D using PCA'.format(f_10fps_sc.shape[1], f_10fps_sc.shape[0],
     #                                               50))
     #     feats_train = PCA(n_components=50, random_state=23).fit_transform(f_10fps_sc.T)
     #     pca = PCA(n_components=50).fit(f_10fps_sc.T)
-    #     config.bsoid_logger.info('Done linear transformation with PCA.')
-    #     config.bsoid_logger.info('The top {} Principal Components '
+    #     logger.info('Done linear transformation with PCA.')
+    #     logger.info('The top {} Principal Components '
     #                  'explained {}% variance'.format(50, 100 * np.sum(pca.explained_variance_ratio_)))
     ################ FastICA potentially useful for demixing signal ################
     # lowd_feats = FastICA(n_components=10, random_state=23).fit_transform(f_10fps.T)
     # feats_train = lowd_feats
     features_train = f_10fps_sc.T
-    config.bsoid_logger.info(f'Transforming all {features_train.shape[0]} instances '
-                             f'from {features_train.shape[1]} D into {umap_params.get("n_components")} D')
+    logger.info(f'Transforming all {features_train.shape[0]} instances '
+                f'from {features_train.shape[1]} D into {umap_params.get("n_components")} D')
     trained_umap = umap.UMAP(n_neighbors=int(round(np.sqrt(features_train.shape[0]))),  # power law
                              **umap_params).fit(features_train)
     umap_embeddings = trained_umap.embedding_
-    config.bsoid_logger.info(f'Done non-linear transformation with UMAP from {features_train.shape[1]} D '
-                             f'into {umap_embeddings.shape[1]} D.')
+    logger.info(f'Done non-linear transformation with UMAP from {features_train.shape[1]} D '
+                f'into {umap_embeddings.shape[1]} D.')
     return trained_umap, umap_embeddings
 
 
@@ -158,7 +158,7 @@ def bsoid_hdbscan_umapapp(umap_embeddings, hdbscan_params=config.HDBSCAN_PARAMS)
     highest_numulab = -np.infty
     numulab = []
     min_cluster_range = range(6, 21)  # TODO: Q: why is the range this way? Magic variables?
-    config.bsoid_logger.info('Running HDBSCAN on {} instances in {} D space...'.format(*umap_embeddings.shape))
+    logger.info('Running HDBSCAN on {} instances in {} D space...'.format(*umap_embeddings.shape))
     for min_c in min_cluster_range:
         # trained_classifier = hdbscan.HDBSCAN(prediction_data=True,
         #                                      min_cluster_size=round(umap_embeddings.shape[0] * 0.007),  # just < 1%/cluster
@@ -169,13 +169,13 @@ def bsoid_hdbscan_umapapp(umap_embeddings, hdbscan_params=config.HDBSCAN_PARAMS)
                                             .fit(umap_embeddings)
         numulab.append(len(np.unique(trained_classifier.labels_)))
         if numulab[-1] > highest_numulab:
-            config.bsoid_logger.info(f'Adjusting minimum cluster size to maximize cluster number...')
+            logger.info(f'Adjusting minimum cluster size to maximize cluster number...')
             highest_numulab = numulab[-1]
             best_clf = trained_classifier
     assignments = best_clf.labels_
     soft_clusters = hdbscan.all_points_membership_vectors(best_clf)
     soft_assignments = np.argmax(soft_clusters, axis=1)
-    config.bsoid_logger.info('Done predicting labels for {} instances in {} D space...'.format(*umap_embeddings.shape))
+    logger.info('Done predicting labels for {} instances in {} D space...'.format(*umap_embeddings.shape))
     return assignments, soft_clusters, soft_assignments
 
 
@@ -195,14 +195,14 @@ def bsoid_nn_appumap(feats, labels, holdout_pct: float = config.holdout_percent,
     labels_filt = labels[labels >= 0]
     feats_train, feats_test, labels_train, labels_test = train_test_split(
         feats_filt.T, labels_filt.T, test_size=holdout_pct, random_state=23)
-    config.bsoid_logger.info(f'Training feedforward neural network on randomly '
+    logger.info(f'Training feedforward neural network on randomly '
                              f'partitioned {(1 - holdout_pct) * 100}% of training data...')
     classifier = MLPClassifier(**mlp_params)
     classifier.fit(feats_train, labels_train)
     clf = MLPClassifier(**mlp_params)
     clf.fit(feats_filt.T, labels_filt.T)
     nn_assignments = clf.predict(feats.T)
-    config.bsoid_logger.info(f'Done training feedforward neural network mapping {feats_train.shape} features '
+    logger.info(f'Done training feedforward neural network mapping {feats_train.shape} features '
                              f'to {labels_train.shape} assignments.')
     scores = cross_val_score(classifier, feats_test, labels_test, cv=cv_it, n_jobs=-1)
     time_str = time.strftime("_%Y%m%d_%H%M")
@@ -222,7 +222,7 @@ def bsoid_nn_appumap(feats, labels, holdout_pct: float = config.holdout_percent,
             disp.figure_.savefig(os.path.join(config.OUTPUT_PATH, f'{my_file}{time_str}.svg'))
             j += 1
         plt.show()
-    config.bsoid_logger.info(
+    logger.info(
         'Scored cross-validated feedforward neural network performance.'.format(feats_train.shape, labels_train.shape))
     return clf, scores, nn_assignments
 
@@ -247,12 +247,12 @@ def train_mlp_classifier_voc(feats, labels,
     if comp == 1:
         feats_train, feats_test, labels_train, labels_test = train_test_split(feats.T, labels.T, test_size=holdout_percent,
                                                                               random_state=23)
-        config.bsoid_logger.info(f'Training feedforward neural network on randomly '
+        logger.info(f'Training feedforward neural network on randomly '
                      f'partitioned {(1 - holdout_percent) * 100}% of training data...')
         classifier = MLPClassifier(**mlp_params)
         classifier.fit(feats_train, labels_train)
-        config.bsoid_logger.info(f'Done training feedforward neural network mapping {feats_train.shape} features to {labels_train.shape} assignments.')
-        config.bsoid_logger.info('Predicting randomly sampled (non-overlapped) assignments '
+        logger.info(f'Done training feedforward neural network mapping {feats_train.shape} features to {labels_train.shape} assignments.')
+        logger.info('Predicting randomly sampled (non-overlapped) assignments '
                                  f'using the remaining {holdout_percent * 100}%...')
         scores = cross_val_score(classifier, feats_test, labels_test, cv=crossvalidation_k, n_jobs=-1)
         time_str = time.strftime("_%Y%m%d_%H%M")
@@ -279,16 +279,16 @@ def train_mlp_classifier_voc(feats, labels,
             feats_train, feats_test, labels_train, labels_test = train_test_split(feats[i].T, labels[i].T,
                                                                                   test_size=holdout_percent,
                                                                                   random_state=23)
-            config.bsoid_logger.info(
+            logger.info(
                 'Training feedforward neural network on randomly partitioned {}% of training data...'.format(
                     (1 - holdout_percent) * 100))
             clf = MLPClassifier(**mlp_params)
             clf.fit(feats_train, labels_train)
             classifier.append(clf)
-            config.bsoid_logger.info(
+            logger.info(
                 'Done training feedforward neural network mapping {} features to {} assignments.'.format(
                     feats_train.shape, labels_train.shape))
-            config.bsoid_logger.info('Predicting randomly sampled (non-overlapped) assignments '
+            logger.info('Predicting randomly sampled (non-overlapped) assignments '
                          'using the remaining {}%...'.format(holdout_percent * 100))
             sc = cross_val_score(classifier, feats_test, labels_test, cv=crossvalidation_k, n_jobs=-1)
             time_str = time.strftime("_%Y%m%d_%H%M")
@@ -309,7 +309,7 @@ def train_mlp_classifier_voc(feats, labels,
                     display.figure_.savefig(os.path.join(config.OUTPUT_PATH, str.join('', (file_name, time_str, '.svg'))))
                     j += 1
                 plt.show()
-    config.bsoid_logger.info(
+    logger.info(
         'Scored cross-validated feedforward neural network performance.'.format(feats_train.shape, labels_train.shape))
     return classifier, scores
 
@@ -328,7 +328,7 @@ def bsoid_tsne_py(data: list, bodyparts=config.BODYPARTS_PY_LEGACY, fps=config.v
     win_len = np.int(np.round(0.05 / (1 / fps)) * 2 - 1)
     features = []
     for m in range(len(data)):
-        config.bsoid_logger.info(f'Extracting features from CSV file {m+1}...')
+        logger.info(f'Extracting features from CSV file {m+1}...')
         data_range = len(data[m])
         fpd = data[m][:, 2 * bodyparts.get('Forepaw/Shoulder1'):2 * bodyparts.get('Forepaw/Shoulder1') + 2] - \
               data[m][:, 2 * bodyparts.get('Forepaw/Shoulder2'):2 * bodyparts.get('Forepaw/Shoulder2') + 2]
@@ -380,7 +380,7 @@ def bsoid_tsne_py(data: list, bodyparts=config.BODYPARTS_PY_LEGACY, fps=config.v
         pt_disp_smth = likelihoodprocessing.boxcar_center(pt_disp, win_len)
         features.append(np.vstack((sn_cfp_norm_smth[1:], sn_chp_norm_smth[1:], fpd_norm_smth[1:],
                                 sn_pt_norm_smth[1:], sn_pt_ang_smth[:], sn_disp_smth[:], pt_disp_smth[:])))
-    config.bsoid_logger.info(f'{inspect.stack()[0][3]}:Done extracting features from a total of {len(data)} training CSV files.')
+    logger.info(f'{inspect.stack()[0][3]}:Done extracting features from a total of {len(data)} training CSV files.')
     if comp == 0:
         f_10fps = []
         f_10fps_sc = []
@@ -397,7 +397,7 @@ def bsoid_tsne_py(data: list, bodyparts=config.BODYPARTS_PY_LEGACY, fps=config.v
                 feats1 = np.hstack((np.mean((features[n][0:4, range(k - round(fps / 10), k)]), axis=1),
                                     np.sum((features[n][4:7, range(k - round(fps / 10), k)]), axis=1)))\
                                     .reshape(len(features[0]), 1)
-        config.bsoid_logger.info(f'Done integrating features into 100ms bins from CSV file {n+1}.')
+        logger.info(f'Done integrating features into 100ms bins from CSV file {n+1}.')
         if comp == 1:
             if n > 0:
                 f_10fps = np.concatenate((f_10fps, feats1), axis=1)
@@ -409,21 +409,21 @@ def bsoid_tsne_py(data: list, bodyparts=config.BODYPARTS_PY_LEGACY, fps=config.v
             scaler.fit(feats1.T)
             feats1_stnd = scaler.transform(feats1.T).T
             f_10fps_sc.append(feats1_stnd)
-            config.bsoid_logger.info(f'Training t-SNE to embed {f_10fps_sc[n].shape[1]} instances from '
+            logger.info(f'Training t-SNE to embed {f_10fps_sc[n].shape[1]} instances from '
                                      f'{f_10fps_sc[n].shape[0]} D into 3 D from CSV file {n + 1}...')
             trained_tsne_i = tsne(f_10fps_sc[n].T, dimensions=3, perplexity=np.sqrt(f_10fps_sc[n].shape[1]),
                                   theta=0.5, rand_seed=config.random_state)
             trained_tsne.append(trained_tsne_i)
-            config.bsoid_logger.info('Done embedding into 3 D.')
+            logger.info('Done embedding into 3 D.')
     if comp == 1:
         scaler = StandardScaler()
         scaler.fit(f_10fps.T)  # TODO: HIGH: variable `f_10fps` referenced before assignment. Error in logic above? ########################## IMPORTANT ###############################
         f_10fps_sc = scaler.transform(f_10fps.T).T
-        config.bsoid_logger.info(f'Training t-SNE to embed {f_10fps_sc.shape[1]} instances'
+        logger.info(f'Training t-SNE to embed {f_10fps_sc.shape[1]} instances'
                                  f'from {f_10fps_sc.shape[0]} D into 3 D from a total of {len(data)} CSV files...')
         trained_tsne = tsne(f_10fps_sc.T, dimensions=3, perplexity=np.sqrt(f_10fps_sc.shape[1]),
                             theta=0.5, rand_seed=config.random_state)  # TODO: low: move "rand_seed" to a config file instead of hiding here as magic variable
-        config.bsoid_logger.info(f'{inspect.stack()[0][3]}::Done embedding into 3 D.')
+        logger.info(f'{inspect.stack()[0][3]}::Done embedding into 3 D.')
     return f_10fps, f_10fps_sc, trained_tsne, scaler
 def bsoid_tsne_voc(data: list, bodyparts=config.BODYPARTS_VOC_LEGACY, fps=config.video_fps, comp: int = config.compile_CSVs_for_training, tsne_params=config.TSNE_PARAMS):
     """
@@ -444,7 +444,7 @@ def bsoid_tsne_voc(data: list, bodyparts=config.BODYPARTS_VOC_LEGACY, fps=config
     win_len = np.int(np.round(0.05 / (1 / fps)) * 2 - 1)
     feats = []
     for m in range(len(data)):
-        config.bsoid_logger.info(f'Extracting features from CSV file {m+1}...')
+        logger.info(f'Extracting features from CSV file {m+1}...')
         data_range = len(data[m])
         p12 = data[m][:, 2 * bodyparts.get('Point1'):2 * bodyparts.get('Point1') + 2] - \
               data[m][:, 2 * bodyparts.get('Point2'):2 * bodyparts.get('Point2') + 2]
@@ -488,7 +488,7 @@ def bsoid_tsne_voc(data: list, bodyparts=config.BODYPARTS_VOC_LEGACY, fps=config
         p7_disp_smth = likelihoodprocessing.boxcar_center(p7_disp, win_len)
         feats.append(np.vstack((p15_norm_smth[1:], p18_norm_smth[1:],
                                 p12_ang_smth[:], p14_ang_smth[:], p3_disp_smth[:], p7_disp_smth[:])))
-    config.bsoid_logger.info('Done extracting features from a total of {} training CSV files.'.format(len(data)))
+    logger.info('Done extracting features from a total of {} training CSV files.'.format(len(data)))
     if comp == 0:
         f_10fps = []
         f_10fps_sc = []
@@ -505,7 +505,7 @@ def bsoid_tsne_voc(data: list, bodyparts=config.BODYPARTS_VOC_LEGACY, fps=config
                 feats1 = np.hstack((np.mean((feats[n][0:2, range(k - round(fps / 10), k)]), axis=1),
                                     np.sum((feats[n][2:6, range(k - round(fps / 10), k)]), axis=1))).reshape(
                     len(feats[0]), 1)
-        config.bsoid_logger.info('Done integrating features into 100ms bins from CSV file {}.'.format(n + 1))
+        logger.info('Done integrating features into 100ms bins from CSV file {}.'.format(n + 1))
         if comp == 1:
             if n > 0:
                 f_10fps = np.concatenate((f_10fps, feats1), axis=1)
@@ -517,7 +517,7 @@ def bsoid_tsne_voc(data: list, bodyparts=config.BODYPARTS_VOC_LEGACY, fps=config
             scaler.fit(feats1.T)
             feats1_stnd = scaler.transform(feats1.T).T
             f_10fps_sc.append(feats1_stnd)
-            config.bsoid_logger.info('Training t-SNE to embed {} instances from {} D '
+            logger.info('Training t-SNE to embed {} instances from {} D '
                          'into 3 D from CSV file {}...'.format(f_10fps_sc[n].shape[1], f_10fps_sc[n].shape[0],
                                                                n + 1))
             trained_tsne_i = TSNE(perplexity=np.sqrt(f_10fps_sc[n].shape[1]),
@@ -525,19 +525,19 @@ def bsoid_tsne_voc(data: list, bodyparts=config.BODYPARTS_VOC_LEGACY, fps=config
                                   learning_rate=max(200, f_10fps_sc[n].shape[1] / 16),  # alpha*eta = n
                                   **tsne_params).fit_transform(f_10fps_sc[n].T)
             trained_tsne.append(trained_tsne_i)
-            config.bsoid_logger.info('Done embedding into 3 D.')
+            logger.info('Done embedding into 3 D.')
         if comp == 1:
             scaler = StandardScaler()
             scaler.fit(f_10fps.T)
             f_10fps_sc = scaler.transform(f_10fps.T).T
-            config.bsoid_logger.info('Training t-SNE to embed {} instances from {} D '
+            logger.info('Training t-SNE to embed {} instances from {} D '
                          'into 3 D from a total of {} CSV files...'.format(f_10fps_sc.shape[1], f_10fps_sc.shape[0],
                                                                            len(data)))
             trained_tsne = TSNE(perplexity=np.sqrt(f_10fps_sc.shape[1]),  # perplexity scales with sqrt, power law
                                 early_exaggeration=16,  # early exaggeration alpha 16 is good
                                 learning_rate=max(200, f_10fps_sc.shape[1] / 16),  # alpha*eta = n
                                 **tsne_params).fit_transform(f_10fps_sc.T)
-            config.bsoid_logger.info('Done embedding into 3 D.')
+            logger.info('Done embedding into 3 D.')
     return f_10fps, f_10fps_sc, trained_tsne
 
 
@@ -550,19 +550,19 @@ def train_emgmm_with_learned_tsne_space(trained_tsne_array, comp=config.compile_
     :return assignments: Converged EM-GMM group assignments
     """
     if comp == 1:
-        config.bsoid_logger.info('Running EM-GMM on {} instances in {} D space...'.format(*trained_tsne_array.shape))
+        logger.info('Running EM-GMM on {} instances in {} D space...'.format(*trained_tsne_array.shape))
         gmm = mixture.GaussianMixture(**emgmm_params).fit(trained_tsne_array)
-        config.bsoid_logger.info('Predicting labels for {} instances in {} D space...'.format(*trained_tsne_array.shape))
+        logger.info('Predicting labels for {} instances in {} D space...'.format(*trained_tsne_array.shape))
         assigns = gmm.predict(trained_tsne_array)
     else:
         assigns = []
         for i in tqdm(range(len(trained_tsne_array))):
-            config.bsoid_logger.info('Running EM-GMM on {} instances in {} D space...'.format(*trained_tsne_array[i].shape))
+            logger.info('Running EM-GMM on {} instances in {} D space...'.format(*trained_tsne_array[i].shape))
             gmm = mixture.GaussianMixture(**emgmm_params).fit(trained_tsne_array[i])
-            config.bsoid_logger.info('Predicting labels for {} instances in {} D space...'.format(*trained_tsne_array[i].shape))
+            logger.info('Predicting labels for {} instances in {} D space...'.format(*trained_tsne_array[i].shape))
             assign = gmm.predict(trained_tsne_array[i])
             assigns.append(assign)
-    config.bsoid_logger.info('Done predicting labels for {} instances in {} D space...'.format(*trained_tsne_array.shape))
+    logger.info('Done predicting labels for {} instances in {} D space...'.format(*trained_tsne_array.shape))
     uk = list(np.unique(assigns))
     assignments_list = []
     for i in assigns:
@@ -588,11 +588,11 @@ def bsoid_svm_py(feats, labels, comp: int = config.compile_CSVs_for_training, ho
     if comp == 1:
         feats_train, feats_test, labels_train, labels_test = train_test_split(
             feats.T, labels.T, test_size=holdout_pct, random_state=config.random_state)  # TODO: med: MAGIC VARIABLES -- `random_state`
-        config.bsoid_logger.info(f'Training SVM on randomly partitioned {(1-holdout_pct)*100}% of training data...')
+        logger.info(f'Training SVM on randomly partitioned {(1-holdout_pct)*100}% of training data...')
         classifier = SVC(**svm_params)
         classifier.fit(feats_train, labels_train)
-        config.bsoid_logger.info(f'Done training SVM mapping {feats_train.shape} features to {labels_train.shape} assignments.')
-        config.bsoid_logger.info(f'Predicting randomly sampled (non-overlapped) assignments '
+        logger.info(f'Done training SVM mapping {feats_train.shape} features to {labels_train.shape} assignments.')
+        logger.info(f'Predicting randomly sampled (non-overlapped) assignments '
                      f'using the remaining {holdout_pct * 100}%...')
         scores = cross_val_score(classifier, feats_test, labels_test, cv=cv_it, n_jobs=config.crossvalidation_n_jobs)
         time_str = time.strftime("_%Y%m%d_%H%M")
@@ -617,12 +617,12 @@ def bsoid_svm_py(feats, labels, comp: int = config.compile_CSVs_for_training, ho
         for i in range(len(feats)):
             feats_train, feats_test, labels_train, labels_test = train_test_split(
                 feats[i].T, labels[i].T, test_size=holdout_pct, random_state=config.random_state)
-            config.bsoid_logger.info(f'Training SVM on randomly partitioned {(1 - holdout_pct) * 100}% of training data...')
+            logger.info(f'Training SVM on randomly partitioned {(1 - holdout_pct) * 100}% of training data...')
             clf = SVC(**svm_params)
             clf.fit(feats_train, labels_train)
             classifier.append(clf)
-            config.bsoid_logger.info(f'Done training SVM mapping {feats_train.shape} features to {labels_train.shape} assignments.')
-            config.bsoid_logger.info(f'Predicting randomly sampled (non-overlapped) assignments using '
+            logger.info(f'Done training SVM mapping {feats_train.shape} features to {labels_train.shape} assignments.')
+            logger.info(f'Predicting randomly sampled (non-overlapped) assignments using '
                          f'the remaining {holdout_pct * 100}%...')
             sc = cross_val_score(classifier, feats_test, labels_test, cv=cv_it,
                                  n_jobs=-1)  # TODO: low: `sc` unused variable
@@ -643,7 +643,7 @@ def bsoid_svm_py(feats, labels, comp: int = config.compile_CSVs_for_training, ho
                     display.figure_.savefig(os.path.join(config.OUTPUT_PATH, f'{my_file}{time_str}.svg'))
                     j += 1
                 plt.show()
-    config.bsoid_logger.info('Scored cross-validated SVM performance.'.format(feats_train.shape,
+    logger.info('Scored cross-validated SVM performance.'.format(feats_train.shape,
                                                                   labels_train.shape))  # TODO: low: .format() called but variables never used
     return classifier, scores
 
@@ -696,7 +696,7 @@ def main_py(train_folders: list):
     if len(filenames) == 0:
         raise ValueError('Zero training folders were specified. Check your config file!!!!')
     if len(filenames[0]) == 0:
-        config.bsoid_logger.error('train.py::main()::Zero filenames were found.')
+        logger.error('train.py::main()::Zero filenames were found.')
         raise ValueError(f'UNEXPECTEDLY ZERO FILES. ARE YOU SURE BASE_PATH IS SET CORRECTLY? OR GLOB PATH CHECKING MAY NEED SOME WORK')  # TODO: clarify
 
     # Train TSNE
@@ -712,7 +712,7 @@ def main_py(train_folders: list):
     # Plot to view progress if necessary
     if config.PLOT_TRAINING:
         visuals.plot_classes_EMGMM_assignments(trained_tsne_list, gmm_assignments, True)  # TODO: HIGH: save fig to file is a magic variable
-        visuals.plot_accuracy_bsoidpy(scores)
+        visuals.plot_accuracy_SVM(scores)
         visuals.plot_accuracy_SVM(features_10fps, gmm_assignments)
     return features_10fps, trained_tsne_list, scaler, gmm_assignments, classifier, scores
 
@@ -721,26 +721,25 @@ def main_umap(train_folders: list):
     if not isinstance(train_folders, list):
         raise ValueError(f'`train_folders` arg was expected to be list but instead found '
                          f'type: {type(train_folders)} (value:  {train_folders}')
-    time_str = time.strftime("_%Y%m%d_%H%M")
 
-    filenames, training_data, perc_rect = likelihoodprocessing.\
-        import_csvs_data_from_folders_in_BASEPATH_and_process_data(train_folders)
-    f_10fps, f_10fps_sc = train_umap_unsupervised_with_xy_features_umapapp(training_data)
+    time_str = time.strftime("_%Y%m%d_%H%M")
+    filenames, training_data, perc_rect = likelihoodprocessing.import_csvs_data_from_folders_in_BASEPATH_and_process_data(train_folders)
+    features_10fps, features_10fps_scaled = train_umap_unsupervised_with_xy_features_umapapp(training_data)
 
     # Train UMAP (unsupervised) given a set of features based on (x,y) positions
-    trained_umap, umap_embeddings = bsoid_umap_embed_umapapp(f_10fps_sc)
+    trained_umap, umap_embeddings = bsoid_umap_embed_umapapp(features_10fps_scaled)
     # Train HDBSCAN (unsupervised) given learned UMAP space
     hdb_assignments, soft_clusters, soft_assignments = bsoid_hdbscan_umapapp(umap_embeddings)
 
-    nn_classifier, scores, nn_assignments = bsoid_nn_appumap(f_10fps, soft_assignments)
+    nn_classifier, scores, nn_assignments = bsoid_nn_appumap(features_10fps, soft_assignments)
 
     if config.PLOT_GRAPHS:
-        fig1 = visuals.plot_classes_umap(umap_embeddings[hdb_assignments >= 0], hdb_assignments[hdb_assignments >= 0])
+        fig1 = visuals.plot_classes_bsoidumap(umap_embeddings[hdb_assignments >= 0], hdb_assignments[hdb_assignments >= 0])
         my_file1 = 'hdb_soft_assignments'
-        fig1.savefig(os.path.join(config.OUTPUT_PATH, str.join('', (my_file1, time_str, '.svg'))))
+        fig1.savefig(os.path.join(config.OUTPUT_PATH, f'{my_file1}{time_str}.svg'))  # fig1.savefig(os.path.join(config.OUTPUT_PATH, str.join('', (my_file1, time_str, '.svg'))))
         visuals.plot_accuracy_umap(scores)
 
-    return f_10fps, f_10fps_sc, umap_embeddings, hdb_assignments, soft_assignments, soft_clusters, \
+    return features_10fps, features_10fps_scaled, umap_embeddings, hdb_assignments, soft_assignments, soft_clusters, \
         nn_classifier, scores, nn_assignments
 
 

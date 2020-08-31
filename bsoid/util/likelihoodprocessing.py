@@ -112,8 +112,7 @@ def import_csvs_data_from_folders_in_BASEPATH_and_process_data(folders: list) ->
         file_names_list.append(filenames_found_in_current_folder)
         logger.info(f'Processed {len(filenames_found_in_current_folder)} CSV files from folder: {folder}')
     data_array: np.ndarray = np.array(data_list)
-    logger.info(f'Processed a total of {len(data_list)} CSV files and '
-                             f'compiled into a {data_array.shape} data list.')
+    logger.info(f'Processed a total of {len(data_list)} CSV files and compiled into a {data_array.shape} data list.')
     return file_names_list, data_array, perc_rect_list
 
 
