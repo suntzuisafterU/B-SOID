@@ -171,7 +171,7 @@ def adaptive_filter_data(df_input: pd.DataFrame) -> Tuple[np.ndarray, List]:
 
 
 # Legacy functions. Will be potentially deleted later.
-def main(folders: List[str]) -> Tuple[Any, Any, Any]:
+def main(folders: List[str]) -> None:
     """
     :param folders: list, data folders
     :return filenames: list, data filenames
@@ -179,11 +179,14 @@ def main(folders: List[str]) -> Tuple[Any, Any, Any]:
     :retrun perc_rect: 1D array, percent filtered per BODYPART
     """
     replacement_func = import_csvs_data_from_folders_in_BASEPATH_and_process_data
-    logger.warn('This function, bsoid.util.likelihoodprocessing.main(), will be '
-                f'deprecated in future. Directly use {replacement_func.__qualname__} instead. '
-                f'Caller = {inspect.stack()[1][3]}')
-    filenames, data, perc_rect = replacement_func(folders)
-    return filenames, data, perc_rect
+    err = f'This function, bsoid.util.likelihoodprocessing.main(), will be '\
+          f'deprecated in future. Directly use {replacement_func.__qualname__} instead. '\
+          f'Caller = {inspect.stack()[1][3]}'
+    logger.error(err)
+    # raise NotImplementedError(err)
+    # logger.warn()
+    # filenames, data, perc_rect = replacement_func(folders)
+    # return filenames, data, perc_rect
 
 
 ########################################################################################################################
