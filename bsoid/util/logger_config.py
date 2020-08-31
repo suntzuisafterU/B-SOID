@@ -60,7 +60,7 @@ def create_generic_logger(logger_name: str, log_format: str,
     """
     valid_log_levels = {'CRITICAL', 'FATAL', 'ERROR', 'WARN', 'WARNING', 'INFO', 'DEBUG', 'NOTSET'}
     formatter = logging.Formatter(log_format)
-    logger = logging.getLogger(logger_name)
+    logger = logging.Logger(logger_name)
     logger.setLevel(logging.DEBUG)  # Set to DEBUG in order to allow ALL messages to be sent to handlers
 
     # Logging to console
