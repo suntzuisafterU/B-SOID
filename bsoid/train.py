@@ -36,7 +36,7 @@ logger = config.initialize_logger(__name__)
 
 ########################################################################################################################
 
-def train_umap_unsupervised_with_xy_features_umapapp(data: list, fps: int = config.video_fps) -> Tuple:
+def train_umap_unsupervised_with_xy_features_umapapp(data: list, fps: int = config.VIDEO_FPS) -> Tuple:
     """
     Trains UMAP (unsupervised) given a set of features based on (x,y) positions
     :param data: list of 3D array
@@ -181,7 +181,7 @@ def bsoid_hdbscan_umapapp(umap_embeddings, hdbscan_params=config.HDBSCAN_PARAMS)
     return assignments, soft_clusters, soft_assignments
 
 
-def bsoid_nn_appumap(feats, labels, holdout_pct: float = config.holdout_percent, cv_it: int = config.crossvalidation_k, mlp_params=config.MLP_PARAMS):
+def bsoid_nn_appumap(feats, labels, holdout_pct: float = config.HOLDOUT_PERCENT, cv_it: int = config.CROSSVALIDATION_K, mlp_params=config.MLP_PARAMS):
     """
     Trains MLP classifier
     :param feats: 2D array, original feature space, standardized
@@ -196,7 +196,7 @@ def bsoid_nn_appumap(feats, labels, holdout_pct: float = config.holdout_percent,
     feats_filt = feats[:, labels >= 0]
     labels_filt = labels[labels >= 0]
     feats_train, feats_test, labels_train, labels_test = train_test_split(
-        feats_filt.T, labels_filt.T, test_size=holdout_pct, random_state=config.random_state)
+        feats_filt.T, labels_filt.T, test_size=holdout_pct, random_state=config.RANDOM_STATE)
     logger.info(f'Training feedforward neural network on randomly '
                 f'partitioned {(1-holdout_pct)*100}% of training data...')
     classifier = MLPClassifier(**mlp_params)
@@ -229,9 +229,9 @@ def bsoid_nn_appumap(feats, labels, holdout_pct: float = config.holdout_percent,
 
 
 def train_mlp_classifier_voc(feats, labels,
-                             comp: int = config.compile_CSVs_for_training,
-                             holdout_percent: float = config.holdout_percent,
-                             crossvalidation_k:int = config.crossvalidation_k,
+                             comp: int = config.COMPILE_CSVS_FOR_TRAINING,
+                             holdout_percent: float = config.HOLDOUT_PERCENT,
+                             crossvalidation_k:int = config.CROSSVALIDATION_K,
                              mlp_params=config.MLP_PARAMS) -> Tuple[Any, Any]:
     """
     Trains MLP classifier
@@ -246,7 +246,7 @@ def train_mlp_classifier_voc(feats, labels,
     """
     # RECALL COMP: # COMP = 1: Train one classifier for all CSV files; COMP = 0: Classifier/CSV file.
     if comp == 1:
-        feats_train, feats_test, labels_train, labels_test = train_test_split(feats.T, labels.T, test_size=holdout_percent, random_state=config.random_state)
+        feats_train, feats_test, labels_train, labels_test = train_test_split(feats.T, labels.T, test_size=holdout_percent, random_state=config.RANDOM_STATE)
         logger.info(f'Training feedforward neural network on randomly '
                     f'partitioned {(1-holdout_percent)*100}% of training data...')
         classifier = MLPClassifier(**mlp_params)
@@ -254,7 +254,7 @@ def train_mlp_classifier_voc(feats, labels,
         logger.info(f'Done training feedforward neural network mapping {feats_train.shape} features to {labels_train.shape} assignments.')
         logger.info('Predicting randomly sampled (non-overlapped) assignments '
                     f'using the remaining {holdout_percent*100}%...')
-        scores = cross_val_score(classifier, feats_test, labels_test, cv=crossvalidation_k, n_jobs=config.crossvalidation_n_jobs)
+        scores = cross_val_score(classifier, feats_test, labels_test, cv=crossvalidation_k, n_jobs=config.CROSSVALIDATION_N_JOBS)
         time_str = time.strftime("_%Y%m%d_%H%M")
         if config.PLOT_GRAPHS:
             np.set_printoptions(precision=2)
@@ -277,7 +277,7 @@ def train_mlp_classifier_voc(feats, labels,
         scores = []
         for i in range(len(feats)):
             feats_train, feats_test, labels_train, labels_test = train_test_split(
-                feats[i].T, labels[i].T, test_size=holdout_percent, random_state=config.random_state)
+                feats[i].T, labels[i].T, test_size=holdout_percent, random_state=config.RANDOM_STATE)
             logger.info(f'Training feedforward neural network on randomly partitioned {(1 - holdout_percent) * 100}% of training data...')
             clf = MLPClassifier(**mlp_params)
             clf.fit(feats_train, labels_train)
@@ -285,7 +285,7 @@ def train_mlp_classifier_voc(feats, labels,
             logger.info(
                 f'Done training feedforward neural network mapping {feats_train.shape} features to {labels_train.shape} assignments.')
             logger.info(f'Predicting randomly sampled (non-overlapped) assignments using the remaining {holdout_percent*100}%...')
-            sc = cross_val_score(classifier, feats_test, labels_test, cv=crossvalidation_k, n_jobs=config.crossvalidation_n_jobs)  # TODO: why does this line exist? Missing usage?
+            sc = cross_val_score(classifier, feats_test, labels_test, cv=crossvalidation_k, n_jobs=config.CROSSVALIDATION_N_JOBS)  # TODO: why does this line exist? Missing usage?
             time_str = time.strftime("_%Y%m%d_%H%M")
             if config.PLOT_GRAPHS:
                 np.set_printoptions(precision=2)
@@ -308,7 +308,7 @@ def train_mlp_classifier_voc(feats, labels,
     return classifier, scores
 
 
-def bsoid_tsne_py(data: list, bodyparts=config.BODYPARTS_PY_LEGACY, fps=config.video_fps, comp: int = config.compile_CSVs_for_training):
+def bsoid_tsne_py(data: list, bodyparts=config.BODYPARTS_PY_LEGACY, fps=config.VIDEO_FPS, comp: int = config.COMPILE_CSVS_FOR_TRAINING):
     """
     Trains t-SNE (unsupervised) given a set of features based on (x,y) positions
     :param data: list of 3D array
@@ -405,7 +405,7 @@ def bsoid_tsne_py(data: list, bodyparts=config.BODYPARTS_PY_LEGACY, fps=config.v
             logger.info(f'Training t-SNE to embed {f_10fps_sc[n].shape[1]} instances from '
                                      f'{f_10fps_sc[n].shape[0]} D into 3 D from CSV file {n + 1}...')
             trained_tsne_i = tsne(f_10fps_sc[n].T, dimensions=3, perplexity=np.sqrt(f_10fps_sc[n].shape[1]),
-                                  theta=0.5, rand_seed=config.random_state)
+                                  theta=0.5, rand_seed=config.RANDOM_STATE)
             trained_tsne.append(trained_tsne_i)
             logger.info('Done embedding into 3 D.')
     if comp == 1:
@@ -415,10 +415,10 @@ def bsoid_tsne_py(data: list, bodyparts=config.BODYPARTS_PY_LEGACY, fps=config.v
         logger.info(f'{inspect.stack()[0][3]}:Training t-SNE to embed {f_10fps_sc.shape[1]} instances'
                     f'from {f_10fps_sc.shape[0]} D into 3 D from a total of {len(data)} CSV files...')
         trained_tsne = tsne(f_10fps_sc.T, dimensions=3, perplexity=np.sqrt(f_10fps_sc.shape[1]),
-                            theta=0.5, rand_seed=config.random_state)  # TODO: low: move "rand_seed" to a config file instead of hiding here as magic variable
+                            theta=0.5, rand_seed=config.RANDOM_STATE)  # TODO: low: move "rand_seed" to a config file instead of hiding here as magic variable
         logger.info(f'{inspect.stack()[0][3]}::Done embedding into 3 D.')
     return f_10fps, f_10fps_sc, trained_tsne, scaler
-def bsoid_tsne_voc(data: list, bodyparts=config.BODYPARTS_VOC_LEGACY, fps=config.video_fps, comp: int = config.compile_CSVs_for_training, tsne_params=config.TSNE_PARAMS):
+def bsoid_tsne_voc(data: list, bodyparts=config.BODYPARTS_VOC_LEGACY, fps=config.VIDEO_FPS, comp: int = config.COMPILE_CSVS_FOR_TRAINING, tsne_params=config.TSNE_PARAMS):
     """
     Trains t-SNE (unsupervised) given a set of features based on (x,y) positions
     :param data: list of 3D array
@@ -534,7 +534,7 @@ def bsoid_tsne_voc(data: list, bodyparts=config.BODYPARTS_VOC_LEGACY, fps=config
     return features_10fps, features_10fps_scaled, trained_tsne
 
 
-def train_emgmm_with_learned_tsne_space(trained_tsne_array, comp=config.compile_CSVs_for_training, emgmm_params=config.EMGMM_PARAMS) -> np.ndarray:
+def train_emgmm_with_learned_tsne_space(trained_tsne_array, comp=config.COMPILE_CSVS_FOR_TRAINING, emgmm_params=config.EMGMM_PARAMS) -> np.ndarray:
     """
     Trains EM-GMM (unsupervised) given learned t-SNE space
     :param trained_tsne_array: 2D array, trained t-SNE space
@@ -564,7 +564,7 @@ def train_emgmm_with_learned_tsne_space(trained_tsne_array, comp=config.compile_
     assignments = np.array(assignments_list)
     return assignments
 @config.cfig_log_entry_exit(logger)
-def bsoid_svm_py(feats, labels, comp: int = config.compile_CSVs_for_training, holdout_pct: float = config.holdout_percent, cv_it: int = config.crossvalidation_k, svm_params: dict = config.SVM_PARAMS):
+def bsoid_svm_py(feats, labels, comp: int = config.COMPILE_CSVS_FOR_TRAINING, holdout_pct: float = config.HOLDOUT_PERCENT, cv_it: int = config.CROSSVALIDATION_K, svm_params: dict = config.SVM_PARAMS):
     # TODO: low: depending on COMP value, could return two lists or a classifier and a list...consistency?!!!!
     """
     Train SVM classifier
@@ -579,14 +579,14 @@ def bsoid_svm_py(feats, labels, comp: int = config.compile_CSVs_for_training, ho
     """
     if comp == 1:
         feats_train, feats_test, labels_train, labels_test = train_test_split(
-            feats.T, labels.T, test_size=holdout_pct, random_state=config.random_state)  # TODO: med: MAGIC VARIABLES -- `random_state`
+            feats.T, labels.T, test_size=holdout_pct, random_state=config.RANDOM_STATE)  # TODO: med: MAGIC VARIABLES -- `random_state`
         logger.info(f'Training SVM on randomly partitioned {(1-holdout_pct)*100}% of training data...')
         classifier = SVC(**svm_params)
         classifier.fit(feats_train, labels_train)
         logger.info(f'Done training SVM mapping {feats_train.shape} features to {labels_train.shape} assignments.')
         logger.info(f'Predicting randomly sampled (non-overlapped) assignments '
                     f'using the remaining {holdout_pct * 100}%...')
-        scores = cross_val_score(classifier, feats_test, labels_test, cv=cv_it, n_jobs=config.crossvalidation_n_jobs)
+        scores = cross_val_score(classifier, feats_test, labels_test, cv=cv_it, n_jobs=config.CROSSVALIDATION_N_JOBS)
         time_str = time.strftime("_%Y%m%d_%H%M")
         if config.PLOT_GRAPHS:
             np.set_printoptions(precision=2)
@@ -608,7 +608,7 @@ def bsoid_svm_py(feats, labels, comp: int = config.compile_CSVs_for_training, ho
         classifier, scores = [], []
         for i in range(len(feats)):
             feats_train, feats_test, labels_train, labels_test = train_test_split(
-                feats[i].T, labels[i].T, test_size=holdout_pct, random_state=config.random_state)
+                feats[i].T, labels[i].T, test_size=holdout_pct, random_state=config.RANDOM_STATE)
             logger.info(f'Training SVM on randomly partitioned {(1-holdout_pct)*100}% of training data...')
             clf = SVC(**svm_params)
             clf.fit(feats_train, labels_train)
@@ -642,18 +642,18 @@ def bsoid_svm_py(feats, labels, comp: int = config.compile_CSVs_for_training, ho
 ########################################################################################################################
 ### Legacy functions -- keep them for now
 
-def bsoid_nn_voc(feats, labels, comp: int = config.compile_CSVs_for_training, hldout: float = config.holdout_percent, cv_it=config.crossvalidation_k, mlp_params=config.MLP_PARAMS):
+def bsoid_nn_voc(feats, labels, comp: int = config.COMPILE_CSVS_FOR_TRAINING, hldout: float = config.HOLDOUT_PERCENT, cv_it=config.CROSSVALIDATION_K, mlp_params=config.MLP_PARAMS):
     # WARNING: DEPRECATION IMMINENT
     replacement_func = train_mlp_classifier_voc
     logger.warn(f'This function will be deprecated in the future. If you still need this function to use, '
                 f'think about using {replacement_func.__qualname__} instead. Caller = {inspect.stack()[1][3]}.')
     return replacement_func(feats, labels, comp, hldout, cv_it, mlp_params)
-def bsoid_gmm_pyvoc(trained_tsne_array, comp=config.compile_CSVs_for_training, emgmm_params=config.EMGMM_PARAMS) -> np.ndarray:
+def bsoid_gmm_pyvoc(trained_tsne_array, comp=config.COMPILE_CSVS_FOR_TRAINING, emgmm_params=config.EMGMM_PARAMS) -> np.ndarray:
     replacement_func = train_emgmm_with_learned_tsne_space
     logger.warn(f'This function will be deprecated in the future. To resolve this warning, replace this '
                 f'function with {replacement_func.__qualname__} instead.')
-    return replacement_func(trained_tsne_array, comp=config.compile_CSVs_for_training, emgmm_params=config.EMGMM_PARAMS)
-def bsoid_feats_umapapp(data: list, fps: int = config.video_fps) -> Tuple:
+    return replacement_func(trained_tsne_array, comp=config.COMPILE_CSVS_FOR_TRAINING, emgmm_params=config.EMGMM_PARAMS)
+def bsoid_feats_umapapp(data: list, fps: int = config.VIDEO_FPS) -> Tuple:
     # WARNING: DEPRECATION IMMINENT
     replacement_func = train_umap_unsupervised_with_xy_features_umapapp
     logger.warn(f'DEPRECATION WARNING. This function, {inspect.stack()[0][3]}, will be deprecated in'
@@ -716,7 +716,7 @@ def py__get_data_train_TSNE_then_GMM_then_SVM_then_return_EVERYTHING(train_folde
     if config.PLOT_GRAPHS:
         visuals.plot_classes_EMGMM_assignments(trained_tsne_list, gmm_assignments, config.SAVE_GRAPHS_TO_FILE)  # TODO: HIGH: save fig to file is a magic variable
         visuals.plot_accuracy_SVM(scores)
-        visuals.plot_accuracy_SVM(features_10fps, gmm_assignments)
+        visuals.plot_feats_bsoidpy(features_10fps, gmm_assignments)
     logger.debug(f'Exiting GRAPH PLOTTING section of {inspect.stack()[0][3]}')
     return features_10fps, trained_tsne_list, scaler, gmm_assignments, classifier, scores
 

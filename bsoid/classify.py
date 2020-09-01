@@ -90,7 +90,7 @@ def bsoid_extract_app(data, fps) -> List:
             logger.info(f'Done integrating features into 100ms bins from CSV file {n + 1}.')
             f_10fps.append(feats1)
     return f_10fps
-def bsoid_extract_umap(data, fps=config.video_fps) -> List:
+def bsoid_extract_umap(data, fps=config.VIDEO_FPS) -> List:
     win_len = np.int(np.round(0.05 / (1 / fps)) * 2 - 1)
     features = []
     for m in range(len(data)):
@@ -152,7 +152,7 @@ def bsoid_extract_umap(data, fps=config.video_fps) -> List:
         logger.info(f'Done integrating features into 100ms bins from CSV file {n+1}.')
         f_10fps.append(features_n)
     return f_10fps
-def bsoid_extract_py(data, bodyparts: dict = config.BODYPARTS_PY_LEGACY, fps: int = config.video_fps) -> List:
+def bsoid_extract_py(data, bodyparts: dict = config.BODYPARTS_PY_LEGACY, fps: int = config.VIDEO_FPS) -> List:
     win_len = np.int(np.round(0.05 / (1 / fps)) * 2 - 1)
     features = []
     for m in range(len(data)):
@@ -225,7 +225,7 @@ def bsoid_extract_py(data, bodyparts: dict = config.BODYPARTS_PY_LEGACY, fps: in
         logger.info(f'Done integrating features into 100ms bins from CSV file {n + 1}.')
         f_10fps.append(feats1)
     return f_10fps
-def bsoid_extract_voc(data, bodyparts: dict = config.BODYPARTS_VOC_LEGACY, fps: int = config.video_fps) -> List:
+def bsoid_extract_voc(data, bodyparts: dict = config.BODYPARTS_VOC_LEGACY, fps: int = config.VIDEO_FPS) -> List:
     win_len = np.int(np.round(0.05 / (1 / fps)) * 2 - 1)
     features = []
     for m in range(len(data)):
@@ -494,7 +494,7 @@ def main_py(predict_folders: List[str], scaler, fps, behv_model) -> Tuple[np.nda
         if len(labels_fs_low) > 0:
             videoprocessing.get_frames_from_video_then_create_labeled_video(
                 path_to_video=config.VIDEO_TO_LABEL_PATH,
-                labels=labels_fs_low[config.identification_order],
+                labels=labels_fs_low[config.IDENTIFICATION_ORDER],
                 fps=fps,
                 output_path=config.FRAME_DIR)
         else:
@@ -522,7 +522,7 @@ def main_umap(predict_folders: List[str], fps, clf) -> Tuple[np.ndarray, List]:
     if config.GENERATE_VIDEOS:
         videoprocessing.get_frames_from_video_then_create_labeled_video(
             path_to_video=config.VIDEO_TO_LABEL_PATH,
-            labels=labels_fs[config.identification_order][:-1:int(round(fps / 10))],
+            labels=labels_fs[config.IDENTIFICATION_ORDER][:-1:int(round(fps / 10))],
             fps=fps,
             output_path=config.FRAME_DIR)
 
@@ -549,7 +549,7 @@ def main_voc(predict_folders: List[str], fps, behv_model) -> Tuple[np.ndarray, A
     if config.GENERATE_VIDEOS:
         videoprocessing.get_frames_from_video_then_create_labeled_video(
             path_to_video=config.VIDEO_TO_LABEL_PATH,
-            labels=labels_fs_low[config.identification_order],
+            labels=labels_fs_low[config.IDENTIFICATION_ORDER],
             fps=fps,
             output_path=config.FRAME_DIR)
 

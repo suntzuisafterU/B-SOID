@@ -219,7 +219,7 @@ def plot_accuracy_MLP(scores, show_plot: bool, save_fig_to_file: bool, fig_file_
 
     # Plot as specified
     fig = plt.figure(facecolor=facecolor, edgecolor=edgecolor)
-    fig.suptitle(f"Performance on {config.holdout_percent * 100} % data")
+    fig.suptitle(f"Performance on {config.HOLDOUT_PERCENT * 100} % data")
     ax = fig.add_subplot(111)
     ax.boxplot(scores, notch=None)
     x = np.random.normal(1, 0.04, size=len(scores))
@@ -308,7 +308,7 @@ def plot_accuracy_SVM(scores, save_fig_to_file=True, fig_file_prefix='clf_scores
     # TODO: decouple the fig saving and the plotting. Current state is due to legacy.
     time_str = time.strftime("%Y%m%d_%H%M")
     fig = plt.figure(facecolor='w', edgecolor='k')
-    fig.suptitle(f"Performance on {config.holdout_percent * 100} % data")
+    fig.suptitle(f"Performance on {config.HOLDOUT_PERCENT * 100} % data")
     ax = fig.add_subplot(111)
     ax.boxplot(scores, notch=None)
     x = np.random.normal(1, 0.04, size=len(scores))

@@ -22,6 +22,7 @@ import configparser
 import logging
 import os
 import random
+import time
 
 from bsoid.util import logger_config
 
@@ -31,6 +32,8 @@ cfig_log_entry_exit = logger_config.log_entry_exit  # TODO: temporary measure to
 BSOID_BASE_PROJECT_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # Output directory to where you want the analysis to be stored
 default_output_path = os.path.join(BSOID_BASE_PROJECT_PATH, 'output')
+# Set runtime string for consistency
+runtime_timestr = time.strftime("_%Y%m%d_%H%M")
 # Set loggers default vars
 default_log_folder_path = Path(BSOID_BASE_PROJECT_PATH, 'logs').absolute()
 # logging.info(f'default_log_folder_path:::{default_log_folder_path}')
@@ -53,14 +56,13 @@ config_output_path = configuration.get('PATH', 'OUTPUT_PATH')
 OUTPUT_PATH = config_output_path if config_output_path else default_output_path
 # Resolve runtime application settings
 MODEL_NAME = configuration.get('APP', 'OUTPUT_MODEL_NAME')  # Machine learning model name
-random_state: int = configuration.getint('MODEL', 'RANDOM_STATE', fallback=random.randint(1, 100_000_000))
-holdout_percent: float = configuration.getfloat('MODEL', 'HOLDOUT_TEST_PCT')
-crossvalidation_k: int = configuration.getint('MODEL', 'CROSS_VALIDATION_K')  # Number of iterations for cross-validation to show it's not over-fitting.
-crossvalidation_n_jobs: int = configuration.getint('MODEL', 'CROSS_VALIDATION_N_JOBS')
-video_fps: int = configuration.getint('APP', 'VIDEO_FRAME_RATE')
-compile_CSVs_for_training: int = configuration.getint('APP', 'COMPILE_CSVS_FOR_TRAINING')  # COMP = 1: Train one classifier for all CSV files; COMP = 0: Classifier/CSV file.
-identification_order: int = configuration.getint('APP', 'FILE_IDENTIFICATION_ORDER_LEGACY')  # TODO: low: assess whether we can remove this from module altogether.
-# IF YOU'D LIKE TO SKIP PLOTTING/CREATION OF VIDEOS, change below plot settings to False
+RANDOM_STATE: int = configuration.getint('MODEL', 'RANDOM_STATE', fallback=random.randint(1, 100_000_000))
+HOLDOUT_PERCENT: float = configuration.getfloat('MODEL', 'HOLDOUT_TEST_PCT')
+CROSSVALIDATION_K: int = configuration.getint('MODEL', 'CROSS_VALIDATION_K')  # Number of iterations for cross-validation to show it's not over-fitting.
+CROSSVALIDATION_N_JOBS: int = configuration.getint('MODEL', 'CROSS_VALIDATION_N_JOBS')
+VIDEO_FPS: int = configuration.getint('APP', 'VIDEO_FRAME_RATE')
+COMPILE_CSVS_FOR_TRAINING: int = configuration.getint('APP', 'COMPILE_CSVS_FOR_TRAINING')  # COMP = 1: Train one classifier for all CSV files; COMP = 0: Classifier/CSV file.
+IDENTIFICATION_ORDER: int = configuration.getint('APP', 'FILE_IDENTIFICATION_ORDER_LEGACY')  # TODO: low: assess whether we can remove this from module altogether.
 PLOT_GRAPHS: bool = configuration.getboolean('APP', 'PLOT_GRAPHS')
 SAVE_GRAPHS_TO_FILE: bool = configuration.getboolean('APP', 'SAVE_GRAPHS_TO_FILE')
 GENERATE_VIDEOS: bool = configuration.getboolean('APP', 'GENERATE_VIDEOS')
@@ -176,7 +178,7 @@ initialize_logger: callable = logger_config.preload_logger_with_config_vars(
 UMAP_PARAMS = {
     'n_components': configuration.getint('UMAP', 'n_components'),
     'min_dist': configuration.getfloat('UMAP', 'min_dist'),
-    'random_state': configuration.getint('MODEL', 'RANDOM_STATE', fallback=random_state),
+    'random_state': configuration.getint('MODEL', 'RANDOM_STATE', fallback=RANDOM_STATE),
 }
 
 # HDBSCAN params, density based clustering
@@ -194,7 +196,7 @@ EMGMM_PARAMS = {
     'n_init': configuration.getint('EM/GMM', 'n_init'),
     'init_params': configuration.get('EM/GMM', 'init_params'),
     'verbose': configuration.getint('EM/GMM', 'verbose'),
-    'random_state': configuration.getint('MODEL', 'RANDOM_STATE', fallback=random_state),
+    'random_state': configuration.getint('MODEL', 'RANDOM_STATE', fallback=RANDOM_STATE),
 }
 
 # Feedforward neural network (MLP) params
@@ -216,7 +218,7 @@ SVM_PARAMS = {
     'gamma': configuration.getfloat('SVM', 'gamma'),
     'probability': configuration.getboolean('SVM', 'probability'),
     'verbose': configuration.getint('SVM', 'verbose'),
-    'random_state': configuration.getint('MODEL', 'RANDOM_STATE', fallback=random_state),
+    'random_state': configuration.getint('MODEL', 'RANDOM_STATE', fallback=RANDOM_STATE),
 }
 
 

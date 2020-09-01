@@ -126,10 +126,10 @@ def import_vidfolders(folders: List[str], output_path: List[str]):
         videos_list_from_current_folder: List[str] = get_mp4_videos_from_folder_in_BASEPATH(folder)
         # Loop through videos
         for idx_video, video in enumerate(videos_list_from_current_folder):
-            logger.info(f'Extracting frames from {video} and appending labels to these images...')
-            #
+            logger.debug(f'{inspect.stack()[0][3]}:Extracting frames from {video} and appending labels to these images...')
+            # Write (something) to disk TODO
             write_annotated_frames_to_disk_from_video(video, output_path)  # TODO: HIGH: missing param `FPS` *** runtime error imminent ********************************************************
-            logger.info(f'Done extracting images and writing labels, from MP4 file {idx_video+1}')
+            logger.debug(f'Done extracting images and writing labels, from MP4 file {idx_video+1}')
         # After looping through videos, append list of videos from current folder to list of lists because reasons
         list_of_lists_of_videos.append(videos_list_from_current_folder)  # list_of_lists_of_videos.append(videos_list_from_current_folder)
         logger.info(f'Processed {len(videos_list_from_current_folder)} mp4 files from folder: {folder}.')
