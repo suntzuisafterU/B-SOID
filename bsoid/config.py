@@ -25,12 +25,12 @@ import random
 
 from bsoid.util import logger_config
 
-cfig_log_entry_exit = logger_config.log_entry_exit
+cfig_log_entry_exit = logger_config.log_entry_exit  # TODO: temporary measure to enable logging when entering/exiting functions
 ########################################################################################################################
 # Fetch the B-SOiD project directory regardless of clone location
 BSOID_BASE_PROJECT_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # Output directory to where you want the analysis to be stored
-OUTPUT_PATH = os.path.join(BSOID_BASE_PROJECT_PATH, 'output')
+default_output_path = os.path.join(BSOID_BASE_PROJECT_PATH, 'output')
 # Set loggers default vars
 default_log_folder_path = Path(BSOID_BASE_PROJECT_PATH, 'logs').absolute()
 # logging.info(f'default_log_folder_path:::{default_log_folder_path}')
@@ -48,7 +48,10 @@ configuration.read(os.path.join(BSOID_BASE_PROJECT_PATH, config_file_name))
 # BASE_PATH = 'C:\\Users\\killian\\projects\\OST-with-DLC\\GUI_projects\\OST-DLC-projects\\pwd-may11-2020-john-howland-2020-05-11'  # TODO: HIGH: bad!!!! magic variable
 # BASE_PATH = '/home/aaron/Documents/OST-with-DLC/GUI_projects/OST-DLC-projects/pwd-may11-2020-john-howland-2020-05-11'
 DLC_PROJECT_PATH = configuration.get('PATH', 'DLC_PROJECT_PATH')
-
+# Resolve output path
+config_output_path = configuration.get('PATH', 'OUTPUT_PATH')
+OUTPUT_PATH = config_output_path if config_output_path else default_output_path
+# Resolve runtime application settings
 MODEL_NAME = configuration.get('APP', 'OUTPUT_MODEL_NAME')  # Machine learning model name
 random_state: int = configuration.getint('MODEL', 'RANDOM_STATE', fallback=random.randint(1, 100_000_000))
 holdout_percent: float = configuration.getfloat('MODEL', 'HOLDOUT_TEST_PCT')
