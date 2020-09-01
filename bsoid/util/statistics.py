@@ -188,18 +188,20 @@ def behv_dur(labels) -> Tuple[pd.DataFrame, pd.DataFrame]:
 
 
 # TODO: rename main()? Should only be called "main" if this module is called at runtime as standalone file?
+@config.cfig_log_entry_exit(logger)
 def main(labels) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
     (Original function implementation across _py, _umap, and _voc submodules. Kept, for now, for
         backwards compatibility reasons.)
     """
     replacement_func = get_runlengths_statistics_transition_matrix_from_labels
-    logger.warning('This function, bsoid.util.statistics.main(), will be deprecated in future. Check back for a '
+    logger.error('This function, bsoid.util.statistics.main(), will be deprecated in future. Check back for a '
                    f'renamed/refactored version later. '
-                   f'Current replacement: {get_runlengths_statistics_transition_matrix_from_labels.__qualname__}.')
+                   f'Current replacement: {get_runlengths_statistics_transition_matrix_from_labels.__qualname__}.'
+                   f'CALLER = {inspect.stack()[0][3]}')
     return replacement_func(labels)
 
-
+@config.cfig_log_entry_exit(logger)
 def get_runlengths_statistics_transition_matrix_from_labels(labels) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """ TODO: rename function for concision when purpose made clearer
     TODO: med: purpose
@@ -214,9 +216,25 @@ def get_runlengths_statistics_transition_matrix_from_labels(labels) -> Tuple[pd.
     return df_runlengths, df_dur_statistics, tm
 
 
+
+
+########################################################################################################################
+
+### LEGACY FUNCTIONS
+@config.cfig_log_entry_exit(logger)
+def feat_dist(features: np.ndarray) -> Tuple[List, List, List, List]:
+    """   *** DEPRECATION WARNING ***   """
+    replacement_func = get_feature_distribution
+    err = f'This function, feat_dist, will be deprecated in future. Instead, replace its use with ' \
+          f'{replacement_func.__qualname__} (potential caller of this function = {inspect.stack()[1][3]}).'
+    logger.warning(err)
+    return replacement_func(features)
+
+@config.cfig_log_entry_exit(logger)
 def main_app(labels, n):
     """
     TODO: why is the _app version different?
+    Pre-existing "main()" function from the bsoid_app legacy submodule.
     :param labels: 1D array: predicted labels
     :param output_path: string, output directory
     :return dur_stats: object, behavioral duration statistics data frame
@@ -225,15 +243,3 @@ def main_app(labels, n):
     runlen_df, dur_stats = behv_dur(labels)
     B, df_tm, B_norm = transition_matrix_app(labels, n)
     return runlen_df, dur_stats, B, df_tm, B_norm
-
-
-########################################################################################################################
-### LEGACY FUNCTIONS
-
-def feat_dist(features: np.ndarray) -> Tuple[List, List, List, List]:
-    """   *** DEPRECATION WARNING ***   """
-    replacement_func = get_feature_distribution
-    err = f'This function, feat_dist, will be deprecated in future. Instead, replace its use with ' \
-          f'{replacement_func.__qualname__} (potential caller of this function = {inspect.stack()[1][3]}).'
-    logger.warning(err)
-    return replacement_func(features)

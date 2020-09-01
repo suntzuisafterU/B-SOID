@@ -54,13 +54,11 @@ def get_mp4_videos_from_folder_in_BASEPATH(folder_name: str) -> List[str]:
         err = f'`folder_name` was expected to be of type str but instead found {type(folder_name)}.'
         logger.error(err)
         raise TypeError(err)
-
     path_to_folder = os.path.join(config.DLC_PROJECT_PATH, folder_name)
     path_to_folder_with_glob = f'{path_to_folder}/*.mp4'
-    logger.debug(f'get_mp4_videos_from_folder_in_BASEPATH():Path to check for videos: {path_to_folder_with_glob}')
+    logger.debug(f'{inspect.stack()[0][3]}:get_mp4_videos_from_folder_in_BASEPATH():Path to check for videos: {path_to_folder_with_glob}')
     video_names = glob.glob(path_to_folder_with_glob)
     sort_list_nicely_in_place(video_names)
-
     return video_names
 
 
@@ -75,7 +73,7 @@ def write_annotated_frames_to_disk_from_video(path_to_video: str, labels, fps: i
     :param output_path: string, path to output
     # TODO: med: analyze use of magic variables in func.
     """
-    if not os.path.isfile(path_to_video):
+    if not os.path.isfile(path_to_video):  # Check if path to video exists.
         err = f'{__name__}:{inspect.stack()[0][3]}Path to video was not found. Path = {path_to_video}'
         logger.error(err)
         raise ValueError(err)
@@ -222,11 +220,14 @@ def create_labeled_vid_app(labels, crit, counts, output_fps, video_frames_direct
         if length >= crit:
             ranges.append(range(idx[idx_length], idx[idx_length] + length))
             idx2.append(idx_length)
+
+    # Loop over labels
     for label in tqdm(np.unique(labels)):
         # a = []
         # for j in range(len(ranges)):
         #     if n[idx2[j]] == label:
         #         a.append(ranges[j])
+
         a = [ranges[i] for i in range(len(ranges)) if n[idx2[i]] == label]
         try:
             random_ranges = random.sample(a, min(len(a), counts))

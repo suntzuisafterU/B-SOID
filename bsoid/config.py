@@ -25,7 +25,7 @@ import random
 
 from bsoid.util import logger_config
 
-
+cfig_log_entry_exit = logger_config.log_entry_exit
 ########################################################################################################################
 # Fetch the B-SOiD project directory regardless of clone location
 BSOID_BASE_PROJECT_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -59,7 +59,7 @@ compile_CSVs_for_training: int = configuration.getint('APP', 'COMPILE_CSVS_FOR_T
 identification_order: int = configuration.getint('APP', 'FILE_IDENTIFICATION_ORDER_LEGACY')  # TODO: low: assess whether we can remove this from module altogether.
 # IF YOU'D LIKE TO SKIP PLOTTING/CREATION OF VIDEOS, change below plot settings to False
 PLOT_GRAPHS: bool = configuration.getboolean('APP', 'PLOT_GRAPHS')
-PLOT_TRAINING: bool = configuration.getboolean('APP', 'PLOT_TRAINING')
+SAVE_GRAPHS_TO_FILE: bool = configuration.getboolean('APP', 'SAVE_GRAPHS_TO_FILE')
 GENERATE_VIDEOS: bool = configuration.getboolean('APP', 'GENERATE_VIDEOS')
 
 
@@ -68,16 +68,16 @@ GENERATE_VIDEOS: bool = configuration.getboolean('APP', 'GENERATE_VIDEOS')
 VIDEO_TO_LABEL_PATH: str = configuration.get('APP', 'VIDEO_TO_LABEL_PATH')
 short_video_output_directory = os.path.join(OUTPUT_PATH, 'short_videos')
 assert os.path.isdir(short_video_output_directory), f'`short_video_output_directory` dir. (value={short_video_output_directory}) must exist for runtime but does not.'
+
+
 SHORTVID_DIR = short_video_output_directory  # LEGACY. To be deprecated.
-
-
-ID = identification_order  # TODO: DEPRECATE. ID WAS A MISTAKE, BUT NOT SURE WHY/WHAT IT DOES
+# ID = identification_order  # TODO: DEPRECATE. ID WAS A MISTAKE, BUT NOT SURE WHY/WHAT IT DOES
 
 
 assert os.path.isdir(DLC_PROJECT_PATH), f'BASEPATH DOES NOT EXIST: {DLC_PROJECT_PATH}'
 assert os.path.isdir(OUTPUT_PATH), f'OUTPUT PATH DOES NOT EXIST: {OUTPUT_PATH}'
 assert os.path.isfile(VIDEO_TO_LABEL_PATH) or not VIDEO_TO_LABEL_PATH, \
-    f'Video does not exist: {VIDEO_TO_LABEL_PATH}. Amend pathing in config.ini file.'
+    f'Video does not exist: {VIDEO_TO_LABEL_PATH}. Check pathing in config.ini file.'
 
 
 # Specify where the OST project lives. Modify on your local machine as necessary.
@@ -94,14 +94,18 @@ OST_BASE_PROJECT_PATH = configuration.get('PATH', 'OST_BASE_PROJECT_PATH')
 # TRAIN_FOLDERS, PREDICT_FOLDERS are lists of folders that are implicitly understood to exist within BASE_PATH
 
 # Data folders used to training neural network.
-TRAIN_FOLDERS: List[str] = ['NOT_DLC_OUTPUT__SAMPLE_WITHOUT_INDEX', ]  # TRAIN_FOLDERS = [os.path.sep+'training-datasets', ]
-TRAIN_FOLDERS = ['EPM-csv']
+# TRAIN_FOLDERS: List[str] = ['NOT_DLC_OUTPUT__SAMPLE_WITHOUT_INDEX', ]  # TRAIN_FOLDERS = [os.path.sep+'training-datasets', ]
+TRAIN_FOLDERS = [
+    'sample_train_data_folder',
+]
 for folder in TRAIN_FOLDERS:
     compiled_folder_path = os.path.join(DLC_PROJECT_PATH, folder)
     assert os.path.isdir(compiled_folder_path), f'Training folder does not exist: {compiled_folder_path}'
 
+
 PREDICT_FOLDERS: List[str] = [
     # 'Data1',
+    'sample_predic_data_folder',
 ]
 for folder in PREDICT_FOLDERS:
     compiled_folder_path = os.path.join(DLC_PROJECT_PATH, folder)
@@ -141,7 +145,7 @@ config_file_name = configuration.get('LOGGING', 'LOG_FILE_NAME', fallback=defaul
 #  debug >= 2: print('config_file_name:::', config_file_name)
 
 # Get logger variables
-logger_name = configuration.get('LOGGING', 'LOGGER_NAME')
+logger_name = configuration.get('LOGGING', 'DEFAULT_LOGGER_NAME')
 log_format = configuration.get('LOGGING', 'LOG_FORMAT', raw=True)
 stdout_log_level = configuration.get('LOGGING', 'STREAM_LOG_LEVEL', fallback=None)
 file_log_level = configuration.get('LOGGING', 'FILE_LOG_LEVEL', fallback=None)

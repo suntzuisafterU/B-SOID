@@ -97,15 +97,15 @@ def import_csvs_data_from_folders_in_BASEPATH_and_process_data(folders: list) ->
     # TODO: what does `raw_data_list` do? It looks like a variable without a purpose. It appends but does not return.
     file_names_list, raw_data_list, data_list, perc_rect_list = [], [], [], []
     if len(folders) == 0:
-        raise ValueError(f'submitted folders list is empty')
-        # pass
+        raise ValueError(f'{inspect.stack()[0][3]}: argument `folders` list is empty. No folders to check.')
+    # Iterate over folders
     for idx_folder, folder in enumerate(folders):  # Loop through folders
         filenames_found_in_current_folder = get_filenames_csvs_from_folders_recursively_in_basepath(folder)
         for idx_filename, filename in enumerate(filenames_found_in_current_folder):
             logger.info(f'Importing CSV file {idx_filename+1} from folder {idx_folder+1}')
             df_current_file = pd.read_csv(filename, low_memory=False)
             curr_df_filt, perc_rect = adaptive_filter_data(df_current_file)
-            logger.info(f'Done preprocessing (x,y) from file #{idx_filename+1}, folder #{idx_folder+1}.')
+            logger.debug(f'Done preprocessing (x,y) from file #{idx_filename+1}, folder #{idx_folder+1}.')
             raw_data_list.append(df_current_file)
             perc_rect_list.append(perc_rect)
             data_list.append(curr_df_filt)

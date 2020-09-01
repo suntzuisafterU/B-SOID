@@ -10,7 +10,7 @@ Potential abbreviations:
 
 from bhtsne import tsne
 from sklearn import mixture
-from sklearn.manifold import TSNE
+from sklearn.manifold import TSNE as TSNE_sklearn
 from sklearn.metrics import plot_confusion_matrix
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.neural_network import MLPClassifier
@@ -85,33 +85,35 @@ def train_umap_unsupervised_with_xy_features_umapapp(data: list, fps: int = conf
         ang_smth = np.array(ang_smth)
         features.append(np.vstack((dxy_smth[:, 1:], ang_smth, dis_smth)))  # TODO: med: sometimes this line causes an error when dx_smth is indexed (IndexError: too many indicies for array)
     logger.info(f'Done extracting features from a total of {len(data)} training CSV files.')
+
     for n in range(len(features)):
-        feats1 = np.zeros(len(data[n]))
+        features_n = np.zeros(len(data[n]))
         for k in range(round(fps / 10), len(features[n][0]), round(fps / 10)):
             if k > round(fps / 10):
-                feats1 = np.concatenate((feats1.reshape(feats1.shape[0], feats1.shape[1]),
+                features_n = np.concatenate((features_n.reshape(features_n.shape[0], features_n.shape[1]),
                                          np.hstack((np.mean((features[n][0:dxy_smth.shape[0],
                                                              range(k - round(fps / 10), k)]), axis=1),
                                                     np.sum((features[n][dxy_smth.shape[0]:features[n].shape[0],
                                                             range(k - round(fps / 10), k)]),
                                                            axis=1))).reshape(len(features[0]), 1)), axis=1)
             else:
-                feats1 = np.hstack((np.mean((features[n][0:dxy_smth.shape[0], range(k - round(fps / 10), k)]), axis=1),
+                features_n = np.hstack((np.mean((features[n][0:dxy_smth.shape[0], range(k - round(fps / 10), k)]), axis=1),
                                     np.sum((features[n][dxy_smth.shape[0]:features[n].shape[0],
                                             range(k - round(fps / 10), k)]), axis=1))).reshape(len(features[0]), 1)
         logger.info(f'{inspect.stack()[0][3]}::Done integrating features into 100ms bins from CSV file {n+1}.')
         if n > 0:  # For any index value of n that isn't the very first run
-            f_10fps = np.concatenate((f_10fps, feats1), axis=1)
+            f_10fps = np.concatenate((f_10fps, features_n), axis=1)
             scaler = StandardScaler()
-            scaler.fit(feats1.T)
-            feats1_sc = scaler.transform(feats1.T).T
+            scaler.fit(features_n.T)
+            feats1_sc = scaler.transform(features_n.T).T
             f_10fps_sc = np.concatenate((f_10fps_sc, feats1_sc), axis=1)
         else:
-            f_10fps = feats1
+            f_10fps = features_n
             scaler = StandardScaler()
-            scaler.fit(feats1.T)
-            feats1_sc = scaler.transform(feats1.T).T
+            scaler.fit(features_n.T)
+            feats1_sc = scaler.transform(features_n.T).T
             f_10fps_sc = feats1_sc  # scaling is important as I've seen wildly different stdev/feat between sessions
+    logger.debug(f'{inspect.stack()[0][3]: Now exiting.}')
     return f_10fps, f_10fps_sc
 
 
@@ -144,6 +146,7 @@ def bsoid_umap_embed_umapapp(f_10fps_sc, umap_params=config.UMAP_PARAMS) -> Tupl
     umap_embeddings = trained_umap.embedding_
     logger.info(f'Done non-linear transformation with UMAP from {features_train.shape[1]} D '
                 f'into {umap_embeddings.shape[1]} D.')
+    logger.debug(f'{inspect.stack()[0][3]}: now exiting.')
     return trained_umap, umap_embeddings
 
 
@@ -193,9 +196,9 @@ def bsoid_nn_appumap(feats, labels, holdout_pct: float = config.holdout_percent,
     feats_filt = feats[:, labels >= 0]
     labels_filt = labels[labels >= 0]
     feats_train, feats_test, labels_train, labels_test = train_test_split(
-        feats_filt.T, labels_filt.T, test_size=holdout_pct, random_state=23)
+        feats_filt.T, labels_filt.T, test_size=holdout_pct, random_state=config.random_state)
     logger.info(f'Training feedforward neural network on randomly '
-                             f'partitioned {(1 - holdout_pct) * 100}% of training data...')
+                f'partitioned {(1-holdout_pct)*100}% of training data...')
     classifier = MLPClassifier(**mlp_params)
     classifier.fit(feats_train, labels_train)
     clf = MLPClassifier(**mlp_params)
@@ -221,8 +224,7 @@ def bsoid_nn_appumap(feats, labels, holdout_pct: float = config.holdout_percent,
             disp.figure_.savefig(os.path.join(config.OUTPUT_PATH, f'{my_file}{time_str}.svg'))
             j += 1
         plt.show()
-    logger.info(
-        'Scored cross-validated feedforward neural network performance.'.format(feats_train.shape, labels_train.shape))
+    logger.info(f'Scored cross-validated feedforward neural network performance. Features shape: {feats_train.shape} / labels shape: {labels_train.shape}')
     return clf, scores, nn_assignments
 
 
@@ -244,22 +246,21 @@ def train_mlp_classifier_voc(feats, labels,
     """
     # RECALL COMP: # COMP = 1: Train one classifier for all CSV files; COMP = 0: Classifier/CSV file.
     if comp == 1:
-        feats_train, feats_test, labels_train, labels_test = train_test_split(feats.T, labels.T, test_size=holdout_percent,
-                                                                              random_state=23)
+        feats_train, feats_test, labels_train, labels_test = train_test_split(feats.T, labels.T, test_size=holdout_percent, random_state=config.random_state)
         logger.info(f'Training feedforward neural network on randomly '
-                     f'partitioned {(1 - holdout_percent) * 100}% of training data...')
+                    f'partitioned {(1-holdout_percent)*100}% of training data...')
         classifier = MLPClassifier(**mlp_params)
         classifier.fit(feats_train, labels_train)
         logger.info(f'Done training feedforward neural network mapping {feats_train.shape} features to {labels_train.shape} assignments.')
         logger.info('Predicting randomly sampled (non-overlapped) assignments '
-                                 f'using the remaining {holdout_percent * 100}%...')
-        scores = cross_val_score(classifier, feats_test, labels_test, cv=crossvalidation_k, n_jobs=-1)
+                    f'using the remaining {holdout_percent*100}%...')
+        scores = cross_val_score(classifier, feats_test, labels_test, cv=crossvalidation_k, n_jobs=config.crossvalidation_n_jobs)
         time_str = time.strftime("_%Y%m%d_%H%M")
-        if config.PLOT_TRAINING:
+        if config.PLOT_GRAPHS:
             np.set_printoptions(precision=2)
             titles_options = [("Non-normalized confusion matrix", None),
                               ("Normalized confusion matrix", 'true')]
-            titlenames = ["counts", "norm"]
+            title_names = ["counts", "norm", ]
             j = 0
             for title, normalize in titles_options:
                 display = plot_confusion_matrix(
@@ -267,7 +268,7 @@ def train_mlp_classifier_voc(feats, labels,
                 display.ax_.set_title(title)
                 print(title)
                 print(display.confusion_matrix)
-                file_name = f'confusion_matrix_{titlenames[j]}'
+                file_name = f'confusion_matrix_{title_names[j]}'
                 display.figure_.savefig(os.path.join(config.OUTPUT_PATH, f'{file_name}{time_str}.svg'))
                 j += 1
             plt.show()
@@ -275,41 +276,35 @@ def train_mlp_classifier_voc(feats, labels,
         classifier = []
         scores = []
         for i in range(len(feats)):
-            feats_train, feats_test, labels_train, labels_test = train_test_split(feats[i].T, labels[i].T,
-                                                                                  test_size=holdout_percent,
-                                                                                  random_state=23)
-            logger.info(
-                'Training feedforward neural network on randomly partitioned {}% of training data...'.format(
-                    (1 - holdout_percent) * 100))
+            feats_train, feats_test, labels_train, labels_test = train_test_split(
+                feats[i].T, labels[i].T, test_size=holdout_percent, random_state=config.random_state)
+            logger.info(f'Training feedforward neural network on randomly partitioned {(1 - holdout_percent) * 100}% of training data...')
             clf = MLPClassifier(**mlp_params)
             clf.fit(feats_train, labels_train)
             classifier.append(clf)
             logger.info(
-                'Done training feedforward neural network mapping {} features to {} assignments.'.format(
-                    feats_train.shape, labels_train.shape))
-            logger.info('Predicting randomly sampled (non-overlapped) assignments '
-                         'using the remaining {}%...'.format(holdout_percent * 100))
-            sc = cross_val_score(classifier, feats_test, labels_test, cv=crossvalidation_k, n_jobs=-1)
+                f'Done training feedforward neural network mapping {feats_train.shape} features to {labels_train.shape} assignments.')
+            logger.info(f'Predicting randomly sampled (non-overlapped) assignments using the remaining {holdout_percent*100}%...')
+            sc = cross_val_score(classifier, feats_test, labels_test, cv=crossvalidation_k, n_jobs=config.crossvalidation_n_jobs)  # TODO: why does this line exist? Missing usage?
             time_str = time.strftime("_%Y%m%d_%H%M")
-            if config.PLOT_TRAINING:
+            if config.PLOT_GRAPHS:
                 np.set_printoptions(precision=2)
                 titles_options = [("Non-normalized confusion matrix", None),
                                   ("Normalized confusion matrix", 'true')]
                 j = 0
-                titlenames = ["counts", "norm"]
+                title_names = ["counts", "norm"]
                 for title, normalize in titles_options:
-                    display = plot_confusion_matrix(classifier, feats_test, labels_test,
-                                                 cmap=plt.cm.Blues,
-                                                 normalize=normalize)
+                    display = plot_confusion_matrix(classifier, feats_test, labels_test, cmap=plt.cm.Blues, normalize=normalize)
                     display.ax_.set_title(title)
                     print(title)
                     print(display.confusion_matrix)
-                    file_name = 'confusion_matrix_clf{}_{}'.format(i, titlenames[j])
-                    display.figure_.savefig(os.path.join(config.OUTPUT_PATH, str.join('', (file_name, time_str, '.svg'))))
+                    if config.SAVE_GRAPHS_TO_FILE:
+                        file_name = f'confusion_matrix_clf{i}_{title_names[j]}'
+                        display.figure_.savefig(os.path.join(config.OUTPUT_PATH, f'{file_name}{time_str}.svg'))
                     j += 1
                 plt.show()
-    logger.info(
-        'Scored cross-validated feedforward neural network performance.'.format(feats_train.shape, labels_train.shape))
+    logger.info(f'Scored cross-validated feedforward neural network performance. '
+                f'Features shape: {feats_train.shape} / labels shape: {labels_train.shape}')
     return classifier, scores
 
 
@@ -344,8 +339,7 @@ def bsoid_tsne_py(data: list, bodyparts=config.BODYPARTS_PY_LEGACY, fps=config.v
         chp_pt = np.vstack(([chp[:, 0] - data[m][:, 2 * bodyparts.get('Tailbase')],
                              chp[:, 1] - data[m][:, 2 * bodyparts.get('Tailbase') + 1]])).T
         sn_pt = np.vstack(([data[m][:, 2 * bodyparts.get('Snout/Head')] - data[m][:, 2 * bodyparts.get('Tailbase')],
-                            data[m][:, 2 * bodyparts.get('Snout/Head') + 1] - data[m][:,
-                                                                              2 * bodyparts.get('Tailbase') + 1]])).T
+                            data[m][:, 2 * bodyparts.get('Snout/Head') + 1] - data[m][:, 2 * bodyparts.get('Tailbase') + 1]])).T
         fpd_norm = np.zeros(data_range)
         cfp_pt_norm = np.zeros(data_range)
         chp_pt_norm = np.zeros(data_range)
@@ -418,8 +412,8 @@ def bsoid_tsne_py(data: list, bodyparts=config.BODYPARTS_PY_LEGACY, fps=config.v
         scaler = StandardScaler()
         scaler.fit(f_10fps.T)  # TODO: HIGH: variable `f_10fps` referenced before assignment. Error in logic above? ########################## IMPORTANT ###############################
         f_10fps_sc = scaler.transform(f_10fps.T).T
-        logger.info(f'Training t-SNE to embed {f_10fps_sc.shape[1]} instances'
-                                 f'from {f_10fps_sc.shape[0]} D into 3 D from a total of {len(data)} CSV files...')
+        logger.info(f'{inspect.stack()[0][3]}:Training t-SNE to embed {f_10fps_sc.shape[1]} instances'
+                    f'from {f_10fps_sc.shape[0]} D into 3 D from a total of {len(data)} CSV files...')
         trained_tsne = tsne(f_10fps_sc.T, dimensions=3, perplexity=np.sqrt(f_10fps_sc.shape[1]),
                             theta=0.5, rand_seed=config.random_state)  # TODO: low: move "rand_seed" to a config file instead of hiding here as magic variable
         logger.info(f'{inspect.stack()[0][3]}::Done embedding into 3 D.')
@@ -442,8 +436,9 @@ def bsoid_tsne_voc(data: list, bodyparts=config.BODYPARTS_VOC_LEGACY, fps=config
         raise ValueError(err)
     win_len = np.int(np.round(0.05 / (1 / fps)) * 2 - 1)
     feats = []
+    logger.info(f'{inspect.stack()[0][3]}: Looping over data and extract features')
     for m in range(len(data)):
-        logger.info(f'Extracting features from CSV file {m+1}...')
+        logger.debug(f'Extracting features from CSV file {m+1} ...')
         data_range = len(data[m])
         p12 = data[m][:, 2 * bodyparts.get('Point1'):2 * bodyparts.get('Point1') + 2] - \
               data[m][:, 2 * bodyparts.get('Point2'):2 * bodyparts.get('Point2') + 2]
@@ -455,6 +450,7 @@ def bsoid_tsne_voc(data: list, bodyparts=config.BODYPARTS_VOC_LEGACY, fps=config
               data[m][:, 2 * bodyparts.get('Point8'):2 * bodyparts.get('Point8') + 2]
         p15_norm = np.zeros(data_range)
         p18_norm = np.zeros(data_range)
+
         for i in range(1, data_range):
             p15_norm[i] = np.array(np.linalg.norm(p15[i, :]))
             p18_norm[i] = np.array(np.linalg.norm(p18[i, :]))
@@ -464,7 +460,8 @@ def bsoid_tsne_voc(data: list, bodyparts=config.BODYPARTS_VOC_LEGACY, fps=config
         p14_ang = np.zeros(data_range - 1)
         p3_disp = np.zeros(data_range - 1)
         p7_disp = np.zeros(data_range - 1)
-        for k in range(data_range - 1):
+
+        for k in range(data_range-1):
             b_3d = np.hstack([p12[k + 1, :], 0])
             a_3d = np.hstack([p12[k, :], 0])
             c = np.cross(b_3d, a_3d)
@@ -487,10 +484,10 @@ def bsoid_tsne_voc(data: list, bodyparts=config.BODYPARTS_VOC_LEGACY, fps=config
         p7_disp_smth = likelihoodprocessing.boxcar_center(p7_disp, win_len)
         feats.append(np.vstack((p15_norm_smth[1:], p18_norm_smth[1:],
                                 p12_ang_smth[:], p14_ang_smth[:], p3_disp_smth[:], p7_disp_smth[:])))
-    logger.info('Done extracting features from a total of {} training CSV files.'.format(len(data)))
+    logger.info(f'Done extracting features from a total of {len(data)} training CSV files.')
     if comp == 0:
-        f_10fps = []
-        f_10fps_sc = []
+        features_10fps = []
+        features_10fps_scaled = []
         trained_tsne = []
     for n in range(len(feats)):
         feats1 = np.zeros(len(data[n]))
@@ -502,42 +499,39 @@ def bsoid_tsne_voc(data: list, bodyparts=config.BODYPARTS_VOC_LEGACY, fps=config
                                                            axis=1))).reshape(len(feats[0]), 1)), axis=1)
             else:
                 feats1 = np.hstack((np.mean((feats[n][0:2, range(k - round(fps / 10), k)]), axis=1),
-                                    np.sum((feats[n][2:6, range(k - round(fps / 10), k)]), axis=1))).reshape(
-                    len(feats[0]), 1)
-        logger.info('Done integrating features into 100ms bins from CSV file {}.'.format(n + 1))
+                                    np.sum((feats[n][2:6, range(k - round(fps / 10), k)]), axis=1))).reshape(len(feats[0]), 1)
+        logger.info(f'Done integrating features into 100ms bins from CSV file {n+1}.')
         if comp == 1:
             if n > 0:
-                f_10fps = np.concatenate((f_10fps, feats1), axis=1)
+                features_10fps = np.concatenate((features_10fps, feats1), axis=1)
             else:
-                f_10fps = feats1
+                features_10fps = feats1
         else:
-            f_10fps.append(feats1)
+            features_10fps.append(feats1)
             scaler = StandardScaler()
             scaler.fit(feats1.T)
             feats1_stnd = scaler.transform(feats1.T).T
-            f_10fps_sc.append(feats1_stnd)
-            logger.info('Training t-SNE to embed {} instances from {} D '
-                         'into 3 D from CSV file {}...'.format(f_10fps_sc[n].shape[1], f_10fps_sc[n].shape[0],
-                                                               n + 1))
-            trained_tsne_i = TSNE(perplexity=np.sqrt(f_10fps_sc[n].shape[1]),
-                                  early_exaggeration=16,  # early exaggeration alpha 16 is good
-                                  learning_rate=max(200, f_10fps_sc[n].shape[1] / 16),  # alpha*eta = n
-                                  **tsne_params).fit_transform(f_10fps_sc[n].T)
+            features_10fps_scaled.append(feats1_stnd)
+            logger.info(f'Training t-SNE to embed {features_10fps_scaled[n].shape[1]} instances '
+                        f'from {features_10fps_scaled[n].shape[0]} D '
+                        f'into 3 D from CSV file {n+1}...')
+            trained_tsne_i = TSNE_sklearn(perplexity=np.sqrt(features_10fps_scaled[n].shape[1]),
+                                          early_exaggeration=16,  # early exaggeration alpha 16 is good
+                                          learning_rate=max(200, features_10fps_scaled[n].shape[1] / 16),  # alpha*eta = n
+                                          **tsne_params).fit_transform(features_10fps_scaled[n].T)
             trained_tsne.append(trained_tsne_i)
             logger.info('Done embedding into 3 D.')
         if comp == 1:
             scaler = StandardScaler()
-            scaler.fit(f_10fps.T)
-            f_10fps_sc = scaler.transform(f_10fps.T).T
-            logger.info('Training t-SNE to embed {} instances from {} D '
-                         'into 3 D from a total of {} CSV files...'.format(f_10fps_sc.shape[1], f_10fps_sc.shape[0],
-                                                                           len(data)))
-            trained_tsne = TSNE(perplexity=np.sqrt(f_10fps_sc.shape[1]),  # perplexity scales with sqrt, power law
-                                early_exaggeration=16,  # early exaggeration alpha 16 is good
-                                learning_rate=max(200, f_10fps_sc.shape[1] / 16),  # alpha*eta = n
-                                **tsne_params).fit_transform(f_10fps_sc.T)
-            logger.info('Done embedding into 3 D.')
-    return f_10fps, f_10fps_sc, trained_tsne
+            scaler.fit(features_10fps.T)
+            features_10fps_scaled = scaler.transform(features_10fps.T).T
+            logger.info(f'Training t-SNE to embed {features_10fps_scaled.shape[1]} instances from {features_10fps_scaled.shape[0]} D into 3 D from a total of {len(data)} CSV files...')
+            trained_tsne = TSNE_sklearn(perplexity=np.sqrt(features_10fps_scaled.shape[1]),  # perplexity scales with sqrt, power law
+                                        early_exaggeration=16,  # early exaggeration alpha 16 is good
+                                        learning_rate=max(200, features_10fps_scaled.shape[1] / 16),  # alpha*eta = n
+                                        **tsne_params).fit_transform(features_10fps_scaled.T)
+            logger.info(f'{inspect.stack()[0][3]}:Done embedding into 3 D.')
+    return features_10fps, features_10fps_scaled, trained_tsne
 
 
 def train_emgmm_with_learned_tsne_space(trained_tsne_array, comp=config.compile_CSVs_for_training, emgmm_params=config.EMGMM_PARAMS) -> np.ndarray:
@@ -569,7 +563,7 @@ def train_emgmm_with_learned_tsne_space(trained_tsne_array, comp=config.compile_
         assignments_list += [idx_value]
     assignments = np.array(assignments_list)
     return assignments
-
+@config.cfig_log_entry_exit(logger)
 def bsoid_svm_py(feats, labels, comp: int = config.compile_CSVs_for_training, holdout_pct: float = config.holdout_percent, cv_it: int = config.crossvalidation_k, svm_params: dict = config.SVM_PARAMS):
     # TODO: low: depending on COMP value, could return two lists or a classifier and a list...consistency?!!!!
     """
@@ -594,20 +588,20 @@ def bsoid_svm_py(feats, labels, comp: int = config.compile_CSVs_for_training, ho
                     f'using the remaining {holdout_pct * 100}%...')
         scores = cross_val_score(classifier, feats_test, labels_test, cv=cv_it, n_jobs=config.crossvalidation_n_jobs)
         time_str = time.strftime("_%Y%m%d_%H%M")
-        if config.PLOT_TRAINING:
+        if config.PLOT_GRAPHS:
             np.set_printoptions(precision=2)
             titles_options = [("Non-normalized confusion matrix", None),
                               ("Normalized confusion matrix", 'true')]
             title_names = ["counts", "norm"]
             j = 0
             for title, normalize in titles_options:
-                display = plot_confusion_matrix(classifier, feats_test, labels_test,
-                                                cmap=plt.cm.Blues, normalize=normalize)
+                display = plot_confusion_matrix(classifier, feats_test, labels_test, cmap=plt.cm.Blues, normalize=normalize)
                 display.ax_.set_title(title)
                 print(title)
                 print(display.confusion_matrix)
-                my_file = f'confusion_matrix_{title_names[j]}'
-                display.figure_.savefig(os.path.join(config.OUTPUT_PATH, f'{my_file}{time_str}.svg'))
+                if config.SAVE_GRAPHS_TO_FILE:
+                    my_file = f'confusion_matrix_{title_names[j]}'
+                    display.figure_.savefig(os.path.join(config.OUTPUT_PATH, f'{my_file}{time_str}.svg'))
                 j += 1
             plt.show()
     else:
@@ -615,43 +609,44 @@ def bsoid_svm_py(feats, labels, comp: int = config.compile_CSVs_for_training, ho
         for i in range(len(feats)):
             feats_train, feats_test, labels_train, labels_test = train_test_split(
                 feats[i].T, labels[i].T, test_size=holdout_pct, random_state=config.random_state)
-            logger.info(f'Training SVM on randomly partitioned {(1 - holdout_pct) * 100}% of training data...')
+            logger.info(f'Training SVM on randomly partitioned {(1-holdout_pct)*100}% of training data...')
             clf = SVC(**svm_params)
             clf.fit(feats_train, labels_train)
             classifier.append(clf)
             logger.info(f'Done training SVM mapping {feats_train.shape} features to {labels_train.shape} assignments.')
             logger.info(f'Predicting randomly sampled (non-overlapped) assignments using '
                          f'the remaining {holdout_pct * 100}%...')
-            sc = cross_val_score(classifier, feats_test, labels_test, cv=cv_it,
-                                 n_jobs=-1)  # TODO: low: `sc` unused variable
+            # sc = cross_val_score(classifier, feats_test, labels_test, cv=cv_it, n_jobs=config.crossvalidation_n_jobs)  # TODO: low: `sc` unused variable
+
             time_str = time.strftime("_%Y%m%d_%H%M")
-            if config.PLOT_TRAINING:
+            if config.PLOT_GRAPHS:
                 np.set_printoptions(precision=2)
                 titles_options = [("Non-normalized confusion matrix", None),
                                   ("Normalized confusion matrix", 'true')]
                 j = 0
                 title_names = ["counts", "norm"]
                 for title, normalize in titles_options:
-                    display = plot_confusion_matrix(classifier, feats_test, labels_test,
-                                                    cmap=plt.cm.Blues, normalize=normalize)
+                    display = plot_confusion_matrix(classifier, feats_test, labels_test, cmap=plt.cm.Blues, normalize=normalize)
                     display.ax_.set_title(title)
                     print(title)
                     print(display.confusion_matrix)
-                    my_file = f'confusion_matrix_clf{i}_{title_names[j]}'
-                    display.figure_.savefig(os.path.join(config.OUTPUT_PATH, f'{my_file}{time_str}.svg'))
+                    if config.SAVE_GRAPHS_TO_FILE:
+                        my_file = f'confusion_matrix_clf{i}_{title_names[j]}'
+                        visuals.save_graph_to_file(display.figure_, my_file)
                     j += 1
                 plt.show()
     logger.info('Scored cross-validated SVM performance.')  # .format(feats_train.shape, labels_train.shape))  # TODO: low: .format() called but variables never used
     return classifier, scores
 
 
+########################################################################################################################
 ### Legacy functions -- keep them for now
 
 def bsoid_nn_voc(feats, labels, comp: int = config.compile_CSVs_for_training, hldout: float = config.holdout_percent, cv_it=config.crossvalidation_k, mlp_params=config.MLP_PARAMS):
     # WARNING: DEPRECATION IMMINENT
     replacement_func = train_mlp_classifier_voc
     logger.warn(f'This function will be deprecated in the future. If you still need this function to use, '
-                  f'think about using {replacement_func.__qualname__} instead. Caller = {inspect.stack()[1][3]}.')
+                f'think about using {replacement_func.__qualname__} instead. Caller = {inspect.stack()[1][3]}.')
     return replacement_func(feats, labels, comp, hldout, cv_it, mlp_params)
 def bsoid_gmm_pyvoc(trained_tsne_array, comp=config.compile_CSVs_for_training, emgmm_params=config.EMGMM_PARAMS) -> np.ndarray:
     replacement_func = train_emgmm_with_learned_tsne_space
@@ -679,33 +674,50 @@ def bsoid_feats_umapapp(data: list, fps: int = config.video_fps) -> Tuple:
 :return classifier: obj, MLP classifier
 :return scores: 1D array, cross-validated accuracy
 """
-def main_py(train_folders: list):
+def main_py(*args, **kwargs):
+    """ *** DEPRECATION WARNING ***
+    Only remove after README is updated. """
+    replacement_func = py__get_data_train_TSNE_then_GMM_then_SVM_then_return_EVERYTHING
+    err = f'Use `{replacement_func.__qualname__}` instead'
+    logger.error(err)
+    raise DeprecationWarning(err)
+@config.cfig_log_entry_exit(logger)
+def py__get_data_train_TSNE_then_GMM_then_SVM_then_return_EVERYTHING(train_folders: list):
     if not isinstance(train_folders, list):
         raise ValueError(f'`train_folders` arg was expected to be list but instead found '
                          f'type: {type(train_folders)} (value:  {train_folders}')
+    if len(train_folders) == 0:
+        zero_train_folders_error = f''  # TODO
+        logger.error(zero_train_folders_error)
+        raise ValueError(zero_train_folders_error)
+
     # Get data
     filenames, training_data, perc_rect = likelihoodprocessing.import_csvs_data_from_folders_in_BASEPATH_and_process_data(train_folders)
     if len(filenames) == 0:
-        raise ValueError('Zero training folders were specified. Check your config file!!!!')
+        zero_folders_error = f'{inspect.stack()[0][3]}:Zero training folders were specified. Check your config file!!!! filenames = {filenames}.'
+        logger.error(zero_folders_error)
+        raise ValueError(zero_folders_error)
     if len(filenames[0]) == 0:
-        logger.error('train.py::main()::Zero filenames were found.')
-        raise ValueError(f'UNEXPECTEDLY ZERO FILES. ARE YOU SURE BASE_PATH IS SET CORRECTLY? OR GLOB PATH CHECKING MAY NEED SOME WORK')  # TODO: clarify
+        zero_filenames_error = f'{inspect.stack()[0][3]}:Zero file names were found. filenames = {filenames}.'
+        logger.error(zero_filenames_error)
+        raise ValueError(zero_filenames_error)
 
     # Train TSNE
     features_10fps, features_10fps_scaled, trained_tsne_list, scaler = bsoid_tsne_py(training_data)
 
     # Train GMM
-    # gmm_assignments = bsoid_gmm_pyvoc(trained_tsne)  # replaced with below
-    gmm_assignments = train_emgmm_with_learned_tsne_space(trained_tsne_list)
+    gmm_assignments = train_emgmm_with_learned_tsne_space(trained_tsne_list)  # gmm_assignments = bsoid_gmm_pyvoc(trained_tsne)  # replaced with below
 
     # Train SVM
     classifier, scores = bsoid_svm_py(features_10fps_scaled, gmm_assignments)
 
     # Plot to view progress if necessary
-    if config.PLOT_TRAINING:
-        visuals.plot_classes_EMGMM_assignments(trained_tsne_list, gmm_assignments, True)  # TODO: HIGH: save fig to file is a magic variable
+    logger.debug(f'Enter GRAPH PLOTTING section of {inspect.stack()[0][3]}')
+    if config.PLOT_GRAPHS:
+        visuals.plot_classes_EMGMM_assignments(trained_tsne_list, gmm_assignments, config.SAVE_GRAPHS_TO_FILE)  # TODO: HIGH: save fig to file is a magic variable
         visuals.plot_accuracy_SVM(scores)
         visuals.plot_accuracy_SVM(features_10fps, gmm_assignments)
+    logger.debug(f'Exiting GRAPH PLOTTING section of {inspect.stack()[0][3]}')
     return features_10fps, trained_tsne_list, scaler, gmm_assignments, classifier, scores
 
 
@@ -726,9 +738,11 @@ def main_umap(train_folders: list):
     nn_classifier, scores, nn_assignments = bsoid_nn_appumap(features_10fps, soft_assignments)
 
     if config.PLOT_GRAPHS:
-        fig1 = visuals.plot_classes_bsoidumap(umap_embeddings[hdb_assignments >= 0], hdb_assignments[hdb_assignments >= 0])
-        my_file1 = 'hdb_soft_assignments'
-        fig1.savefig(os.path.join(config.OUTPUT_PATH, f'{my_file1}{time_str}.svg'))  # fig1.savefig(os.path.join(config.OUTPUT_PATH, str.join('', (my_file1, time_str, '.svg'))))
+        fig = visuals.plot_classes_bsoidumap(umap_embeddings[hdb_assignments >= 0], hdb_assignments[hdb_assignments >= 0])
+        if config.SAVE_GRAPHS_TO_FILE:
+            fig_filename_prefix = 'hdb_soft_assignments'
+            fig_filename = f'{fig_filename_prefix}{time_str}'  # fig1.savefig(os.path.join(config.OUTPUT_PATH, str.join('', (my_file1, time_str, '.svg'))))
+            visuals.save_graph_to_file(fig, fig_filename)
         visuals.plot_accuracy_umap(scores)
 
     return features_10fps, features_10fps_scaled, umap_embeddings, hdb_assignments, soft_assignments, soft_clusters, nn_classifier, scores, nn_assignments
@@ -737,7 +751,7 @@ def main_umap(train_folders: list):
 def main_voc(train_folders: list):
     if not isinstance(train_folders, list):
         raise ValueError(f'`train_folders` arg was expected to be list but instead found '
-                         f'type: {type(train_folders)} (value:  {train_folders}')
+                         f'type: {type(train_folders)} (value:  {train_folders}).')
 
     file_names, training_data, perc_rect = likelihoodprocessing.import_csvs_data_from_folders_in_BASEPATH_and_process_data(train_folders)
 
@@ -750,7 +764,7 @@ def main_voc(train_folders: list):
 
     # Train classifier
     classifier, scores = train_mlp_classifier_voc(features_10fps, gmm_assignments)
-    if config.PLOT_TRAINING:
+    if config.PLOT_GRAPHS:
         visuals.plot_classes_bsoidvoc(trained_tsne, gmm_assignments)
         visuals.plot_accuracy_bsoidvoc(scores)
         visuals.plot_feats_bsoidvoc(features_10fps, gmm_assignments)
@@ -758,5 +772,5 @@ def main_voc(train_folders: list):
 
 
 if __name__ == '__main__':
-    main_py(config.TRAIN_FOLDERS)
+    py__get_data_train_TSNE_then_GMM_then_SVM_then_return_EVERYTHING(config.TRAIN_FOLDERS)  # originally: main()
     pass

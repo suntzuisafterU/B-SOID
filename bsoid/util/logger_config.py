@@ -122,6 +122,20 @@ def decorator_example(func):
     return function_wrapper
 
 
+def log_entry_exit(logger=None):
+    """Meta decorator. If used as deco., then must have argument of logger for it to be useful. Otherwise, does nothing."""
+    def decorator(func):
+        def function_wrapper(*args, **kwargs):
+            # create_generic_logger()
+            if logger:
+                logger.debug(f'Now entering: {func.__qualname__}.')
+            result = func(*args, *kwargs)
+            if logger:
+                logger.debug(f'Now exiting: {func.__qualname__}.')
+            return result
+        return function_wrapper
+    return decorator
+
 if __name__ == '__main__':
     # logger = create_generic_logger(__name__)
     # logger.debug(f'Debugging stuff')  # TODO
