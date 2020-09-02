@@ -10,6 +10,7 @@ from mpl_toolkits.mplot3d import Axes3D  # Despite "unused", this import MUST st
 from typing import Tuple
 import inspect
 import os
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sn
@@ -25,18 +26,24 @@ TM = NotImplementedError('TODO: HIGH: The source of TM has not been determined. 
 
 #######################################################################################################################
 @config.cfig_log_entry_exit(logger)
-def plot_tsne_in_3d(data):  # TODO: HIGH: consider reducing the total data when plotting because, if TONS of data is plotted in 3d, it can be very laggy when viewing and especially rotating
+def plot_tsne_in_3d(data, **kwargs):  # TODO: HIGH: consider reducing the total data when plotting because, if TONS of data is plotted in 3d, it can be very laggy when viewing and especially rotating
     """
     Plot trained tsne
     :param data: trained_tsne TODO: expand desc. and include type
     """
+    # TODO: low: reduce
+    # Parse kwargs
+    x_label = kwargs.get('x_label', 'Dim. 1')
+    y_label = kwargs.get('y_label', 'Dim. 2')
+    z_label = kwargs.get('z_label', 'Dim. 3')
+    # Produce graph
     tsne_x, tsne_y, tsne_z = data[:, 0], data[:, 1], data[:, 2]
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     ax.scatter(tsne_x, tsne_y, tsne_z, s=1, marker='o', alpha=0.8)
-    ax.set_xlabel('Dim. 1')
-    ax.set_ylabel('Dim. 2')
-    ax.set_zlabel('Dim. 3')
+    ax.set_xlabel(x_label)
+    ax.set_ylabel(y_label)
+    ax.set_zlabel(z_label)
     ax.view_init(70, 135)
     plt.title('Embedding of the training set by t-SNE')
     plt.show()
@@ -58,21 +65,21 @@ def plot_duration_histogram(lengths, grp, save_fig_to_file: bool = True, fig_fil
         ax.hist(x, density=True, color=colormap[i], alpha=0.3, label=f'Group {i}')
     plt.legend(loc='Upper right')
     plt.show()
-    timestr = time.strftime("%Y%m%d_%H%M")  # TODO: low: move this to config file
+    time_str = time.strftime("%Y%m%d_%H%M")  # TODO: low: move this to config file
     if save_fig_to_file:
-        fig_file_name = f'{fig_file_prefix}_{timestr}'
+        fig_file_name = f'{fig_file_prefix}_{time_str}'
         save_graph_to_file(fig, fig_file_name)
     return fig
 #######################################################################################################################
 def plot_tmat(transition_matrix: np.ndarray, fps: int, save_fig_to_file=True, fig_file_prefix='transition_matrix'):
     """Original implementation as plot_tmat()"""
     replacement_func = plot_transition_matrix
-    warning_msg = f'This function, plot_tmat(), will be deprecated soon. Instead, use: ' \
-              f'{replacement_func.__qualname__}.'
+    warning_msg = f'This function, plot_tmat(), will be deprecated soon. Instead, use: '\
+                  f'{replacement_func.__qualname__}.'
     logger.warning(warning_msg)
     return replacement_func(transition_matrix, fps, save_fig_to_file, fig_file_prefix)
 
-def plot_transition_matrix(transition_matrix: np.ndarray, fps, save_fig_to_file, fig_file_prefix):
+def plot_transition_matrix(transition_matrix: np.ndarray, fps, save_fig_to_file, fig_file_prefix) -> object:
     """
     New interface for original function named plot_tmat()
         TODO: low: purpose
@@ -80,8 +87,14 @@ def plot_transition_matrix(transition_matrix: np.ndarray, fps, save_fig_to_file,
     :param fps: scalar, camera frame-rate
     :param save_fig_to_file: bool,
     :param fig_file_prefix: str,
-    :return TODO: low
+    :return (matplotlib.figure.Figure)
     """
+    if not isinstance(transition_matrix, np.ndarray):
+        err = f'Expected transition matrix to be of type numpy.ndarray but '\
+              f'instead found: {type(transition_matrix)}.'
+        logger.error(err)
+        raise TypeError(err)
+
     fig = plt.figure()
     fig.suptitle(f"Transition matrix of {transition_matrix.shape[0]} behaviors")
     sn.heatmap(transition_matrix, annot=True)
@@ -89,15 +102,22 @@ def plot_transition_matrix(transition_matrix: np.ndarray, fps, save_fig_to_file,
     plt.ylabel("Current frame behavior")
     plt.show()
     if save_fig_to_file:
-        save_graph_to_file(fig, f'{fig_file_prefix}{fps}')
+        fig_file_name = f'{fig_file_prefix}{fps}'
+        save_graph_to_file(fig, fig_file_name)
     return fig
 
 #######################################################################################################################
 def plot_classes_EMGMM_assignments(data, assignments, save_fig_to_file: bool, fig_file_prefix='train_assignments'):
-    """ Plot trained tsne for EM-GMM assignments
+    """ Plot trained TSNE for EM-GMM assignments
     :param data: 2D array, trained_tsne
     :param assignments: 1D array, EM-GMM assignments
     """
+    if not isinstance(data, np.ndarray):
+        err = f'Expected `data` to be of type numpy.ndarray but '\
+              f'instead found: {type(data)} (value = {data}).'
+        logger.error(err)
+        raise TypeError(err)
+
     time_str = time.strftime("%Y%m%d_%H%M")
     uk = list(np.unique(assignments))
     R = np.linspace(0, 1, len(uk))
@@ -117,7 +137,9 @@ def plot_classes_EMGMM_assignments(data, assignments, save_fig_to_file: bool, fi
     plt.show()
     # my_file = 'train_assignments'
     if save_fig_to_file:
-        fig.savefig(os.path.join(config.OUTPUT_PATH, f'{fig_file_prefix}_{time_str}.svg'))
+        file_name = f'{fig_file_prefix}_{time_str}'  # fig.savefig(os.path.join(config.OUTPUT_PATH, f'{fig_file_prefix}_{time_str}.svg'))
+        save_graph_to_file(fig, file_name)
+
 # def plot_classes_app(data, assignments):
 #     """ Plot umap_embeddings for HDBSCAN assignments
 #     :param data: 2D array, umap_embeddings
@@ -146,8 +168,12 @@ def plot_classes_EMGMM_assignments(data, assignments, save_fig_to_file: bool, fi
 #
 #     return fig, plt
 
-def plot_classes_bsoidvoc(data, assignments) -> None:
-    return plot_classes_EMGMM_assignments(data, assignments, save_fig_to_file=True)
+def plot_classes_bsoidvoc(data, assignments, save_fig_to_file=config.SAVE_GRAPHS_TO_FILE) -> None:
+    replacement_func = plot_classes_EMGMM_assignments
+    warning = f'This function, {inspect.stack()[0][3]}, will be deprecated and instead replaced with: ' \
+              f'{replacement_func.__qualname__}. Find caller, {inspect.stack()[1][3]}, and replace use.'
+    logger.warning(warning)
+    return replacement_func(data, assignments, save_fig_to_file=save_fig_to_file)
 # def plot_classes_bsoidpy(data, assignments) -> None:
 #     replacement_func = plot_classes_EMGMM_assignments
 #     warn = f'This function will be deprecated. Instead, replace its use with: {replacement_func.__qualname__}'
@@ -182,7 +208,8 @@ def plot_classes_bsoidapp(data, assignments) -> Tuple:
 def plot_classes_bsoidumap(data, assignments) -> object:
     """ Plot umap_embeddings for HDBSCAN assignments
     Function copied from the original bsoid_umapimplementation
-    :param data: 2D array, umap_embeddings
+    :param data:
+    2D array, umap_embeddings
     :param assignments: 1D array, HDBSCAN assignments
     """
     uk = list(np.unique(assignments))
@@ -232,8 +259,8 @@ def plot_accuracy_MLP(scores, show_plot: bool, save_fig_to_file: bool, fig_file_
         plt.show()
     if save_fig_to_file:
         # fig.savefig(os.path.join(config.OUTPUT_PATH, ))
-        save_graph_to_file(fig, f'{fig_file_prefix}_{time_str}')
-
+        fig_file_name = f'{fig_file_prefix}_{time_str}'
+        save_graph_to_file(fig, fig_file_name)
     return fig, plt
 def plot_accuracy_bsoidvoc(scores) -> None:  # (MLP)
     # fig = plt.figure(facecolor='w', edgecolor='k')
@@ -277,9 +304,9 @@ def plot_accuracy_bsoidumap(scores) -> None:
     # my_file = 'clf_scores'
     # fig.savefig(os.path.join(OUTPUT_PATH, f'{fig_file_prefix}_{timestr}.svg'))
     plot_accuracy_MLP(scores, show_plot=True, save_fig_to_file=True)
+@config.cfig_log_entry_exit(logger)
 def plot_accuracy_bsoidpy(scores) -> None:
-    """ *** NOTE: Do not alter or remove this function. It's a trace
-             back to the original bsoid_py function. First ensure that the new function works, then jettison garbage"""
+    """ ** DEPRECATION WARNING ** """
     # fig = plt.figure(facecolor='w', edgecolor='k')
     # fig.suptitle(f"Performance on {HLDOUT * 100} % data")
     # ax = fig.add_subplot(111)
@@ -571,20 +598,24 @@ def plot_feats_bsoidvoc(feats: list, labels: list) -> None:
                     if i < len(np.unique(labels)) - 1:
                         plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
             if config.SAVE_GRAPHS_TO_FILE:
-                # my_file = f'feat{j + 1}_hist'; fig.savefig(os.path.join(config.OUTPUT_PATH, str.join('', (my_file, '_'+timestr, '.svg'))))
-                fig_file_name = f'feat{j + 1}_hist_{timestr}'
+                fig_file_name = f'feat{j + 1}_hist_{timestr}'  # my_file = f'feat{j + 1}_hist'; fig.savefig(os.path.join(config.OUTPUT_PATH, str.join('', (my_file, '_'+timestr, '.svg'))))
                 save_graph_to_file(fig, fig_file_name)
         plt.show()
 
 
-def save_graph_to_file(figure, file_title, file_type_extension='svg') -> None:
+def save_graph_to_file(figure, file_title, file_type_extension='svg', alternate_save_path: str = None) -> None:
     """
 
     :param figure: (object) a figure object. Must have a savefig() function
     :param file_title: (str)
+    :param alternate_save_path:
     :param file_type_extension: (str)
     :return:
     """
+    if alternate_save_path and not os.path.isdir(alternate_save_path):
+        path_not_exists_err = f'Alternate save file path does not exist. Cannot save image to path: {alternate_save_path}.'
+        logger.error(path_not_exists_err)
+        raise ValueError(path_not_exists_err)
     if not hasattr(figure, 'savefig'):
         cannot_save_input_figure_error = f'Figure is not savable with current interface. repr(figure) = {repr(figure)}.'
         logger.error(cannot_save_input_figure_error)
