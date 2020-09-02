@@ -88,11 +88,12 @@ def plot_transition_matrix(transition_matrix: np.ndarray, fps, save_fig_to_file,
     :param fig_file_prefix: str,
     :return (matplotlib.figure.Figure)
     """
-    if not isinstance(transition_matrix, np.ndarray):
-        err = f'Expected transition matrix to be of type numpy.ndarray but '\
-              f'instead found: {type(transition_matrix)}.'
-        logger.error(err)
-        raise TypeError(err)
+    # # TODO: HIGH: Important: type checking was implemented; however, sometimes DataFrames are input into this function so type checking disabled for now
+    # if not isinstance(transition_matrix, np.ndarray):
+    #     err = f'Expected transition matrix to be of type numpy.ndarray but '\
+    #           f'instead found: {type(transition_matrix)}.'
+    #     logger.error(err)
+    #     raise TypeError(err)
 
     fig = plt.figure()
     fig.suptitle(f"Transition matrix of {transition_matrix.shape[0]} behaviors")
