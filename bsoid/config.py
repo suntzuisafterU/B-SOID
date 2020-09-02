@@ -36,7 +36,6 @@ default_output_path = os.path.join(BSOID_BASE_PROJECT_PATH, 'output')
 runtime_timestr = time.strftime("_%Y%m%d_%H%M")
 # Set loggers default vars
 default_log_folder_path = Path(BSOID_BASE_PROJECT_PATH, 'logs').absolute()
-# logging.info(f'default_log_folder_path:::{default_log_folder_path}')
 default_log_file_name = 'default.log'
 # set default config file name
 config_file_name = 'config.ini'
