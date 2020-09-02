@@ -114,6 +114,37 @@ def import_csvs_data_from_folders_in_BASEPATH_and_process_data(folders: list) ->
     data_array: np.ndarray = np.array(data_list)
     logger.info(f'Processed a total of {len(data_list)} CSV files and compiled into a {data_array.shape} data list.')
     return file_names_list, data_array, perc_rect_list
+# import_folders_app
+def import_folders_app(ost_project_path, input_folders_list: list, BODYPARTS):
+    """
+    Import multiple folders containing .csv files and process them
+    :param input_folders_list: list, data folders
+    :return filenames: list, data filenames
+    :return data: list, filtered csv data
+    :return perc_rect_li: list, percent filtered
+    """
+    fldrs = []
+    filenames = []
+    rawdata_li = []
+    data_li = []
+    perc_rect_li = []
+    for idx_folder, folder in enumerate(input_folders_list):  # Loop through folders
+        f = get_filenames_csvs_from_folders_recursively_in_basepath(ost_project_path, folder)
+        for j, filename in enumerate(f):
+            logger.debug(f'Importing CSV file {idx_filename+1} from folder {idx_folder+1}')
+            curr_df = pd.read_csv(filename, low_memory=False)
+            curr_df_filt, perc_rect = adaptive_filter_data_app(curr_df, BODYPARTS)
+            logger.info('Done preprocessing (x,y) from file {}, folder {}.'.format(j + 1, idx_folder + 1))
+            rawdata_li.append(curr_df)
+            perc_rect_li.append(perc_rect)
+            data_li.append(curr_df_filt)
+        fldrs.append(folder)
+        filenames.append(f)
+        logger.info(f'Processed {len(filenames_found_in_current_folder)} CSV files from folder: {folder}')
+    data = np.array(data_li)
+    logger.info('Processed a total of {} CSV files, and compiled into a {} data list.'.format(len(data_li),
+                                                                                               data.shape))
+    return fldrs, filenames, data, perc_rect_li
 
 
 def adaptive_filter_data(df_input: pd.DataFrame) -> Tuple[np.ndarray, List]:
@@ -169,6 +200,53 @@ def adaptive_filter_data(df_input: pd.DataFrame) -> Tuple[np.ndarray, List]:
 
     return currdf_filt, perc_rect
 
+
+def adaptive_filter_data_app(currdf: object, BODYPARTS):  # TODO: rename function for clarity?
+    """
+    TODO: purpose
+    :param currdf: object, csv data frame
+    :return currdf_filt: 2D array, filtered data
+    :return perc_rect: 1D array, percent filtered per BODYPART
+    """
+    lIndex = []
+    xIndex = []
+    yIndex = []
+    currdf = np.array(currdf[1:])
+    for header in BODYPARTS:
+        if currdf[0][header + 1] == "likelihood":
+            lIndex.append(header)
+        elif currdf[0][header + 1] == "x":
+            xIndex.append(header)
+        elif currdf[0][header + 1] == "y":
+            yIndex.append(header)
+    logging.info('Extracting likelihood value...')
+    curr_df1 = currdf[:, 1:]
+    datax = curr_df1[1:, np.array(xIndex)]
+    datay = curr_df1[1:, np.array(yIndex)]
+    data_lh = curr_df1[1:, np.array(lIndex)]
+    currdf_filt = np.zeros((datax.shape[0] - 1, (datax.shape[1]) * 2))
+    perc_rect = []
+    logging.info('Computing data threshold to forward fill any sub-threshold (x,y)...')
+    for i in range(data_lh.shape[1]):
+        perc_rect.append(0)
+    for x in tqdm(range(data_lh.shape[1])):
+        a, b = np.histogram(data_lh[1:, x].astype(np.float))
+        rise_a = np.where(np.diff(a) >= 0)
+        if rise_a[0][0] > 1:
+            llh = b[rise_a[0][0]]
+        else:
+            llh = b[rise_a[0][1]]
+        data_lh_float = data_lh[1:, x].astype(np.float)
+        perc_rect[x] = np.sum(data_lh_float < llh) / data_lh.shape[0]
+        currdf_filt[0, (2 * x):(2 * x + 2)] = np.hstack([datax[0, x], datay[0, x]])
+        for i in range(1, data_lh.shape[0] - 1):
+            if data_lh_float[i] < llh:
+                currdf_filt[i, (2 * x):(2 * x + 2)] = currdf_filt[i - 1, (2 * x):(2 * x + 2)]
+            else:
+                currdf_filt[i, (2 * x):(2 * x + 2)] = np.hstack([datax[i, x], datay[i, x]])
+    currdf_filt = np.array(currdf_filt)
+    currdf_filt = currdf_filt.astype(np.float)
+    return currdf_filt, perc_rect
 
 # Legacy functions. Will be potentially deleted later.
 def main(folders: List[str]) -> None:
