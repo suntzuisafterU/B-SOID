@@ -6,7 +6,7 @@ Visualization functions and saving plots.
 #   Whether or not we need to ensure that the output of file timestamps needs to be exactly current should be discussed.
 
 from matplotlib.axes._axes import _log as matplotlib_axes_logger
-from mpl_toolkits.mplot3d import Axes3D  # Despite "unused", this import MUST stay for 3d plotting to work. PLO!
+from mpl_toolkits.mplot3d import Axes3D  # Despite being "unused", this import MUST stay for 3d plotting to work. PLO!
 from typing import Tuple
 import inspect
 import os
@@ -17,7 +17,6 @@ import seaborn as sn
 import time
 
 from bsoid import config
-from bsoid.util import visuals
 
 logger = config.initialize_logger(__name__)
 matplotlib_axes_logger.setLevel('ERROR')
@@ -436,7 +435,7 @@ def plot_feats_bsoidUMAPAPP(feats: list, labels: list) -> None:
                         plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
             if config.SAVE_GRAPHS_TO_FILE:
                 fig_file_name = f'feat{j + 1}_hist_{time_str}'
-                visuals.save_graph_to_file(fig, fig_file_name)  # fig.savefig(os.path.join(config.OUTPUT_PATH, f'{my_file}_{time_str}.svg'))
+                save_graph_to_file(fig, fig_file_name)  # fig.savefig(os.path.join(config.OUTPUT_PATH, f'{my_file}_{time_str}.svg'))
 
         plt.show()
 @config.cfig_log_entry_exit(logger)
