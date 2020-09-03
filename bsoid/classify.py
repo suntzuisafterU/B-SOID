@@ -482,7 +482,7 @@ def main_py(predict_folders: List[str], scaler, fps, behv_model) -> Tuple[np.nda
         labels_fslow, 1D array, label/100ms
         labels_fshigh, 1D array, label/frame
     """
-    filenames, data_new, perc_rect = likelihoodprocessing.import_csvs_data_from_folders_in_BASEPATH_and_process_data(predict_folders)
+    filenames, data_new, perc_rect = likelihoodprocessing.import_csvs_data_from_folders_in_PROJECTPATH_and_process_data(predict_folders)
     features_new = bsoid_extract_py(data_new)
     labels_fs_low: List = bsoid_predict_py(features_new, scaler, behv_model)
     labels_fs_high: List = bsoid_frameshift_py(data_new, scaler, fps, behv_model)
@@ -513,7 +513,7 @@ def main_umap(predict_folders: List[str], fps, clf) -> Tuple[np.ndarray, List]:
     :return fs_labels, 1D array, label/frame
     """
 
-    filenames, data_new, perc_rect = likelihoodprocessing.import_csvs_data_from_folders_in_BASEPATH_and_process_data(predict_folders)
+    filenames, data_new, perc_rect = likelihoodprocessing.import_csvs_data_from_folders_in_PROJECTPATH_and_process_data(predict_folders)
 
     labels_fs: List = bsoid_frameshift_umap(data_new, fps, clf)
 
@@ -538,7 +538,7 @@ def main_voc(predict_folders: List[str], fps, behv_model) -> Tuple[np.ndarray, A
     :return labels_fshigh, 1D array, label/frame
     """
 
-    filenames, data_new, perc_rect = likelihoodprocessing.import_csvs_data_from_folders_in_BASEPATH_and_process_data(predict_folders)
+    filenames, data_new, perc_rect = likelihoodprocessing.import_csvs_data_from_folders_in_PROJECTPATH_and_process_data(predict_folders)
 
     features_new = bsoid_extract_voc(data_new)
     labels_fs_low = bsoid_predict_umapvoc(features_new, behv_model)

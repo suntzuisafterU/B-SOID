@@ -34,6 +34,7 @@ def build_py(train_folders) -> Tuple[Any, Any, Any, Any, Any, Any]:
     time_str = time.strftime("_%Y%m%d_%H%M")
 
     features_10fps, trained_tsne, scaler_object, gmm_assignments, classifier, scores = train.py__get_data_train_TSNE_then_GMM_then_SVM_then_return_EVERYTHING(train_folders)
+
     alldata = np.concatenate([features_10fps.T, trained_tsne, gmm_assignments.reshape(len(gmm_assignments), 1)], axis=1)
     multi_index_columns = pd.MultiIndex.from_tuples([
         ('Features', 'Relative snout to forepaws placement'),
@@ -59,6 +60,8 @@ def build_py(train_folders) -> Tuple[Any, Any, Any, Any, Any, Any]:
 
     logger.info(f'{inspect.stack()[0][3]}:Saved stuff...elaborate on this message later. Check build() or something like it.')  # TODO: elaborate on log message
     return features_10fps, trained_tsne, scaler_object, gmm_assignments, classifier, scores
+
+@config.cfig_log_entry_exit(logger)
 def build_umap(train_folders) -> Tuple[Any, Any, Any, Any, Any, Any, Any, Any, Any]:
     """
     :param train_folders: list, folders to build behavioral model on
@@ -90,11 +93,11 @@ def build_umap(train_folders) -> Tuple[Any, Any, Any, Any, Any, Any, Any, Any, A
     umaphdb_data = np.concatenate([umap_embeddings, hdb_assignments.reshape(len(hdb_assignments), 1), soft_assignments.reshape(len(soft_assignments), 1), nn_assignments.reshape(len(nn_assignments), 1)], axis=1)
     multi_index_columns = pd.MultiIndex.from_tuples([
         ('UMAP embeddings', 'Dimension 1'),
-        ('', 'Dimension 2'),
-        ('', 'Dimension 3'),
-        ('HDBSCAN', 'Assignment No.'),
-        ('HDBSCAN*SOFT', 'Assignment No.'),
-        ('Neural Net', 'Assignment No.')],
+        ('',                'Dimension 2'),
+        ('',                'Dimension 3'),
+        ('HDBSCAN',         'Assignment No.'),
+        ('HDBSCAN*SOFT',    'Assignment No.'),
+        ('Neural Net',      'Assignment No.')],
         names=['Type', 'Frame@10Hz'])
     df_umaphdb = pd.DataFrame(umaphdb_data, columns=multi_index_columns)
 
@@ -147,7 +150,7 @@ def build_voc(train_folders) -> Tuple[Any, Any, Any, Any, List]:
     with open(os.path.join(OUTPUT_PATH, f'bsoid_{config.MODEL_NAME}.sav'), 'wb') as f:
         joblib.dump(classifier, f)
 
-    logger.info('Saved.')  # TODO: add specificity to log
+    logger.info(f'Saved.  TODO: add specificity. Function: {inspect.stack()[0][3]}().')  # TODO: add specificity to log
     return f_10fps, trained_tsne, gmm_assignments, classifier, scores
 
 @config.cfig_log_entry_exit(logger)
@@ -166,7 +169,7 @@ def run_py(predict_folders):  # TODO: HIGH: break up this function and rename. T
     with open(os.path.join(OUTPUT_PATH, f'bsoid_{config.MODEL_NAME}.sav'), 'rb') as fr:
         behv_model, scaler = joblib.load(fr)
 
-    data_new, feats_new, labels_fs_low, labels_fs_high = classify.main_py(predict_folders, scaler, VIDEO_FPS, behv_model)
+    data_new, features_new, labels_fs_low, labels_fs_high = classify.main_py(predict_folders, scaler, VIDEO_FPS, behv_model)
     filenames = []
     all_dfs_list: List[pd.DataFrame] = []
     for i, folder in enumerate(predict_folders):  # Loop through folders
@@ -177,8 +180,8 @@ def run_py(predict_folders):  # TODO: HIGH: break up this function and rename. T
             filenames.append(filename)
             all_dfs_list.append(curr_df)
 
-    for i in range(len(feats_new)):
-        all_data = np.concatenate([feats_new[i].T, labels_fs_low[i].reshape(len(labels_fs_low[i]), 1)], axis=1)
+    for i in range(len(features_new)):
+        all_data: np.ndarray = np.concatenate([features_new[i].T, labels_fs_low[i].reshape(len(labels_fs_low[i]), 1)], axis=1)
         multi_index_columns = pd.MultiIndex.from_tuples([
             ('Features', 'Relative snout to forepaws placement'),
             ('', 'Relative snout to hind paws placement'),
@@ -213,11 +216,11 @@ def run_py(predict_folders):  # TODO: HIGH: break up this function and rename. T
         df2 = df2.shift()
         df2.loc[0] = ''
         frames = [df2, all_dfs_list[0]]
-        xyfs_df = pd.concat(frames, axis=1)
+        df_xy_fs = pd.concat(frames, axis=1)
         csvname = os.path.basename(filenames[i]).rpartition('.')[0]
 
         # runlen_df2.to_csv((os.path.join(OUTPUT_PATH, str.join('', ('bsoid_runlen_', str(VIDEO_FPS), 'Hz', timestr, csvname,
-        xyfs_df.to_csv((os.path.join(OUTPUT_PATH, f'bsoid_labels_{VIDEO_FPS}Hz{time_str}{csvname}.csv')), index=True, chunksize=10000, encoding='utf-8')
+        df_xy_fs.to_csv((os.path.join(OUTPUT_PATH, f'bsoid_labels_{VIDEO_FPS}Hz{time_str}{csvname}.csv')), index=True, chunksize=10000, encoding='utf-8')
 
         runlen_df2, dur_stats2, df_tm2 = util.statistics.get_runlengths_statistics_transition_matrix_from_labels(labels_fs_high[i])
         runlen_df2.to_csv((os.path.join(OUTPUT_PATH, f'bsoid_runlen_{VIDEO_FPS}Hz{time_str}{csvname}.csv')), index=True, chunksize=10000, encoding='utf-8')
@@ -231,7 +234,7 @@ def run_py(predict_folders):  # TODO: HIGH: break up this function and rename. T
         joblib.dump([labels_fs_low, labels_fs_high], f)
 
     logger.info('All saved. Expand on this info message later.')
-    return data_new, feats_new, labels_fs_low, labels_fs_high
+    return data_new, features_new, labels_fs_low, labels_fs_high
 @config.cfig_log_entry_exit(logger)
 def run_umap(predict_folders) -> Tuple[Any, Any]:
     """
@@ -465,3 +468,5 @@ def test_function_to_build_then_run_voc():
 if __name__ == "__main__":  # py
     # main_py(TRAIN_FOLDERS, PREDICT_FOLDERS)
     test_function_to_build_then_run_py()
+
+#  bsoid_py.main.run(PREDICT_FOLDERS)

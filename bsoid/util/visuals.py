@@ -243,8 +243,7 @@ def plot_accuracy_MLP(scores, show_plot: bool, save_fig_to_file: bool, fig_file_
     # Parse kwargs
     facecolor = kwargs.get('facecolor', 'w')
     edgecolor = kwargs.get('edgecolor', 'k')
-
-    # Plot as specified
+    # Plot as needed
     fig = plt.figure(facecolor=facecolor, edgecolor=edgecolor)
     fig.suptitle(f"Performance on {config.HOLDOUT_PERCENT * 100} % data")
     ax = fig.add_subplot(111)
@@ -254,11 +253,10 @@ def plot_accuracy_MLP(scores, show_plot: bool, save_fig_to_file: bool, fig_file_
     ax.set_xlabel('MLP classifier')
     ax.set_ylabel('Accuracy')
     time_str = time.strftime("%Y%m%d_%H%M")
-
+    # Plot and save as specified
     if show_plot:
         plt.show()
     if save_fig_to_file:
-        # fig.savefig(os.path.join(config.OUTPUT_PATH, ))
         fig_file_name = f'{fig_file_prefix}_{time_str}'
         save_graph_to_file(fig, fig_file_name)
     return fig, plt
@@ -522,6 +520,7 @@ def plot_feats_bsoidpy(feats, labels) -> None:
             my_file = f'feat{j + 1}_hist'
             fig.savefig(os.path.join(config.OUTPUT_PATH, f'{my_file}_{time_str}.svg'))
         plt.show()
+@config.cfig_log_entry_exit(logger)
 def plot_feats_bsoidvoc(feats: list, labels: list) -> None:
     """
     :param feats: list, features for multiple sessions

@@ -35,8 +35,9 @@ logger = config.initialize_logger(__name__)
 
 
 ########################################################################################################################
-
+@config.cfig_log_entry_exit(logger)
 def train_umap_unsupervised_with_xy_features_umapapp(data: list, fps: int = config.VIDEO_FPS) -> Tuple:
+    # TODO: high: ensure that the final logic matches original functions..ensure no renaming side-effects occurred
     """
     Trains UMAP (unsupervised) given a set of features based on (x,y) positions
     :param data: list of 3D array
@@ -48,7 +49,7 @@ def train_umap_unsupervised_with_xy_features_umapapp(data: list, fps: int = conf
     win_len = np.int(np.round(0.05 / (1 / fps)) * 2 - 1)
     features = []
     for m in range(len(data)):
-        logger.info(f'Extracting features from CSV file {m + 1}...')
+        logger.debug(f'{inspect.stack()[0][3]}:Extracting features from CSV file {m + 1}...')
         data_range = len(data[m])
         dis_r, dxy_r = [], []
         for r in range(data_range):
@@ -63,6 +64,7 @@ def train_umap_unsupervised_with_xy_features_umapapp(data: list, fps: int = conf
             dxy_r.append(dxy)
         dis_r = np.array(dis_r)
         dxy_r = np.array(dxy_r)
+
         ang_smth, dis_smth, dxy_smth = [], [], []
         dxy_eu = np.zeros([data_range, dxy_r.shape[1]])
         ang = np.zeros([data_range - 1, dxy_r.shape[1]])
@@ -98,29 +100,30 @@ def train_umap_unsupervised_with_xy_features_umapapp(data: list, fps: int = conf
                                                            axis=1))).reshape(len(features[0]), 1)), axis=1)
             else:
                 features_n = np.hstack((np.mean((features[n][0:dxy_smth.shape[0], range(k - round(fps / 10), k)]), axis=1),
-                                    np.sum((features[n][dxy_smth.shape[0]:features[n].shape[0],
-                                            range(k - round(fps / 10), k)]), axis=1))).reshape(len(features[0]), 1)
+                                        np.sum((features[n][dxy_smth.shape[0]:features[n].shape[0],
+                                                range(k - round(fps / 10), k)]), axis=1))).reshape(len(features[0]), 1)
         logger.info(f'{inspect.stack()[0][3]}::Done integrating features into 100ms bins from CSV file {n+1}.')
+
         if n > 0:  # For any index value of n that isn't the very first run
             f_10fps = np.concatenate((f_10fps, features_n), axis=1)
             scaler = StandardScaler()
             scaler.fit(features_n.T)
-            feats1_sc = scaler.transform(features_n.T).T
-            f_10fps_sc = np.concatenate((f_10fps_sc, feats1_sc), axis=1)
+            features_n_scaled = scaler.transform(features_n.T).T
+            f_10fps_sc = np.concatenate((f_10fps_sc, features_n_scaled), axis=1)
         else:
             f_10fps = features_n
             scaler = StandardScaler()
             scaler.fit(features_n.T)
-            feats1_sc = scaler.transform(features_n.T).T
-            f_10fps_sc = feats1_sc  # scaling is important as I've seen wildly different stdev/feat between sessions
+            features_n_scaled = scaler.transform(features_n.T).T
+            f_10fps_sc = features_n_scaled  # scaling is important as I've seen wildly different stdev/feat between sessions
     logger.debug(f'{inspect.stack()[0][3]: Now exiting.}')
     return f_10fps, f_10fps_sc
 
 
-def bsoid_umap_embed_umapapp(f_10fps_sc, umap_params=config.UMAP_PARAMS) -> Tuple[umap.UMAP, Any]:
+def bsoid_umap_embed_umapapp(features_10fps_scaled, umap_params=config.UMAP_PARAMS) -> Tuple[umap.UMAP, Any]:
     """
     Trains UMAP (unsupervised) given a set of features based on (x,y) positions
-    :param f_10fps_sc: 2D array, standardized/session features
+    :param features_10fps_scaled: (originally 'f_10fps_sc') 2D array, standardized/session features
     :param umap_params: dict, UMAP params in GLOBAL_CONFIG
     :return trained_umap: object, trained UMAP transformer
     :return umap_embeddings: 2D array, embedded UMAP space
@@ -138,19 +141,19 @@ def bsoid_umap_embed_umapapp(f_10fps_sc, umap_params=config.UMAP_PARAMS) -> Tupl
     ################ FastICA potentially useful for demixing signal ################
     # lowd_feats = FastICA(n_components=10, random_state=23).fit_transform(f_10fps.T)
     # feats_train = lowd_feats
-    features_train = f_10fps_sc.T
-    logger.info(f'Transforming all {features_train.shape[0]} instances '
-                f'from {features_train.shape[1]} D into {umap_params.get("n_components")} D')
+    features_train = features_10fps_scaled.T
+    logger.debug(f'{inspect.stack()[0][3]}:Transforming all {features_train.shape[0]} instances '
+                 f'from {features_train.shape[1]} D into {umap_params.get("n_components")} D')
     trained_umap = umap.UMAP(n_neighbors=int(round(np.sqrt(features_train.shape[0]))),  # power law
                              **umap_params).fit(features_train)
     umap_embeddings = trained_umap.embedding_
-    logger.info(f'Done non-linear transformation with UMAP from {features_train.shape[1]} D '
-                f'into {umap_embeddings.shape[1]} D.')
+    logger.debug(f'{inspect.stack()[0][3]}:Done non-linear transformation with UMAP from {features_train.shape[1]} D '
+                 f'into {umap_embeddings.shape[1]} D.')
     logger.debug(f'{inspect.stack()[0][3]}: now exiting.')
     return trained_umap, umap_embeddings
 
 
-def bsoid_hdbscan_umapapp(umap_embeddings, hdbscan_params=config.HDBSCAN_PARAMS):
+def bsoid_hdbscan_umapapp(umap_embeddings, hdbscan_params=config.HDBSCAN_PARAMS) -> Tuple[Any, np.ndarray, Any]:
     """
     Trains HDBSCAN (unsupervised) given learned UMAP space
     :param umap_embeddings: 2D array, embedded UMAP space
@@ -193,35 +196,35 @@ def bsoid_nn_appumap(feats, labels, holdout_pct: float = config.HOLDOUT_PERCENT,
     :return scores: 1D array, cross-validated accuracy
     :return nn_assignments: 1D array, neural net predictions
     """
-    feats_filt = feats[:, labels >= 0]
-    labels_filt = labels[labels >= 0]
-    feats_train, feats_test, labels_train, labels_test = train_test_split(
-        feats_filt.T, labels_filt.T, test_size=holdout_pct, random_state=config.RANDOM_STATE)
+    features_filtered = feats[:, labels >= 0]
+    labels_filtered = labels[labels >= 0]
+    feats_train, feats_test, labels_train, labels_test = train_test_split(features_filtered.T, labels_filtered.T, test_size=holdout_pct, random_state=config.RANDOM_STATE)
     logger.info(f'Training feedforward neural network on randomly '
                 f'partitioned {(1-holdout_pct)*100}% of training data...')
     classifier = MLPClassifier(**mlp_params)
     classifier.fit(feats_train, labels_train)
     clf = MLPClassifier(**mlp_params)
-    clf.fit(feats_filt.T, labels_filt.T)
+    clf.fit(features_filtered.T, labels_filtered.T)
     nn_assignments = clf.predict(feats.T)
     logger.info(f'Done training feedforward neural network mapping {feats_train.shape} features '
-                             f'to {labels_train.shape} assignments.')
+                f'to {labels_train.shape} assignments.')
     scores = cross_val_score(classifier, feats_test, labels_test, cv=cv_it, n_jobs=-1)
     time_str = time.strftime("_%Y%m%d_%H%M")
-    if config.PLOT_GRAPHS:
+
+    if config.PLOT_GRAPHS:  # TODO: low: saving the plot requires the plot to be shown
         np.set_printoptions(precision=2)
         titles_options = [("Non-normalized confusion matrix", None),
                           ("Normalized confusion matrix", 'true')]
-        titlenames = ["counts", "norm"]
+        title_names = ["counts", "norm"]
         j = 0
         for title, normalize in titles_options:
-            disp = plot_confusion_matrix(
-                classifier, feats_test, labels_test, cmap=plt.cm.Blues, normalize=normalize)
+            disp = plot_confusion_matrix(classifier, feats_test, labels_test, cmap=plt.cm.Blues, normalize=normalize)
             disp.ax_.set_title(title)
             print(title)
             print(disp.confusion_matrix)
-            my_file = f'confusion_matrix_{titlenames[j]}'
-            disp.figure_.savefig(os.path.join(config.OUTPUT_PATH, f'{my_file}{time_str}.svg'))
+            if config.SAVE_GRAPHS_TO_FILE:
+                file_name = f'confusion_matrix_{title_names[j]}{time_str}'  # my_file = f'confusion_matrix_{title_names[j]}' # disp.figure_.savefig(os.path.join(config.OUTPUT_PATH, f'{my_file}{time_str}.svg'))
+                visuals.save_graph_to_file(disp.figure_, file_name)
             j += 1
         plt.show()
     logger.info(f'Scored cross-validated feedforward neural network performance. Features shape: {feats_train.shape} / labels shape: {labels_train.shape}')
@@ -299,8 +302,8 @@ def train_mlp_classifier_voc(feats, labels,
                     print(title)
                     print(display.confusion_matrix)
                     if config.SAVE_GRAPHS_TO_FILE:
-                        file_name = f'confusion_matrix_clf{i}_{title_names[j]}'
-                        display.figure_.savefig(os.path.join(config.OUTPUT_PATH, f'{file_name}{time_str}.svg'))
+                        file_name = f'confusion_matrix_clf{i}_{title_names[j]}{time_str}'  # display.figure_.savefig(os.path.join(config.OUTPUT_PATH, f'{file_name}{time_str}.svg'))
+                        visuals.save_graph_to_file(display.figure_, file_name)
                     j += 1
                 plt.show()
     logger.info(f'Scored cross-validated feedforward neural network performance. '
@@ -692,7 +695,7 @@ def py__get_data_train_TSNE_then_GMM_then_SVM_then_return_EVERYTHING(train_folde
         raise ValueError(zero_train_folders_error)
 
     # Get data
-    filenames, training_data, perc_rect = likelihoodprocessing.import_csvs_data_from_folders_in_BASEPATH_and_process_data(train_folders)
+    filenames, training_data, perc_rect = likelihoodprocessing.import_csvs_data_from_folders_in_PROJECTPATH_and_process_data(train_folders)
     if len(filenames) == 0:
         zero_folders_error = f'{inspect.stack()[0][3]}:Zero training folders were specified. Check your config file!!!! filenames = {filenames}.'
         logger.error(zero_folders_error)
@@ -720,14 +723,14 @@ def py__get_data_train_TSNE_then_GMM_then_SVM_then_return_EVERYTHING(train_folde
     logger.debug(f'Exiting GRAPH PLOTTING section of {inspect.stack()[0][3]}')
     return features_10fps, trained_tsne_list, scaler, gmm_assignments, classifier, scores
 
-
+@config.cfig_log_entry_exit(logger)
 def main_umap(train_folders: list):
     if not isinstance(train_folders, list):
         raise ValueError(f'`train_folders` arg was expected to be list but instead found '
                          f'type: {type(train_folders)} (value:  {train_folders}')
 
     time_str = time.strftime("_%Y%m%d_%H%M")
-    filenames, training_data, perc_rect = likelihoodprocessing.import_csvs_data_from_folders_in_BASEPATH_and_process_data(train_folders)
+    filenames, training_data, perc_rect = likelihoodprocessing.import_csvs_data_from_folders_in_PROJECTPATH_and_process_data(train_folders)
     features_10fps, features_10fps_scaled = train_umap_unsupervised_with_xy_features_umapapp(training_data)
 
     # Train UMAP (unsupervised) given a set of features based on (x,y) positions
@@ -746,14 +749,20 @@ def main_umap(train_folders: list):
         visuals.plot_accuracy_umap(scores)
 
     return features_10fps, features_10fps_scaled, umap_embeddings, hdb_assignments, soft_assignments, soft_clusters, nn_classifier, scores, nn_assignments
-
-
+@config.cfig_log_entry_exit(logger)
 def main_voc(train_folders: list):
+    replacement_func = train__import_data_and_process__train_tsne__train_gmm__train_clf__voc
+    warning = f'This function, {likelihoodprocessing.get_current_function()}, will be deprecated soon. Instead, use: ' \
+              f'{replacement_func.__qualname__}.'
+    logger.warning(warning)
+    return replacement_func(train_folders)
+@config.cfig_log_entry_exit(logger)
+def train__import_data_and_process__train_tsne__train_gmm__train_clf__voc(train_folders: list):
     if not isinstance(train_folders, list):
         raise ValueError(f'`train_folders` arg was expected to be list but instead found '
                          f'type: {type(train_folders)} (value:  {train_folders}).')
 
-    file_names, training_data, perc_rect = likelihoodprocessing.import_csvs_data_from_folders_in_BASEPATH_and_process_data(train_folders)
+    file_names, training_data, perc_rect = likelihoodprocessing.import_csvs_data_from_folders_in_PROJECTPATH_and_process_data(train_folders)
 
     # Train T-SNE
     features_10fps, features_10fps_scaled, trained_tsne = bsoid_tsne_voc(training_data)
@@ -774,3 +783,5 @@ def main_voc(train_folders: list):
 if __name__ == '__main__':
     py__get_data_train_TSNE_then_GMM_then_SVM_then_return_EVERYTHING(config.TRAIN_FOLDERS)  # originally: main()
     pass
+
+import umap

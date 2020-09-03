@@ -26,7 +26,8 @@ import time
 
 from bsoid.util import logger_config
 
-cfig_log_entry_exit = logger_config.log_entry_exit  # TODO: temporary measure to enable logging when entering/exiting functions
+cfig_log_entry_exit: callable = logger_config.log_entry_exit  # TODO: temporary measure to enable logging when entering/exiting functions
+
 ########################################################################################################################
 # Fetch the B-SOiD project directory regardless of clone location
 BSOID_BASE_PROJECT_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -46,9 +47,7 @@ configuration.read(os.path.join(BSOID_BASE_PROJECT_PATH, config_file_name))
 
 ########################################################################################################################
 ##### READ CONFIG FOR RUNTIME VARIABLES #####
-## *NOTE*: BASE_PATH: is likely to be deprecated in the future
-# BASE_PATH = 'C:\\Users\\killian\\projects\\OST-with-DLC\\GUI_projects\\OST-DLC-projects\\pwd-may11-2020-john-howland-2020-05-11'  # TODO: HIGH: bad!!!! magic variable
-# BASE_PATH = '/home/aaron/Documents/OST-with-DLC/GUI_projects/OST-DLC-projects/pwd-may11-2020-john-howland-2020-05-11'
+
 DLC_PROJECT_PATH = configuration.get('PATH', 'DLC_PROJECT_PATH')
 # Resolve output path
 config_output_path = configuration.get('PATH', 'OUTPUT_PATH')
@@ -256,6 +255,9 @@ BODYPARTS_VOC_LEGACY = {
     'Point8': 7,
 }
 
+## *NOTE*: BASE_PATH: is likely to be deprecated in the future
+# BASE_PATH = 'C:\\Users\\killian\\projects\\OST-with-DLC\\GUI_projects\\OST-DLC-projects\\pwd-may11-2020-john-howland-2020-05-11'  # TODO: HIGH: bad!!!! magic variable
+# BASE_PATH = '/home/aaron/Documents/OST-with-DLC/GUI_projects/OST-DLC-projects/pwd-may11-2020-john-howland-2020-05-11'
 
 if __name__ == '__main__':
     print('OUTPUTPATH:', OUTPUT_PATH)
