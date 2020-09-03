@@ -62,16 +62,16 @@ def sort_list_nicely_in_place(list_input: list) -> None:
 
 def get_filenames_csvs_from_folders_recursively_in_dlc_project_path(folder: str) -> List:
     """
-    Get_filenames() makes the assumption that the folder is in BASEPATH; however, it is an obfuscated assumption
+    Get_filenames() makes the assumption that the folder is in PROJECT Path; however, it is an obfuscated assumption
     and bad. A new function that DOES NOT RESOLVE PATH IMPLICITLY WITHIN should be created and used.
     :param folder:
     :return:
     """
     path_to_check_for_csvs = f'{config.DLC_PROJECT_PATH}{os.path.sep}{folder}{os.path.sep}**{os.path.sep}*.csv'
-    logger.debug(f'{get_current_function()}: Path that is being checked with using glob selection: {path_to_check_for_csvs}')
+    logger.debug(f'{get_current_function()}: Path that is being checked using glob selection: {path_to_check_for_csvs}')
     filenames = glob.glob(path_to_check_for_csvs, recursive=True)
     sort_list_nicely_in_place(filenames)
-    logger.info(f'List of files found: {filenames}. Total files found : {len(filenames)}.')
+    logger.info(f'{get_current_function()}: Total files found: {len(filenames)}. List of files found: {filenames}.')
     return filenames
 
 
@@ -172,7 +172,7 @@ def remove_top_n_rows_of_dataframe(in_df, n_rows: int = 1, copy=False):
 def preprocess_data_and_adaptive_filter(df_input_data: pd.DataFrame) -> Tuple[np.ndarray, List]:
     """
 
-    :param df_input_data: (DataFrame) raw DataFrame of DLC results right after reading in using pandas.read_csv().
+    :param df_input_data: (DataFrame) expected: raw DataFrame of DLC results right after reading in using pandas.read_csv().
     EXAMPLE df_input_data INPUT:
                 scorer DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000.1  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000.2   ...
         1  coords                                              x                                                      y                                        likelihood   ...
@@ -211,7 +211,9 @@ def preprocess_data_and_adaptive_filter(df_input_data: pd.DataFrame) -> Tuple[np
         elif current_column_header == 'coords':
             pass  # Ignore. Usually this is the index column and is only seen once. No data to be had here.
         else:
-            err = f'An inappropriate column header was found: {array_input_data_with_projectname_header_removed[0][header_idx]}'  # TODO: elaborate on error
+            err = f'An inappropriate column header was found: ' \
+                  f'{array_input_data_with_projectname_header_removed[0][header_idx]}.' \
+                  f'Check on CSV to see if has an unexpected output format.'
             logger.error(err)
             raise ValueError(err)
 
