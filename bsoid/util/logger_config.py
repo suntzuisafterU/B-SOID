@@ -10,9 +10,11 @@ import re
 def preload_logger_with_config_vars(logger_name: str, log_format: str,
                                     stdout_log_level: str = None, file_log_level: str = None,
                                     file_log_file_path: str = None, email_log_level: str = None):
-    """Create a meta logger """
+    """
+    Create a meta logger.  TODO: expand
+    """
     def argument_loaded_function(current_python_file_name: str, log_format: str = log_format):
-        """Load in """
+        """Load in stored config args"""
         # Check if the name value is in the format string. If possible, switch out the default
         #   logger name for the new filename
         name_regex_result = re.search(r'%\(name\)-?\w*s', log_format)
@@ -32,14 +34,13 @@ def preload_logger_with_config_vars(logger_name: str, log_format: str,
 
 
 def log_function_decorator(decorator_arg=None):
+    """An example of a decorator that takes an optional arg"""
     def decorator(func):
         def function_wrapper(*args, **kwargs):
-            # create_generic_logger()
             # logger.debug('args: {} / kwargs: {}'.format(args, kwargs))
             result = create_generic_logger(*args, **kwargs)
             # logger.debug('result: {}'.format(result))
             return result
-
         return function_wrapper
     return decorator
 
@@ -100,7 +101,7 @@ def create_generic_logger(logger_name: str, log_format: str,
         file_handler.setLevel(file_log_level.upper())
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
-    # # Logging to email  # TODO: low: ?
+    # # Logging to email  # TODO: low: instantiate email logging
     # if email_log_level:
     #     # mailhost, fromaddr, toaddrs, subject,
     #     #                  credentials=None, secure=None, timeout=5.0
@@ -123,7 +124,10 @@ def decorator_example(func):
 
 
 def log_entry_exit(logger=None):
-    """Meta decorator. If used as deco., then must have argument of logger for it to be useful. Otherwise, does nothing."""
+    """
+    Meta decorator. If used as deco., then must have argument of logger for it to
+    be useful. Otherwise, does nothing.
+    """
     def decorator(func):
         def function_wrapper(*args, **kwargs):
             # create_generic_logger()
@@ -135,6 +139,7 @@ def log_entry_exit(logger=None):
             return result
         return function_wrapper
     return decorator
+
 
 if __name__ == '__main__':
     # logger = create_generic_logger(__name__)
