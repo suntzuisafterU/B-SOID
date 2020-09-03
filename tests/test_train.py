@@ -6,9 +6,9 @@ import pandas as pd
 import bsoid
 
 
-class test__likelihoodprocessing_functions(TestCase):
+class test__train(TestCase):
 
-    def test__adaptive_filtering__ensure_new_function_is_correct_compared_to_old_function(self):
+    def test__(self):
         # Arrange
         test_file_name = 'Video1DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000.csv'
         df_input_data = pd.read_csv(os.path.join(bsoid.config.BSOID_BASE_PROJECT_PATH, 'tests', 'test_data', test_file_name))
