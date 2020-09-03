@@ -17,7 +17,7 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 from tqdm import tqdm
-from typing import Any, Tuple
+from typing import Any, Dict, List, Tuple
 import hdbscan
 import inspect
 import itertools
@@ -29,7 +29,7 @@ import time
 import umap
 
 from bsoid import config
-from bsoid.util import likelihoodprocessing, visuals
+from bsoid.util import check_arg, likelihoodprocessing, visuals
 
 logger = config.initialize_logger(__name__)
 
@@ -144,7 +144,7 @@ def bsoid_umap_embed_umapapp(features_10fps_scaled, umap_params=config.UMAP_PARA
     features_train = features_10fps_scaled.T
     logger.debug(f'{inspect.stack()[0][3]}:Transforming all {features_train.shape[0]} instances '
                  f'from {features_train.shape[1]} D into {umap_params.get("n_components")} D')
-    trained_umap = umap.UMAP(n_neighbors=int(round(np.sqrt(features_train.shape[0]))),  # power law
+    trained_umap = umap.UMAP(n_neighbors=int(round(np.sqrt(features_train.shape[0]))),  # Power Law
                              **umap_params).fit(features_train)
     umap_embeddings = trained_umap.embedding_
     logger.debug(f'{inspect.stack()[0][3]}:Done non-linear transformation with UMAP from {features_train.shape[1]} D '
@@ -311,7 +311,7 @@ def train_mlp_classifier_voc(feats, labels,
     return classifier, scores
 
 
-def bsoid_tsne_py(data: list, bodyparts=config.BODYPARTS_PY_LEGACY, fps=config.VIDEO_FPS, comp: int = config.COMPILE_CSVS_FOR_TRAINING):
+def bsoid_tsne_py(data: List[np.ndarray], bodyparts=config.BODYPARTS_PY_LEGACY, fps=config.VIDEO_FPS, comp: int = config.COMPILE_CSVS_FOR_TRAINING):
     """
     Trains t-SNE (unsupervised) given a set of features based on (x,y) positions
     :param data: list of 3D array
@@ -322,27 +322,31 @@ def bsoid_tsne_py(data: list, bodyparts=config.BODYPARTS_PY_LEGACY, fps=config.V
     :return f_10fps_sc: 2D array, standardized features
     :return trained_tsne: 2D array, trained t-SNE space
     """
+    # Check args
+    check_arg.ensure_type(data, list)
+    check_arg.ensure_type(data[0], np.ndarray)
+
     win_len = np.int(np.round(0.05 / (1 / fps)) * 2 - 1)
     features = []
     for m in range(len(data)):
         logger.info(f'Extracting features from CSV file {m+1}...')
         data_range = len(data[m])
-        fpd = data[m][:, 2 * bodyparts.get('Forepaw/Shoulder1'):2 * bodyparts.get('Forepaw/Shoulder1') + 2] - \
-              data[m][:, 2 * bodyparts.get('Forepaw/Shoulder2'):2 * bodyparts.get('Forepaw/Shoulder2') + 2]
-        cfp = np.vstack(((data[m][:, 2 * bodyparts.get('Forepaw/Shoulder1')] +
-                          data[m][:, 2 * bodyparts.get('Forepaw/Shoulder2')]) / 2,
-                         (data[m][:, 2 * bodyparts.get('Forepaw/Shoulder1') + 1] +
-                          data[m][:, 2 * bodyparts.get('Forepaw/Shoulder1') + 1]) / 2)).T
+        fpd = data[m][:, 2 * bodyparts['Forepaw/Shoulder1']:2 * bodyparts['Forepaw/Shoulder1'] + 2] - \
+              data[m][:, 2 * bodyparts['Forepaw/Shoulder2']:2 * bodyparts['Forepaw/Shoulder2'] + 2]
+        cfp = np.vstack(((data[m][:, 2 * bodyparts['Forepaw/Shoulder1']] +
+                          data[m][:, 2 * bodyparts['Forepaw/Shoulder2']]) / 2,
+                         (data[m][:, 2 * bodyparts['Forepaw/Shoulder1'] + 1] +
+                          data[m][:, 2 * bodyparts['Forepaw/Shoulder1'] + 1]) / 2)).T
         cfp_pt = np.vstack(([cfp[:, 0] - data[m][:, 2 * bodyparts.get('Tailbase')],
                              cfp[:, 1] - data[m][:, 2 * bodyparts.get('Tailbase') + 1]])).T
-        chp = np.vstack((((data[m][:, 2 * bodyparts.get('Hindpaw/Hip1')] +
-                           data[m][:, 2 * bodyparts.get('Hindpaw/Hip2')]) / 2),
-                         ((data[m][:, 2 * bodyparts.get('Hindpaw/Hip1') + 1] +
-                           data[m][:, 2 * bodyparts.get('Hindpaw/Hip2') + 1]) / 2))).T
+        chp = np.vstack((((data[m][:, 2 * bodyparts['Hindpaw/Hip1']] +
+                           data[m][:, 2 * bodyparts['Hindpaw/Hip2']]) / 2),
+                         ((data[m][:, 2 * bodyparts['Hindpaw/Hip1'] + 1] +
+                           data[m][:, 2 * bodyparts['Hindpaw/Hip2'] + 1]) / 2))).T
         chp_pt = np.vstack(([chp[:, 0] - data[m][:, 2 * bodyparts.get('Tailbase')],
                              chp[:, 1] - data[m][:, 2 * bodyparts.get('Tailbase') + 1]])).T
-        sn_pt = np.vstack(([data[m][:, 2 * bodyparts.get('Snout/Head')] - data[m][:, 2 * bodyparts.get('Tailbase')],
-                            data[m][:, 2 * bodyparts.get('Snout/Head') + 1] - data[m][:, 2 * bodyparts.get('Tailbase') + 1]])).T
+        sn_pt = np.vstack(([data[m][:, 2 * bodyparts['Snout/Head']] - data[m][:, 2 * bodyparts.get('Tailbase')],
+                            data[m][:, 2 * bodyparts['Snout/Head'] + 1] - data[m][:, 2 * bodyparts.get('Tailbase') + 1]])).T
         fpd_norm = np.zeros(data_range)
         cfp_pt_norm = np.zeros(data_range)
         chp_pt_norm = np.zeros(data_range)
@@ -677,6 +681,8 @@ def bsoid_feats_umapapp(data: list, fps: int = config.VIDEO_FPS) -> Tuple:
 :return classifier: obj, MLP classifier
 :return scores: 1D array, cross-validated accuracy
 """
+
+
 def main_py(*args, **kwargs):
     """ *** DEPRECATION WARNING ***
     Only remove after README is updated. """
@@ -684,8 +690,16 @@ def main_py(*args, **kwargs):
     err = f'Use `{replacement_func.__qualname__}` instead'
     logger.error(err)
     raise DeprecationWarning(err)
+
+
 @config.cfig_log_entry_exit(logger)
-def py__get_data_train_TSNE_then_GMM_then_SVM_then_return_EVERYTHING(train_folders: list):
+def py__get_data_train_TSNE_then_GMM_then_SVM_then_return_EVERYTHING(train_folders: List[str]):
+    """
+    This function takes the place of "main.py" previously implemented in bsoid_py.
+
+    :param train_folders: (List[str])
+    :return:
+    """
     if not isinstance(train_folders, list):
         raise ValueError(f'`train_folders` arg was expected to be list but instead found '
                          f'type: {type(train_folders)} (value:  {train_folders}')
