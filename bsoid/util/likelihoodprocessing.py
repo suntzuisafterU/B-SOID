@@ -104,9 +104,9 @@ def import_csvs_data_from_folders_in_PROJECTPATH_and_process_data(folders: list)
             data_list.append(curr_df_filt)
         file_names_list.append(filenames_found_in_current_folder)
         logger.debug(f'Processed {len(filenames_found_in_current_folder)} CSV files from folder: {folder}')
-    data_array: np.ndarray = np.array(data_list)
-    logger.info(f'{get_current_function()}: Processed a total of {len(data_list)} CSV files and compiled into a {data_array.shape} data list.')
-    return file_names_list, data_array, perc_rect_list
+    array_of_arrays_of_data: np.ndarray = np.array(data_list)
+    logger.info(f'{get_current_function()}: Processed a total of {len(data_list)} CSV files and compiled into a {array_of_arrays_of_data.shape} data list/array.')
+    return file_names_list, array_of_arrays_of_data, perc_rect_list
 
 
 def import_folders_app(ost_project_path, input_folders_list: list, BODYPARTS: dict) -> Tuple[List, List, np.ndarray, List]:
