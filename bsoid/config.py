@@ -19,7 +19,6 @@ from ast import literal_eval
 from pathlib import Path
 from typing import List
 import configparser
-import logging
 import os
 import random
 import time
@@ -34,7 +33,7 @@ BSOID_BASE_PROJECT_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file
 # Output directory to where you want the analysis to be stored
 default_output_path = os.path.join(BSOID_BASE_PROJECT_PATH, 'output')
 # Set runtime string for consistency
-runtime_timestr = time.strftime("_%Y%m%d_%H%M")
+runtime_timestr = time.strftime("%Y%m%d_%H%M")
 # Set loggers default vars
 default_log_folder_path = Path(BSOID_BASE_PROJECT_PATH, 'logs').absolute()
 default_log_file_name = 'default.log'
@@ -259,6 +258,17 @@ BODYPARTS_VOC_LEGACY = {
 # BASE_PATH = 'C:\\Users\\killian\\projects\\OST-with-DLC\\GUI_projects\\OST-DLC-projects\\pwd-may11-2020-john-howland-2020-05-11'  # TODO: HIGH: bad!!!! magic variable
 # BASE_PATH = '/home/aaron/Documents/OST-with-DLC/GUI_projects/OST-DLC-projects/pwd-may11-2020-john-howland-2020-05-11'
 
+
+###
+
+def get_config_str() -> str:
+    config_string = ''
+    for section in configuration.sections():
+        config_string += f'SECTION: {section} // OPTIONS: {configuration.options(section)}\n'
+    return config_string.strip()
+
+
 if __name__ == '__main__':
     print('OUTPUTPATH:', OUTPUT_PATH)
+    print(get_config_str())
     pass
