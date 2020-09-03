@@ -83,13 +83,13 @@ def run_streamlit_app():
             st.error('No such directory')
         st.write('The __sub-directory(ies)__ each contain one or more .csv files. '
                  'Currently supporting _2D_ and _single_ animal.')
-        # TRAIN_FOLDERS = []  # TODO: HIGH: TRAIN_FOLDERS is instantiated here but lower down TRAIN_FOLDERS[0] is ref'd. Error ***
-        directory_num = int(st.number_input('How many BASE_PATH/SUB-DIRECTORIES for training?', value=3))
-        st.markdown('Your will be training on **{}** csv containing sub-directories.'.format(directory_num))
-        for i in range(directory_num):
-            training_dir = st.text_input('Enter path to training directory NUMBER {} within base path:'.format(i + 1))
+        TRAIN_FOLDERS = []  # TODO: HIGH: TRAIN_FOLDERS is instantiated here but lower down TRAIN_FOLDERS[0] is ref'd. Error ***
+        num_project_path_sub_directories = int(st.number_input('How many BASE_PATH/SUB-DIRECTORIES for training?', value=3))
+        st.markdown('Your will be training on **{}** csv containing sub-directories.'.format(num_project_path_sub_directories))
+        for i in range(num_project_path_sub_directories):
+            training_dir = st.text_input(f'Enter path to training directory NUMBER {i+1} within base path:')
             try:
-                os.listdir(str.join('', (BASE_PATH, training_dir)))
+                os.listdir(f'{BASE_PATH}{training_dir}')
             except FileNotFoundError:
                 st.error('No such directory')
             if not training_dir in TRAIN_FOLDERS:
@@ -145,18 +145,20 @@ def run_streamlit_app():
                 my_bar = st.progress(0)
                 for j, filename in enumerate(f):
                     curr_df = pd.read_csv(filename, low_memory=False)
-                    curr_df_filt, perc_rect = likelihoodprocessing.adaptive_filter_data(curr_df)
+                    curr_df_filt, perc_rect = likelihoodprocessing.adaptive_filter_LEGACY(curr_df)
                     rawdata_list.append(curr_df)
                     perc_rect_list.append(perc_rect)
                     data_list.append(curr_df_filt)
-                    my_bar.progress(round((j + 1) / len(f) * 100))
                     filenames_list.append(filename)
+                    my_bar.progress(round((j + 1) / len(f) * 100))
             training_data = np.array(data_list)
             with open(os.path.join(OUTPUT_PATH, f'{MODEL_NAME}_data.sav'), 'wb') as f:  # with open(os.path.join(OUTPUT_PATH, str.join('', (MODEL_NAME, '_data.sav'))), 'wb') as f:
                 joblib.dump([BASE_PATH, FPS, BODYPARTS, filenames_list, rawdata_list, training_data, perc_rect_list], f)
+
             st.info(
                 f'Processed a total of **{len(data_list)}** CSV files, and compiled into a **{training_data.shape}** data list.')
             st.balloons()
+        #
         with open(os.path.join(OUTPUT_PATH, f'{MODEL_NAME}_data.sav'), 'rb') as fr:
             BASE_PATH, FPS, BODYPARTS, filenames, rawdata_list, training_data, perc_rect_list = joblib.load(fr)
         if st.checkbox('Show % body part processed per file?', False):
@@ -243,7 +245,7 @@ def run_streamlit_app():
             my_bar.progress(round((m + 1) / len(training_data) * 100))
         st.info(f'Done extracting features from a total of **{len(training_data)}** training '
                 f'CSV files. Now reducing dimensions...')
-        for n in range(0, len(feats)):
+        for n in range(len(feats)):
             feats1 = np.zeros(len(training_data[n]))
             for k in range(round(FPS / 10), len(feats[n][0]), round(FPS / 10)):
                 if k > round(FPS / 10):
@@ -558,12 +560,10 @@ def run_streamlit_app():
             except FileExistsError:
                 pass
             try:
-                os.mkdir(str.join('', (
-                DLC_PROJECT_PATH, csv_dir, '/pngs', '/', csv_filename)))  # TODO: low: refactor `str.join(...)`
+                os.mkdir(f'{DLC_PROJECT_PATH}{csv_dir}{os.path.sep}pngs{os.path.sep}{csv_filename}')  # os.mkdir(str.join('', (DLC_PROJECT_PATH, csv_dir, '/pngs', '/', csv_filename)))  # TODO: low: refactor `str.join(...)`
             except FileExistsError:
-                pass
-            frame_dir = str.join('', (
-            DLC_PROJECT_PATH, csv_dir, '/pngs', '/', csv_filename))  # TODO: low: refactor `str.join(...)`
+                pass  # TODO: low: fails silently
+            frame_dir = f'{DLC_PROJECT_PATH}{csv_dir}{os.path.sep}pngs{os.path.sep}{csv_filename}'  # TODO: low: refactor `str.join(...)`
             st.markdown(f'You have created **{frame_dir}** as your PNG directory for video {vid_file}.')
             probe = ffmpeg.probe(os.path.join(vid_dir, vid_file))
             video_info = next(s for s in probe['streams'] if s['codec_type'] == 'video')
@@ -612,7 +612,7 @@ def run_streamlit_app():
                     feats_test, labels_test, classifier, clf, scores, nn_assignments = joblib.load(fr)
                 curr_df = pd.read_csv(os.path.join(str.join('', (DLC_PROJECT_PATH, csv_dir, '/', csv_file))),
                                       low_memory=False)  # TODO: low: rework this pathing...
-                curr_df_filt, perc_rect = likelihoodprocessing.adaptive_filter_data(curr_df)
+                curr_df_filt, perc_rect = likelihoodprocessing.adaptive_filter_LEGACY(curr_df)
                 test_data = [curr_df_filt]
                 labels_fs = []
                 labels_fs2 = []
@@ -651,9 +651,9 @@ def run_streamlit_app():
             st.write('Bulk processing will take some time for large datasets.'
                      'This includes a lot of files, long videos, and/or high frame-rates.')
             TEST_FOLDERS = []
-            directory_num: int = int(st.number_input('How many sub-directories for bulk predictions?', value=3))
-            st.markdown(f'Your will be predicting on **{directory_num}** csv containing sub-directories.')
-            for i in range(directory_num):
+            num_project_path_sub_directories: int = int(st.number_input('How many sub-directories for bulk predictions?', value=3))
+            st.markdown(f'Your will be predicting on **{num_project_path_sub_directories}** csv containing sub-directories.')
+            for i in range(num_project_path_sub_directories):
                 test_dir = st.text_input(f'Enter path to test directory number {i + 1} within base path:')
                 try:
                     os.listdir(str.join('', (DLC_PROJECT_PATH, test_dir)))
@@ -662,8 +662,7 @@ def run_streamlit_app():
                 if not test_dir in TEST_FOLDERS:
                     TEST_FOLDERS.append(test_dir)
             st.markdown(f'You have selected sub-directory(ies) **{TEST_FOLDERS}**.')
-            FPS = int(
-                st.number_input('What is your framerate for these csvs?', value=60))  # TODO: Q: 60=magic variable?
+            FPS = int(st.number_input('What is your framerate for these csvs?', value=60))  # TODO: Q: 60=magic variable?
             st.markdown(f'Your frame-rate is **{FPS}** frames per second for these CSVs.')
             st.text_area('Select the analysis of interest to you. If in doubt, select all.', '''
             Predicted labels with original pose: labels written into original .csv files (time-locked).
