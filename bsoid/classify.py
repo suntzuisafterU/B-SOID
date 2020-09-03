@@ -252,27 +252,27 @@ def integrate_features_into_100ms_bins(data: List[np.ndarray], features: List[np
     return f_10fps
 def bsoid_extract_features_without_assuming_100ms_bin_integration(data, bodyparts: dict = config.BODYPARTS_PY_LEGACY, fps: int = config.VIDEO_FPS) -> List:
     """
-
+    Originally copied from `bsoid_extract_py()`, this function removed the 100ms bin extraction from the end and
+    is now an optional function which can be called separately.
     :param data: TODO: HIGH: List of arrays? or is it an array alone? CHECK!!!!!!!
     :param bodyparts:
     :param fps:
     :return:
     """
+    if isinstance(data, np.ndarray):
+        data = list(data)
+
     win_len = np.int(np.round(0.05 / (1 / fps)) * 2 - 1)
     features = []
-    for m in range(len(data)):
-        logger.info(f'Extracting features from CSV file {m + 1}...')
-        data_range = len(data[m])
-        fpd = data[m][:, 2 * bodyparts['Forepaw/Shoulder1']:2 * bodyparts['Forepaw/Shoulder1'] + 2] - data[m][:, 2 * bodyparts['Forepaw/Shoulder2']:2 * bodyparts['Forepaw/Shoulder2'] + 2]
-        cfp = np.vstack(((data[m][:, 2 * bodyparts['Forepaw/Shoulder1']] +
-                          data[m][:, 2 * bodyparts['Forepaw/Shoulder2']]) / 2,
-                         (data[m][:, 2 * bodyparts['Forepaw/Shoulder1'] + 1] +
-                          data[m][:, 2 * bodyparts['Forepaw/Shoulder1'] + 1]) / 2)).T
-        cfp_pt = np.vstack(([cfp[:, 0] - data[m][:, 2 * bodyparts['Tailbase']],
-                             cfp[:, 1] - data[m][:, 2 * bodyparts['Tailbase'] + 1]])).T
-        chp = np.vstack((((data[m][:, 2 * bodyparts['Hindpaw/Hip1']] + data[m][:, 2 * bodyparts['Hindpaw/Hip2']]) / 2), ((data[m][:, 2 * bodyparts['Hindpaw/Hip1'] + 1] + data[m][:, 2 * bodyparts['Hindpaw/Hip2'] + 1]) / 2))).T
-        chp_pt = np.vstack(([chp[:, 0] - data[m][:, 2 * bodyparts['Tailbase']], chp[:, 1] - data[m][:, 2 * bodyparts['Tailbase'] + 1]])).T
-        sn_pt = np.vstack(([data[m][:, 2 * bodyparts['Snout/Head']] - data[m][:, 2 * bodyparts['Tailbase']], data[m][:, 2 * bodyparts['Snout/Head'] + 1] - data[m][:, -2 * bodyparts['Tailbase'] + 1]])).T
+    for m, data_array in enumerate(data):
+        logger.info(f'Extracting features from CSV file {m+1}...')
+        data_range = len(data_array)
+        fpd = data_array[:, 2 * bodyparts['Forepaw/Shoulder1']:2 * bodyparts['Forepaw/Shoulder1'] + 2] - data_array[:, 2 * bodyparts['Forepaw/Shoulder2']:2 * bodyparts['Forepaw/Shoulder2'] + 2]
+        cfp = np.vstack(((data_array[:, 2 * bodyparts['Forepaw/Shoulder1']] + data_array[:, 2 * bodyparts['Forepaw/Shoulder2']]) / 2, (data_array[:, 2 * bodyparts['Forepaw/Shoulder1'] + 1] + data_array[:, 2 * bodyparts['Forepaw/Shoulder1'] + 1]) / 2)).T
+        cfp_pt = np.vstack(([cfp[:, 0] - data_array[:, 2 * bodyparts['Tailbase']], cfp[:, 1] - data_array[:, 2 * bodyparts['Tailbase'] + 1]])).T
+        chp = np.vstack((((data_array[:, 2 * bodyparts['Hindpaw/Hip1']] + data_array[:, 2 * bodyparts['Hindpaw/Hip2']]) / 2), ((data_array[:, 2 * bodyparts['Hindpaw/Hip1'] + 1] + data_array[:, 2 * bodyparts['Hindpaw/Hip2'] + 1]) / 2))).T
+        chp_pt = np.vstack(([chp[:, 0] - data_array[:, 2 * bodyparts['Tailbase']], chp[:, 1] - data_array[:, 2 * bodyparts['Tailbase'] + 1]])).T
+        sn_pt = np.vstack(([data_array[:, 2 * bodyparts['Snout/Head']] - data_array[:, 2 * bodyparts['Tailbase']], data_array[:, 2 * bodyparts['Snout/Head'] + 1] - data_array[:, -2 * bodyparts['Tailbase'] + 1]])).T
 
         fpd_norm = np.zeros(data_range)
         cfp_pt_norm = np.zeros(data_range)
@@ -291,39 +291,27 @@ def bsoid_extract_features_without_assuming_100ms_bin_integration(data, bodypart
         sn_pt_ang = np.zeros(data_range - 1)
         sn_disp = np.zeros(data_range - 1)
         pt_disp = np.zeros(data_range - 1)
-        for k in range(data_range - 1):
+        for k in range(data_range-1):
             b_3d = np.hstack([sn_pt[k + 1, :], 0])
             a_3d = np.hstack([sn_pt[k, :], 0])
             c = np.cross(b_3d, a_3d)
             sn_pt_ang[k] = np.dot(np.dot(np.sign(c[2]), 180) / np.pi,
                                   math.atan2(np.linalg.norm(c), np.dot(sn_pt[k, :], sn_pt[k + 1, :])))
-            sn_disp[k] = np.linalg.norm(
-                data[m][k + 1, 2 * bodyparts['Snout/Head']:2 * bodyparts['Snout/Head'] + 1] -
-                data[m][k, 2 * bodyparts['Snout/Head']:2 * bodyparts['Snout/Head'] + 1])
-            pt_disp[k] = np.linalg.norm(
-                data[m][k + 1, 2 * bodyparts['Tailbase']:2 * bodyparts['Tailbase'] + 1] -
-                data[m][k, 2 * bodyparts['Tailbase']:2 * bodyparts['Tailbase'] + 1])
+            sn_disp[k] = np.linalg.norm(data_array[k + 1, 2 * bodyparts['Snout/Head']:2 * bodyparts['Snout/Head'] + 1] - data_array[k, 2 * bodyparts['Snout/Head']:2 * bodyparts['Snout/Head'] + 1])
+            pt_disp[k] = np.linalg.norm(data_array[k + 1, 2 * bodyparts['Tailbase']:2 * bodyparts['Tailbase'] + 1] - data_array[k, 2 * bodyparts['Tailbase']:2 * bodyparts['Tailbase'] + 1])
         sn_pt_ang_smth = likelihoodprocessing.boxcar_center(sn_pt_ang, win_len)
         sn_disp_smth = likelihoodprocessing.boxcar_center(sn_disp, win_len)
         pt_disp_smth = likelihoodprocessing.boxcar_center(pt_disp, win_len)
-
-        features.append(np.vstack(
-            (sn_cfp_norm_smth[1:],
-             sn_chp_norm_smth[1:],
-             fpd_norm_smth[1:],
-             sn_pt_norm_smth[1:],
-             sn_pt_ang_smth[:],
-             sn_disp_smth[:],
-             pt_disp_smth[:],)
-        ))
-    logger.info(f'Done extracting features from a total of {len(data)} training CSV files.')
+        features.append(np.vstack((sn_cfp_norm_smth[1:], sn_chp_norm_smth[1:], fpd_norm_smth[1:],
+                                   sn_pt_norm_smth[1:], sn_pt_ang_smth[:], sn_disp_smth[:], pt_disp_smth[:])))
+    logger.debug(f'Done extracting features from a total of {len(data)} training CSV files.')
     return features
 def bsoid_extract_py(data, bodyparts: dict = config.BODYPARTS_PY_LEGACY, fps: int = config.VIDEO_FPS) -> List:
     """
     This is a pull from the original bsoid_py implementation.
 
         * NOTE: this function assumes that user wants features integrated into 100ms bins -- if you want a less
-    tightly coupled function or want to pipeline feature transformations overtly,
+    tightly coupled function or want to pipeline feature transformations overtly, check other implementations.
 
     :param data: TODO: HIGH: List of arrays? or is it an array alone? CHECK!!!!!!!
     :param bodyparts:
