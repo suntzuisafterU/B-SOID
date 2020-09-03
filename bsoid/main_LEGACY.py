@@ -464,7 +464,7 @@ def test_function_to_build_then_run_voc():
 
 
 if __name__ == "__main__":  # py
-    # test_function_to_build_then_run_py()  # main_py(TRAIN_FOLDERS, PREDICT_FOLDERS)
-    test_function_to_build_then_run_umap()
+    test_function_to_build_then_run_py()  # main_py(TRAIN_FOLDERS, PREDICT_FOLDERS)
+    # test_function_to_build_then_run_umap()
 
 #  bsoid_py.main.run(PREDICT_FOLDERS)

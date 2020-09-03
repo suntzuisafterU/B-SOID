@@ -5,7 +5,7 @@ Then, we utilize these output and original feature space to train a B-SOiD neura
 
 Potential abbreviations:
     sn: snout
-    pt: proximal tail
+    pt: proximal tail ?
 """
 
 from bhtsne import tsne
@@ -32,6 +32,88 @@ from bsoid import config
 from bsoid.util import check_arg, likelihoodprocessing, visuals
 
 logger = config.initialize_logger(__name__)
+
+
+########################################################################################################################
+
+def extract_7_features_bsoid_tsne_py(list_of_arrays_data: List[np.ndarray], bodyparts=config.BODYPARTS_PY_LEGACY,
+                                     fps=config.VIDEO_FPS, comp: int = config.COMPILE_CSVS_FOR_TRAINING) -> List:
+    """
+    Trains t-SNE (unsupervised) given a set of features based on (x,y) positions
+    :param list_of_arrays_data: list of 3D array
+    :param bodyparts: dict, body parts with their orders in LOCAL_CONFIG
+    :param fps: scalar, argument specifying camera frame-rate in LOCAL_CONFIG
+    :param comp: boolean (0 or 1), argument to compile data or not in LOCAL_CONFIG
+    :return f_10fps: 2D array, features
+    :return f_10fps_sc: 2D array, standardized features
+    :return trained_tsne: 2D array, trained t-SNE space
+    """
+    # Sometimes data is (incorrectly) submitted as an array of arrays (the number of arrays in the overarching array or, if correctly typed, list) is the same # of CSV files read in). Fix type then continue.
+    if isinstance(list_of_arrays_data, np.ndarray):
+        list_of_arrays_data = list(list_of_arrays_data)
+    # Check args
+    check_arg.ensure_type(list_of_arrays_data, list)
+    check_arg.ensure_type(list_of_arrays_data[0], np.ndarray)
+    # Continue
+    win_len = np.int(np.round(0.05 / (1 / fps)) * 2 - 1)
+    features = []
+    # Iterate over data arrays available and build features
+    for i, data_array in enumerate(list_of_arrays_data):  # for i in range(len(list_of_arrays_data)):
+        logger.info(f'Extracting features from CSV file {i + 1}...')
+        num_data_rows = len(data_array)
+
+        fpd = data_array[:, 2 * bodyparts['Forepaw/Shoulder1']:2 * bodyparts['Forepaw/Shoulder1'] + 2] - data_array[:, 2 * bodyparts['Forepaw/Shoulder2']:2 * bodyparts['Forepaw/Shoulder2'] + 2]
+        cfp = np.vstack(((data_array[:, 2 * bodyparts['Forepaw/Shoulder1']] + data_array[:, 2 * bodyparts['Forepaw/Shoulder2']]) / 2, (data_array[:, 2 * bodyparts['Forepaw/Shoulder1'] + 1] + data_array[:, 2 * bodyparts['Forepaw/Shoulder1'] + 1]) / 2)).T
+        cfp_pt = np.vstack(([cfp[:, 0] - data_array[:, 2 * bodyparts['Tailbase']], cfp[:, 1] - data_array[:, 2 * bodyparts['Tailbase'] + 1]])).T
+        chp = np.vstack((((data_array[:, 2 * bodyparts['Hindpaw/Hip1']] + data_array[:, 2 * bodyparts['Hindpaw/Hip2']]) / 2), ((data_array[:,2 *bodyparts[ 'Hindpaw/Hip1'] + 1] + data_array[:,2 * bodyparts['Hindpaw/Hip2'] + 1]) / 2))).T
+        chp_pt = np.vstack(([chp[:, 0] - data_array[:, 2 * bodyparts['Tailbase']], chp[:, 1] - data_array[:, 2 * bodyparts['Tailbase'] + 1]])).T
+        sn_pt = np.vstack(([data_array[:, 2 * bodyparts['Snout/Head']] - data_array[:, 2 * bodyparts['Tailbase']], data_array[:, 2 * bodyparts['Snout/Head'] + 1] - data_array[:, 2 * bodyparts['Tailbase'] + 1]])).T
+
+        fpd_norm = np.zeros(num_data_rows)
+        cfp_pt_norm = np.zeros(num_data_rows)
+        chp_pt_norm = np.zeros(num_data_rows)
+        sn_pt_norm = np.zeros(num_data_rows)
+        for j in range(1, num_data_rows):
+            fpd_norm[j] = np.array(np.linalg.norm(fpd[j, :]))
+            cfp_pt_norm[j] = np.linalg.norm(cfp_pt[j, :])
+            chp_pt_norm[j] = np.linalg.norm(chp_pt[j, :])
+            sn_pt_norm[j] = np.linalg.norm(sn_pt[j, :])
+        fpd_norm_smth = likelihoodprocessing.boxcar_center(fpd_norm, win_len)
+        sn_cfp_norm_smth = likelihoodprocessing.boxcar_center(sn_pt_norm - cfp_pt_norm, win_len)
+        sn_chp_norm_smth = likelihoodprocessing.boxcar_center(sn_pt_norm - chp_pt_norm, win_len)
+        sn_pt_norm_smth = likelihoodprocessing.boxcar_center(sn_pt_norm, win_len)
+
+        sn_pt_ang = np.zeros(num_data_rows - 1)
+        sn_disp = np.zeros(num_data_rows - 1)
+        pt_disp = np.zeros(num_data_rows - 1)
+        for k in range(num_data_rows - 1):
+            b_3d = np.hstack([sn_pt[k + 1, :], 0])
+            a_3d = np.hstack([sn_pt[k, :], 0])
+            c = np.cross(b_3d, a_3d)
+            sn_pt_ang[k] = np.dot(np.dot(np.sign(c[2]), 180) / np.pi,
+                                  math.atan2(np.linalg.norm(c), np.dot(sn_pt[k, :], sn_pt[k + 1, :])))
+            sn_disp[k] = np.linalg.norm(
+                data_array[k + 1, 2 * bodyparts['Snout/Head']:2 * bodyparts['Snout/Head'] + 1] - data_array[k, 2 * bodyparts['Snout/Head']:2 * bodyparts['Snout/Head'] + 1])
+            pt_disp[k] = np.linalg.norm(
+                data_array[k + 1, 2 * bodyparts['Tailbase']:2 * bodyparts['Tailbase'] + 1] - data_array[k,2 * bodyparts['Tailbase']:2 *bodyparts['Tailbase'] + 1])
+        sn_pt_ang_smth = likelihoodprocessing.boxcar_center(sn_pt_ang, win_len)
+        sn_disp_smth = likelihoodprocessing.boxcar_center(sn_disp, win_len)
+        pt_disp_smth = likelihoodprocessing.boxcar_center(pt_disp, win_len)
+
+        # Append data to features list
+        features.append(np.vstack(
+            (sn_cfp_norm_smth[1:],
+             sn_chp_norm_smth[1:],
+             fpd_norm_smth[1:],
+             sn_pt_norm_smth[1:],
+             sn_pt_ang_smth[:],
+             sn_disp_smth[:],
+             pt_disp_smth[:],)
+        ))
+    logger.info(
+        f'{inspect.stack()[0][3]}:Done extracting features from a total of {len(list_of_arrays_data)} training CSV files.')
+
+    return features
 
 
 ########################################################################################################################
@@ -309,74 +391,6 @@ def train_mlp_classifier_voc(feats, labels,
     logger.info(f'Scored cross-validated feedforward neural network performance. '
                 f'Features shape: {feats_train.shape} / labels shape: {labels_train.shape}')
     return classifier, scores
-
-
-def extract_7_features_bsoid_tsne_py(list_of_arrays_data: List[np.ndarray], bodyparts=config.BODYPARTS_PY_LEGACY, fps=config.VIDEO_FPS, comp: int = config.COMPILE_CSVS_FOR_TRAINING):
-    """
-    Trains t-SNE (unsupervised) given a set of features based on (x,y) positions
-    :param list_of_arrays_data: list of 3D array
-    :param bodyparts: dict, body parts with their orders in LOCAL_CONFIG
-    :param fps: scalar, argument specifying camera frame-rate in LOCAL_CONFIG
-    :param comp: boolean (0 or 1), argument to compile data or not in LOCAL_CONFIG
-    :return f_10fps: 2D array, features
-    :return f_10fps_sc: 2D array, standardized features
-    :return trained_tsne: 2D array, trained t-SNE space
-    """
-    # Sometimes data is (incorrectly) submitted as an array of arrays (the number of arrays in the overarching array or, if correctly typed, list) is the same # of CSV files read in). Fix type then continue.
-    if isinstance(list_of_arrays_data, np.ndarray):
-        list_of_arrays_data = list(list_of_arrays_data)
-    # Check args
-    check_arg.ensure_type(list_of_arrays_data, list)
-    check_arg.ensure_type(list_of_arrays_data[0], np.ndarray)
-    # Continue
-    win_len = np.int(np.round(0.05 / (1 / fps)) * 2 - 1)
-    features = []
-    # Iterate over data arrays available and build features
-    for i, data_array in enumerate(list_of_arrays_data):  # for i in range(len(list_of_arrays_data)):
-        logger.info(f'Extracting features from CSV file {i+1}...')
-        num_data_rows = len(data_array)
-
-        fpd = data_array[:, 2 * bodyparts['Forepaw/Shoulder1']:2 * bodyparts['Forepaw/Shoulder1'] + 2] - data_array[:, 2 * bodyparts['Forepaw/Shoulder2']:2 * bodyparts['Forepaw/Shoulder2'] + 2]
-        cfp = np.vstack(((data_array[:, 2 * bodyparts['Forepaw/Shoulder1']] + data_array[:, 2 * bodyparts['Forepaw/Shoulder2']]) / 2, (data_array[:, 2 * bodyparts['Forepaw/Shoulder1'] + 1] + data_array[:, 2 * bodyparts['Forepaw/Shoulder1'] + 1]) / 2)).T
-        cfp_pt = np.vstack(([cfp[:, 0] - data_array[:, 2 * bodyparts['Tailbase']], cfp[:, 1] - data_array[:, 2 * bodyparts['Tailbase'] + 1]])).T
-        chp = np.vstack((((data_array[:, 2 * bodyparts['Hindpaw/Hip1']] + data_array[:, 2 * bodyparts['Hindpaw/Hip2']]) / 2), ((data_array[:, 2 * bodyparts['Hindpaw/Hip1'] + 1] + data_array[:, 2 * bodyparts['Hindpaw/Hip2'] + 1]) / 2))).T
-        chp_pt = np.vstack(([chp[:, 0] - data_array[:, 2 * bodyparts['Tailbase']], chp[:, 1] - data_array[:, 2 * bodyparts['Tailbase'] + 1]])).T
-        sn_pt = np.vstack(([data_array[:, 2 * bodyparts['Snout/Head']] - data_array[:, 2 * bodyparts['Tailbase']], data_array[:, 2 * bodyparts['Snout/Head'] + 1] - data_array[:, 2 * bodyparts['Tailbase'] + 1]])).T
-
-        fpd_norm = np.zeros(num_data_rows)
-        cfp_pt_norm = np.zeros(num_data_rows)
-        chp_pt_norm = np.zeros(num_data_rows)
-        sn_pt_norm = np.zeros(num_data_rows)
-        for j in range(1, num_data_rows):
-            fpd_norm[j] = np.array(np.linalg.norm(fpd[j, :]))
-            cfp_pt_norm[j] = np.linalg.norm(cfp_pt[j, :])
-            chp_pt_norm[j] = np.linalg.norm(chp_pt[j, :])
-            sn_pt_norm[j] = np.linalg.norm(sn_pt[j, :])
-
-        fpd_norm_smth = likelihoodprocessing.boxcar_center(fpd_norm, win_len)
-        sn_cfp_norm_smth = likelihoodprocessing.boxcar_center(sn_pt_norm - cfp_pt_norm, win_len)
-        sn_chp_norm_smth = likelihoodprocessing.boxcar_center(sn_pt_norm - chp_pt_norm, win_len)
-        sn_pt_norm_smth = likelihoodprocessing.boxcar_center(sn_pt_norm, win_len)
-
-        sn_pt_ang = np.zeros(num_data_rows - 1)
-        sn_disp = np.zeros(num_data_rows - 1)
-        pt_disp = np.zeros(num_data_rows - 1)
-        for k in range(num_data_rows-1):
-            b_3d = np.hstack([sn_pt[k + 1, :], 0])
-            a_3d = np.hstack([sn_pt[k, :], 0])
-            c = np.cross(b_3d, a_3d)
-            sn_pt_ang[k] = np.dot(np.dot(np.sign(c[2]), 180) / np.pi, math.atan2(np.linalg.norm(c), np.dot(sn_pt[k, :], sn_pt[k + 1, :])))
-            sn_disp[k] = np.linalg.norm(data_array[k + 1, 2 * bodyparts['Snout/Head']:2 * bodyparts['Snout/Head'] + 1] - data_array[k, 2 * bodyparts['Snout/Head']:2 * bodyparts['Snout/Head'] + 1])
-            pt_disp[k] = np.linalg.norm(data_array[k + 1, 2 * bodyparts['Tailbase']:2 * bodyparts['Tailbase'] + 1] - data_array[k, 2 * bodyparts['Tailbase']:2 * bodyparts['Tailbase'] + 1])
-        sn_pt_ang_smth = likelihoodprocessing.boxcar_center(sn_pt_ang, win_len)
-        sn_disp_smth = likelihoodprocessing.boxcar_center(sn_disp, win_len)
-        pt_disp_smth = likelihoodprocessing.boxcar_center(pt_disp, win_len)
-
-        # Append data to features list
-        features.append(np.vstack((sn_cfp_norm_smth[1:], sn_chp_norm_smth[1:], fpd_norm_smth[1:], sn_pt_norm_smth[1:], sn_pt_ang_smth[:], sn_disp_smth[:], pt_disp_smth[:])))
-    logger.info(f'{inspect.stack()[0][3]}:Done extracting features from a total of {len(list_of_arrays_data)} training CSV files.')
-    
-    return features
 
 def bsoid_tsne_py(list_of_arrays_data: List[np.ndarray], bodyparts=config.BODYPARTS_PY_LEGACY, fps=config.VIDEO_FPS, comp: int = config.COMPILE_CSVS_FOR_TRAINING):
     r = extract_features_and_train_TSNE

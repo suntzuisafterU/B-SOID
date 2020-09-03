@@ -97,11 +97,11 @@ def import_csvs_data_from_folders_in_PROJECTPATH_and_process_data(folders: list)
         for idx_filename, filename in enumerate(filenames_found_in_current_folder):
             logger.debug(f'Importing CSV file #{idx_filename+1}, {filename}, from folder #{idx_folder+1}')
             df_current_file_data = pd.read_csv(filename, low_memory=False)
-            curr_df_filt, perc_rect = preprocess_data_and_adaptive_filter(df_current_file_data)
+            array_current_file_data_adaptively_filtered, perc_rect = preprocess_data_and_adaptive_filter(df_current_file_data)
             logger.debug(f'Done preprocessing (x,y) from file #{idx_filename+1}, folder #{idx_folder+1}.')
             raw_data_list.append(df_current_file_data)
             perc_rect_list.append(perc_rect)
-            list_of_arrays_of_data.append(curr_df_filt)
+            list_of_arrays_of_data.append(array_current_file_data_adaptively_filtered)
         file_names_list.append(filenames_found_in_current_folder)
         logger.debug(f'Processed {len(filenames_found_in_current_folder)} CSV files from folder: {folder}')
     # array_of_arrays_of_data: np.ndarray = np.array(data_list)
@@ -174,15 +174,13 @@ def preprocess_data_and_adaptive_filter(df_input_data: pd.DataFrame) -> Tuple[np
     """
 
     :param df_input_data: (DataFrame) expected: raw DataFrame of DLC results right after reading in using pandas.read_csv().
-    EXAMPLE df_input_data INPUT:
+    EXAMPLE `df_input_data` input:
                 scorer DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000.1  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000.2   ...
         1  coords                                              x                                                      y                                        likelihood   ...
         2       0                               1017.80322265625                                      673.5625610351562                                               1.0   ...
         3       1                             1018.4616088867188                                      663.2183837890625                                0.9999999403953552   ...
         4       2                             1018.5991821289062                                      663.4205322265625                                               1.0   ...
         5       3                             1013.0330810546875                                      651.7833251953125                                 0.999998927116394   ...
-
-    :param df_input_data: (pandas.DataFrame)
 
     :return
         currdf_filt: 2D array, filtered data
