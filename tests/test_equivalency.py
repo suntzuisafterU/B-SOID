@@ -20,8 +20,7 @@ class test__new_functions_against_legacy(TestCase):
         # Arrange
         # # 1/2: Set up data for function use
         test_file_name = 'Video1DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000.csv'
-        body_parts = bsoid.config.BODYPARTS_PY_LEGACY
-        fps = bsoid.config.VIDEO_FPS
+        body_parts, fps = bsoid.config.BODYPARTS_PY_LEGACY, bsoid.config.VIDEO_FPS
 
         df_input_data = pd.read_csv(
             os.path.join(bsoid.config.BSOID_BASE_PROJECT_PATH, 'tests', 'test_data', test_file_name))
@@ -59,15 +58,13 @@ new output array: {features_output_new_function}
         # Arrange
         # # 1/2: Set up data for function use
         test_file_name = 'Video1DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000.csv'
-        body_parts = bsoid.config.BODYPARTS_PY_LEGACY
-        fps = bsoid.config.VIDEO_FPS
+        body_parts, fps = bsoid.config.BODYPARTS_PY_LEGACY, bsoid.config.VIDEO_FPS
 
         df_input_data = pd.read_csv(
             os.path.join(bsoid.config.BSOID_BASE_PROJECT_PATH, 'tests', 'test_data', test_file_name))
         data_as_array, _ = bsoid.util.likelihoodprocessing.preprocess_data_and_adaptive_filter(df_input_data)
         # # 2/2: Tee up functions to be compared
         bsoid_py_extract_function__as_is: callable = bsoid.classify.bsoid_extract_features_without_assuming_100ms_bin_integration
-        # bsoid_py_extract_function__as_is: callable = bsoid.classify.bsoid_extract_py
         new_feature_extraction_function: callable = bsoid.train.extract_7_features_bsoid_tsne_py
 
         # Act
@@ -95,9 +92,10 @@ new output array: {features_output_new_function}
         self.assertTrue(is_features_data_output_equal, msg=arrays_not_equal_err)
 
     def test__legacy_bsoid_extract_has_same_output_as_functionally_segregated_equivalent(self):  # TODO: fill in function name later
-        """Create apparatus that compares two feature extraction methods.
-        This function uses the SAME feature extraction function -- the only thing tested here is that
-        the equality apparatus works. If False, check logic! """
+        """The original implementation for bsoid_extract (_py submodule) assumed that the user wants features
+        further filtered to 100ms bins. The original function was separated into 2 new functions and
+        this test aims to confirm the correctness that pipelining data from the first and second new functions is
+        equivalent to using the original implementation."""
         # Arrange
         # # 1/2: Set up data for function use
         test_file_name = 'Video1DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000.csv'
