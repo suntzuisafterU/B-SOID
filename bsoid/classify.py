@@ -156,7 +156,7 @@ def bsoid_extract_py(data, bodyparts: dict = config.BODYPARTS_PY_LEGACY, fps: in
     win_len = np.int(np.round(0.05 / (1 / fps)) * 2 - 1)
     features = []
     for m in range(len(data)):
-        logger.info(f'Extracting features from CSV file {m + 1}...')
+        logger.info(f'Extracting features from CSV file {m+1}...')
         data_range = len(data[m])
         fpd = data[m][:, 2 * bodyparts.get('Forepaw/Shoulder1'):2 * bodyparts.get('Forepaw/Shoulder1') + 2] - \
               data[m][:, 2 * bodyparts.get('Forepaw/Shoulder2'):2 * bodyparts.get('Forepaw/Shoulder2') + 2]

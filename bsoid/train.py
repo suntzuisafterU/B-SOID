@@ -36,7 +36,7 @@ logger = config.initialize_logger(__name__)
 
 ########################################################################################################################
 @config.cfig_log_entry_exit(logger)
-def train_umap_unsupervised_with_xy_features_umapapp(data: list, fps: int = config.VIDEO_FPS) -> Tuple:
+def train_umap_unsupervised_with_xy_features_umapapp(data: List[np.ndarray], fps: int = config.VIDEO_FPS) -> Tuple:
     # TODO: high: ensure that the final logic matches original functions..ensure no renaming side-effects occurred
     """
     Trains UMAP (unsupervised) given a set of features based on (x,y) positions
@@ -311,10 +311,10 @@ def train_mlp_classifier_voc(feats, labels,
     return classifier, scores
 
 
-def bsoid_tsne_py(data: List[np.ndarray], bodyparts=config.BODYPARTS_PY_LEGACY, fps=config.VIDEO_FPS, comp: int = config.COMPILE_CSVS_FOR_TRAINING):
+def extract_7_features_bsoid_tsne_py(list_of_arrays_data: List[np.ndarray], bodyparts=config.BODYPARTS_PY_LEGACY, fps=config.VIDEO_FPS, comp: int = config.COMPILE_CSVS_FOR_TRAINING):
     """
     Trains t-SNE (unsupervised) given a set of features based on (x,y) positions
-    :param data: list of 3D array
+    :param list_of_arrays_data: list of 3D array
     :param bodyparts: dict, body parts with their orders in LOCAL_CONFIG
     :param fps: scalar, argument specifying camera frame-rate in LOCAL_CONFIG
     :param comp: boolean (0 or 1), argument to compile data or not in LOCAL_CONFIG
@@ -322,81 +322,92 @@ def bsoid_tsne_py(data: List[np.ndarray], bodyparts=config.BODYPARTS_PY_LEGACY, 
     :return f_10fps_sc: 2D array, standardized features
     :return trained_tsne: 2D array, trained t-SNE space
     """
+    # Sometimes data is (incorrectly) submitted as an array of arrays (the number of arrays in the overarching array or, if correctly typed, list) is the same # of CSV files read in). Fix type then continue.
+    if isinstance(list_of_arrays_data, np.ndarray):
+        list_of_arrays_data = list(list_of_arrays_data)
     # Check args
-    check_arg.ensure_type(data, list)
-    check_arg.ensure_type(data[0], np.ndarray)
-
+    check_arg.ensure_type(list_of_arrays_data, list)
+    check_arg.ensure_type(list_of_arrays_data[0], np.ndarray)
+    # Continue
     win_len = np.int(np.round(0.05 / (1 / fps)) * 2 - 1)
     features = []
-    for m in range(len(data)):
-        logger.info(f'Extracting features from CSV file {m+1}...')
-        data_range = len(data[m])
-        fpd = data[m][:, 2 * bodyparts['Forepaw/Shoulder1']:2 * bodyparts['Forepaw/Shoulder1'] + 2] - \
-              data[m][:, 2 * bodyparts['Forepaw/Shoulder2']:2 * bodyparts['Forepaw/Shoulder2'] + 2]
-        cfp = np.vstack(((data[m][:, 2 * bodyparts['Forepaw/Shoulder1']] +
-                          data[m][:, 2 * bodyparts['Forepaw/Shoulder2']]) / 2,
-                         (data[m][:, 2 * bodyparts['Forepaw/Shoulder1'] + 1] +
-                          data[m][:, 2 * bodyparts['Forepaw/Shoulder1'] + 1]) / 2)).T
-        cfp_pt = np.vstack(([cfp[:, 0] - data[m][:, 2 * bodyparts.get('Tailbase')],
-                             cfp[:, 1] - data[m][:, 2 * bodyparts.get('Tailbase') + 1]])).T
-        chp = np.vstack((((data[m][:, 2 * bodyparts['Hindpaw/Hip1']] +
-                           data[m][:, 2 * bodyparts['Hindpaw/Hip2']]) / 2),
-                         ((data[m][:, 2 * bodyparts['Hindpaw/Hip1'] + 1] +
-                           data[m][:, 2 * bodyparts['Hindpaw/Hip2'] + 1]) / 2))).T
-        chp_pt = np.vstack(([chp[:, 0] - data[m][:, 2 * bodyparts.get('Tailbase')],
-                             chp[:, 1] - data[m][:, 2 * bodyparts.get('Tailbase') + 1]])).T
-        sn_pt = np.vstack(([data[m][:, 2 * bodyparts['Snout/Head']] - data[m][:, 2 * bodyparts.get('Tailbase')],
-                            data[m][:, 2 * bodyparts['Snout/Head'] + 1] - data[m][:, 2 * bodyparts.get('Tailbase') + 1]])).T
-        fpd_norm = np.zeros(data_range)
-        cfp_pt_norm = np.zeros(data_range)
-        chp_pt_norm = np.zeros(data_range)
-        sn_pt_norm = np.zeros(data_range)
-        for i in range(1, data_range):
-            fpd_norm[i] = np.array(np.linalg.norm(fpd[i, :]))
-            cfp_pt_norm[i] = np.linalg.norm(cfp_pt[i, :])
-            chp_pt_norm[i] = np.linalg.norm(chp_pt[i, :])
-            sn_pt_norm[i] = np.linalg.norm(sn_pt[i, :])
+    # Iterate over data arrays available and build features
+    for i, data_array in enumerate(list_of_arrays_data):  # for i in range(len(list_of_arrays_data)):
+        logger.info(f'Extracting features from CSV file {i+1}...')
+        num_data_rows = len(data_array)
+
+        fpd = data_array[:, 2 * bodyparts['Forepaw/Shoulder1']:2 * bodyparts['Forepaw/Shoulder1'] + 2] - data_array[:, 2 * bodyparts['Forepaw/Shoulder2']:2 * bodyparts['Forepaw/Shoulder2'] + 2]
+        cfp = np.vstack(((data_array[:, 2 * bodyparts['Forepaw/Shoulder1']] + data_array[:, 2 * bodyparts['Forepaw/Shoulder2']]) / 2, (data_array[:, 2 * bodyparts['Forepaw/Shoulder1'] + 1] + data_array[:, 2 * bodyparts['Forepaw/Shoulder1'] + 1]) / 2)).T
+        cfp_pt = np.vstack(([cfp[:, 0] - data_array[:, 2 * bodyparts['Tailbase']], cfp[:, 1] - data_array[:, 2 * bodyparts['Tailbase'] + 1]])).T
+        chp = np.vstack((((data_array[:, 2 * bodyparts['Hindpaw/Hip1']] + data_array[:, 2 * bodyparts['Hindpaw/Hip2']]) / 2), ((data_array[:, 2 * bodyparts['Hindpaw/Hip1'] + 1] + data_array[:, 2 * bodyparts['Hindpaw/Hip2'] + 1]) / 2))).T
+        chp_pt = np.vstack(([chp[:, 0] - data_array[:, 2 * bodyparts['Tailbase']], chp[:, 1] - data_array[:, 2 * bodyparts['Tailbase'] + 1]])).T
+        sn_pt = np.vstack(([data_array[:, 2 * bodyparts['Snout/Head']] - data_array[:, 2 * bodyparts['Tailbase']], data_array[:, 2 * bodyparts['Snout/Head'] + 1] - data_array[:, 2 * bodyparts['Tailbase'] + 1]])).T
+
+        fpd_norm = np.zeros(num_data_rows)
+        cfp_pt_norm = np.zeros(num_data_rows)
+        chp_pt_norm = np.zeros(num_data_rows)
+        sn_pt_norm = np.zeros(num_data_rows)
+        for j in range(1, num_data_rows):
+            fpd_norm[j] = np.array(np.linalg.norm(fpd[j, :]))
+            cfp_pt_norm[j] = np.linalg.norm(cfp_pt[j, :])
+            chp_pt_norm[j] = np.linalg.norm(chp_pt[j, :])
+            sn_pt_norm[j] = np.linalg.norm(sn_pt[j, :])
+
         fpd_norm_smth = likelihoodprocessing.boxcar_center(fpd_norm, win_len)
         sn_cfp_norm_smth = likelihoodprocessing.boxcar_center(sn_pt_norm - cfp_pt_norm, win_len)
         sn_chp_norm_smth = likelihoodprocessing.boxcar_center(sn_pt_norm - chp_pt_norm, win_len)
         sn_pt_norm_smth = likelihoodprocessing.boxcar_center(sn_pt_norm, win_len)
-        sn_pt_ang = np.zeros(data_range - 1)
-        sn_disp = np.zeros(data_range - 1)
-        pt_disp = np.zeros(data_range - 1)
-        for k in range(data_range - 1):
+
+        sn_pt_ang = np.zeros(num_data_rows - 1)
+        sn_disp = np.zeros(num_data_rows - 1)
+        pt_disp = np.zeros(num_data_rows - 1)
+        for k in range(num_data_rows-1):
             b_3d = np.hstack([sn_pt[k + 1, :], 0])
             a_3d = np.hstack([sn_pt[k, :], 0])
             c = np.cross(b_3d, a_3d)
-            sn_pt_ang[k] = np.dot(np.dot(np.sign(c[2]), 180) / np.pi,
-                                  math.atan2(np.linalg.norm(c), np.dot(sn_pt[k, :], sn_pt[k + 1, :])))
-            sn_disp[k] = np.linalg.norm(
-                data[m][k + 1, 2 * bodyparts.get('Snout/Head'):2 * bodyparts.get('Snout/Head') + 1] -
-                data[m][k, 2 * bodyparts.get('Snout/Head'):2 * bodyparts.get('Snout/Head') + 1])
-            pt_disp[k] = np.linalg.norm(
-                data[m][k + 1, 2 * bodyparts.get('Tailbase'):2 * bodyparts.get('Tailbase') + 1] -
-                data[m][k, 2 * bodyparts.get('Tailbase'):2 * bodyparts.get('Tailbase') + 1])
+            sn_pt_ang[k] = np.dot(np.dot(np.sign(c[2]), 180) / np.pi, math.atan2(np.linalg.norm(c), np.dot(sn_pt[k, :], sn_pt[k + 1, :])))
+            sn_disp[k] = np.linalg.norm(data_array[k + 1, 2 * bodyparts['Snout/Head']:2 * bodyparts['Snout/Head'] + 1] - data_array[k, 2 * bodyparts['Snout/Head']:2 * bodyparts['Snout/Head'] + 1])
+            pt_disp[k] = np.linalg.norm(data_array[k + 1, 2 * bodyparts['Tailbase']:2 * bodyparts['Tailbase'] + 1] - data_array[k, 2 * bodyparts['Tailbase']:2 * bodyparts['Tailbase'] + 1])
         sn_pt_ang_smth = likelihoodprocessing.boxcar_center(sn_pt_ang, win_len)
         sn_disp_smth = likelihoodprocessing.boxcar_center(sn_disp, win_len)
         pt_disp_smth = likelihoodprocessing.boxcar_center(pt_disp, win_len)
-        features.append(np.vstack((sn_cfp_norm_smth[1:], sn_chp_norm_smth[1:], fpd_norm_smth[1:],
-                                sn_pt_norm_smth[1:], sn_pt_ang_smth[:], sn_disp_smth[:], pt_disp_smth[:])))
-    logger.info(f'{inspect.stack()[0][3]}:Done extracting features from a total of {len(data)} training CSV files.')
+
+        # Append data to features list
+        features.append(np.vstack((sn_cfp_norm_smth[1:], sn_chp_norm_smth[1:], fpd_norm_smth[1:], sn_pt_norm_smth[1:], sn_pt_ang_smth[:], sn_disp_smth[:], pt_disp_smth[:])))
+    logger.info(f'{inspect.stack()[0][3]}:Done extracting features from a total of {len(list_of_arrays_data)} training CSV files.')
+    
+    return features
+
+def bsoid_tsne_py(list_of_arrays_data: List[np.ndarray], bodyparts=config.BODYPARTS_PY_LEGACY, fps=config.VIDEO_FPS, comp: int = config.COMPILE_CSVS_FOR_TRAINING):
+    r = extract_features_and_train_TSNE
+    return r(list_of_arrays_data, bodyparts, fps, comp)
+def extract_features_and_train_TSNE(list_of_arrays_data: List[np.ndarray], bodyparts=config.BODYPARTS_PY_LEGACY, fps=config.VIDEO_FPS, comp: int = config.COMPILE_CSVS_FOR_TRAINING):
+    """
+    Trains t-SNE (unsupervised) given a set of features based on (x,y) positions
+    :param list_of_arrays_data: list of 3D array
+    :param bodyparts: dict, body parts with their orders in LOCAL_CONFIG
+    :param fps: scalar, argument specifying camera frame-rate in LOCAL_CONFIG
+    :param comp: boolean (0 or 1), argument to compile data or not in LOCAL_CONFIG
+    :return f_10fps: 2D array, features
+    :return f_10fps_sc: 2D array, standardized features
+    :return trained_tsne: 2D array, trained t-SNE space
+    """
+
+    features = extract_7_features_bsoid_tsne_py(list_of_arrays_data, bodyparts=bodyparts, fps=fps, comp=comp)
+
+    ###
     if comp == 0:
         f_10fps = []
         f_10fps_sc = []
         trained_tsne = []
-    for n in range(len(features)):
-        feats1 = np.zeros(len(data[n]))
-        for k in range(round(fps / 10) - 1, len(features[n][0]), round(fps / 10)):
+    for n, current_feature in enumerate(features):  #     for n in range(len(features)):
+        feats1 = np.zeros(len(list_of_arrays_data[n]))
+        for k in range(round(fps / 10) - 1, len(current_feature[0]), round(fps / 10)):
             if k > round(fps / 10) - 1:
                 feats1 = np.concatenate((feats1.reshape(feats1.shape[0], feats1.shape[1]),
-                                         np.hstack((np.mean((features[n][0:4, range(k - round(fps / 10), k)]), axis=1),
-                                                    np.sum((features[n][4:7, range(k - round(fps / 10), k)]),
-                                                           axis=1))).reshape(len(features[0]), 1)), axis=1)
+                                         np.hstack((np.mean((current_feature[0:4, range(k - round(fps / 10), k)]), axis=1), np.sum((current_feature[4:7, range(k - round(fps / 10), k)]), axis=1))).reshape(len(features[0]), 1)), axis=1)
             else:
-                feats1 = np.hstack((np.mean((features[n][0:4, range(k - round(fps / 10), k)]), axis=1),
-                                    np.sum((features[n][4:7, range(k - round(fps / 10), k)]), axis=1)))\
-                                    .reshape(len(features[0]), 1)
+                feats1 = np.hstack((np.mean((current_feature[0:4, range(k - round(fps / 10), k)]), axis=1), np.sum((current_feature[4:7, range(k - round(fps / 10), k)]), axis=1))).reshape(len(features[0]), 1)
         logger.info(f'Done integrating features into 100ms bins from CSV file {n+1}.')
         if comp == 1:
             if n > 0:
@@ -410,7 +421,7 @@ def bsoid_tsne_py(data: List[np.ndarray], bodyparts=config.BODYPARTS_PY_LEGACY, 
             feats1_stnd = scaler.transform(feats1.T).T
             f_10fps_sc.append(feats1_stnd)
             logger.info(f'Training t-SNE to embed {f_10fps_sc[n].shape[1]} instances from '
-                                     f'{f_10fps_sc[n].shape[0]} D into 3 D from CSV file {n + 1}...')
+                        f'{f_10fps_sc[n].shape[0]} D into 3 D from CSV file {n + 1}...')
             trained_tsne_i = tsne(f_10fps_sc[n].T, dimensions=3, perplexity=np.sqrt(f_10fps_sc[n].shape[1]),
                                   theta=0.5, rand_seed=config.RANDOM_STATE)
             trained_tsne.append(trained_tsne_i)
@@ -420,7 +431,7 @@ def bsoid_tsne_py(data: List[np.ndarray], bodyparts=config.BODYPARTS_PY_LEGACY, 
         scaler.fit(f_10fps.T)  # TODO: HIGH: variable `f_10fps` referenced before assignment. Error in logic above? ########################## IMPORTANT ###############################
         f_10fps_sc = scaler.transform(f_10fps.T).T
         logger.info(f'{inspect.stack()[0][3]}:Training t-SNE to embed {f_10fps_sc.shape[1]} instances'
-                    f'from {f_10fps_sc.shape[0]} D into 3 D from a total of {len(data)} CSV files...')
+                    f'from {f_10fps_sc.shape[0]} D into 3 D from a total of {len(list_of_arrays_data)} CSV files...')
         trained_tsne = tsne(f_10fps_sc.T, dimensions=3, perplexity=np.sqrt(f_10fps_sc.shape[1]),
                             theta=0.5, rand_seed=config.RANDOM_STATE)  # TODO: low: move "rand_seed" to a config file instead of hiding here as magic variable
         logger.info(f'{inspect.stack()[0][3]}::Done embedding into 3 D.')
@@ -686,14 +697,14 @@ def bsoid_feats_umapapp(data: list, fps: int = config.VIDEO_FPS) -> Tuple:
 def main_py(*args, **kwargs):
     """ *** DEPRECATION WARNING ***
     Only remove after README is updated. """
-    replacement_func = py__get_data_train_TSNE_then_GMM_then_SVM_then_return_EVERYTHING
+    replacement_func = get_data_train_TSNE_then_GMM_then_SVM_then_return_EVERYTHING__py
     err = f'Use `{replacement_func.__qualname__}` instead'
     logger.error(err)
     raise DeprecationWarning(err)
 
 
 @config.cfig_log_entry_exit(logger)
-def py__get_data_train_TSNE_then_GMM_then_SVM_then_return_EVERYTHING(train_folders: List[str]):
+def get_data_train_TSNE_then_GMM_then_SVM_then_return_EVERYTHING__py(train_folders: List[str]):
     """
     This function takes the place of "main.py" previously implemented in bsoid_py.
 
@@ -709,18 +720,19 @@ def py__get_data_train_TSNE_then_GMM_then_SVM_then_return_EVERYTHING(train_folde
         raise ValueError(zero_train_folders_error)
 
     # Get data
-    filenames, training_data, perc_rect = likelihoodprocessing.import_csvs_data_from_folders_in_PROJECTPATH_and_process_data(train_folders)
-    if len(filenames) == 0:
-        zero_folders_error = f'{inspect.stack()[0][3]}:Zero training folders were specified. Check your config file!!!! filenames = {filenames}.'
+    file_names_list, list_of_arrays_of_training_data, perc_rect = likelihoodprocessing.import_csvs_data_from_folders_in_PROJECTPATH_and_process_data(train_folders)
+    # Check that outputs are fine for runtime
+    if len(file_names_list) == 0:
+        zero_folders_error = f'{inspect.stack()[0][3]}: Zero training folders were specified. Check your config file!!!! filenames = {file_names_list}.'
         logger.error(zero_folders_error)
         raise ValueError(zero_folders_error)
-    if len(filenames[0]) == 0:
-        zero_filenames_error = f'{inspect.stack()[0][3]}:Zero file names were found. filenames = {filenames}.'
+    if len(file_names_list[0]) == 0:
+        zero_filenames_error = f'{inspect.stack()[0][3]}: Zero file names were found. filenames = {file_names_list}.'
         logger.error(zero_filenames_error)
         raise ValueError(zero_filenames_error)
 
     # Train TSNE
-    features_10fps, features_10fps_scaled, trained_tsne_list, scaler = bsoid_tsne_py(training_data)
+    features_10fps, features_10fps_scaled, trained_tsne_list, scaler = bsoid_tsne_py(list_of_arrays_of_training_data)
 
     # Train GMM
     gmm_assignments = train_emgmm_with_learned_tsne_space(trained_tsne_list)  # gmm_assignments = bsoid_gmm_pyvoc(trained_tsne)  # replaced with below
@@ -729,12 +741,12 @@ def py__get_data_train_TSNE_then_GMM_then_SVM_then_return_EVERYTHING(train_folde
     classifier, scores = bsoid_svm_py(features_10fps_scaled, gmm_assignments)
 
     # Plot to view progress if necessary
-    logger.debug(f'Enter GRAPH PLOTTING section of {inspect.stack()[0][3]}')
     if config.PLOT_GRAPHS:
-        visuals.plot_classes_EMGMM_assignments(trained_tsne_list, gmm_assignments, config.SAVE_GRAPHS_TO_FILE)  # TODO: HIGH: save fig to file is a magic variable
+        logger.debug(f'Enter GRAPH PLOTTING section of {inspect.stack()[0][3]}')
+        visuals.plot_classes_EMGMM_assignments(trained_tsne_list, gmm_assignments, config.SAVE_GRAPHS_TO_FILE)
         visuals.plot_accuracy_SVM(scores)
         visuals.plot_feats_bsoidpy(features_10fps, gmm_assignments)
-    logger.debug(f'Exiting GRAPH PLOTTING section of {inspect.stack()[0][3]}')
+        logger.debug(f'Exiting GRAPH PLOTTING section of {inspect.stack()[0][3]}')
     return features_10fps, trained_tsne_list, scaler, gmm_assignments, classifier, scores
 
 @config.cfig_log_entry_exit(logger)
@@ -744,7 +756,7 @@ def main_umap(train_folders: list):
                          f'type: {type(train_folders)} (value:  {train_folders}')
 
     time_str = time.strftime("_%Y%m%d_%H%M")
-    filenames, training_data, perc_rect = likelihoodprocessing.import_csvs_data_from_folders_in_PROJECTPATH_and_process_data(train_folders)
+    _filenames, training_data, perc_rect = likelihoodprocessing.import_csvs_data_from_folders_in_PROJECTPATH_and_process_data(train_folders)
     features_10fps, features_10fps_scaled = train_umap_unsupervised_with_xy_features_umapapp(training_data)
 
     # Train UMAP (unsupervised) given a set of features based on (x,y) positions
@@ -776,7 +788,7 @@ def train__import_data_and_process__train_tsne__train_gmm__train_clf__voc(train_
         raise ValueError(f'`train_folders` arg was expected to be list but instead found '
                          f'type: {type(train_folders)} (value:  {train_folders}).')
 
-    file_names, training_data, perc_rect = likelihoodprocessing.import_csvs_data_from_folders_in_PROJECTPATH_and_process_data(train_folders)
+    _file_names, training_data, perc_rect = likelihoodprocessing.import_csvs_data_from_folders_in_PROJECTPATH_and_process_data(train_folders)
 
     # Train T-SNE
     features_10fps, features_10fps_scaled, trained_tsne = bsoid_tsne_voc(training_data)
@@ -787,6 +799,8 @@ def train__import_data_and_process__train_tsne__train_gmm__train_clf__voc(train_
 
     # Train classifier
     classifier, scores = train_mlp_classifier_voc(features_10fps, gmm_assignments)
+
+    # Plot if necessary
     if config.PLOT_GRAPHS:
         visuals.plot_classes_bsoidvoc(trained_tsne, gmm_assignments)
         visuals.plot_accuracy_bsoidvoc(scores)
@@ -795,7 +809,7 @@ def train__import_data_and_process__train_tsne__train_gmm__train_clf__voc(train_
 
 
 if __name__ == '__main__':
-    py__get_data_train_TSNE_then_GMM_then_SVM_then_return_EVERYTHING(config.TRAIN_FOLDERS)  # originally: main()
+    get_data_train_TSNE_then_GMM_then_SVM_then_return_EVERYTHING__py(config.TRAIN_FOLDERS)  # originally: main()
     pass
 
 import umap
