@@ -75,12 +75,12 @@ def get_filenames_csvs_from_folders_recursively_in_dlc_project_path(folder: str)
     return filenames
 
 
-def import_csvs_data_from_folders_in_PROJECTPATH_and_process_data(folders: list) -> Tuple[List, np.ndarray, List]:
+def import_csvs_data_from_folders_in_PROJECTPATH_and_process_data(folders: list) -> Tuple[List, List[np.ndarray], List]:
     """
     Import multiple folders containing .csv files and process them
     :param folders: list, data folders
     :return filenames: list, data filenames
-    :return data: list, filtered csv data
+    :return data: List of arrays, filtered csv data
     :return perc_rect_li: list, percent filtered
     """
     # TODO: what does `raw_data_list` do? It looks like a variable without a purpose. It appends but does not return.
@@ -90,23 +90,23 @@ def import_csvs_data_from_folders_in_PROJECTPATH_and_process_data(folders: list)
         logger.error(empty_folders_list_err)
         raise ValueError(empty_folders_list_err)
 
-    file_names_list, raw_data_list, data_list, perc_rect_list = [], [], [], []
+    file_names_list, raw_data_list, list_of_arrays_of_data, perc_rect_list = [], [], [], []
     # Iterate over folders
     for idx_folder, folder in enumerate(folders):  # Loop through folders
         filenames_found_in_current_folder = get_filenames_csvs_from_folders_recursively_in_dlc_project_path(folder)
         for idx_filename, filename in enumerate(filenames_found_in_current_folder):
             logger.debug(f'Importing CSV file #{idx_filename+1}, {filename}, from folder #{idx_folder+1}')
-            df_current_file = pd.read_csv(filename, low_memory=False)
-            curr_df_filt, perc_rect = preprocess_data_and_adaptive_filter(df_current_file)
+            df_current_file_data = pd.read_csv(filename, low_memory=False)
+            curr_df_filt, perc_rect = preprocess_data_and_adaptive_filter(df_current_file_data)
             logger.debug(f'Done preprocessing (x,y) from file #{idx_filename+1}, folder #{idx_folder+1}.')
-            raw_data_list.append(df_current_file)
+            raw_data_list.append(df_current_file_data)
             perc_rect_list.append(perc_rect)
-            data_list.append(curr_df_filt)
+            list_of_arrays_of_data.append(curr_df_filt)
         file_names_list.append(filenames_found_in_current_folder)
         logger.debug(f'Processed {len(filenames_found_in_current_folder)} CSV files from folder: {folder}')
-    array_of_arrays_of_data: np.ndarray = np.array(data_list)
-    logger.info(f'{get_current_function()}: Processed a total of {len(data_list)} CSV files and compiled into a {array_of_arrays_of_data.shape} data list/array.')
-    return file_names_list, array_of_arrays_of_data, perc_rect_list
+    # array_of_arrays_of_data: np.ndarray = np.array(data_list)
+    logger.info(f'{get_current_function()}: Processed a total of {len(list_of_arrays_of_data)} CSV files')  # and compiled into a {array_of_arrays_of_data.shape} data list/array.')
+    return file_names_list, list_of_arrays_of_data, perc_rect_list
 
 
 def import_folders_app(ost_project_path, input_folders_list: list, BODYPARTS: dict) -> Tuple[List, List, np.ndarray, List]:
@@ -117,6 +117,7 @@ def import_folders_app(ost_project_path, input_folders_list: list, BODYPARTS: di
     :return data: list, filtered csv data
     :return perc_rect_li: list, percent filtered
     """
+    # TODO: the _app implementation of import_folders(); needs to be reconciled with non-_app implementation but tuple reponse length does not match
     fldrs, data_list, perc_rect_list = [], [], []
     all_file_names_list = []
     for idx_folder, folder in enumerate(input_folders_list):  # Loop through folders
@@ -248,9 +249,9 @@ def preprocess_data_and_adaptive_filter(df_input_data: pd.DataFrame) -> Tuple[np
     # Remove first row in data array (values are all zeroes)
     array_filtered_data_without_first_row = np.array(array_data_filtered[1:])
     # Convert all data to np.float
-    array_filtered_data_without_first_row = array_filtered_data_without_first_row.astype(np.float)
+    final_array_filtered_data = array_filtered_data_without_first_row.astype(np.float)
 
-    return array_filtered_data_without_first_row, percent_filterd_per_bodypart__perc_rect
+    return final_array_filtered_data, percent_filterd_per_bodypart__perc_rect
 
 
 @config.cfig_log_entry_exit(logger)
@@ -263,7 +264,7 @@ def adaptive_filter_data_app(input_df: pd.DataFrame, BODYPARTS: dict):  # TODO: 
     """
     l_index, x_index, y_index = [], [], []
     currdf = np.array(input_df[1:])
-    for body_part_key in BODYPARTS:
+    for body_part_key in BODYPARTS:  # TODO: indexing off of BODYPARTS keys should cause an error?
         if currdf[0][body_part_key + 1] == "likelihood":
             l_index.append(body_part_key)
         elif currdf[0][body_part_key + 1] == "x":

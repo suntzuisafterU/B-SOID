@@ -25,11 +25,10 @@ Extracts features based on (x,y) positions
 """
 
 
-
 def bsoid_extract_app(data, fps) -> List:
     win_len = np.int(np.round(0.05 / (1 / fps)) * 2 - 1)
     features = []
-    for m in range(len(data)):
+    for m, data_m in enumerate(data):  # TODO: refactor this function to use data_m instead of indexing everywhere
         logger.info(f'Extracting features from CSV file {m+1}...')
         data_range = len(data[m])
         dxy_r, dis_r = [], []
@@ -70,7 +69,7 @@ def bsoid_extract_app(data, fps) -> List:
         features.append(np.vstack((dxy_smth[:, 1:], ang_smth, dis_smth)))
     logger.info(f'Done extracting features from a total of {len(data)} training CSV files.')
     # Next, TODO
-    f_10fps = []
+    features_10fps = []
     for n in range(len(features)):
         feats1 = np.zeros(len(data[n]))
         for s in range(math.floor(fps / 10)):
@@ -88,8 +87,8 @@ def bsoid_extract_app(data, fps) -> List:
                                             np.sum((features[n][dxy_smth.shape[0]:features[n].shape[0],
                                                     range(k - round(fps / 10), k)]), axis=1))).reshape(len(features[0]), 1)
             logger.info(f'Done integrating features into 100ms bins from CSV file {n + 1}.')
-            f_10fps.append(feats1)
-    return f_10fps
+            features_10fps.append(feats1)
+    return features_10fps
 def bsoid_extract_umap(data, fps=config.VIDEO_FPS) -> List:
     win_len = np.int(np.round(0.05 / (1 / fps)) * 2 - 1)
     features = []

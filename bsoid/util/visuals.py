@@ -107,6 +107,7 @@ def plot_transition_matrix(transition_matrix: np.ndarray, fps, save_fig_to_file,
     return fig
 
 #######################################################################################################################
+@config.cfig_log_entry_exit(logger)
 def plot_classes_EMGMM_assignments(data, assignments, save_fig_to_file: bool, fig_file_prefix='train_assignments'):
     """ Plot trained TSNE for EM-GMM assignments
     :param data: 2D array, trained_tsne

@@ -30,10 +30,9 @@ Automatically saves classifier in OUTPUTPATH with MODELNAME in LOCAL_CONFIG
 """
 @config.cfig_log_entry_exit(logger)
 def build_py(train_folders) -> Tuple[Any, Any, Any, Any, Any, Any]:
-    logger.debug(f'{inspect.stack()[0][3]}: ENTERING')
     time_str = time.strftime("_%Y%m%d_%H%M")
 
-    features_10fps, trained_tsne, scaler_object, gmm_assignments, classifier, scores = train.py__get_data_train_TSNE_then_GMM_then_SVM_then_return_EVERYTHING(train_folders)
+    features_10fps, trained_tsne, scaler_object, gmm_assignments, classifier, scores = train.get_data_train_TSNE_then_GMM_then_SVM_then_return_EVERYTHING__py(train_folders)
 
     all_data = np.concatenate([features_10fps.T, trained_tsne, gmm_assignments.reshape(len(gmm_assignments), 1)], axis=1)
     multi_index_columns = pd.MultiIndex.from_tuples([
@@ -465,7 +464,7 @@ def test_function_to_build_then_run_voc():
 
 
 if __name__ == "__main__":  # py
-    test_function_to_build_then_run_py()  # main_py(TRAIN_FOLDERS, PREDICT_FOLDERS)
-    # test_function_to_build_then_run_umap()
+    # test_function_to_build_then_run_py()  # main_py(TRAIN_FOLDERS, PREDICT_FOLDERS)
+    test_function_to_build_then_run_umap()
 
 #  bsoid_py.main.run(PREDICT_FOLDERS)
