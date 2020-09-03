@@ -97,7 +97,7 @@ def import_csvs_data_from_folders_in_PROJECTPATH_and_process_data(folders: list)
         for idx_filename, filename in enumerate(filenames_found_in_current_folder):
             logger.debug(f'Importing CSV file #{idx_filename+1}, {filename}, from folder #{idx_folder+1}')
             df_current_file_data = pd.read_csv(filename, low_memory=False)
-            array_current_file_data_adaptively_filtered, perc_rect = preprocess_data_and_adaptive_filter(df_current_file_data)
+            array_current_file_data_adaptively_filtered, perc_rect = process_raw_data_and_filter_adaptively(df_current_file_data)
             logger.debug(f'Done preprocessing (x,y) from file #{idx_filename+1}, folder #{idx_folder+1}.')
             raw_data_list.append(df_current_file_data)
             perc_rect_list.append(perc_rect)
@@ -170,17 +170,17 @@ def remove_top_n_rows_of_dataframe(in_df, n_rows: int = 1, copy=False):
 #     return
 
 @config.cfig_log_entry_exit(logger)
-def preprocess_data_and_adaptive_filter(df_input_data: pd.DataFrame) -> Tuple[np.ndarray, List]:
+def process_raw_data_and_filter_adaptively(df_input_data: pd.DataFrame) -> Tuple[np.ndarray, List]:
     """
 
     :param df_input_data: (DataFrame) expected: raw DataFrame of DLC results right after reading in using pandas.read_csv().
     EXAMPLE `df_input_data` input:
-                scorer DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000.1  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000.2   ...
-        1  coords                                              x                                                      y                                        likelihood   ...
-        2       0                               1017.80322265625                                      673.5625610351562                                               1.0   ...
-        3       1                             1018.4616088867188                                      663.2183837890625                                0.9999999403953552   ...
-        4       2                             1018.5991821289062                                      663.4205322265625                                               1.0   ...
-        5       3                             1013.0330810546875                                      651.7833251953125                                 0.999998927116394   ...
+           scorer DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000.1  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000.2   ...
+        1  coords                                              x                                                 y                                        likelihood   ...
+        2       0                               1017.80322265625                                 673.5625610351562                                               1.0   ...
+        3       1                             1018.4616088867188                                 663.2183837890625                                0.9999999403953552   ...
+        4       2                             1018.5991821289062                                 663.4205322265625                                               1.0   ...
+        5       3                             1013.0330810546875                                 651.7833251953125                                 0.999998927116394   ...
 
     :return
         currdf_filt: 2D array, filtered data
@@ -195,7 +195,7 @@ def preprocess_data_and_adaptive_filter(df_input_data: pd.DataFrame) -> Tuple[np
     # Remove top row. The top row only contained project name headers
     df_input_data_with_projectname_header_removed: pd.DataFrame = df_input_data[1:]
     # Convert data to raw array
-    array_input_data_with_projectname_header_removed: np.ndarray = np.array(df_input_data_with_projectname_header_removed)
+    array_input_data_with_projectname_header_removed = np.array(df_input_data_with_projectname_header_removed)
     # Loop over columns, aggregate which indices in the data fall under which category.
     #   x, y, and likelihood are the three main types of columns output from DLC.
     number_of_cols = len(array_input_data_with_projectname_header_removed[0])  # number_of_cols = len(array_input_data_with_top_row_removed[0])
