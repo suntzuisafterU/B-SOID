@@ -73,10 +73,10 @@ new output array: {features_output_new_function}
         second_extraction_seg_func = bsoid.classify.integrate_features_into_100ms_bins
 
         # Act
-        features_output_original_function: List[np.ndarray] = bsoid_py_extract_function__as_is([data_as_array],
-                                                                                               body_parts, fps)
-        features_output_new_function: List[np.ndarray] = first_extraction_seg_func([data_as_array], body_parts, fps)
-        features_output_new_function = second_extraction_seg_func([data_as_array], features_output_new_function, fps)
+        features_output_original_function: List[np.ndarray] = bsoid_py_extract_function__as_is([data_as_array], body_parts, fps)
+
+        features_output_new_function_1_of_2_done: List[np.ndarray] = first_extraction_seg_func([data_as_array], body_parts, fps)
+        features_output_new_function = second_extraction_seg_func([data_as_array], features_output_new_function_1_of_2_done, fps)
 
         # Assert (Note: usually multiple asserts in a single test is bad form, but we can refactor this test later)
         # 1/2: Assert types first

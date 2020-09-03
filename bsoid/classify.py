@@ -272,7 +272,7 @@ def bsoid_extract_features_without_assuming_100ms_bin_integration(data, bodypart
         cfp_pt = np.vstack(([cfp[:, 0] - data_array[:, 2 * bodyparts['Tailbase']], cfp[:, 1] - data_array[:, 2 * bodyparts['Tailbase'] + 1]])).T
         chp = np.vstack((((data_array[:, 2 * bodyparts['Hindpaw/Hip1']] + data_array[:, 2 * bodyparts['Hindpaw/Hip2']]) / 2), ((data_array[:, 2 * bodyparts['Hindpaw/Hip1'] + 1] + data_array[:, 2 * bodyparts['Hindpaw/Hip2'] + 1]) / 2))).T
         chp_pt = np.vstack(([chp[:, 0] - data_array[:, 2 * bodyparts['Tailbase']], chp[:, 1] - data_array[:, 2 * bodyparts['Tailbase'] + 1]])).T
-        sn_pt = np.vstack(([data_array[:, 2 * bodyparts['Snout/Head']] - data_array[:, 2 * bodyparts['Tailbase']], data_array[:, 2 * bodyparts['Snout/Head'] + 1] - data_array[:, -2 * bodyparts['Tailbase'] + 1]])).T
+        sn_pt = np.vstack(([data_array[:, 2 * bodyparts['Snout/Head']] - data_array[:, 2 * bodyparts['Tailbase']], data_array[:, 2 * bodyparts['Snout/Head'] + 1] - data_array[:, 2 * bodyparts['Tailbase'] + 1]])).T
 
         fpd_norm = np.zeros(data_range)
         cfp_pt_norm = np.zeros(data_range)
@@ -340,7 +340,7 @@ def bsoid_extract_py(data, bodyparts: dict = config.BODYPARTS_PY_LEGACY, fps: in
         chp_pt = np.vstack(([chp[:, 0] - data_array[:, 2 * bodyparts.get('Tailbase')],
                              chp[:, 1] - data_array[:, 2 * bodyparts.get('Tailbase') + 1]])).T
         sn_pt = np.vstack(([data_array[:, 2 * bodyparts.get('Snout/Head')] - data_array[:, 2 * bodyparts.get('Tailbase')],
-                            data_array[:, 2 * bodyparts.get('Snout/Head') + 1] - data_array[:, -2 * bodyparts.get('Tailbase') + 1]])).T
+                            data_array[:, 2 * bodyparts.get('Snout/Head') + 1] - data_array[:, 2 * bodyparts.get('Tailbase') + 1]])).T
         fpd_norm = np.zeros(data_range)
         cfp_pt_norm = np.zeros(data_range)
         chp_pt_norm = np.zeros(data_range)

@@ -125,7 +125,7 @@ def build_voc(train_folders) -> Tuple[Any, Any, Any, Any, List]:
     :returns f_10fps, trained_tsne, gmm_assignments, classifier, scores: see bsoid_voc.train
     """
     # import bsoid_voc.train
-    f_10fps, trained_tsne, gmm_assignments, classifier, scores = train.main_voc(train_folders)
+    f_10fps, trained_tsne, gmm_assignments, classifier, scores = train.train__import_data_and_process__train_tsne__train_gmm__train_clf__voc(train_folders)
     all_data_as_array = np.concatenate([f_10fps.T, trained_tsne, gmm_assignments.reshape(len(gmm_assignments), 1)], axis=1)
 
     multi_index_columns = pd.MultiIndex.from_tuples([

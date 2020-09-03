@@ -36,8 +36,7 @@ logger = config.initialize_logger(__name__)
 
 ########################################################################################################################
 
-def extract_7_features_bsoid_tsne_py(list_of_arrays_data: List[np.ndarray], bodyparts=config.BODYPARTS_PY_LEGACY,
-                                     fps=config.VIDEO_FPS, comp: int = config.COMPILE_CSVS_FOR_TRAINING) -> List:
+def extract_7_features_bsoid_tsne_py(list_of_arrays_data: List[np.ndarray], bodyparts=config.BODYPARTS_PY_LEGACY, fps=config.VIDEO_FPS, comp: int = config.COMPILE_CSVS_FOR_TRAINING) -> List:
     """
     Trains t-SNE (unsupervised) given a set of features based on (x,y) positions
     :param list_of_arrays_data: list of 3D array
@@ -50,13 +49,14 @@ def extract_7_features_bsoid_tsne_py(list_of_arrays_data: List[np.ndarray], body
     """
     # Sometimes data is (incorrectly) submitted as an array of arrays (the number of arrays in the overarching array or, if correctly typed, list) is the same # of CSV files read in). Fix type then continue.
     if isinstance(list_of_arrays_data, np.ndarray):
+        logger.warning(f'')
         list_of_arrays_data = list(list_of_arrays_data)
     # Check args
     check_arg.ensure_type(list_of_arrays_data, list)
     check_arg.ensure_type(list_of_arrays_data[0], np.ndarray)
     # Continue
     win_len = np.int(np.round(0.05 / (1 / fps)) * 2 - 1)
-    features = []
+    features: List[np.ndarray] = []
     # Iterate over data arrays available and build features
     for i, data_array in enumerate(list_of_arrays_data):  # for i in range(len(list_of_arrays_data)):
         logger.info(f'Extracting features from CSV file {i + 1}...')
@@ -67,7 +67,7 @@ def extract_7_features_bsoid_tsne_py(list_of_arrays_data: List[np.ndarray], body
         cfp_pt = np.vstack(([cfp[:, 0] - data_array[:, 2 * bodyparts['Tailbase']], cfp[:, 1] - data_array[:, 2 * bodyparts['Tailbase'] + 1]])).T
         chp = np.vstack((((data_array[:, 2 * bodyparts['Hindpaw/Hip1']] + data_array[:, 2 * bodyparts['Hindpaw/Hip2']]) / 2), ((data_array[:, 2 *bodyparts[ 'Hindpaw/Hip1'] + 1] + data_array[:,2 * bodyparts['Hindpaw/Hip2'] + 1]) / 2))).T
         chp_pt = np.vstack(([chp[:, 0] - data_array[:, 2 * bodyparts['Tailbase']], chp[:, 1] - data_array[:, 2 * bodyparts['Tailbase'] + 1]])).T
-        sn_pt = np.vstack(([data_array[:, 2 * bodyparts['Snout/Head']] - data_array[:, 2 * bodyparts['Tailbase']], data_array[:, 2 * bodyparts['Snout/Head'] + 1] - data_array[:, -2 * bodyparts['Tailbase'] + 1]])).T
+        sn_pt = np.vstack(([data_array[:, 2 * bodyparts['Snout/Head']] - data_array[:, 2 * bodyparts['Tailbase']], data_array[:, 2 * bodyparts['Snout/Head'] + 1] - data_array[:, 2 * bodyparts['Tailbase'] + 1]])).T
 
         fpd_norm = np.zeros(num_data_rows)
         cfp_pt_norm = np.zeros(num_data_rows)
@@ -117,6 +117,7 @@ def extract_7_features_bsoid_tsne_py(list_of_arrays_data: List[np.ndarray], body
 
 
 ########################################################################################################################
+
 @config.cfig_log_entry_exit(logger)
 def train_umap_unsupervised_with_xy_features_umapapp(data: List[np.ndarray], fps: int = config.VIDEO_FPS) -> Tuple:
     # TODO: high: ensure that the final logic matches original functions..ensure no renaming side-effects occurred
@@ -671,52 +672,6 @@ def bsoid_svm_py(feats, labels, comp: int = config.COMPILE_CSVS_FOR_TRAINING, ho
     return classifier, scores
 
 
-########################################################################################################################
-### Legacy functions -- keep them for now
-
-def bsoid_nn_voc(feats, labels, comp: int = config.COMPILE_CSVS_FOR_TRAINING, hldout: float = config.HOLDOUT_PERCENT, cv_it=config.CROSSVALIDATION_K, mlp_params=config.MLP_PARAMS):
-    # WARNING: DEPRECATION IMMINENT
-    replacement_func = train_mlp_classifier_voc
-    logger.warn(f'This function will be deprecated in the future. If you still need this function to use, '
-                f'think about using {replacement_func.__qualname__} instead. Caller = {inspect.stack()[1][3]}.')
-    return replacement_func(feats, labels, comp, hldout, cv_it, mlp_params)
-def bsoid_gmm_pyvoc(trained_tsne_array, comp=config.COMPILE_CSVS_FOR_TRAINING, emgmm_params=config.EMGMM_PARAMS) -> np.ndarray:
-    replacement_func = train_emgmm_with_learned_tsne_space
-    logger.warn(f'This function will be deprecated in the future. To resolve this warning, replace this '
-                f'function with {replacement_func.__qualname__} instead.')
-    return replacement_func(trained_tsne_array, comp=config.COMPILE_CSVS_FOR_TRAINING, emgmm_params=config.EMGMM_PARAMS)
-def bsoid_feats_umapapp(data: list, fps: int = config.VIDEO_FPS) -> Tuple:
-    # WARNING: DEPRECATION IMMINENT
-    replacement_func = train_umap_unsupervised_with_xy_features_umapapp
-    logger.warn(f'DEPRECATION WARNING. This function, {inspect.stack()[0][3]}, will be deprecated in'
-                f' favour of a more clear '
-                f'and concise function. Caller = {inspect.stack()[1][3]}. '
-                f'Current replacement is: {replacement_func.__qualname__}. '
-                f'This function only still exists to ensure dependencies aren\'t broken on updating entire module')
-    return replacement_func(data, fps)
-
-
-########################################################################################################################
-
-"""
-:param train_folders: list, training data folders
-:return f_10fps: 2D array, features
-:return trained_tsne: 2D array, trained t-SNE space
-:return gmm_assignments: Converged EM-GMM group assignments
-:return classifier: obj, MLP classifier
-:return scores: 1D array, cross-validated accuracy
-"""
-
-
-def main_py(*args, **kwargs):
-    """ *** DEPRECATION WARNING ***
-    Only remove after README is updated. """
-    replacement_func = get_data_train_TSNE_then_GMM_then_SVM_then_return_EVERYTHING__py
-    err = f'Use `{replacement_func.__qualname__}` instead'
-    logger.error(err)
-    raise DeprecationWarning(err)
-
-
 @config.cfig_log_entry_exit(logger)
 def get_data_train_TSNE_then_GMM_then_SVM_then_return_EVERYTHING__py(train_folders: List[str]):
     """
@@ -763,39 +718,8 @@ def get_data_train_TSNE_then_GMM_then_SVM_then_return_EVERYTHING__py(train_folde
         logger.debug(f'Exiting GRAPH PLOTTING section of {inspect.stack()[0][3]}')
     return features_10fps, trained_tsne_list, scaler, gmm_assignments, classifier, scores
 
-@config.cfig_log_entry_exit(logger)
-def main_umap(train_folders: list):
-    if not isinstance(train_folders, list):
-        raise ValueError(f'`train_folders` arg was expected to be list but instead found '
-                         f'type: {type(train_folders)} (value:  {train_folders}')
 
-    time_str = time.strftime("_%Y%m%d_%H%M")
-    _filenames, training_data, perc_rect = likelihoodprocessing.import_csvs_data_from_folders_in_PROJECTPATH_and_process_data(train_folders)
-    features_10fps, features_10fps_scaled = train_umap_unsupervised_with_xy_features_umapapp(training_data)
 
-    # Train UMAP (unsupervised) given a set of features based on (x,y) positions
-    trained_umap, umap_embeddings = bsoid_umap_embed_umapapp(features_10fps_scaled)
-    # Train HDBSCAN (unsupervised) given learned UMAP space
-    hdb_assignments, soft_clusters, soft_assignments = bsoid_hdbscan_umapapp(umap_embeddings)
-
-    nn_classifier, scores, nn_assignments = bsoid_nn_appumap(features_10fps, soft_assignments)
-
-    if config.PLOT_GRAPHS:
-        fig = visuals.plot_classes_bsoidumap(umap_embeddings[hdb_assignments >= 0], hdb_assignments[hdb_assignments >= 0])
-        if config.SAVE_GRAPHS_TO_FILE:
-            fig_filename_prefix = 'hdb_soft_assignments'
-            fig_filename = f'{fig_filename_prefix}{time_str}'  # fig1.savefig(os.path.join(config.OUTPUT_PATH, str.join('', (my_file1, time_str, '.svg'))))
-            visuals.save_graph_to_file(fig, fig_filename)
-        visuals.plot_accuracy_umap(scores)
-
-    return features_10fps, features_10fps_scaled, umap_embeddings, hdb_assignments, soft_assignments, soft_clusters, nn_classifier, scores, nn_assignments
-@config.cfig_log_entry_exit(logger)
-def main_voc(train_folders: list):
-    replacement_func = train__import_data_and_process__train_tsne__train_gmm__train_clf__voc
-    warning = f'This function, {likelihoodprocessing.get_current_function()}, will be deprecated soon. Instead, use: ' \
-              f'{replacement_func.__qualname__}.'
-    logger.warning(warning)
-    return replacement_func(train_folders)
 @config.cfig_log_entry_exit(logger)
 def train__import_data_and_process__train_tsne__train_gmm__train_clf__voc(train_folders: list):
     if not isinstance(train_folders, list):
@@ -822,8 +746,80 @@ def train__import_data_and_process__train_tsne__train_gmm__train_clf__voc(train_
     return features_10fps, trained_tsne, gmm_assignments, classifier, scores
 
 
+def main_umap(train_folders: list):
+    if not isinstance(train_folders, list):
+        raise ValueError(f'`train_folders` arg was expected to be list but instead found '
+                         f'type: {type(train_folders)} (value:  {train_folders}')
+
+    time_str = time.strftime("_%Y%m%d_%H%M")
+    _filenames, training_data, perc_rect = likelihoodprocessing.import_csvs_data_from_folders_in_PROJECTPATH_and_process_data(train_folders)
+    features_10fps, features_10fps_scaled = train_umap_unsupervised_with_xy_features_umapapp(training_data)
+
+    # Train UMAP (unsupervised) given a set of features based on (x,y) positions
+    trained_umap, umap_embeddings = bsoid_umap_embed_umapapp(features_10fps_scaled)
+    # Train HDBSCAN (unsupervised) given learned UMAP space
+    hdb_assignments, soft_clusters, soft_assignments = bsoid_hdbscan_umapapp(umap_embeddings)
+
+    nn_classifier, scores, nn_assignments = bsoid_nn_appumap(features_10fps, soft_assignments)
+
+    if config.PLOT_GRAPHS:
+        fig = visuals.plot_classes_bsoidumap(umap_embeddings[hdb_assignments >= 0], hdb_assignments[hdb_assignments >= 0])
+        if config.SAVE_GRAPHS_TO_FILE:
+            fig_filename_prefix = 'hdb_soft_assignments'
+            fig_filename = f'{fig_filename_prefix}{time_str}'  # fig1.savefig(os.path.join(config.OUTPUT_PATH, str.join('', (my_file1, time_str, '.svg'))))
+            visuals.save_graph_to_file(fig, fig_filename)
+        visuals.plot_accuracy_umap(scores)
+
+    return features_10fps, features_10fps_scaled, umap_embeddings, hdb_assignments, soft_assignments, soft_clusters, nn_classifier, scores, nn_assignments
+
+
+########################################################################################################################
+### Legacy functions -- keep them for now
+def bsoid_nn_voc(feats, labels, comp: int = config.COMPILE_CSVS_FOR_TRAINING, hldout: float = config.HOLDOUT_PERCENT, cv_it=config.CROSSVALIDATION_K, mlp_params=config.MLP_PARAMS):
+    # WARNING: DEPRECATION IMMINENT
+    replacement_func = train_mlp_classifier_voc
+    logger.warn(f'This function will be deprecated in the future. If you still need this function to use, '
+                f'think about using {replacement_func.__qualname__} instead. Caller = {inspect.stack()[1][3]}.')
+    return replacement_func(feats, labels, comp, hldout, cv_it, mlp_params)
+def bsoid_gmm_pyvoc(trained_tsne_array, comp=config.COMPILE_CSVS_FOR_TRAINING, emgmm_params=config.EMGMM_PARAMS) -> np.ndarray:
+    replacement_func = train_emgmm_with_learned_tsne_space
+    logger.warn(f'This function will be deprecated in the future. To resolve this warning, replace this '
+                f'function with {replacement_func.__qualname__} instead.')
+    return replacement_func(trained_tsne_array, comp=config.COMPILE_CSVS_FOR_TRAINING, emgmm_params=config.EMGMM_PARAMS)
+def bsoid_feats_umapapp(data: list, fps: int = config.VIDEO_FPS) -> Tuple:
+    replacement_func = train_umap_unsupervised_with_xy_features_umapapp
+    logger.warn(f'DEPRECATION WARNING. This function, {inspect.stack()[0][3]}, will be deprecated in'
+                f' favour of a more clear '
+                f'and concise function. Caller = {inspect.stack()[1][3]}. '
+                f'Current replacement is: {replacement_func.__qualname__}. '
+                f'This function only still exists to ensure dependencies aren\'t broken on updating entire module')
+    return replacement_func(data, fps)
+def main_py(*args, **kwargs):
+    """
+    :param train_folders: list, training data folders
+    :return f_10fps: 2D array, features
+    :return trained_tsne: 2D array, trained t-SNE space
+    :return gmm_assignments: Converged EM-GMM group assignments
+    :return classifier: obj, MLP classifier
+    :return scores: 1D array, cross-validated accuracy
+    """
+    """ *** DEPRECATION WARNING ***
+    Only remove after README is updated. """
+    replacement_func = get_data_train_TSNE_then_GMM_then_SVM_then_return_EVERYTHING__py
+    err = f'Use `{replacement_func.__qualname__}` instead'
+    logger.error(err)
+    raise DeprecationWarning(err)
+@config.cfig_log_entry_exit(logger)
+def main_voc(train_folders: list):
+    replacement_func = train__import_data_and_process__train_tsne__train_gmm__train_clf__voc
+    warning = f'This function, {likelihoodprocessing.get_current_function()}, will be deprecated soon. Instead, use: ' \
+              f'{replacement_func.__qualname__}.'
+    logger.warning(warning)
+    return replacement_func(train_folders)
+
+
+########################################################################################################################
+
 if __name__ == '__main__':
     get_data_train_TSNE_then_GMM_then_SVM_then_return_EVERYTHING__py(config.TRAIN_FOLDERS)  # originally: main()
     pass
-
-import umap
