@@ -59,7 +59,7 @@ def plot_duration_histogram(lengths, grp, save_fig_to_file: bool = True, fig_fil
     fig, ax = plt.subplots()
     R = np.linspace(0, 1, len(np.unique(grp)))
     colormap = plt.cm.get_cmap("Spectral")(R)
-    for i in range(0, len(np.unique(grp))):
+    for i in range(len(np.unique(grp))):
         fig.suptitle(f"Duration histogram of {len(np.unique(TM))} behaviors")  # TODO: address `TM` source
         x = lengths[np.where(grp == i)]
         ax.hist(x, density=True, color=colormap[i], alpha=0.3, label=f'Group {i}')
@@ -97,10 +97,38 @@ def plot_transition_matrix(transition_matrix: np.ndarray, fps, save_fig_to_file,
         fig_file_name = f'{fig_file_prefix}{fps}'
         save_graph_to_file(fig, fig_file_name)
     return fig
-
+def plot_classes_bsoidumap(data, assignments, **kwargs) -> object:
+    """ Plot umap_embeddings for HDBSCAN assignments
+    Function copied from the original bsoid_umapimplementation
+    :param data:
+    2D array, umap_embeddings
+    :param assignments: 1D array, HDBSCAN assignments
+    """
+    # Parse kwargs
+    s = kwargs.get('s', 0.5)
+    marker = kwargs.get('marker', 'o')
+    alpha = kwargs.get('alpha', 0.8)
+    #
+    uk = list(np.unique(assignments))
+    R = np.linspace(0, 1, len(uk))
+    colormap = plt.cm.get_cmap("Spectral")(R)
+    umap_x, umap_y, umap_z = data[:, 0], data[:, 1], data[:, 2]
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    for g in np.unique(assignments):
+        idx = np.where(np.array(assignments) == g)
+        ax.scatter(umap_x[idx], umap_y[idx], umap_z[idx], c=colormap[g], label=g, s=s, marker=marker, alpha=alpha)
+    ax.set_xlabel('Dim. 1')
+    ax.set_ylabel('Dim. 2')
+    ax.set_zlabel('Dim. 3')
+    plt.title('UMAP enhanced clustering')
+    plt.legend(ncol=3)
+    plt.show()
+    return fig
 @config.cfig_log_entry_exit(logger)
 def plot_classes_EMGMM_assignments(data, assignments, save_fig_to_file: bool, fig_file_prefix='train_assignments', **kwargs):
-    """ Plot trained TSNE for EM-GMM assignments
+    """
+    Plot trained TSNE for EM-GMM assignments
     :param data: 2D array, trained_tsne
     :param assignments: 1D array, EM-GMM assignments
     """
@@ -109,7 +137,11 @@ def plot_classes_EMGMM_assignments(data, assignments, save_fig_to_file: bool, fi
               f'instead found: {type(data)} (value = {data}).'
         logger.error(err)
         raise TypeError(err)
-
+    # Parse kwargs
+    s = kwargs.get('s', 0.5)
+    marker = kwargs.get('marker', 'o')
+    alpha = kwargs.get('alpha', 0.8)
+    # Plot graph
     time_str = time.strftime("%Y%m%d_%H%M")
     uk = list(np.unique(assignments))
     R = np.linspace(0, 1, len(uk))
@@ -119,7 +151,7 @@ def plot_classes_EMGMM_assignments(data, assignments, save_fig_to_file: bool, fi
     ax = fig.add_subplot(111, projection='3d')
     for g in np.unique(assignments):
         idx = np.where(np.array(assignments) == g)
-        ax.scatter(tsne_x[idx], tsne_y[idx], tsne_z[idx], c=colormap[g], label=g, s=0.5, marker='o', alpha=0.8)
+        ax.scatter(tsne_x[idx], tsne_y[idx], tsne_z[idx], c=colormap[g], label=g, s=s, marker=marker, alpha=alpha)
     ax.set_xlabel('Dim. 1')
     ax.set_ylabel('Dim. 2')
     ax.set_zlabel('Dim. 3')
@@ -156,29 +188,7 @@ def plot_classes_bsoidapp(data, assignments) -> Tuple:
     plt.legend(ncol=3)
     # plt.show()
     return fig, plt
-def plot_classes_bsoidumap(data, assignments) -> object:
-    """ Plot umap_embeddings for HDBSCAN assignments
-    Function copied from the original bsoid_umapimplementation
-    :param data:
-    2D array, umap_embeddings
-    :param assignments: 1D array, HDBSCAN assignments
-    """
-    uk = list(np.unique(assignments))
-    R = np.linspace(0, 1, len(uk))
-    colormap = plt.cm.get_cmap("Spectral")(R)
-    umap_x, umap_y, umap_z = data[:, 0], data[:, 1], data[:, 2]
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    for g in np.unique(assignments):
-        idx = np.where(np.array(assignments) == g)
-        ax.scatter(umap_x[idx], umap_y[idx], umap_z[idx], c=colormap[g], label=g, s=0.5, marker='o', alpha=0.8)
-    ax.set_xlabel('Dim. 1')
-    ax.set_ylabel('Dim. 2')
-    ax.set_zlabel('Dim. 3')
-    plt.title('UMAP enhanced clustering')
-    plt.legend(ncol=3)
-    plt.show()
-    return fig
+
 
 #######################################################################################################################
 def plot_accuracy_MLP(scores, show_plot: bool, save_fig_to_file: bool, fig_file_prefix='clf_scores', **kwargs) -> Tuple:
@@ -247,7 +257,7 @@ def plot_accuracy_SVM(scores, save_fig_to_file=True, fig_file_prefix='clf_scores
         if x.shape != scores.shape:
             logger.error(f'x = {x} // scores = {scores}')
 
-    plt.scatter(x, scores, s=40, c='r', alpha=0.5)  # TODO: HIGH!!!! Why does this error occur?:
+    plt.scatter(x, scores, s=s, c=c, alpha=alpha)  # TODO: HIGH!!!! Why does this error occur?:
     ax.set_xlabel('SVM classifier')
     ax.set_ylabel('Accuracy')
     plt.show()
@@ -393,9 +403,10 @@ def plot_feats_bsoidpy(feats, labels) -> None:
                         fig.suptitle(f"{feat_ls[j]} pixels")
                         if i < len(np.unique(labels_k)) - 1:
                             plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
-                my_file = f'sess{k+1}_feat{j+1}_hist'
-                time_str = time.strftime("%Y%m%d_%H%M")
-                fig.savefig(os.path.join(config.OUTPUT_PATH, my_file+'_'+time_str+'.svg'))
+                if config.SAVE_GRAPHS_TO_FILE:
+                    my_file = f'sess{k+1}_feat{j+1}_hist'
+                    time_str = time.strftime("%Y%m%d_%H%M")
+                    fig.savefig(os.path.join(config.OUTPUT_PATH, my_file+'_'+time_str+'.svg'))
             plt.show()
     else:
         R = np.linspace(0, 1, len(np.unique(labels)))
@@ -474,12 +485,13 @@ def plot_feats_bsoidvoc(feats: Union[List, np.ndarray], labels: list) -> None:
                         fig.suptitle(f"{feat_ls[j]} pixels")
                         if i < len(np.unique(labels_k)) - 1:
                             plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
-                my_file = f'sess{k + 1}_feat{j + 1}_hist'
-                fig.savefig(os.path.join(config.OUTPUT_PATH, str.join('', (my_file, '_'+timestr, '.svg'))))
+                if config.SAVE_GRAPHS_TO_FILE:
+                    my_file = f'sess{k + 1}_feat{j + 1}_hist'
+                    fig.savefig(os.path.join(config.OUTPUT_PATH, str.join('', (my_file, '_'+timestr, '.svg'))))
             plt.show()
     else:
         R = np.linspace(0, 1, len(np.unique(labels)))
-        color = plt.cm.get_cmap("Spectral")(R)
+        color_map = plt.cm.get_cmap("Spectral")(R)
         # feat_ls = ("Distance between points 1 & 5", "Distance between points 1 & 8",
         #            "Angle change between points 1 & 2", "Angle change between points 1 & 4",
         #            "Point 3 displacement", "Point 7 displacement")
@@ -491,7 +503,7 @@ def plot_feats_bsoidvoc(feats: Union[List, np.ndarray], labels: list) -> None:
                     plt.hist(feats[j, labels == i],
                              bins=np.linspace(0, np.mean(feats[j, :]) + 3 * np.std(feats[j, :]), num=50),
                              range=(0, np.mean(feats[j, :]) + 3 * np.std(feats[j, :])),
-                             color=color[i], density=True)
+                             color=color_map[i], density=True)
                     fig.suptitle(f"{feat_ls[j]} pixels")
                     plt.xlim(0, np.mean(feats[j, :]) + 3 * np.std(feats[j, :]))
                     if i < len(np.unique(labels)) - 1:
@@ -502,7 +514,7 @@ def plot_feats_bsoidvoc(feats: Union[List, np.ndarray], labels: list) -> None:
                                               np.mean(feats[j, :]) + 3 * np.std(feats[j, :]), num=50),
                              range=(np.mean(feats[j, :]) - 3 * np.std(feats[j, :]),
                                     np.mean(feats[j, :]) + 3 * np.std(feats[j, :])),
-                             color=color[i], density=True)
+                             color=color_map[i], density=True)
                     plt.xlim(np.mean(feats[j, :]) - 3 * np.std(feats[j, :]),
                              np.mean(feats[j, :]) + 3 * np.std(feats[j, :]))
                     fig.suptitle(f"{feat_ls[j]} pixels")
