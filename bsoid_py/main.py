@@ -11,10 +11,9 @@ import os
 import pandas as pd
 import time
 
-from bsoid.config import FPS, MODEL_NAME, OUTPUT_PATH, TRAIN_FOLDERS, PREDICT_FOLDERS
+from bsoid.config import VIDEO_FPS as FPS, MODEL_NAME, OUTPUT_PATH, TRAIN_FOLDERS, PREDICT_FOLDERS
 # from bsoid.config.GLOBAL_CONFIG import CV_IT, EMGMM_PARAMS, HLDOUT, SVM_PARAMS
 import bsoid
-# import bsoid_py.train
 
 
 def build(train_folders):
@@ -28,7 +27,7 @@ def build(train_folders):
     :returns f_10fps, trained_tsne, gmm_assignments, classifier, scores: see bsoid_py.train
     """
 
-    f_10fps, trained_tsne, scaler, gmm_assignments, classifier, scores = bsoid.train.main_py(train_folders)
+    f_10fps, trained_tsne, scaler, gmm_assignments, classifier, scores = bsoid.train.get_data_train_TSNE_then_GMM_then_SVM_then_return_EVERYTHING__py(train_folders)
     alldata = np.concatenate([f_10fps.T, trained_tsne, gmm_assignments.reshape(len(gmm_assignments), 1)], axis=1)
     micolumns = pd.MultiIndex.from_tuples([('Features', 'Relative snout to forepaws placement'),
                                            ('', 'Relative snout to hind paws placement'),
