@@ -1,9 +1,9 @@
 import bsoid
 
 
-def ensure_type(obj, expected_type):
+def ensure_type(var, expected_type):
     """"""
-    if not isinstance(obj, expected_type):
-        type_err = f'For object (value = {obj}), expected type was {expected_type} but instead found {type(obj)}'
+    if not isinstance(var, expected_type):
+        type_err = f'For object (value = {var}), expected type was {expected_type} but instead found {type(var)}'
         raise TypeError(type_err)
 

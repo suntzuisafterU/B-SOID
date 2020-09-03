@@ -35,7 +35,7 @@ def build_py(train_folders) -> Tuple[Any, Any, Any, Any, Any, Any]:
 
     features_10fps, trained_tsne, scaler_object, gmm_assignments, classifier, scores = train.py__get_data_train_TSNE_then_GMM_then_SVM_then_return_EVERYTHING(train_folders)
 
-    alldata = np.concatenate([features_10fps.T, trained_tsne, gmm_assignments.reshape(len(gmm_assignments), 1)], axis=1)
+    all_data = np.concatenate([features_10fps.T, trained_tsne, gmm_assignments.reshape(len(gmm_assignments), 1)], axis=1)
     multi_index_columns = pd.MultiIndex.from_tuples([
         ('Features', 'Relative snout to forepaws placement'),
         ('', 'Relative snout to hind paws placement'),
@@ -49,10 +49,10 @@ def build_py(train_folders) -> Tuple[Any, Any, Any, Any, Any, Any]:
         ('', 'Dimension 3'),
         ('EM-GMM', 'Assignment No.')],
         names=['Type', 'Frame@10Hz'])
-    training_data = pd.DataFrame(alldata, columns=multi_index_columns)
+    df_training_data = pd.DataFrame(all_data, columns=multi_index_columns)
 
     # Write training data to csv
-    training_data.to_csv(os.path.join(OUTPUT_PATH, f'bsoid_trainlabels_10Hz{time_str}.csv'), index=True, chunksize=10000, encoding='utf-8')
+    df_training_data.to_csv(os.path.join(OUTPUT_PATH, f'bsoid_trainlabels_10Hz{time_str}.csv'), index=True, chunksize=10000, encoding='utf-8')
 
     # Save model data to file
     with open(os.path.join(OUTPUT_PATH, f'bsoid_{config.MODEL_NAME}.sav'), 'wb') as model_file:
@@ -173,7 +173,7 @@ def run_py(predict_folders):  # TODO: HIGH: break up this function and rename. T
     filenames = []
     all_dfs_list: List[pd.DataFrame] = []
     for i, folder in enumerate(predict_folders):  # Loop through folders
-        file_names_csvs: List[str] = util.likelihoodprocessing.get_filenames_csvs_from_folders_recursively_in_basepath(folder)
+        file_names_csvs: List[str] = util.likelihoodprocessing.get_filenames_csvs_from_folders_recursively_in_dlc_project_path(folder)
         for j, filename in enumerate(file_names_csvs):
             logger.info(f'Importing CSV file {j+1} from folder {i+1}.')
             curr_df = pd.read_csv(filename, low_memory=False)
@@ -253,7 +253,7 @@ def run_umap(predict_folders) -> Tuple[Any, Any]:
     filenames_list = []
     all_dfs_list: List[pd.DataFrame] = []
     for idx_folder, folder in enumerate(predict_folders):  # Loop through folders
-        csv_files_in_current_predict_folder: List[str] = util.likelihoodprocessing.get_filenames_csvs_from_folders_recursively_in_basepath(folder)
+        csv_files_in_current_predict_folder: List[str] = util.likelihoodprocessing.get_filenames_csvs_from_folders_recursively_in_dlc_project_path(folder)
         for idx_file, filename in enumerate(csv_files_in_current_predict_folder):
             logger.info(f'Importing CSV file {idx_file+1} from folder {idx_folder+1}')
             curr_df = pd.read_csv(filename, low_memory=False)
@@ -308,7 +308,7 @@ def run_voc(predict_folders) -> Tuple[Any, Any, Any, Any]:
     filenames = []
     all_df = []
     for idx_folder, folder in enumerate(predict_folders):  # Loop through folders
-        f = util.likelihoodprocessing.get_filenames_csvs_from_folders_recursively_in_basepath(folder)
+        f = util.likelihoodprocessing.get_filenames_csvs_from_folders_recursively_in_dlc_project_path(folder)
         for j, filename in enumerate(f):
             logger.info(f'Importing CSV file {j+1} from folder {idx_folder+1}')
             curr_df = pd.read_csv(filename, low_memory=False)
@@ -427,7 +427,6 @@ def main_umap(train_folders, predict_folders):
 #     return f_10fps, umap_embeddings, nn_classifier, scores, nn_assignments
 
 
-
 @config.cfig_log_entry_exit(logger)
 def test_function_to_build_then_run_py():
     logger.debug(f'STARTING _PY TRAIN SERIES')
@@ -466,7 +465,7 @@ def test_function_to_build_then_run_voc():
 
 
 if __name__ == "__main__":  # py
-    # main_py(TRAIN_FOLDERS, PREDICT_FOLDERS)
-    test_function_to_build_then_run_py()
+    test_function_to_build_then_run_py()  # main_py(TRAIN_FOLDERS, PREDICT_FOLDERS)
+    # test_function_to_build_then_run_umap()
 
 #  bsoid_py.main.run(PREDICT_FOLDERS)
