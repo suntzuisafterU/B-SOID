@@ -36,7 +36,7 @@ def boxcar_center(input_array, n) -> np.ndarray:
     return moving_avg
 
 
-def convert_int(s: str):
+def convert_int_from_string_if_possible(s: str):
     """ Converts digit string to integer """
     if s.isdigit():
         return int(s)
@@ -49,7 +49,7 @@ def alphanum_key(s) -> List:
     Turn a string into a list of string and number chunks.
         e.g.: input: "z23a" -> output: ["z", 23, "a"]
     """
-    return [convert_int(c) for c in re.split('([0-9]+)', s)]
+    return [convert_int_from_string_if_possible(c) for c in re.split('([0-9]+)', s)]
 
 
 def sort_list_nicely_in_place(list_input: list) -> None:
@@ -59,6 +59,8 @@ def sort_list_nicely_in_place(list_input: list) -> None:
                         f'instead found: {type(list_input)} (value: {list_input}).')
     list_input.sort(key=alphanum_key)
 
+
+########################################################################################################################
 
 def get_filenames_csvs_from_folders_recursively_in_dlc_project_path(folder: str) -> List:
     """
@@ -75,25 +77,25 @@ def get_filenames_csvs_from_folders_recursively_in_dlc_project_path(folder: str)
     return filenames
 
 
-def import_csvs_data_from_folders_in_PROJECTPATH_and_process_data(folders: list) -> Tuple[List, List[np.ndarray], List]:
+def import_csvs_data_from_folders_in_PROJECTPATH_and_process_data(folders_in_project_path: list) -> Tuple[List[List[str]], List[np.ndarray], List]:
     """
     Import multiple folders containing .csv files and process them
-    :param folders: list, data folders
+    :param folders_in_project_path: List[str]: Data folders
     :return filenames: list, data filenames
     :return data: List of arrays, filtered csv data
     :return perc_rect_li: list, percent filtered
     """
     # TODO: what does `raw_data_list` do? It looks like a variable without a purpose. It appends but does not return.
 
-    if len(folders) == 0:
+    if len(folders_in_project_path) == 0:
         empty_folders_list_err = f'{inspect.stack()[0][3]}: argument `folders` list is empty. No folders to check.'
         logger.error(empty_folders_list_err)
         raise ValueError(empty_folders_list_err)
 
     file_names_list, raw_data_list, list_of_arrays_of_data, perc_rect_list = [], [], [], []
     # Iterate over folders
-    for idx_folder, folder in enumerate(folders):  # Loop through folders
-        filenames_found_in_current_folder = get_filenames_csvs_from_folders_recursively_in_dlc_project_path(folder)
+    for idx_folder, folder in enumerate(folders_in_project_path):  # Loop through folders
+        filenames_found_in_current_folder: List[str] = get_filenames_csvs_from_folders_recursively_in_dlc_project_path(folder)
         for idx_filename, filename in enumerate(filenames_found_in_current_folder):
             logger.debug(f'Importing CSV file #{idx_filename+1}, {filename}, from folder #{idx_folder+1}')
             df_current_file_data = pd.read_csv(filename, low_memory=False)
@@ -169,6 +171,7 @@ def remove_top_n_rows_of_dataframe(in_df, n_rows: int = 1, copy=False):
 #
 #     return
 
+
 @config.cfig_log_entry_exit(logger)
 def process_raw_data_and_filter_adaptively(df_input_data: pd.DataFrame) -> Tuple[np.ndarray, List]:
     """
@@ -188,7 +191,7 @@ def process_raw_data_and_filter_adaptively(df_input_data: pd.DataFrame) -> Tuple
     """
     # Type checking args
     if not isinstance(df_input_data, pd.DataFrame):
-        raise TypeError(f'`df_input` was expected to be of type pandas.DataFrame but '
+        raise TypeError(f'Input data was expected to be of type pandas.DataFrame but '
                         f'instead found: {type(df_input_data)}.')
     # Continue if args valid
     l_index, x_index, y_index, percent_filterd_per_bodypart__perc_rect = [], [], [], []
@@ -208,7 +211,7 @@ def process_raw_data_and_filter_adaptively(df_input_data: pd.DataFrame) -> Tuple
         elif current_column_header == "y":
             y_index.append(header_idx)
         elif current_column_header == 'coords':
-            pass  # Ignore. Usually this is the index column and is only seen once. No data to be had here.
+            pass  # Ignore. Usually this is the index column and is only seen once. No data in this column.
         else:
             err = f'An inappropriate column header was found: ' \
                   f'{array_input_data_with_projectname_header_removed[0][header_idx]}.' \
@@ -218,7 +221,7 @@ def process_raw_data_and_filter_adaptively(df_input_data: pd.DataFrame) -> Tuple
 
     # Remove the first column (called "coords", the index which counts rows but has no useful data)
     array_input_data_without_coords = array_input_data_with_projectname_header_removed[:, 1:]  # curr_df1 = array_input_data_with_top_row_removed[:, 1:]
-    # Slice data into separate arrays based on column names
+    # Slice data into separate arrays based on column names (derived earlier from the respective index)
     data_x = array_input_data_without_coords[:, np.array(x_index) - 1]
     data_y = array_input_data_without_coords[:, np.array(y_index) - 1]
     data_likelihood = array_input_data_without_coords[:, np.array(l_index) - 1]
@@ -230,7 +233,7 @@ def process_raw_data_and_filter_adaptively(df_input_data: pd.DataFrame) -> Tuple
 
     # Loop over data and do adaptive filtering
     logger.debug(f'{get_current_function()}: Loop over data and do adaptive filtering.')
-    for x in tqdm(range(data_likelihood.shape[1])):
+    for x in tqdm(range(data_likelihood.shape[1]), desc=f'Adaptively filtering data...'):
         histogram, bin_edges = np.histogram(data_likelihood[1:, x].astype(np.float))
         rise_a = np.where(np.diff(histogram) >= 0)
         if rise_a[0][0] > 1:
@@ -256,7 +259,9 @@ def process_raw_data_and_filter_adaptively(df_input_data: pd.DataFrame) -> Tuple
 def adaptive_filter_data_app(input_df: pd.DataFrame, BODYPARTS: dict):  # TODO: rename function for clarity?
     """
     TODO: purpose
-    :param currdf: object, csv data frame
+    :param input_df: object, csv data frame
+    :param BODYPARTS:
+
     :return currdf_filt: 2D array, filtered data
     :return perc_rect: 1D array, percent filtered per BODYPART
     """
@@ -301,7 +306,9 @@ def adaptive_filter_data_app(input_df: pd.DataFrame, BODYPARTS: dict):  # TODO: 
     return currdf_filt, perc_rect
 
 
-# Legacy functions. Will be potentially deleted later.
+########################################################################################################################
+### Legacy functions
+
 def main(folders: List[str]) -> None:
     """
     :param folders: list, data folders
@@ -317,11 +324,6 @@ def main(folders: List[str]) -> None:
     raise Exception(err)
     # filenames, data, perc_rect = replacement_func(folders)
     # return filenames, data, perc_rect
-
-
-########################################################################################################################
-### Legacy functions
-
 def get_filenames(folder: str):
     """
     Gets a list of CSV filenames within a folder (assuming it exists within BASE_PATH)
