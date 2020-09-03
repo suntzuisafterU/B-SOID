@@ -5,6 +5,7 @@ Encapsulate logging for BSOID
 from logging.handlers import SMTPHandler
 import logging
 import re
+import time
 
 
 def preload_logger_with_config_vars(logger_name: str, log_format: str,
@@ -130,12 +131,13 @@ def log_entry_exit(logger=None):
     """
     def decorator(func):
         def function_wrapper(*args, **kwargs):
-            # create_generic_logger()
+            start_time = time.perf_counter()
             if logger:
                 logger.debug(f'Now entering: {func.__qualname__}.')
             result = func(*args, *kwargs)
+            end_time = time.perf_counter()
             if logger:
-                logger.debug(f'Now exiting: {func.__qualname__}.')
+                logger.debug(f'Now exiting: {func.__qualname__}. Time spent in function: {round(end_time-start_time, 1)} seconds')
             return result
         return function_wrapper
     return decorator
