@@ -355,7 +355,9 @@ def train_mlp_classifier_voc(feats, labels,
                 print(title)
                 print(display.confusion_matrix)
                 file_name = f'confusion_matrix_{title_names[j]}'
-                display.figure_.savefig(os.path.join(config.OUTPUT_PATH, f'{file_name}{time_str}.svg'))
+                if config.SAVE_GRAPHS_TO_FILE:
+                    file_name = f'{file_name}{time_str}'  # display.figure_.savefig(os.path.join(config.OUTPUT_PATH, f'{file_name}{time_str}.svg'))
+                    visuals.save_graph_to_file(display.figure_, file_name)
                 j += 1
             plt.show()
     else:
@@ -634,7 +636,8 @@ def bsoid_svm_py(feats, labels, comp: int = config.COMPILE_CSVS_FOR_TRAINING, ho
                 print(display.confusion_matrix)
                 if config.SAVE_GRAPHS_TO_FILE:
                     my_file = f'confusion_matrix_{title_names[j]}'
-                    display.figure_.savefig(os.path.join(config.OUTPUT_PATH, f'{my_file}{time_str}.svg'))
+                    file_name = f'{my_file}{time_str}'
+                    visuals.save_graph_to_file(display.figure_, file_name)
                 j += 1
             plt.show()
     else:

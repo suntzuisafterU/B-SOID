@@ -17,6 +17,7 @@ import seaborn as sn
 import time
 
 from bsoid import config
+from bsoid.util import likelihoodprocessing
 
 logger = config.initialize_logger(__name__)
 matplotlib_axes_logger.setLevel('ERROR')
@@ -253,7 +254,8 @@ def plot_accuracy_SVM(scores, save_fig_to_file=True, fig_file_prefix='clf_scores
         logger.error(f'len(x) does not equal len(scores). '
                      f'If you see an error next, check the logs! x = {x} / scores = {scores}.')
     if isinstance(x, np.ndarray) and isinstance(scores, np.ndarray):
-        logger.error(f'x.shape = {x.shape} // scores.shape = {scores.shape}')
+        logger.debug(f'{likelihoodprocessing.get_current_function()}: both inputs are arrays. '
+                     f'x.shape = {x.shape} // scores.shape = {scores.shape}')
         if x.shape != scores.shape:
             logger.error(f'x = {x} // scores = {scores}')
 
@@ -404,9 +406,9 @@ def plot_feats_bsoidpy(feats, labels) -> None:
                         if i < len(np.unique(labels_k)) - 1:
                             plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
                 if config.SAVE_GRAPHS_TO_FILE:
-                    my_file = f'sess{k+1}_feat{j+1}_hist'
                     time_str = time.strftime("%Y%m%d_%H%M")
-                    fig.savefig(os.path.join(config.OUTPUT_PATH, my_file+'_'+time_str+'.svg'))
+                    file_name = f'sess{k+1}_feat{j+1}_hist_{time_str}'  # = my_file+'_'+time_str
+                    save_graph_to_file(fig, file_name)  # fig.savefig(os.path.join(config.OUTPUT_PATH, my_file+'_'+time_str+'.svg'))
             plt.show()
     else:
         R = np.linspace(0, 1, len(np.unique(labels)))
@@ -436,8 +438,9 @@ def plot_feats_bsoidpy(feats, labels) -> None:
                     fig.suptitle(f"{feat_ls[j]} pixels")
                     if i < len(np.unique(labels)) - 1:
                         plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
-            my_file = f'feat{j + 1}_hist'
-            fig.savefig(os.path.join(config.OUTPUT_PATH, f'{my_file}_{time_str}.svg'))
+            if config.SAVE_GRAPHS_TO_FILE:
+                file_name = f'feat{j + 1}_hist_{time_str}'  # my_file = f'feat{j + 1}_hist' ;fig.savefig(os.path.join(config.OUTPUT_PATH, f'{my_file}_{time_str}.svg'))
+                save_graph_to_file(fig, file_name)
         plt.show()
 @config.cfig_log_entry_exit(logger)
 def plot_feats_bsoidvoc(feats: Union[List, np.ndarray], labels: list) -> None:
@@ -486,8 +489,8 @@ def plot_feats_bsoidvoc(feats: Union[List, np.ndarray], labels: list) -> None:
                         if i < len(np.unique(labels_k)) - 1:
                             plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
                 if config.SAVE_GRAPHS_TO_FILE:
-                    my_file = f'sess{k + 1}_feat{j + 1}_hist'
-                    fig.savefig(os.path.join(config.OUTPUT_PATH, str.join('', (my_file, '_'+timestr, '.svg'))))
+                    file_name = f'sess{k + 1}_feat{j + 1}_hist_{timestr}'
+                    save_graph_to_file(fig, file_name)  # fig.savefig(os.path.join(config.OUTPUT_PATH, str.join('', (my_file, '_'+timestr, '.svg'))))
             plt.show()
     else:
         R = np.linspace(0, 1, len(np.unique(labels)))
@@ -526,7 +529,8 @@ def plot_feats_bsoidvoc(feats: Union[List, np.ndarray], labels: list) -> None:
         plt.show()
 
 
-def save_graph_to_file(figure, file_title, file_type_extension='svg', alternate_save_path: str = None) -> None:
+def save_graph_to_file(figure, file_title, file_type_extension=config.DEFAULT_SAVED_GRAPH_FILE_FORMAT,
+                       alternate_save_path: str = None) -> None:
     """
 
     :param figure: (object) a figure object. Must have a savefig() function
@@ -543,7 +547,9 @@ def save_graph_to_file(figure, file_title, file_type_extension='svg', alternate_
         cannot_save_input_figure_error = f'Figure is not savable with current interface. repr(figure) = {repr(figure)}.'
         logger.error(cannot_save_input_figure_error)
         raise AttributeError(cannot_save_input_figure_error)
+    # After type checking: save fig to file
     figure.savefig(os.path.join(config.OUTPUT_PATH, f'{file_title}.{file_type_extension}'))
+    return
 
 
 ### LEGACY FUNCTIONS ###################################################################################################

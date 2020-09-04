@@ -19,45 +19,47 @@ from bsoid.config import VIDEO_FPS, OUTPUT_PATH as OUTPUT_PATH
 logger = config.initialize_logger(__name__)
 
 
-"""
-    Automatically saves single CSV file containing training outputs (in 10Hz, 100ms per row):
-1. original features (number of training data points by 7 dimensions, columns 1-7)
-2. embedded features (number of training data points by 3 dimensions, columns 8-10)
-3. em-gmm assignments (number of training data points by 1, columns 11)
-Automatically saves classifier in OUTPUTPATH with MODELNAME in LOCAL_CONFIG
-:param train_folders: list, folders to build behavioral model on
-:returns f_10fps, trained_tsne, gmm_assignments, classifier, scores: see bsoid_py.train
-"""
 @config.cfig_log_entry_exit(logger)
 def build_py(train_folders) -> Tuple[Any, Any, Any, Any, Any, Any]:
+    """
+    Automatically saves single CSV file containing training outputs (in 10Hz, 100ms per row):
+        1. original features (number of training data points by 7 dimensions, columns 1-7)
+        2. embedded features (number of training data points by 3 dimensions, columns 8-10)
+        3. em-gmm assignments (number of training data points by 1, columns 11)
+    Automatically saves classifier in OUTPUTPATH with MODELNAME in LOCAL_CONFIG
+    :param train_folders: list, folders to build behavioral model on
+    :returns f_10fps, trained_tsne, gmm_assignments, classifier, scores: see bsoid_py.train
+    """
+
     time_str = time.strftime("_%Y%m%d_%H%M")
 
     features_10fps, trained_tsne, scaler_object, gmm_assignments, classifier, scores = train.get_data_train_TSNE_then_GMM_then_SVM_then_return_EVERYTHING__py(train_folders)
 
     all_data = np.concatenate([features_10fps.T, trained_tsne, gmm_assignments.reshape(len(gmm_assignments), 1)], axis=1)
     multi_index_columns = pd.MultiIndex.from_tuples([
-        ('Features', 'Relative snout to forepaws placement'),
-        ('', 'Relative snout to hind paws placement'),
-        ('', 'Inter-forepaw distance'),
-        ('', 'Body length'),
-        ('', 'Body angle'),
-        ('', 'Snout displacement'),
-        ('', 'Tail-base displacement'),
-        ('Embedded t-SNE', 'Dimension 1'),
-        ('', 'Dimension 2'),
-        ('', 'Dimension 3'),
-        ('EM-GMM', 'Assignment No.')],
+        ('Features',        'Relative snout to forepaws placement'),
+        ('',                'Relative snout to hind paws placement'),
+        ('',                'Inter-forepaw distance'),
+        ('',                'Body length'),
+        ('',                'Body angle'),
+        ('',                'Snout displacement'),
+        ('',                'Tail-base displacement'),
+        ('Embedded t-SNE',  'Dimension 1'),
+        ('',                'Dimension 2'),
+        ('',                'Dimension 3'),
+        ('EM-GMM',          'Assignment No.')],
         names=['Type', 'Frame@10Hz'])
     df_training_data = pd.DataFrame(all_data, columns=multi_index_columns)
 
     # Write training data to csv
-    df_training_data.to_csv(os.path.join(OUTPUT_PATH, f'bsoid_trainlabels_10Hz{time_str}.csv'), index=True, chunksize=10000, encoding='utf-8')
+    df_training_data.to_csv(os.path.join(OUTPUT_PATH, f'bsoid_trainlabels_10Hz{time_str}.csv'),
+                            index=True, chunksize=10000, encoding='utf-8')
 
     # Save model data to file
     with open(os.path.join(OUTPUT_PATH, f'bsoid_{config.MODEL_NAME}.sav'), 'wb') as model_file:
         joblib.dump([classifier, scaler_object], model_file)
 
-    logger.info(f'{inspect.stack()[0][3]}:Saved stuff...elaborate on this message later. Check build() or something like it.')  # TODO: elaborate on log message
+    logger.info(f'{inspect.stack()[0][3]}: Saved stuff...elaborate on this message later.')  # TODO: elaborate on log message
     return features_10fps, trained_tsne, scaler_object, gmm_assignments, classifier, scores
 
 @config.cfig_log_entry_exit(logger)
@@ -119,8 +121,9 @@ def build_voc(train_folders) -> Tuple[Any, Any, Any, Any, List]:
     Automatically saves single CSV file containing training outputs (in 10Hz, 100ms per row):
     1. original features (number of training data points by 7 dimensions, columns 1-7)
     2. embedded features (number of training data points by 3 dimensions, columns 8-10)
-    3. em-gmm assignments (number of training data points by 1, columns 11)
-    Automatically saves classifier in OUTPUTPATH with MODELNAME in LOCAL_CONFIG
+    3. em-gmm assignments (number of training data points by 1 dimensions, columns 11)
+    ** Automatically saves classifier in OUTPUTPATH with MODELNAME in LOCAL_CONFIG **
+
     :param train_folders: list, folders to build behavioral model on
     :returns f_10fps, trained_tsne, gmm_assignments, classifier, scores: see bsoid_voc.train
     """
@@ -129,16 +132,16 @@ def build_voc(train_folders) -> Tuple[Any, Any, Any, Any, List]:
     all_data_as_array = np.concatenate([f_10fps.T, trained_tsne, gmm_assignments.reshape(len(gmm_assignments), 1)], axis=1)
 
     multi_index_columns = pd.MultiIndex.from_tuples([
-        ('Features', 'Distance between points 1 & 5'),
-        ('', 'Distance between points 1 & 8'),
-        ('', 'Angle change between points 1 & 2'),
-        ('', 'Angle change between points 1 & 4'),
-        ('', 'Point 3 displacement'),
-        ('', 'Point 7 displacement'),
-        ('Embedded t-SNE', 'Dimension 1'),
-        ('', 'Dimension 2'),
-        ('', 'Dimension 3'),
-        ('EM-GMM', 'Assignment No.')],
+        ('Features',        'Distance between points 1 & 5'),
+        ('',                'Distance between points 1 & 8'),
+        ('',                'Angle change between points 1 & 2'),
+        ('',                'Angle change between points 1 & 4'),
+        ('',                'Point 3 displacement'),
+        ('',                'Point 7 displacement'),
+        ('Embedded t-SNE',  'Dimension 1'),
+        ('',                'Dimension 2'),
+        ('',                'Dimension 3'),
+        ('EM-GMM',          'Assignment No.')],
         names=['Type', 'Frame@10Hz'])
     df_training_data = pd.DataFrame(all_data_as_array, columns=multi_index_columns)
     time_str = time.strftime("_%Y%m%d_%H%M")
@@ -283,7 +286,8 @@ def run_umap(predict_folders) -> Tuple[Any, Any]:
             # transition_matrix: np.ndarray, fps: int, save_fig_to_file=True, fig_file_prefix='transition_matrix'
             fig = util.visuals.plot_tmat(df_tm, VIDEO_FPS, save_fig_to_file=config.SAVE_GRAPHS_TO_FILE, fig_file_prefix=my_file)
             # fig.savefig(os.path.join(OUTPUT_PATH, str.join('', (my_file, str(fps_video), 'Hz', time_str, csv_name, '.svg'))))
-            fig.savefig(os.path.join(OUTPUT_PATH, f'{my_file}{VIDEO_FPS}Hz{time_str}{csv_name}.svg'))
+            file_name = f'{my_file}{VIDEO_FPS}Hz{time_str}{csv_name}'
+            util.visuals.save_graph_to_file(fig, file_name) # fig.savefig(os.path.join(OUTPUT_PATH, f'{my_file}{VIDEO_FPS}Hz{time_str}{csv_name}.svg'))  # fig.savefig(os.path.join(OUTPUT_PATH, f'{my_file}{VIDEO_FPS}Hz{time_str}{csv_name}.svg'))
 
     with open(os.path.join(OUTPUT_PATH, f'bsoid_predictions{time_str}.sav'), 'wb') as files_to_dump:
         joblib.dump([data_new, fs_labels], files_to_dump)
@@ -360,6 +364,8 @@ def run_voc(predict_folders) -> Tuple[Any, Any, Any, Any]:
     logger.info('All saved.')
     return data_new, feats_new, labels_fslow, labels_fshigh
 
+
+### LEGACY 'main' FUNCTIONS BELOW-- POTENTIAL FUTURE DEPRECATIONS ###
 """
 :param train_folders: list, folders to build behavioral model on
 :param predict_folders: list, folders to run prediction using behavioral model
@@ -369,14 +375,23 @@ Automatically saves and loads classifier in OUTPUTPATH with MODELNAME in LOCAL_C
 Automatically saves CSV files containing training and new outputs
 """
 def main_py(train_folders, predict_folders):
+    deprec_warning = f'This function,' \
+                     f'{util.likelihoodprocessing.get_current_function()}, is likely to be deprecated in future.'
+    logger.warning(deprec_warning)
     features_10fps, trained_tsne, scaler, gmm_assignments, classifier, scores = build_py(train_folders)
     data_new, feats_new, labels_fslow, labels_fshigh = run_py(predict_folders)
     return features_10fps, trained_tsne, scaler, gmm_assignments, classifier, scores, data_new, feats_new, labels_fslow, labels_fshigh
 def main_voc(train_folders, predict_folders):
+    deprec_warning = f'This function,' \
+                     f'{util.likelihoodprocessing.get_current_function()}, is likely to be deprecated in future.'
+    logger.warning(deprec_warning)
     features_10fps, trained_tsne, gmm_assignments, classifier, scores = build_voc(train_folders)
     data_new, feats_new, labels_fslow, labels_fshigh = run_voc(predict_folders)
     return features_10fps, trained_tsne, gmm_assignments, classifier, scores, data_new, feats_new, labels_fslow, labels_fshigh
 def main_umap(train_folders, predict_folders):
+    deprec_warning = f'This function,' \
+                     f'{util.likelihoodprocessing.get_current_function()}, is likely to be deprecated in future.'
+    logger.warning(deprec_warning)
     f_10fps, f_10fps_sc, umap_embeddings, hdb_assignments, soft_assignments, soft_clusters, nn_classifier, \
     scores, nn_assignments = build_umap(train_folders)
     data_new, fs_labels = run_umap(predict_folders)
@@ -426,6 +441,7 @@ def main_umap(train_folders, predict_folders):
 #     return f_10fps, umap_embeddings, nn_classifier, scores, nn_assignments
 
 
+########################################################################################################################
 @config.cfig_log_entry_exit(logger)
 def test_function_to_build_then_run_py():
     logger.debug(f'STARTING _PY TRAIN SERIES')
@@ -458,7 +474,6 @@ def test_function_to_build_then_run_voc():
 #     f_10fps, f_10fps_sc, umap_embeddings, hdb_assignments, soft_assignments, soft_clusters, nn_classifier, \
 #         scores, nn_assignments, data_new, fs_labels = main_umap(TRAIN_FOLDERS, PREDICT_FOLDERS)
 
-#
 # if __name__ == "__main__":  # voc
 #     f_10fps, trained_tsne, gmm_assignments, classifier, scores, data_new, feats_new, labels_fslow, labels_fshigh = main_voc(TRAIN_FOLDERS, PREDICT_FOLDERS)
 

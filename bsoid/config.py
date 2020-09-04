@@ -250,7 +250,7 @@ BODYPARTS_PY_LEGACY = {
 }
 
 ### BSOID VOC ###
-# # Order the points that are encircling the mouth.
+# # original authors' note: Order the points that are encircling the mouth.
 BODYPARTS_VOC_LEGACY = {
     'Point1': 0,
     'Point2': 1,
