@@ -5,8 +5,8 @@ joblib
 matplotlib
 networkx
 numpy
-pandas
-psutil
+pandas>=1.0.3
+psutil>=5.7.0
 opencv-python
 seaborn
 scikit-learn
