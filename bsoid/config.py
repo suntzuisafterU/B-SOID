@@ -29,7 +29,7 @@ pd.set_option('display.max_rows', None)
 pd.set_option('display.max_columns', None)
 pd.set_option('display.width', None)
 pd.set_option('display.max_colwidth', None)
-np.set_print_options(threshold=1_000_000_000)
+np.set_printoptions(threshold=1_000_000_000)
 
 
 from bsoid.util import logger_config
