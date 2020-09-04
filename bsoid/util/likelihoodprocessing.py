@@ -13,6 +13,8 @@ import pandas as pd
 import re
 
 from bsoid import config
+from . import io
+
 
 logger = config.initialize_logger(__name__)
 
