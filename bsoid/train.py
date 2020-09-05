@@ -35,6 +35,7 @@ logger = config.initialize_logger(__name__)
 
 ########################################################################################################################
 
+@config.cfig_log_entry_exit(logger)
 def extract_7_features_bsoid_tsne_py(list_of_arrays_data: List[np.ndarray], bodyparts=config.BODYPARTS_PY_LEGACY, fps=config.VIDEO_FPS, comp: int = config.COMPILE_CSVS_FOR_TRAINING) -> List[np.ndarray]:
     """
     Trains t-SNE (unsupervised) given a set of features based on (x,y) positions
