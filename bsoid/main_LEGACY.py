@@ -26,7 +26,7 @@ def build_py(train_folders) -> Tuple[Any, Any, Any, Any, Any, Any]:
         1. original features (number of training data points by 7 dimensions, columns 1-7)
         2. embedded features (number of training data points by 3 dimensions, columns 8-10)
         3. em-gmm assignments (number of training data points by 1, columns 11)
-    Automatically saves classifier in OUTPUTPATH with MODELNAME in LOCAL_CONFIG
+    Automatically saves classifier in OUTPUT_PATH with MODEL_NAME in LOCAL_CONFIG
     :param train_folders: list, folders to build behavioral model on
     :returns f_10fps, trained_tsne, gmm_assignments, classifier, scores: see bsoid_py.train
     """
@@ -35,7 +35,12 @@ def build_py(train_folders) -> Tuple[Any, Any, Any, Any, Any, Any]:
 
     features_10fps, trained_tsne, scaler_object, gmm_assignments, classifier, scores = train.get_data_train_TSNE_then_GMM_then_SVM_then_return_EVERYTHING__py(train_folders)
 
-    all_data = np.concatenate([features_10fps.T, trained_tsne, gmm_assignments.reshape(len(gmm_assignments), 1)], axis=1)
+    all_data = np.concatenate([
+        features_10fps.T,
+        trained_tsne,
+        gmm_assignments.reshape(len(gmm_assignments), 1)
+    ], axis=1)
+
     multi_index_columns = pd.MultiIndex.from_tuples([
         ('Features',        'Relative snout to forepaws placement'),
         ('',                'Relative snout to hind paws placement'),
@@ -52,7 +57,7 @@ def build_py(train_folders) -> Tuple[Any, Any, Any, Any, Any, Any]:
     df_training_data = pd.DataFrame(all_data, columns=multi_index_columns)
 
     # Write training data to csv
-    df_training_data.to_csv(os.path.join(OUTPUT_PATH, f'bsoid_trainlabels_10Hz{time_str}.csv'),
+    df_training_data.to_csv(os.path.join(OUTPUT_PATH, f'bsoid_trainlabels_10Hz{config.runtime_timestr}.csv'),
                             index=True, chunksize=10000, encoding='utf-8')
 
     # Save model data to file
@@ -61,7 +66,6 @@ def build_py(train_folders) -> Tuple[Any, Any, Any, Any, Any, Any]:
 
     logger.info(f'{inspect.stack()[0][3]}: Saved stuff...elaborate on this message later.')  # TODO: elaborate on log message
     return features_10fps, trained_tsne, scaler_object, gmm_assignments, classifier, scores
-
 @config.cfig_log_entry_exit(logger)
 def build_umap(train_folders) -> Tuple[Any, Any, Any, Any, Any, Any, Any, Any, Any]:
     """
@@ -154,7 +158,6 @@ def build_voc(train_folders) -> Tuple[Any, Any, Any, Any, List]:
 
     logger.info(f'Saved.  TODO: add specificity. Function: {inspect.stack()[0][3]}().')  # TODO: add specificity to log
     return f_10fps, trained_tsne, gmm_assignments, classifier, scores
-
 @config.cfig_log_entry_exit(logger)
 def run_py(predict_folders):  # TODO: HIGH: break up this function and rename. TOo many things happening.
     """
@@ -167,37 +170,47 @@ def run_py(predict_folders):  # TODO: HIGH: break up this function and rename. T
     :returns labels_fslow, labels_fshigh: see bsoid_py.classify
     """
 
-    # TODO: HIGH: why does it expect to open this .sav file? Is this a bad way to start a func?
-    with open(os.path.join(OUTPUT_PATH, f'bsoid_{config.MODEL_NAME}.sav'), 'rb') as fr:
-        behv_model, scaler = joblib.load(fr)
+    # Read in existing model name
+    try:
+        with open(os.path.join(OUTPUT_PATH, f'bsoid_{config.MODEL_NAME}.sav'), 'rb') as fr:
+            behv_model, scaler = joblib.load(fr)
+    except FileNotFoundError as fnfe:
+        file_not_found_err = f''  # TODO: HIGH: expand on err
+        logger.error(file_not_found_err)
+        raise FileNotFoundError(file_not_found_err + f' // original error: {repr(fnfe)}.')
 
+    #
     data_new, features_new, labels_fs_low, labels_fs_high = classify.main_py(predict_folders, scaler, VIDEO_FPS, behv_model)
-    filenames = []
+    filenames: List[str] = []
     all_dfs_list: List[pd.DataFrame] = []
     for i, folder in enumerate(predict_folders):  # Loop through folders
         file_names_csvs: List[str] = util.likelihoodprocessing.get_filenames_csvs_from_folders_recursively_in_dlc_project_path(folder)
-        for j, filename in enumerate(file_names_csvs):
+        for j, csv_filename in enumerate(file_names_csvs):
             logger.info(f'Importing CSV file {j+1} from folder {i+1}.')
-            curr_df = pd.read_csv(filename, low_memory=False)
-            filenames.append(filename)
+            curr_df = pd.read_csv(csv_filename, low_memory=False)
+            filenames.append(csv_filename)
             all_dfs_list.append(curr_df)
 
     for i in range(len(features_new)):
-        all_data: np.ndarray = np.concatenate([features_new[i].T, labels_fs_low[i].reshape(len(labels_fs_low[i]), 1)], axis=1)
+        all_data: np.ndarray = np.concatenate([
+            features_new[i].T,
+            labels_fs_low[i].reshape(len(labels_fs_low[i]), 1)
+        ], axis=1)
         multi_index_columns = pd.MultiIndex.from_tuples([
-            ('Features', 'Relative snout to forepaws placement'),
-            ('', 'Relative snout to hind paws placement'),
-            ('', 'Inter-forepaw distance'),
-            ('', 'Body length'),
-            ('', 'Body angle'),
-            ('', 'Snout displacement'),
-            ('', 'Tail-base displacement'),
-            ('SVM classifier', 'B-SOiD labels')],
+            ('Features',        'Relative snout to forepaws placement'),
+            ('',                'Relative snout to hind paws placement'),
+            ('',                'Inter-forepaw distance'),
+            ('',                'Body length'),
+            ('',                'Body angle'),
+            ('',                'Snout displacement'),
+            ('',                'Tail-base displacement'),
+            ('SVM classifier',  'B-SOiD labels')],
             names=['Type', 'Frame@10Hz'])
         df_predictions = pd.DataFrame(all_data, columns=multi_index_columns)
         time_str = time.strftime("_%Y%m%d_%H%M")
         csvname = os.path.basename(filenames[i]).rpartition('.')[0]
-        df_predictions.to_csv((os.path.join(OUTPUT_PATH, f'bsoid_labels_10Hz{time_str}{csvname}.csv')), index=True, chunksize=10000, encoding='utf-8')
+        df_predictions.to_csv((os.path.join(OUTPUT_PATH, f'bsoid_labels_10Hz__{config.runtime_timestr}__{csvname}.csv')), index=True, chunksize=10000, encoding='utf-8')
+        raise Exception()
         runlen_df1, dur_stats1, df_tm1 = util.statistics.get_runlengths_statistics_transition_matrix_from_labels(labels_fs_low[i])
 
         # if PLOT_TRAINING:
@@ -228,7 +241,7 @@ def run_py(predict_folders):  # TODO: HIGH: break up this function and rename. T
         runlen_df2.to_csv((os.path.join(OUTPUT_PATH, f'bsoid_runlen_{VIDEO_FPS}Hz{time_str}{csvname}.csv')), index=True, chunksize=10000, encoding='utf-8')
 
         # TODO: ############### Reformat the below lines using f-strings #################################################################################
-        dur_stats2.to_csv((os.path.join(OUTPUT_PATH, f'bsoid_stats_{VIDEO_FPS}Hz{time_str}{csvname}.csv')), index=True, chunksize=10000, encoding='utf-8')
+        dur_stats2.to_csv((os.path.join(OUTPUT_PATH, f'bsoid_statistics_{VIDEO_FPS}Hz{time_str}{csvname}.csv')), index=True, chunksize=10000, encoding='utf-8')
         df_tm2.to_csv((os.path.join(OUTPUT_PATH, f'bsoid_transitions_{VIDEO_FPS}Hz{time_str}{csvname}.csv')), index=True, chunksize=10000, encoding='utf-8')
 
     #
@@ -292,7 +305,7 @@ def run_umap(predict_folders) -> Tuple[Any, Any]:
     with open(os.path.join(OUTPUT_PATH, f'bsoid_predictions{time_str}.sav'), 'wb') as files_to_dump:
         joblib.dump([data_new, fs_labels], files_to_dump)
 
-    logger.info('All saved.')
+    logger.warning(f'{inspect.stack()[0][3]}:All saved. Expand on this message later, then downgrade to INFO or DEBUG')
     return data_new, fs_labels
 def run_voc(predict_folders) -> Tuple[Any, Any, Any, Any]:
     """
@@ -399,17 +412,6 @@ def main_umap(train_folders, predict_folders):
            scores, nn_assignments, data_new, fs_labels
 
 
-
-# def main(train_folders: List[str], predict_folders: List[str]):
-#
-#     # Build
-#
-#     # run_
-#
-#     # Return
-#     return
-
-
 ## TODO: Q: retrain() was commented-out by authors...not sure if keep or delete
 # def retrain_umap(train_folders):
 #     """
@@ -460,6 +462,7 @@ def test_function_to_build_then_run_umap():
     run_umap(config.PREDICT_FOLDERS)
     logger.debug(f'ENDING _UMAP RUN SERIES. SUCCESS!')
     logger.debug(f'End of test.')
+@config.cfig_log_entry_exit(logger)
 def test_function_to_build_then_run_voc():
     logger.debug(f'STARTING _VOC TRAIN SERIES')
     build_voc(config.TRAIN_FOLDERS)
@@ -468,7 +471,9 @@ def test_function_to_build_then_run_voc():
     run_voc(config.PREDICT_FOLDERS)
     logger.debug(f'ENDING _VOC RUN SERIES. SUCCESS!')
     logger.debug(f'End of test.')
-
+@config.cfig_log_entry_exit(logger)
+def test_build_py():
+    build_py(config.TRAIN_FOLDERS)
 
 # if __name__ == "__main__":  # umap
 #     f_10fps, f_10fps_sc, umap_embeddings, hdb_assignments, soft_assignments, soft_clusters, nn_classifier, \
@@ -479,7 +484,6 @@ def test_function_to_build_then_run_voc():
 
 
 if __name__ == "__main__":  # py
-    test_function_to_build_then_run_py()  # main_py(TRAIN_FOLDERS, PREDICT_FOLDERS)
+    test_build_py()
+    # test_function_to_build_then_run_py()  # main_py(TRAIN_FOLDERS, PREDICT_FOLDERS)
     # test_function_to_build_then_run_umap()
-
-#  bsoid_py.main.run(PREDICT_FOLDERS)
