@@ -13,7 +13,7 @@ import bsoid
 
 class TestNewFunctionEquivalencyToLegacy(TestCase):
 
-    def test__old_vs_new_feature_extraction(self):
+    def test__old_vs_new_feature_extraction__bsoid_py(self):
         """
 
         """
@@ -23,7 +23,7 @@ class TestNewFunctionEquivalencyToLegacy(TestCase):
         body_parts, fps = bsoid.config.BODYPARTS_PY_LEGACY, bsoid.config.VIDEO_FPS
 
         df_input_data = pd.read_csv(
-            os.path.join(bsoid.config.BSOID_BASE_PROJECT_PATH, 'tests', 'test_data', test_file_name))
+            os.path.join(bsoid.config.BSOID_BASE_PROJECT_PATH, 'tests', 'test_data', test_file_name), nrows=1000)
         data_as_array, _ = bsoid.util.likelihoodprocessing.process_raw_data_and_filter_adaptively(df_input_data)
         # # 2/2: Tee up functions to be compared
         bsoid_py_extract_function__as_is: callable = bsoid.classify.bsoid_extract_features_without_assuming_100ms_bin_integration
@@ -39,10 +39,10 @@ class TestNewFunctionEquivalencyToLegacy(TestCase):
         is_new_output_list = isinstance(features_output_new_function, list)
         self.assertTrue(is_old_output_list)
         self.assertTrue(is_new_output_list)
+
         # # 2/2: Assert outcomes are equal second
-        is_features_data_output_equal = False not in [(a1 == a2).all() for a1, a2 in
-                                                      zip(features_output_original_function,
-                                                          features_output_new_function)]
+        is_features_data_output_equal = False not in [
+            (a1 == a2).all() for a1, a2 in zip(features_output_original_function, features_output_new_function)]
         arrays_not_equal_err = f"""
 Arrays not identical.
 original output array shape: {features_output_original_function[0].shape}
@@ -65,7 +65,7 @@ new output array: {features_output_new_function}
         fps = bsoid.config.VIDEO_FPS
 
         df_input_data = pd.read_csv(
-            os.path.join(bsoid.config.BSOID_BASE_PROJECT_PATH, 'tests', 'test_data', test_file_name))
+            os.path.join(bsoid.config.BSOID_BASE_PROJECT_PATH, 'tests', 'test_data', test_file_name), nrows=1000)
         data_as_array, _ = bsoid.util.likelihoodprocessing.process_raw_data_and_filter_adaptively(df_input_data)
         # # 2/2: Tee up functions to be compared
         bsoid_py_extract_function__as_is = bsoid.classify.bsoid_extract_py
@@ -84,15 +84,14 @@ new output array: {features_output_new_function}
         is_new_output_list = isinstance(features_output_new_function, list)
         self.assertTrue(is_old_output_list)
         self.assertTrue(is_new_output_list)
-        # # 2/2: Assert outcomes are equal second
 
-        is_features_data_output_equal = False not in [(a1 == a2).all() for a1, a2 in
-                                                      zip(features_output_original_function,
-                                                          features_output_new_function)]
+        # # 2/2: Assert outcomes are equal second
+        is_features_data_output_equal = False not in [
+            (a1 == a2).all() for a1, a2 in zip(features_output_original_function, features_output_new_function)]
         arrays_not_equal_err = f"""
 Arrays not identical.
-original output array shape: {(features_output_original_function[0].shape)}
-new output array shape: {(features_output_new_function[0].shape)}
+original output array shape: {features_output_original_function[0].shape}
+new output array shape: {features_output_new_function[0].shape}
 
 original output array: {features_output_original_function}
 new output array: {features_output_new_function}
