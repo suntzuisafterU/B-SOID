@@ -63,7 +63,7 @@ def run(predict_folders):
 
     with open(os.path.join(OUTPUT_PATH, f'bsoid_{MODEL_NAME}.sav'), 'rb') as fr:
         behv_model, scaler = joblib.load(fr)
-    data_new, feats_new, labels_fslow, labels_fshigh = bsoid.classify.main_py(predict_folders, scaler, FPS, behv_model)
+    data_new, feats_new, labels_frameshifted_low, labels_frameshifted_high = bsoid.classify.main_py(predict_folders, scaler, FPS, behv_model)
     filenames = []
     all_df = []
     for i, fd in enumerate(predict_folders):  # Loop through folders
@@ -74,7 +74,7 @@ def run(predict_folders):
             filenames.append(filename)
             all_df.append(curr_df)
     for i in range(0, len(feats_new)):
-        alldata = np.concatenate([feats_new[i].T, labels_fslow[i].reshape(len(labels_fslow[i]), 1)], axis=1)
+        alldata = np.concatenate([feats_new[i].T, labels_frameshifted_low[i].reshape(len(labels_frameshifted_low[i]), 1)], axis=1)
         micolumns = pd.MultiIndex.from_tuples([('Features', 'Relative snout to forepaws placement'),
                                                ('', 'Relative snout to hind paws placement'),
                                                ('', 'Inter-forepaw distance'),
@@ -87,7 +87,7 @@ def run(predict_folders):
         csvname = os.path.basename(filenames[i]).rpartition('.')[0]
         predictions.to_csv((os.path.join(OUTPUT_PATH, str.join('', ('bsoid_labels_10Hz', timestr, csvname,  '.csv')))),
                            index=True, chunksize=10000, encoding='utf-8')
-        runlen_df1, dur_stats1, df_tm1 = bsoid.util.statistics.main(labels_fslow[i])
+        runlen_df1, dur_stats1, df_tm1 = bsoid.util.statistics.main(labels_frameshifted_low[i])
         # if PLOT_TRAINING:
         #     plot_tmat(df_tm1, FPS)
         runlen_df1.to_csv((os.path.join(OUTPUT_PATH, str.join('', ('bsoid_runlen_10Hz', timestr, csvname, '.csv')))),
@@ -96,8 +96,8 @@ def run(predict_folders):
                           index=True, chunksize=10000, encoding='utf-8')
         df_tm1.to_csv((os.path.join(OUTPUT_PATH, str.join('', ('bsoid_transitions_10Hz', timestr, csvname, '.csv')))),
                       index=True, chunksize=10000, encoding='utf-8')
-        labels_fshigh_pad = np.pad(labels_fshigh[i], (6, 0), 'edge')
-        df2 = pd.DataFrame(labels_fshigh_pad, columns={'B-SOiD labels'})
+        labels_frameshift_high_pad = np.pad(labels_frameshifted_high[i], (6, 0), 'edge')
+        df2 = pd.DataFrame(labels_frameshift_high_pad, columns={'B-SOiD labels'})
         df2.loc[len(df2)] = ''  # TODO: low: address duplicate line here and below
         df2.loc[len(df2)] = ''
         df2 = df2.shift()
@@ -110,7 +110,7 @@ def run(predict_folders):
         xyfs_df.to_csv((os.path.join(OUTPUT_PATH, str.join('', ('bsoid_labels_', str(FPS), 'Hz', timestr, csvname,
                                                                 '.csv')))),
                        index=True, chunksize=10000, encoding='utf-8')
-        runlen_df2, dur_stats2, df_tm2 = bsoid.util.statistics.main(labels_fshigh[i])
+        runlen_df2, dur_stats2, df_tm2 = bsoid.util.statistics.main(labels_frameshifted_high[i])
         runlen_df2.to_csv((os.path.join(OUTPUT_PATH, str.join('', ('bsoid_runlen_', str(FPS), 'Hz', timestr, csvname,
                                                                    '.csv')))),
                           index=True, chunksize=10000, encoding='utf-8')
@@ -121,9 +121,9 @@ def run(predict_folders):
                                                                '.csv')))),
                       index=True, chunksize=10000, encoding='utf-8')
     with open(os.path.join(OUTPUT_PATH, 'bsoid_predictions.sav'), 'wb') as f:
-        joblib.dump([labels_fslow, labels_fshigh], f)
+        joblib.dump([labels_frameshifted_low, labels_frameshifted_high], f)
     logging.info('All saved.')
-    return data_new, feats_new, labels_fslow, labels_fshigh
+    return data_new, feats_new, labels_frameshifted_low, labels_frameshifted_high
 
 
 def main(train_folders, predict_folders):
@@ -137,8 +137,8 @@ def main(train_folders, predict_folders):
     Automatically saves CSV files containing training and new outputs
     """
     f_10fps, trained_tsne, scaler, gmm_assignments, classifier, scores = build(train_folders)
-    data_new, feats_new, labels_fslow, labels_fshigh = run(predict_folders)
-    return f_10fps, trained_tsne, scaler, gmm_assignments, classifier, scores, data_new, feats_new, labels_fslow, labels_fshigh
+    data_new, feats_new, labels_frameshifted_low, labels_frameshifted_high = run(predict_folders)
+    return f_10fps, trained_tsne, scaler, gmm_assignments, classifier, scores, data_new, feats_new, labels_frameshifted_low, labels_frameshifted_high
 
 
 if __name__ == "__main__":
