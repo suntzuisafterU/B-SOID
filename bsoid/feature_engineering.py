@@ -14,7 +14,7 @@ from sklearn.metrics import plot_confusion_matrix
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.neural_network import MLPClassifier
 from sklearn.preprocessing import StandardScaler
-from sklearn.svm import SVC
+# from sklearn.svm import SVC
 from tqdm import tqdm
 from typing import Any, Dict, List, Tuple
 import hdbscan
@@ -39,10 +39,11 @@ logger = config.initialize_logger(__name__)
 def extract_7_features_bsoid_tsne_py(list_of_arrays_data: List[np.ndarray], bodyparts=config.BODYPARTS_PY_LEGACY, fps=config.VIDEO_FPS, comp: int = config.COMPILE_CSVS_FOR_TRAINING) -> List[np.ndarray]:
     """
     Trains t-SNE (unsupervised) given a set of features based on (x,y) positions
+
     :param list_of_arrays_data: list of 3D array
-    :param bodyparts: dict, body parts with their orders in LOCAL_CONFIG
-    :param fps: scalar, argument specifying camera frame-rate in LOCAL_CONFIG
-    :param comp: boolean (0 or 1), argument to compile data or not in LOCAL_CONFIG
+    :param bodyparts: dict, body parts with their orders in config
+    :param fps: scalar, argument specifying camera frame-rate in config
+    :param comp: boolean (0 or 1), argument to compile data or not in config
     :return f_10fps: 2D array, features
     :return f_10fps_sc: 2D array, standardized features
     :return trained_tsne: 2D array, trained t-SNE space
@@ -79,16 +80,16 @@ def extract_7_features_bsoid_tsne_py(list_of_arrays_data: List[np.ndarray], body
         """
 
         # Create some intermediate features first
-        inter_forepaw_distance = data_array[:, 2 * bodyparts['Forepaw/Shoulder1']:2 * bodyparts['Forepaw/Shoulder1'] + 2] - data_array[:, 2 * bodyparts['Forepaw/Shoulder2']:2 * bodyparts['Forepaw/Shoulder2'] + 2]  # Previously: 'fpd'
+        inter_forepaw_distance = data_array[:, 2 * bodyparts['Forepaw/Shoulder1']:2 * bodyparts['Forepaw/Shoulder1'] + 2] - data_array[:, 2 * bodyparts['Forepaw/Shoulder2']:2 * bodyparts['Forepaw/Shoulder2'] + 2]  # Originally: 'fpd'
 
         cfp__center_between_forepaws = np.vstack((
             (data_array[:, 2 * bodyparts['Forepaw/Shoulder1']] + data_array[:, 2 * bodyparts['Forepaw/Shoulder2']]) / 2,
             (data_array[:, 2 * bodyparts['Forepaw/Shoulder1'] + 1] + data_array[:, 2 * bodyparts['Forepaw/Shoulder1'] + 1]) / 2),
-        ).T  # Previously: cfp
+        ).T  # Originally: cfp
         dFT__cfp_pt__center_between_forepaws__minus__proximal_tail = np.vstack(([
             cfp__center_between_forepaws[:, 0] - data_array[:, 2 * bodyparts['Tailbase']],
             cfp__center_between_forepaws[:, 1] - data_array[:, 2 * bodyparts['Tailbase'] + 1],
-        ])).T  # Previously: cfp_pt
+        ])).T  # Originally: cfp_pt
         chp__center_between_hindpaws = np.vstack((
             ((data_array[:, 2 * bodyparts['Hindpaw/Hip1']] + data_array[:, 2 * bodyparts['Hindpaw/Hip2']]) / 2),
             ((data_array[:, 2 * bodyparts['Hindpaw/Hip1'] + 1] + data_array[:, 2 * bodyparts['Hindpaw/Hip2'] + 1]) / 2),
@@ -96,18 +97,17 @@ def extract_7_features_bsoid_tsne_py(list_of_arrays_data: List[np.ndarray], body
         chp__center_between_hindpaws__minus__proximal_tail = np.vstack(([
             chp__center_between_hindpaws[:, 0] - data_array[:, 2 * bodyparts['Tailbase']],
             chp__center_between_hindpaws[:, 1] - data_array[:, 2 * bodyparts['Tailbase'] + 1],
-        ])).T  # chp_pt
+        ])).T  # Originally: chp_pt
         snout__proximal_tail__distance__aka_BODYLENGTH = np.vstack(([
             data_array[:, 2 * bodyparts['Snout/Head']] - data_array[:, 2 * bodyparts['Tailbase']],
             data_array[:, 2 * bodyparts['Snout/Head'] + 1] - data_array[:, 2 * bodyparts['Tailbase'] + 1],
-        ])).T  # previously: sn_pt
+        ])).T  # Originally: sn_pt
 
         ### Create the 4 static measurement features for final use ###
-        inter_forepaw_distance__normalized = np.zeros(num_data_rows)  # originally: fpd_norm
-        cfp_pt__center_between_forepaws__minus__proximal_tail__normalized = np.zeros(
-            num_data_rows)  # originally: cfp_pt_norm
-        chp__proximal_tail__normalized = np.zeros(num_data_rows)  # originally: chp_pt_norm
-        snout__proximal_tail__distance__aka_BODYLENGTH__normalized = np.zeros(num_data_rows)  # originally: sn_pt_norm
+        inter_forepaw_distance__normalized = np.zeros(num_data_rows)  # Originally: fpd_norm
+        cfp_pt__center_between_forepaws__minus__proximal_tail__normalized = np.zeros(num_data_rows)  # Originally: cfp_pt_norm
+        chp__proximal_tail__normalized = np.zeros(num_data_rows)  # Originally: chp_pt_norm
+        snout__proximal_tail__distance__aka_BODYLENGTH__normalized = np.zeros(num_data_rows)  # Originally: sn_pt_norm
         for j in range(1, num_data_rows):
             inter_forepaw_distance__normalized[j] = np.array(np.linalg.norm(inter_forepaw_distance[j, :]))
             cfp_pt__center_between_forepaws__minus__proximal_tail__normalized[j] = np.linalg.norm(
@@ -117,30 +117,29 @@ def extract_7_features_bsoid_tsne_py(list_of_arrays_data: List[np.ndarray], body
                 snout__proximal_tail__distance__aka_BODYLENGTH[j, :])
         ## "Smooth" features for final use
         # Body length (1)
-        snout__proximal_tail__distance__aka_BODYLENGTH__normalized_smoothed = likelihoodprocessing.boxcar_center(snout__proximal_tail__distance__aka_BODYLENGTH__normalized, win_len)  # sn_pt_norm_smth
+        snout__proximal_tail__distance__aka_BODYLENGTH__normalized_smoothed = likelihoodprocessing.boxcar_center(snout__proximal_tail__distance__aka_BODYLENGTH__normalized, win_len)  # Originally: sn_pt_norm_smth
         # Inter-forepaw distance (4)
-        inter_forepaw_distance__normalized__smoothed = likelihoodprocessing.boxcar_center(inter_forepaw_distance__normalized, win_len)  # fpd_norm_smth
+        inter_forepaw_distance__normalized__smoothed = likelihoodprocessing.boxcar_center(inter_forepaw_distance__normalized, win_len)  # Originally: fpd_norm_smth
         # (2)
-        snout__center_forepaws__normalized__smoothed = likelihoodprocessing.boxcar_center(snout__proximal_tail__distance__aka_BODYLENGTH__normalized - cfp_pt__center_between_forepaws__minus__proximal_tail__normalized, win_len)  # sn_cfp_norm_smth
+        snout__center_forepaws__normalized__smoothed = likelihoodprocessing.boxcar_center(snout__proximal_tail__distance__aka_BODYLENGTH__normalized - cfp_pt__center_between_forepaws__minus__proximal_tail__normalized, win_len)  # Originally: sn_cfp_norm_smth
         # (3)
-        snout__center_hindpaws__normalized__smoothed = likelihoodprocessing.boxcar_center(snout__proximal_tail__distance__aka_BODYLENGTH__normalized - chp__proximal_tail__normalized, win_len)  # sn_chp_norm_smth
+        snout__center_hindpaws__normalized__smoothed = likelihoodprocessing.boxcar_center(snout__proximal_tail__distance__aka_BODYLENGTH__normalized - chp__proximal_tail__normalized, win_len)  # Originally: sn_chp_norm_smth
 
         ### Create the 3 time-varying features for final use ###
-        snout__proximal_tail__angle = np.zeros(num_data_rows - 1)  # originally: sn_pt_ang
-        snout_speed__aka_snout__displacement = np.zeros(num_data_rows - 1)  # originally: sn_disp
-        tail_speed__aka_proximal_tail__displacement = np.zeros(num_data_rows - 1)  # originally: pt_disp
+        snout__proximal_tail__angle = np.zeros(num_data_rows - 1)  # Originally: sn_pt_ang
+        snout_speed__aka_snout__displacement = np.zeros(num_data_rows - 1)  # Originally: sn_disp
+        tail_speed__aka_proximal_tail__displacement = np.zeros(num_data_rows - 1)  # Originally: pt_disp
         for k in range(num_data_rows - 1):
             b_3d = np.hstack([snout__proximal_tail__distance__aka_BODYLENGTH[k + 1, :], 0])
             a_3d = np.hstack([snout__proximal_tail__distance__aka_BODYLENGTH[k, :], 0])
             c = np.cross(b_3d, a_3d)
             snout__proximal_tail__angle[k] = np.dot(np.dot(np.sign(c[2]), 180) / np.pi, math.atan2(np.linalg.norm(c), np.dot(snout__proximal_tail__distance__aka_BODYLENGTH[k, :], snout__proximal_tail__distance__aka_BODYLENGTH[k + 1, :])))
-            snout_speed__aka_snout__displacement[k] = np.linalg.norm(
-                data_array[k + 1, 2 * bodyparts['Snout/Head']:2 * bodyparts['Snout/Head'] + 1] - data_array[k, 2 * bodyparts['Snout/Head']:2 * bodyparts['Snout/Head'] + 1])
+            snout_speed__aka_snout__displacement[k] = np.linalg.norm(data_array[k + 1, 2 * bodyparts['Snout/Head']:2 * bodyparts['Snout/Head'] + 1] - data_array[k, 2 * bodyparts['Snout/Head']:2 * bodyparts['Snout/Head'] + 1])
             tail_speed__aka_proximal_tail__displacement[k] = np.linalg.norm(data_array[k + 1, 2 * bodyparts['Tailbase']:2 * bodyparts['Tailbase'] + 1] - data_array[k, 2 * bodyparts['Tailbase']:2 * bodyparts['Tailbase'] + 1])
         # Smooth features
-        snout__proximal_tail__angle__smoothed = likelihoodprocessing.boxcar_center(snout__proximal_tail__angle, win_len)  # sn_pt_ang_smth =>
-        snout_speed__aka_snout_displacement_smoothed = likelihoodprocessing.boxcar_center(snout_speed__aka_snout__displacement, win_len)  # sn_disp_smth =>
-        tail_speed__aka_proximal_tail__displacement__smoothed = likelihoodprocessing.boxcar_center(tail_speed__aka_proximal_tail__displacement, win_len)  # originally: pt_disp_smth
+        snout__proximal_tail__angle__smoothed = likelihoodprocessing.boxcar_center(snout__proximal_tail__angle, win_len)  # Originally: sn_pt_ang_smth
+        snout_speed__aka_snout_displacement_smoothed = likelihoodprocessing.boxcar_center(snout_speed__aka_snout__displacement, win_len)  # Originally: sn_disp_smth
+        tail_speed__aka_proximal_tail__displacement__smoothed = likelihoodprocessing.boxcar_center(tail_speed__aka_proximal_tail__displacement, win_len)  # Originally: pt_disp_smth
 
         # Append final features to features list
         features.append(np.vstack((
@@ -153,9 +152,12 @@ def extract_7_features_bsoid_tsne_py(list_of_arrays_data: List[np.ndarray], body
             snout_speed__aka_snout_displacement_smoothed[:],                            # 5
             tail_speed__aka_proximal_tail__displacement__smoothed[:],                   # 6
         )))
-        # Loop to next data_array
+        # End loop // Loop to next data_array
     # Exit
     logger.info(f'{inspect.stack()[0][3]}: Done extracting features from a '
                 f'total of {len(list_of_arrays_data)} training CSV files.')
 
     return features
+
+
+
