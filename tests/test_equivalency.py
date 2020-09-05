@@ -10,6 +10,9 @@ import pandas as pd
 
 import bsoid
 
+test_file_name = 'Video1DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000.csv'
+single_test_file_location = os.path.join(bsoid.config.BSOID_BASE_PROJECT_PATH, 'tests', 'test_data', test_file_name)
+
 
 class TestNewFunctionEquivalencyToLegacy(TestCase):
 
@@ -19,11 +22,9 @@ class TestNewFunctionEquivalencyToLegacy(TestCase):
         """
         # Arrange
         # # 1/2: Set up data for function use
-        test_file_name = 'Video1DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000.csv'
         body_parts, fps = bsoid.config.BODYPARTS_PY_LEGACY, bsoid.config.VIDEO_FPS
 
-        df_input_data = pd.read_csv(
-            os.path.join(bsoid.config.BSOID_BASE_PROJECT_PATH, 'tests', 'test_data', test_file_name), nrows=1000)
+        df_input_data = pd.read_csv(single_test_file_location, nrows=bsoid.config.max_rows_to_read_in_from_csv)
         data_as_array, _ = bsoid.util.likelihoodprocessing.process_raw_data_and_filter_adaptively(df_input_data)
         # # 2/2: Tee up functions to be compared
         bsoid_py_extract_function__as_is: callable = bsoid.classify.bsoid_extract_features_without_assuming_100ms_bin_integration
@@ -65,7 +66,8 @@ new output array: {features_output_new_function}
         fps = bsoid.config.VIDEO_FPS
 
         df_input_data = pd.read_csv(
-            os.path.join(bsoid.config.BSOID_BASE_PROJECT_PATH, 'tests', 'test_data', test_file_name), nrows=1000)
+            os.path.join(bsoid.config.BSOID_BASE_PROJECT_PATH, 'tests', 'test_data', test_file_name),
+            nrows=bsoid.config.max_rows_to_read_in_from_csv)
         data_as_array, _ = bsoid.util.likelihoodprocessing.process_raw_data_and_filter_adaptively(df_input_data)
         # # 2/2: Tee up functions to be compared
         bsoid_py_extract_function__as_is = bsoid.classify.bsoid_extract_py
@@ -108,7 +110,8 @@ new output array: {features_output_new_function}
         body_parts, fps = bsoid.config.BODYPARTS_PY_LEGACY, bsoid.config.VIDEO_FPS
 
         df_input_data = pd.read_csv(
-            os.path.join(bsoid.config.BSOID_BASE_PROJECT_PATH, 'tests', 'test_data', test_file_name))
+            os.path.join(bsoid.config.BSOID_BASE_PROJECT_PATH, 'tests', 'test_data', test_file_name),
+            nrows=bsoid.config.max_rows_to_read_in_from_csv)
         data_as_array, _ = bsoid.util.likelihoodprocessing.process_raw_data_and_filter_adaptively(df_input_data)
         # # 2/2: Tee up functions to be compared
         bsoid_py_extract_function__as_is = bsoid.classify.bsoid_extract_py
