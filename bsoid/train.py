@@ -7,11 +7,6 @@ Potential abbreviations:
     sn: snout
     pt: proximal tail ?
 """
-"""
-
-
-
-"""
 from bhtsne import tsne
 from sklearn import mixture
 from sklearn.manifold import TSNE as TSNE_sklearn
@@ -712,7 +707,7 @@ def bsoid_svm_py(feats, labels, comp: int = config.COMPILE_CSVS_FOR_TRAINING, ho
                     print(title)
                     print(display.confusion_matrix)
                     if config.SAVE_GRAPHS_TO_FILE:
-                        my_file = f'confusion_matrix_clf{i}_{title_names[j]}'
+                        my_file = f'confusion_matrix_clf{i}_{title_names[j]}{time_str}'
                         visuals.save_graph_to_file(display.figure_, my_file)
                     j += 1
                 plt.show()
@@ -732,7 +727,7 @@ def get_data_train_TSNE_then_GMM_then_SVM_then_return_EVERYTHING__py(train_folde
         raise ValueError(f'`train_folders` arg was expected to be list but instead found '
                          f'type: {type(train_folders)} (value:  {train_folders}')
     if len(train_folders) == 0:
-        zero_train_folders_error = f''  # TODO
+        zero_train_folders_error = f'{inspect.stack()[0][3]}: zero train folders were submitted (value = {train_folders}).'
         logger.error(zero_train_folders_error)
         raise ValueError(zero_train_folders_error)
 
@@ -821,8 +816,8 @@ def main_umap(train_folders: list):
     return features_10fps, features_10fps_scaled, umap_embeddings, hdb_assignments, soft_assignments, soft_clusters, nn_classifier, scores, nn_assignments
 
 
-########################################################################################################################
-### Legacy functions -- keep them for now
+### Legacy functions -- keep them for now ########################################################################
+###
 def bsoid_nn_voc(feats, labels, comp: int = config.COMPILE_CSVS_FOR_TRAINING, hldout: float = config.HOLDOUT_PERCENT, cv_it=config.CROSSVALIDATION_K, mlp_params=config.MLP_PARAMS):
     # WARNING: DEPRECATION IMMINENT
     replacement_func = train_mlp_classifier_voc
@@ -833,7 +828,7 @@ def bsoid_gmm_pyvoc(trained_tsne_array, comp=config.COMPILE_CSVS_FOR_TRAINING, e
     replacement_func = train_emgmm_with_learned_tsne_space
     logger.warn(f'This function will be deprecated in the future. To resolve this warning, replace this '
                 f'function with {replacement_func.__qualname__} instead.')
-    return replacement_func(trained_tsne_array, comp=config.COMPILE_CSVS_FOR_TRAINING, emgmm_params=config.EMGMM_PARAMS)
+    return replacement_func(trained_tsne_array, comp=comp, emgmm_params=emgmm_params)
 def bsoid_feats_umapapp(data: list, fps: int = config.VIDEO_FPS) -> Tuple:
     replacement_func = train_umap_unsupervised_with_xy_features_umapapp
     logger.warn(f'DEPRECATION WARNING. This function, {inspect.stack()[0][3]}, will be deprecated in'
