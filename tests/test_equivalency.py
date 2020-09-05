@@ -28,7 +28,7 @@ class TestNewFunctionEquivalencyToLegacy(TestCase):
         data_as_array, _ = bsoid.util.likelihoodprocessing.process_raw_data_and_filter_adaptively(df_input_data)
         # # 2/2: Tee up functions to be compared
         bsoid_py_extract_function__as_is: callable = bsoid.classify.bsoid_extract_features_without_assuming_100ms_bin_integration
-        new_feature_extraction_function: callable = bsoid.train.extract_7_features_bsoid_tsne_py
+        new_feature_extraction_function: callable = bsoid.feature_engineering.extract_7_features_bsoid_tsne_py
 
         # Act
         features_output_original_function: List[np.ndarray] = bsoid_py_extract_function__as_is([data_as_array], body_parts, fps)
