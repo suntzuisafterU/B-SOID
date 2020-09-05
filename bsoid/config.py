@@ -23,13 +23,15 @@ import numpy as np
 import os
 import pandas as pd
 import random
+import sys
 import time
 
+# Debug opts
 pd.set_option('display.max_rows', None)
 pd.set_option('display.max_columns', None)
 pd.set_option('display.width', None)
 pd.set_option('display.max_colwidth', None)
-np.set_printoptions(threshold=1_000_000_000)
+np.set_printoptions(threshold=1_000)
 
 
 from bsoid.util import logger_config
@@ -244,6 +246,11 @@ TSNE_PARAMS = {
 
 
 ########################################################################################################################
+##### TESTING VARIABLES #####
+max_rows_to_read_in_from_csv: int = configuration.getint('TESTING', 'max_rows_to_read_in_from_csv') if configuration.getint('TESTING', 'max_rows_to_read_in_from_csv') else sys.maxsize
+
+
+########################################################################################################################
 ##### LEGACY VARIABLES #####
 # This version requires the six body parts Snout/Head, Forepaws/Shoulders, Hindpaws/Hips, Tailbase.
 BODYPARTS_PY_LEGACY = {
@@ -258,7 +265,7 @@ BODYPARTS_PY_LEGACY = {
     'Tailroot': None,
 }
 
-### BSOID VOC ###
+# BSOID VOC
 # # original authors' note: Order the points that are encircling the mouth.
 BODYPARTS_VOC_LEGACY = {
     'Point1': 0,
@@ -288,4 +295,5 @@ def get_config_str() -> str:
 if __name__ == '__main__':
     print('OUTPUTPATH:', OUTPUT_PATH)
     print(get_config_str())
+    print(max_rows_to_read_in_from_csv)
     pass
