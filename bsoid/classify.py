@@ -13,7 +13,7 @@ import numpy as np
 
 # # # B-SOiD imports # # #
 from bsoid import config
-from bsoid.util import likelihoodprocessing, videoprocessing, visuals
+from bsoid.util import check_arg, likelihoodprocessing, videoprocessing, visuals
 
 logger = config.initialize_logger(__name__)
 
@@ -471,6 +471,7 @@ def bsoid_predict_app(features, clf_MLP) -> List:
     logger.info(f'Done predicting a total of {len(features)} files.')
     return labels_fs_low
 
+
 def bsoid_predict_py(features, scaler, clf_SVM) -> list:
     """
     :param features: list, multiple feats (original feature space)
@@ -633,7 +634,7 @@ def bsoid_frameshift_voc(data_new, fps: int, clf_MLP) -> List:
     logger.info(f'Done frameshift-predicting a total of {len(data_new)} files.')
     return labels_fs_high
 
-
+@config.cfig_log_entry_exit(logger)
 def main_py(predict_folders: List[str], scaler, fps, behv_model) -> Tuple[np.ndarray, List, List, List]:
     """
     :param predict_folders: list, data folders
