@@ -406,7 +406,7 @@ def plot_feats_bsoidpy(feats, labels) -> None:
                         if i < len(np.unique(labels_k)) - 1:
                             plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
                 if config.SAVE_GRAPHS_TO_FILE:
-                    file_name = f'session_{k+1}__feature_{j+1}__histogram__{time_str}'  # = my_file+'_'+time_str
+                    file_name = f'session_{k+1}__feature_{j+1}__histogram__{time_str}'  # = my_file+'_'+time_str  # TODO: HIGH: clarify on what a "session" is/means to the user.
                     save_graph_to_file(fig, file_name)  # fig.savefig(os.path.join(config.OUTPUT_PATH, my_file+'_'+time_str+'.svg'))
             plt.show()
     else:
@@ -485,7 +485,7 @@ def plot_feats_bsoidvoc(feats: Union[List, np.ndarray], labels: list) -> None:
                         if i < len(np.unique(labels_k)) - 1:
                             plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
                 if config.SAVE_GRAPHS_TO_FILE:
-                    file_name = f'session_{k + 1}__feature_{j+1}__histogram_{time_str}'
+                    file_name = f'session_{k + 1}__feature_{j+1}__histogram_{time_str}'  # TODO: HIGH: clarify on what a "session" is/means to the user.
                     save_graph_to_file(fig, file_name)  # fig.savefig(os.path.join(config.OUTPUT_PATH, str.join('', (my_file, '_'+timestr, '.svg'))))
             plt.show()
     elif isinstance(labels, np.ndarray):
