@@ -71,7 +71,7 @@ def extract_7_features_bsoid_tsne_py(list_of_arrays_data: List[np.ndarray], body
 
     # Iterate over data arrays available and build features
     for i, data_array in enumerate(list_of_arrays_data):  # for i in range(len(list_of_arrays_data)):
-        logger.info(f'Extracting features from CSV file {i+1}...')
+        logger.debug(f'{inspect.stack()[0][3]}() (to be deprecated!): Extracting features from CSV file {i+1}...')
         num_data_rows = len(data_array)
         #
         inter_forepaw_distance = data_array[:, 2 * bodyparts['Forepaw/Shoulder1']:2 * bodyparts['Forepaw/Shoulder1'] + 2] - data_array[:, 2 * bodyparts['Forepaw/Shoulder2']:2 * bodyparts['Forepaw/Shoulder2'] + 2]  # Previously: 'fpd'
@@ -119,9 +119,9 @@ def extract_7_features_bsoid_tsne_py(list_of_arrays_data: List[np.ndarray], body
         snout__center_hindpaws__normalized__smoothed = likelihoodprocessing.boxcar_center(snout__proximal_tail__distance__aka_BODYLENGTH__normalized - chp__proximal_tail__normalized, win_len)   # sn_chp_norm_smth
 
         ### Create the 3 time-varying features
-        snout__proximal_tail__angle = np.zeros(num_data_rows - 1)                       # originally: sn_pt_ang
-        snout_speed__aka_snout__displacement = np.zeros(num_data_rows - 1)                # originally: sn_disp
-        tail_speed__aka_proximal_tail__displacement = np.zeros(num_data_rows - 1)        # originally: pt_disp
+        snout__proximal_tail__angle = np.zeros(num_data_rows - 1)                   # originally: sn_pt_ang
+        snout_speed__aka_snout__displacement = np.zeros(num_data_rows - 1)          # originally: sn_disp
+        tail_speed__aka_proximal_tail__displacement = np.zeros(num_data_rows - 1)   # originally: pt_disp
         for k in range(num_data_rows - 1):
             b_3d = np.hstack([snout__proximal_tail__distance__aka_BODYLENGTH[k + 1, :], 0])
             a_3d = np.hstack([snout__proximal_tail__distance__aka_BODYLENGTH[k, :], 0])
@@ -146,8 +146,8 @@ def extract_7_features_bsoid_tsne_py(list_of_arrays_data: List[np.ndarray], body
         ))
         # Loop to next data_array
     # Exit
-    logger.info(f'{inspect.stack()[0][3]}: Done extracting features from a '
-                f'total of {len(list_of_arrays_data)} training CSV files.')
+    logger.debug(f'{inspect.stack()[0][3]}: Done extracting features from a '
+                 f'total of {len(list_of_arrays_data)} training CSV files.')
 
     return features
 
