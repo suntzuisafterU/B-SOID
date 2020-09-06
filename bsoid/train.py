@@ -7,7 +7,7 @@ Potential abbreviations:
     sn: snout
     pt: proximal tail ?
 """
-from bhtsne import tsne
+from bhtsne import tsne as TSNE_bthsne
 from sklearn import mixture
 from sklearn.manifold import TSNE as TSNE_sklearn
 from sklearn.metrics import plot_confusion_matrix
@@ -27,7 +27,7 @@ import os
 import time
 import umap
 
-from bsoid import config
+from bsoid import config, feature_engineering
 from bsoid.util import check_arg, likelihoodprocessing, visuals
 
 logger = config.initialize_logger(__name__)
@@ -35,18 +35,28 @@ logger = config.initialize_logger(__name__)
 
 ########################################################################################################################
 
-@config.cfig_log_entry_exit(logger)
+# @config.cfig_log_entry_exit(logger)
 def extract_7_features_bsoid_tsne_py(list_of_arrays_data: List[np.ndarray], bodyparts=config.BODYPARTS_PY_LEGACY, fps=config.VIDEO_FPS, comp: int = config.COMPILE_CSVS_FOR_TRAINING) -> List[np.ndarray]:
     """
     Trains t-SNE (unsupervised) given a set of features based on (x,y) positions
+
+    * DOES NOT integrate features into 100ms bins *
+
     :param list_of_arrays_data: list of 3D array
-    :param bodyparts: dict, body parts with their orders in LOCAL_CONFIG
-    :param fps: scalar, argument specifying camera frame-rate in LOCAL_CONFIG
-    :param comp: boolean (0 or 1), argument to compile data or not in LOCAL_CONFIG
+    :param bodyparts: dict, body parts with their orders in config
+    :param fps: scalar, argument specifying camera frame-rate in config
+    :param comp: boolean (0 or 1), argument to compile data or not in config
     :return f_10fps: 2D array, features
     :return f_10fps_sc: 2D array, standardized features
     :return trained_tsne: 2D array, trained t-SNE space
     """
+    replacement_func = feature_engineering.extract_7_features_bsoid_tsne_py
+    deprec_warning = f'{inspect.stack()[0][3]}: This function will be deprecated in ' \
+                     f'favour of feature_engineering."{replacement_func.__qualname__}()" soon.'
+    logger.warning(deprec_warning)
+
+    # return replacement_func(list_of_arrays_data, bodyparts=bodyparts, fps=fps, comp=comp)
+
     ### *note* Sometimes data is (incorrectly) submitted as an array of arrays (the number of arrays in the overarching array or, if correctly typed, list) is the same # of CSV files read in). Fix type then continue.
     if isinstance(list_of_arrays_data, np.ndarray):
         logger.warning(f'')  # TODO: expand on warning
@@ -63,21 +73,6 @@ def extract_7_features_bsoid_tsne_py(list_of_arrays_data: List[np.ndarray], body
     for i, data_array in enumerate(list_of_arrays_data):  # for i in range(len(list_of_arrays_data)):
         logger.info(f'Extracting features from CSV file {i+1}...')
         num_data_rows = len(data_array)
-        """ DELETE THIS STRING
-        7 Features listed in paper (terms in brackets are cursive and were written in math format. See paper page 12/13):
-            1. body length (or "[d_ST]"): distance from snout to base of tail
-            2. [d_SF]: distance of front paws to base of tail relative to body length (formally: [d_SF] = [d_ST] - [d_FT], where [d_FT] is the distance between front paws and base of tail
-            3. [d_SB]: distance of back paws to base of tail relative to body length (formally: [d_SB] = [d_ST] - [d_BT]
-            4. Inter-forepaw distance (or "[d_FP]"): the distance between the two front paws
-            
-            5. snout speed (or "[v_s]"): the displacement of the snout location over a period of 16ms
-            6. base-of-tail speed (or ["v_T"]): the displacement of the base of the tail over a period of 16ms
-            7. snout to base-of-tail change in angle: 
-
-        Author also specifies that: the features are also smoothed over, or averaged across, 
-            a sliding window of size equivalent to 60ms (30ms prior to and after the frame of interest).
-        """
-
         #
         inter_forepaw_distance = data_array[:, 2 * bodyparts['Forepaw/Shoulder1']:2 * bodyparts['Forepaw/Shoulder1'] + 2] - data_array[:, 2 * bodyparts['Forepaw/Shoulder2']:2 * bodyparts['Forepaw/Shoulder2'] + 2]  # Previously: 'fpd'
 
@@ -158,6 +153,69 @@ def extract_7_features_bsoid_tsne_py(list_of_arrays_data: List[np.ndarray], body
 
 
 ########################################################################################################################
+
+def extract_features_and_train_TSNE(list_of_arrays_data: List[np.ndarray], bodyparts=config.BODYPARTS_PY_LEGACY, fps=config.VIDEO_FPS, comp: int = config.COMPILE_CSVS_FOR_TRAINING):
+    """
+    Trains t-SNE (unsupervised) given a set of features based on (x,y) positions
+    :param list_of_arrays_data: list of 3D array
+    :param bodyparts: dict, body parts with their orders in LOCAL_CONFIG
+    :param fps: scalar, argument specifying camera frame-rate in LOCAL_CONFIG
+    :param comp: boolean (0 or 1), argument to compile data or not in LOCAL_CONFIG
+    :return f_10fps: 2D array, features
+    :return f_10fps_sc: 2D array, standardized features
+    :return trained_tsne: 2D array, trained t-SNE space
+    """
+
+    # 1/2 Extract features
+    features = extract_7_features_bsoid_tsne_py(list_of_arrays_data, bodyparts=bodyparts, fps=fps, comp=comp)
+
+    # 2/2 train TSNE
+    if comp == 0:
+        features_10fps = []
+        f_10fps_scaled = []
+        trained_tsne = []
+    for n, current_feature in enumerate(features):  # for n in range(len(features)):
+        feats1 = np.zeros(len(list_of_arrays_data[n]))
+        for k in range(round(fps / 10) - 1, len(current_feature[0]), round(fps / 10)):
+            if k > round(fps / 10) - 1:
+                feats1 = np.concatenate((feats1.reshape(feats1.shape[0], feats1.shape[1]),
+                                         np.hstack((np.mean((current_feature[0:4, range(k - round(fps / 10), k)]), axis=1), np.sum((current_feature[4:7, range(k - round(fps / 10), k)]), axis=1))).reshape(len(features[0]), 1)), axis=1)
+            else:
+                feats1 = np.hstack((np.mean((current_feature[0:4, range(k - round(fps / 10), k)]), axis=1), np.sum((current_feature[4:7, range(k - round(fps / 10), k)]), axis=1))).reshape(len(features[0]), 1)
+        logger.info(f'{inspect.stack()[0][3]}: Done integrating features into 100ms bins from CSV file {n+1}.')
+
+        if comp == 1:
+            if n > 0:
+                features_10fps = np.concatenate((features_10fps, feats1), axis=1)
+            else:
+                features_10fps = feats1
+        elif comp == 0:
+            features_10fps.append(feats1)
+            scaler = StandardScaler()
+            scaler.fit(feats1.T)
+            feats1_stnd = scaler.transform(feats1.T).T
+            f_10fps_scaled.append(feats1_stnd)
+            logger.info(f'Training t-SNE to embed {f_10fps_scaled[n].shape[1]} instances from '
+                        f'{f_10fps_scaled[n].shape[0]} D into 3 D from CSV file {n + 1}...')
+            trained_tsne_i = TSNE_bthsne(f_10fps_scaled[n].T, dimensions=3, perplexity=np.sqrt(f_10fps_scaled[n].shape[1]),
+                                         theta=0.5, rand_seed=config.RANDOM_STATE)
+            trained_tsne.append(trained_tsne_i)
+            logger.info('Done embedding into 3 D.')
+        else:
+            err = f'non-valid comp value found. Value = {comp}'
+            logger.error(err)
+            raise ValueError(err)
+
+    if comp == 1:
+        scaler = StandardScaler()
+        scaler.fit(features_10fps.T)  # TODO: HIGH: variable `f_10fps` referenced before assignment. Error in logic above? ########################## IMPORTANT ###############################
+        f_10fps_scaled = scaler.transform(features_10fps.T).T
+        logger.info(f'{inspect.stack()[0][3]}:Training t-SNE to embed {f_10fps_scaled.shape[1]} instances'
+                    f'from {f_10fps_scaled.shape[0]} D into 3 D from a total of {len(list_of_arrays_data)} CSV files...')
+        trained_tsne = TSNE_bthsne(f_10fps_scaled.T, dimensions=3, perplexity=np.sqrt(f_10fps_scaled.shape[1]),
+                                   theta=0.5, rand_seed=config.RANDOM_STATE)
+        logger.info(f'{inspect.stack()[0][3]}::Done embedding into 3 D.')
+    return features_10fps, f_10fps_scaled, trained_tsne, scaler
 
 @config.cfig_log_entry_exit(logger)
 def train_umap_unsupervised_with_xy_features_umapapp(data: List[np.ndarray], fps: int = config.VIDEO_FPS) -> Tuple:
@@ -242,8 +300,7 @@ def train_umap_unsupervised_with_xy_features_umapapp(data: List[np.ndarray], fps
             f_10fps_sc = features_n_scaled  # scaling is important as I've seen wildly different stdev/feat between sessions
     logger.debug(f'{inspect.stack()[0][3]: Now exiting.}')
     return f_10fps, f_10fps_sc
-
-
+@config.cfig_log_entry_exit(logger)
 def bsoid_umap_embed_umapapp(features_10fps_scaled, umap_params=config.UMAP_PARAMS) -> Tuple[umap.UMAP, Any]:
     """
     Trains UMAP (unsupervised) given a set of features based on (x,y) positions
@@ -252,6 +309,7 @@ def bsoid_umap_embed_umapapp(features_10fps_scaled, umap_params=config.UMAP_PARA
     :return trained_umap: object, trained UMAP transformer
     :return umap_embeddings: 2D array, embedded UMAP space
     """
+    # The comment below was commented-out by the original authors, but has been kept here for continuity.
     ###### So far, use of PCA is not necessary. If, however, features go beyond 100, consider taking top 50 PCs #####
     # if f_10fps_sc.shape[0] > 50:
     #     logger.info('Compressing {} instances from {} D '
@@ -276,7 +334,7 @@ def bsoid_umap_embed_umapapp(features_10fps_scaled, umap_params=config.UMAP_PARA
     logger.debug(f'{inspect.stack()[0][3]}: now exiting.')
     return trained_umap, umap_embeddings
 
-
+@config.cfig_log_entry_exit(logger)
 def bsoid_hdbscan_umapapp(umap_embeddings, hdbscan_params=config.HDBSCAN_PARAMS) -> Tuple[Any, np.ndarray, Any]:
     """
     Trains HDBSCAN (unsupervised) given learned UMAP space
@@ -292,21 +350,24 @@ def bsoid_hdbscan_umapapp(umap_embeddings, hdbscan_params=config.HDBSCAN_PARAMS)
         # trained_classifier = hdbscan.HDBSCAN(prediction_data=True,
         #                                      min_cluster_size=round(umap_embeddings.shape[0] * 0.007),  # just < 1%/cluster
         #                                      **hdbscan_params).fit(umap_embeddings)
-        trained_classifier = hdbscan.HDBSCAN(prediction_data=True,
-                                             min_cluster_size=int(round(0.001 * min_c * umap_embeddings.shape[0])),
-                                             **hdbscan_params)\
-                                            .fit(umap_embeddings)
+        trained_classifier = hdbscan.HDBSCAN(
+            prediction_data=True,
+            min_cluster_size=int(round(0.001 * min_c * umap_embeddings.shape[0])),
+            **hdbscan_params
+        ).fit(umap_embeddings)
         numulab.append(len(np.unique(trained_classifier.labels_)))
         if numulab[-1] > highest_numulab:
-            logger.info(f'Adjusting minimum cluster size to maximize cluster number...')
+            logger.debug(f'{likelihoodprocessing.get_current_function()}: '
+                         f'Adjusting minimum cluster size to maximize cluster number...')
             highest_numulab = numulab[-1]
             best_clf = trained_classifier
     assignments = best_clf.labels_
     soft_clusters = hdbscan.all_points_membership_vectors(best_clf)
     soft_assignments = np.argmax(soft_clusters, axis=1)
-    logger.info('Done predicting labels for {} instances in {} D space...'.format(*umap_embeddings.shape))
+    logger.info(f'{likelihoodprocessing.get_current_function()}: ' +
+                'Done predicting labels for {} instances in {} D space...'.format(*umap_embeddings.shape))
     return assignments, soft_clusters, soft_assignments
-
+@config.cfig_log_entry_exit(logger)
 
 def bsoid_nn_appumap(feats, labels, holdout_pct: float = config.HOLDOUT_PERCENT, cv_it: int = config.CROSSVALIDATION_K, mlp_params=config.MLP_PARAMS):
     """
@@ -354,12 +415,8 @@ def bsoid_nn_appumap(feats, labels, holdout_pct: float = config.HOLDOUT_PERCENT,
     logger.info(f'Scored cross-validated feedforward neural network performance. Features shape: {feats_train.shape} / labels shape: {labels_train.shape}')
     return clf, scores, nn_assignments
 
-
-def train_mlp_classifier_voc(feats, labels,
-                             comp: int = config.COMPILE_CSVS_FOR_TRAINING,
-                             holdout_percent: float = config.HOLDOUT_PERCENT,
-                             crossvalidation_k: int = config.CROSSVALIDATION_K,
-                             mlp_params=config.MLP_PARAMS) -> Tuple[Any, Any]:
+@config.cfig_log_entry_exit(logger)
+def train_mlp_classifier_voc(feats, labels, comp: int = config.COMPILE_CSVS_FOR_TRAINING, holdout_percent: float = config.HOLDOUT_PERCENT, crossvalidation_k: int = config.CROSSVALIDATION_K, mlp_params=config.MLP_PARAMS) -> Tuple[Any, Any]:
     """
     Trains MLP classifier
     :param feats: 2D array, original feature space, standardized
@@ -382,26 +439,27 @@ def train_mlp_classifier_voc(feats, labels,
         logger.info('Predicting randomly sampled (non-overlapped) assignments '
                     f'using the remaining {holdout_percent*100}%...')
         scores = cross_val_score(classifier, feats_test, labels_test, cv=crossvalidation_k, n_jobs=config.CROSSVALIDATION_N_JOBS)
-        time_str = time.strftime("_%Y%m%d_%H%M")
+        time_str = config.runtime_timestr  # time_str = time.strftime("_%Y%m%d_%H%M")
         if config.PLOT_GRAPHS:
             np.set_printoptions(precision=2)
             titles_options = [("Non-normalized confusion matrix", None),
                               ("Normalized confusion matrix", 'true')]
-            title_names = ["counts", "norm", ]
+            file_title_names = ["raw_counts", "normalized", ]
             j = 0
-            for title, normalize in titles_options:
+            for graph_title, normalize in titles_options:
                 display = plot_confusion_matrix(
                     classifier, feats_test, labels_test, cmap=plt.cm.Blues, normalize=normalize)
-                display.ax_.set_title(title)
-                print(title)
+                display.ax_.set_title(graph_title)
+                print(graph_title)
                 print(display.confusion_matrix)
-                file_name = f'confusion_matrix_{title_names[j]}'
+
                 if config.SAVE_GRAPHS_TO_FILE:
-                    file_name = f'{file_name}{time_str}'  # display.figure_.savefig(os.path.join(config.OUTPUT_PATH, f'{file_name}{time_str}.svg'))
+                    file_name = f'confusion_matrix__{file_title_names[j]}_{time_str}'  # display.figure_.savefig(os.path.join(config.OUTPUT_PATH, f'{file_name}{time_str}.svg'))
                     visuals.save_graph_to_file(display.figure_, file_name)
+                    logger.debug(f'Saved graph titled: {file_name}')
                 j += 1
             plt.show()
-    else:
+    elif comp == 0:
         classifier = []
         scores = []
         for i in range(len(feats)):
@@ -421,80 +479,30 @@ def train_mlp_classifier_voc(feats, labels,
                 titles_options = [("Non-normalized confusion matrix", None),
                                   ("Normalized confusion matrix", 'true')]
                 j = 0
-                title_names = ["counts", "norm"]
-                for title, normalize in titles_options:
+                file_title_names = ["counts", "norm"]
+                for graph_title, normalize in titles_options:
                     display = plot_confusion_matrix(classifier, feats_test, labels_test, cmap=plt.cm.Blues, normalize=normalize)
-                    display.ax_.set_title(title)
-                    print(title)
+                    display.ax_.set_title(graph_title)
+                    print(graph_title)
                     print(display.confusion_matrix)
                     if config.SAVE_GRAPHS_TO_FILE:
-                        file_name = f'confusion_matrix_clf{i}_{title_names[j]}{time_str}'  # display.figure_.savefig(os.path.join(config.OUTPUT_PATH, f'{file_name}{time_str}.svg'))
+                        file_name = f'confusion_matrix__classifier{i}__{file_title_names[j]}_{time_str}'  # display.figure_.savefig(os.path.join(config.OUTPUT_PATH, f'{file_name}{time_str}.svg'))
                         visuals.save_graph_to_file(display.figure_, file_name)
+                        logger.debug(f'Saved graph titled: {file_name}')
                     j += 1
                 plt.show()
+    else:
+        err = f'Invalid comp valid detected: {comp}.'
+        logger.error(err)
+        raise ValueError(err)
+
     logger.info(f'Scored cross-validated feedforward neural network performance. '
                 f'Features shape: {feats_train.shape} / labels shape: {labels_train.shape}')
     return classifier, scores
 
-def bsoid_tsne_py(list_of_arrays_data: List[np.ndarray], bodyparts=config.BODYPARTS_PY_LEGACY, fps=config.VIDEO_FPS, comp: int = config.COMPILE_CSVS_FOR_TRAINING):
-    r = extract_features_and_train_TSNE
-    return r(list_of_arrays_data, bodyparts, fps, comp)
-def extract_features_and_train_TSNE(list_of_arrays_data: List[np.ndarray], bodyparts=config.BODYPARTS_PY_LEGACY, fps=config.VIDEO_FPS, comp: int = config.COMPILE_CSVS_FOR_TRAINING):
-    """
-    Trains t-SNE (unsupervised) given a set of features based on (x,y) positions
-    :param list_of_arrays_data: list of 3D array
-    :param bodyparts: dict, body parts with their orders in LOCAL_CONFIG
-    :param fps: scalar, argument specifying camera frame-rate in LOCAL_CONFIG
-    :param comp: boolean (0 or 1), argument to compile data or not in LOCAL_CONFIG
-    :return f_10fps: 2D array, features
-    :return f_10fps_sc: 2D array, standardized features
-    :return trained_tsne: 2D array, trained t-SNE space
-    """
 
-    features = extract_7_features_bsoid_tsne_py(list_of_arrays_data, bodyparts=bodyparts, fps=fps, comp=comp)
 
-    ###
-    if comp == 0:
-        f_10fps = []
-        f_10fps_sc = []
-        trained_tsne = []
-    for n, current_feature in enumerate(features):  #     for n in range(len(features)):
-        feats1 = np.zeros(len(list_of_arrays_data[n]))
-        for k in range(round(fps / 10) - 1, len(current_feature[0]), round(fps / 10)):
-            if k > round(fps / 10) - 1:
-                feats1 = np.concatenate((feats1.reshape(feats1.shape[0], feats1.shape[1]),
-                                         np.hstack((np.mean((current_feature[0:4, range(k - round(fps / 10), k)]), axis=1), np.sum((current_feature[4:7, range(k - round(fps / 10), k)]), axis=1))).reshape(len(features[0]), 1)), axis=1)
-            else:
-                feats1 = np.hstack((np.mean((current_feature[0:4, range(k - round(fps / 10), k)]), axis=1), np.sum((current_feature[4:7, range(k - round(fps / 10), k)]), axis=1))).reshape(len(features[0]), 1)
-        logger.info(f'Done integrating features into 100ms bins from CSV file {n+1}.')
-        if comp == 1:
-            if n > 0:
-                f_10fps = np.concatenate((f_10fps, feats1), axis=1)
-            else:
-                f_10fps = feats1
-        else:
-            f_10fps.append(feats1)
-            scaler = StandardScaler()
-            scaler.fit(feats1.T)
-            feats1_stnd = scaler.transform(feats1.T).T
-            f_10fps_sc.append(feats1_stnd)
-            logger.info(f'Training t-SNE to embed {f_10fps_sc[n].shape[1]} instances from '
-                        f'{f_10fps_sc[n].shape[0]} D into 3 D from CSV file {n + 1}...')
-            trained_tsne_i = tsne(f_10fps_sc[n].T, dimensions=3, perplexity=np.sqrt(f_10fps_sc[n].shape[1]),
-                                  theta=0.5, rand_seed=config.RANDOM_STATE)
-            trained_tsne.append(trained_tsne_i)
-            logger.info('Done embedding into 3 D.')
-    if comp == 1:
-        scaler = StandardScaler()
-        scaler.fit(f_10fps.T)  # TODO: HIGH: variable `f_10fps` referenced before assignment. Error in logic above? ########################## IMPORTANT ###############################
-        f_10fps_sc = scaler.transform(f_10fps.T).T
-        logger.info(f'{inspect.stack()[0][3]}:Training t-SNE to embed {f_10fps_sc.shape[1]} instances'
-                    f'from {f_10fps_sc.shape[0]} D into 3 D from a total of {len(list_of_arrays_data)} CSV files...')
-        trained_tsne = tsne(f_10fps_sc.T, dimensions=3, perplexity=np.sqrt(f_10fps_sc.shape[1]),
-                            theta=0.5, rand_seed=config.RANDOM_STATE)  # TODO: low: move "rand_seed" to a config file instead of hiding here as magic variable
-        logger.info(f'{inspect.stack()[0][3]}::Done embedding into 3 D.')
-    return f_10fps, f_10fps_sc, trained_tsne, scaler
-def bsoid_tsne_voc(data: list, bodyparts=config.BODYPARTS_VOC_LEGACY, fps=config.VIDEO_FPS, comp: int = config.COMPILE_CSVS_FOR_TRAINING, tsne_params=config.TSNE_PARAMS):
+def bsoid_tsne_voc(data: list, bodyparts=config.BODYPARTS_VOC_LEGACY, fps=config.VIDEO_FPS, comp: int = config.COMPILE_CSVS_FOR_TRAINING, tsne_params=config.TSNE_PARAMS) -> Tuple[List, List, TSNE_sklearn]:
     """
     Trains t-SNE (unsupervised) given a set of features based on (x,y) positions
     :param data: list of 3D array
@@ -516,51 +524,43 @@ def bsoid_tsne_voc(data: list, bodyparts=config.BODYPARTS_VOC_LEGACY, fps=config
     for m in range(len(data)):
         logger.debug(f'Extracting features from CSV file {m+1} ...')
         data_range = len(data[m])
-        p12 = data[m][:, 2 * bodyparts.get('Point1'):2 * bodyparts.get('Point1') + 2] - \
-              data[m][:, 2 * bodyparts.get('Point2'):2 * bodyparts.get('Point2') + 2]
-        p14 = data[m][:, 2 * bodyparts.get('Point1'):2 * bodyparts.get('Point1') + 2] - \
-              data[m][:, 2 * bodyparts.get('Point4'):2 * bodyparts.get('Point4') + 2]
+        p12 = data[m][:, 2 * bodyparts.get('Point1'):2 * bodyparts.get('Point1') + 2] - data[m][:, 2 * bodyparts.get('Point2'):2 * bodyparts.get('Point2') + 2]
+        p14 = data[m][:, 2 * bodyparts.get('Point1'):2 * bodyparts.get('Point1') + 2] - data[m][:, 2 * bodyparts.get('Point4'):2 * bodyparts.get('Point4') + 2]
         p15 = data[m][:, 2 * bodyparts.get('Point1'):2 * bodyparts.get('Point1') + 2] - \
               data[m][:, 2 * bodyparts.get('Point5'):2 * bodyparts.get('Point5') + 2]
         p18 = data[m][:, 2 * bodyparts.get('Point1'):2 * bodyparts.get('Point1') + 2] - \
               data[m][:, 2 * bodyparts.get('Point8'):2 * bodyparts.get('Point8') + 2]
+
         p15_norm = np.zeros(data_range)
         p18_norm = np.zeros(data_range)
-
         for i in range(1, data_range):
             p15_norm[i] = np.array(np.linalg.norm(p15[i, :]))
             p18_norm[i] = np.array(np.linalg.norm(p18[i, :]))
         p15_norm_smth = likelihoodprocessing.boxcar_center(p15_norm, win_len)
         p18_norm_smth = likelihoodprocessing.boxcar_center(p18_norm, win_len)
+
         p12_ang = np.zeros(data_range - 1)
         p14_ang = np.zeros(data_range - 1)
         p3_disp = np.zeros(data_range - 1)
         p7_disp = np.zeros(data_range - 1)
-
         for k in range(data_range-1):
             b_3d = np.hstack([p12[k + 1, :], 0])
             a_3d = np.hstack([p12[k, :], 0])
             c = np.cross(b_3d, a_3d)
-            p12_ang[k] = np.dot(np.dot(np.sign(c[2]), 180) / np.pi,
-                                math.atan2(np.linalg.norm(c), np.dot(p12[k, :], p12[k + 1, :])))
+            p12_ang[k] = np.dot(np.dot(np.sign(c[2]), 180) / np.pi, math.atan2(np.linalg.norm(c), np.dot(p12[k, :], p12[k + 1, :])))
             e_3d = np.hstack([p14[k + 1, :], 0])
             d_3d = np.hstack([p14[k, :], 0])
             f = np.cross(e_3d, d_3d)
-            p14_ang[k] = np.dot(np.dot(np.sign(f[2]), 180) / np.pi,
-                                math.atan2(np.linalg.norm(f), np.dot(p14[k, :], p14[k + 1, :])))
-            p3_disp[k] = np.linalg.norm(
-                data[m][k + 1, 2 * bodyparts.get('Point3'):2 * bodyparts.get('Point3') + 1] -
-                data[m][k, 2 * bodyparts.get('Point3'):2 * bodyparts.get('Point3') + 1])
-            p7_disp[k] = np.linalg.norm(
-                data[m][k + 1, 2 * bodyparts.get('Point7'):2 * bodyparts.get('Point7') + 1] -
-                data[m][k, 2 * bodyparts.get('Point7'):2 * bodyparts.get('Point7') + 1])
+            p14_ang[k] = np.dot(np.dot(np.sign(f[2]), 180) / np.pi, math.atan2(np.linalg.norm(f), np.dot(p14[k, :], p14[k + 1, :])))
+            p3_disp[k] = np.linalg.norm(data[m][k + 1, 2 * bodyparts.get('Point3'):2 * bodyparts.get('Point3') + 1] - data[m][k, 2 * bodyparts.get('Point3'):2 * bodyparts.get('Point3') + 1])
+            p7_disp[k] = np.linalg.norm(data[m][k + 1, 2 * bodyparts.get('Point7'):2 * bodyparts.get('Point7') + 1] - data[m][k, 2 * bodyparts.get('Point7'):2 * bodyparts.get('Point7') + 1])
         p12_ang_smth = likelihoodprocessing.boxcar_center(p12_ang, win_len)
         p14_ang_smth = likelihoodprocessing.boxcar_center(p14_ang, win_len)
         p3_disp_smth = likelihoodprocessing.boxcar_center(p3_disp, win_len)
         p7_disp_smth = likelihoodprocessing.boxcar_center(p7_disp, win_len)
         feats.append(np.vstack((p15_norm_smth[1:], p18_norm_smth[1:],
                                 p12_ang_smth[:], p14_ang_smth[:], p3_disp_smth[:], p7_disp_smth[:])))
-    logger.info(f'Done extracting features from a total of {len(data)} training CSV files.')
+    logger.info(f'{inspect.stack()[0][3]}(): Done extracting features from a total of {len(data)} training CSV files.')
     if comp == 0:
         features_10fps = []
         features_10fps_scaled = []
@@ -582,7 +582,7 @@ def bsoid_tsne_voc(data: list, bodyparts=config.BODYPARTS_VOC_LEGACY, fps=config
                 features_10fps = np.concatenate((features_10fps, feats1), axis=1)
             else:
                 features_10fps = feats1
-        else:
+        elif comp == 0:
             features_10fps.append(feats1)
             scaler = StandardScaler()
             scaler.fit(feats1.T)
@@ -597,19 +597,24 @@ def bsoid_tsne_voc(data: list, bodyparts=config.BODYPARTS_VOC_LEGACY, fps=config
                                           **tsne_params).fit_transform(features_10fps_scaled[n].T)
             trained_tsne.append(trained_tsne_i)
             logger.info('Done embedding into 3 D.')
-        if comp == 1:
+        else:
+            raise ValueError(f'invalid comp value, check things. Update this line.')
+        if comp == 1:  # TODO: review the original implementation...should it be in the loop?
             scaler = StandardScaler()
             scaler.fit(features_10fps.T)
             features_10fps_scaled = scaler.transform(features_10fps.T).T
             logger.info(f'Training t-SNE to embed {features_10fps_scaled.shape[1]} instances from {features_10fps_scaled.shape[0]} D into 3 D from a total of {len(data)} CSV files...')
-            trained_tsne = TSNE_sklearn(perplexity=np.sqrt(features_10fps_scaled.shape[1]),  # perplexity scales with sqrt, power law
-                                        early_exaggeration=16,  # early exaggeration alpha 16 is good
-                                        learning_rate=max(200, features_10fps_scaled.shape[1] / 16),  # alpha*eta = n
-                                        **tsne_params).fit_transform(features_10fps_scaled.T)
+            trained_tsne = TSNE_sklearn(
+                perplexity=np.sqrt(features_10fps_scaled.shape[1]),  # Perplexity scales with sqrt, power law
+                early_exaggeration=16,  # early exaggeration alpha 16 is good
+                learning_rate=max(200, features_10fps_scaled.shape[1] / 16),  # alpha*eta = n
+                **tsne_params
+            ).fit_transform(features_10fps_scaled.T)
+
             logger.info(f'{inspect.stack()[0][3]}:Done embedding into 3 D.')
     return features_10fps, features_10fps_scaled, trained_tsne
 
-
+@config.cfig_log_entry_exit(logger)
 def train_emgmm_with_learned_tsne_space(trained_tsne_array, comp=config.COMPILE_CSVS_FOR_TRAINING, emgmm_params=config.EMGMM_PARAMS) -> np.ndarray:
     """
     Trains EM-GMM (unsupervised) given learned t-SNE space
@@ -655,7 +660,7 @@ def bsoid_svm_py(feats, labels, comp: int = config.COMPILE_CSVS_FOR_TRAINING, ho
     """
     if comp == 1:
         feats_train, feats_test, labels_train, labels_test = train_test_split(
-            feats.T, labels.T, test_size=holdout_pct, random_state=config.RANDOM_STATE)  # TODO: med: MAGIC VARIABLES -- `random_state`
+            feats.T, labels.T, test_size=holdout_pct, random_state=config.RANDOM_STATE)
         logger.info(f'Training SVM on randomly partitioned {(1-holdout_pct)*100}% of training data...')
         classifier = SVC(**svm_params)
         classifier.fit(feats_train, labels_train)
@@ -686,13 +691,13 @@ def bsoid_svm_py(feats, labels, comp: int = config.COMPILE_CSVS_FOR_TRAINING, ho
         for i in range(len(feats)):
             feats_train, feats_test, labels_train, labels_test = train_test_split(
                 feats[i].T, labels[i].T, test_size=holdout_pct, random_state=config.RANDOM_STATE)
-            logger.info(f'Training SVM on randomly partitioned {(1-holdout_pct)*100}% of training data...')
+            logger.debug(f'{inspect.stack()[0][3]}(): Training SVM on randomly partitioned {(1-holdout_pct)*100}% of training data...')
             clf = SVC(**svm_params)
             clf.fit(feats_train, labels_train)
             classifier.append(clf)
             logger.info(f'Done training SVM mapping {feats_train.shape} features to {labels_train.shape} assignments.')
             logger.info(f'Predicting randomly sampled (non-overlapped) assignments using '
-                         f'the remaining {holdout_pct * 100}%...')
+                        f'the remaining {holdout_pct * 100}%...')
             # sc = cross_val_score(classifier, feats_test, labels_test, cv=cv_it, n_jobs=config.crossvalidation_n_jobs)  # TODO: low: `sc` unused variable
 
             time_str = time.strftime("_%Y%m%d_%H%M")
@@ -712,9 +717,8 @@ def bsoid_svm_py(feats, labels, comp: int = config.COMPILE_CSVS_FOR_TRAINING, ho
                         visuals.save_graph_to_file(display.figure_, my_file)
                     j += 1
                 plt.show()
-    logger.info('Scored cross-validated SVM performance.')  # .format(feats_train.shape, labels_train.shape))  # TODO: low: .format() called but variables never used
+    logger.info(f'{inspect.stack()[0][3]}(): Scored cross-validated SVM performance.')  # Previously: .format(feats_train.shape, labels_train.shape))
     return classifier, scores
-
 
 @config.cfig_log_entry_exit(logger)
 def get_data_train_TSNE_then_GMM_then_SVM_then_return_EVERYTHING__py(train_folders: List[str]):
@@ -724,19 +728,23 @@ def get_data_train_TSNE_then_GMM_then_SVM_then_return_EVERYTHING__py(train_folde
     :param train_folders: (List[str])
     :return:
     """
+    # Check args
     if not isinstance(train_folders, list):
         raise ValueError(f'`train_folders` arg was expected to be list but instead found '
-                         f'type: {type(train_folders)} (value:  {train_folders}')
+                         f'type: {type(train_folders)} (value:  {train_folders}.')
     if len(train_folders) == 0:
-        zero_train_folders_error = f'{inspect.stack()[0][3]}: zero train folders were submitted (value = {train_folders}).'
+        zero_train_folders_error = f'{inspect.stack()[0][3]}: zero train folders were input for ' \
+                                   f'arg `train values` (value = {train_folders}).'
         logger.error(zero_train_folders_error)
         raise ValueError(zero_train_folders_error)
 
+    ##########
     # Get data
-    file_names_list, list_of_arrays_of_training_data, perc_rect = likelihoodprocessing.import_csvs_data_from_folders_in_PROJECTPATH_and_process_data(train_folders)
+    file_names_list, list_of_arrays_of_training_data, _perc_rect = likelihoodprocessing.import_csvs_data_from_folders_in_PROJECTPATH_and_process_data(train_folders)
     # Check that outputs are fine for runtime
     if len(file_names_list) == 0:
-        zero_folders_error = f'{inspect.stack()[0][3]}: Zero training folders were specified. Check your config file!!!! filenames = {file_names_list}.'
+        zero_folders_error = f'{inspect.stack()[0][3]}: Zero training folders were specified. Check ' \
+                             f'your config file!!! Train folders = {train_folders} // Filenames = {file_names_list}.'
         logger.error(zero_folders_error)
         raise ValueError(zero_folders_error)
     if len(file_names_list[0]) == 0:
@@ -745,7 +753,7 @@ def get_data_train_TSNE_then_GMM_then_SVM_then_return_EVERYTHING__py(train_folde
         raise ValueError(zero_filenames_error)
 
     # Train TSNE
-    features_10fps, features_10fps_scaled, trained_tsne_list, scaler = bsoid_tsne_py(list_of_arrays_of_training_data)
+    features_10fps, features_10fps_scaled, trained_tsne_list, scaler = extract_features_and_train_TSNE(list_of_arrays_of_training_data)  # features_10fps, features_10fps_scaled, trained_tsne_list, scaler = bsoid_tsne_py(list_of_arrays_of_training_data)  # replace with: extract_features_and_train_TSNE
 
     # Train GMM
     gmm_assignments = train_emgmm_with_learned_tsne_space(trained_tsne_list)  # gmm_assignments = bsoid_gmm_pyvoc(trained_tsne)  # replaced with below
@@ -761,8 +769,6 @@ def get_data_train_TSNE_then_GMM_then_SVM_then_return_EVERYTHING__py(train_folde
         visuals.plot_feats_bsoidpy(features_10fps, gmm_assignments)
         logger.debug(f'Exiting GRAPH PLOTTING section of {inspect.stack()[0][3]}')
     return features_10fps, trained_tsne_list, scaler, gmm_assignments, classifier, scores
-
-
 
 @config.cfig_log_entry_exit(logger)
 def train__import_data_and_process__train_tsne__train_gmm__train_clf__voc(train_folders: list):
@@ -790,6 +796,56 @@ def train__import_data_and_process__train_tsne__train_gmm__train_clf__voc(train_
     return features_10fps, trained_tsne, gmm_assignments, classifier, scores
 
 
+### Legacy functions -- keep them for now ########################################################################
+def bsoid_tsne_py(list_of_arrays_data: List[np.ndarray], bodyparts=config.BODYPARTS_PY_LEGACY, fps=config.VIDEO_FPS, comp: int = config.COMPILE_CSVS_FOR_TRAINING):
+    replacement_func = extract_features_and_train_TSNE
+    warning = f'This function, {inspect.stack()[0][3]}, will be replaced ' \
+              f'with {replacement_func.__qualname__}. Caller = {inspect.stack()[1][3]}.'
+    logger.warning(warning)
+    return replacement_func(list_of_arrays_data, bodyparts=bodyparts, fps=fps, comp=comp)
+def bsoid_nn_voc(feats, labels, comp: int = config.COMPILE_CSVS_FOR_TRAINING, hldout: float = config.HOLDOUT_PERCENT, cv_it=config.CROSSVALIDATION_K, mlp_params=config.MLP_PARAMS):
+    # WARNING: DEPRECATION IMMINENT
+    replacement_func = train_mlp_classifier_voc
+    logger.warn(f'This function will be deprecated in the future. If you still need this function to use, '
+                f'think about using {replacement_func.__qualname__} instead. Caller = {inspect.stack()[1][3]}.')
+    return replacement_func(feats, labels, comp, hldout, cv_it, mlp_params)
+def bsoid_gmm_pyvoc(trained_tsne_array, comp=config.COMPILE_CSVS_FOR_TRAINING, emgmm_params=config.EMGMM_PARAMS) -> np.ndarray:
+    replacement_func = train_emgmm_with_learned_tsne_space
+    logger.warn(f'This function will be deprecated in the future. To resolve this warning, replace this '
+                f'function with {replacement_func.__qualname__} instead.')
+    return replacement_func(trained_tsne_array, comp=comp, emgmm_params=emgmm_params)
+def bsoid_feats_umapapp(data: list, fps: int = config.VIDEO_FPS) -> Tuple:
+    replacement_func = train_umap_unsupervised_with_xy_features_umapapp
+    logger.warn(f'DEPRECATION WARNING. This function, {inspect.stack()[0][3]}, will be deprecated in'
+                f' favour of a more clear '
+                f'and concise function. Caller = {inspect.stack()[1][3]}. '
+                f'Current replacement is: {replacement_func.__qualname__}. '
+                f'This function only still exists to ensure dependencies aren\'t broken on updating entire module')
+    return replacement_func(data, fps)
+@config.cfig_log_entry_exit(logger)
+def main_py(*args, **kwargs):
+    """
+    :param train_folders: list, training data folders
+    :return f_10fps: 2D array, features
+    :return trained_tsne: 2D array, trained t-SNE space
+    :return gmm_assignments: Converged EM-GMM group assignments
+    :return classifier: obj, MLP classifier
+    :return scores: 1D array, cross-validated accuracy
+    """
+    """ *** DEPRECATION WARNING ***
+    Only remove after README is updated. """
+    replacement_func = get_data_train_TSNE_then_GMM_then_SVM_then_return_EVERYTHING__py
+    err = f'Use `{replacement_func.__qualname__}` instead'
+    logger.error(err)
+    raise DeprecationWarning(err)
+@config.cfig_log_entry_exit(logger)
+def main_voc(train_folders: list):
+    replacement_func = train__import_data_and_process__train_tsne__train_gmm__train_clf__voc
+    warning = f'This function, {likelihoodprocessing.get_current_function()}, will be deprecated soon. Instead, use: ' \
+              f'{replacement_func.__qualname__}.'
+    logger.warning(warning)
+    return replacement_func(train_folders)
+@config.cfig_log_entry_exit(logger)
 def main_umap(train_folders: list):
     if not isinstance(train_folders, list):
         raise ValueError(f'`train_folders` arg was expected to be list but instead found '
@@ -815,51 +871,6 @@ def main_umap(train_folders: list):
         visuals.plot_accuracy_umap(scores)
 
     return features_10fps, features_10fps_scaled, umap_embeddings, hdb_assignments, soft_assignments, soft_clusters, nn_classifier, scores, nn_assignments
-
-
-### Legacy functions -- keep them for now ########################################################################
-###
-def bsoid_nn_voc(feats, labels, comp: int = config.COMPILE_CSVS_FOR_TRAINING, hldout: float = config.HOLDOUT_PERCENT, cv_it=config.CROSSVALIDATION_K, mlp_params=config.MLP_PARAMS):
-    # WARNING: DEPRECATION IMMINENT
-    replacement_func = train_mlp_classifier_voc
-    logger.warn(f'This function will be deprecated in the future. If you still need this function to use, '
-                f'think about using {replacement_func.__qualname__} instead. Caller = {inspect.stack()[1][3]}.')
-    return replacement_func(feats, labels, comp, hldout, cv_it, mlp_params)
-def bsoid_gmm_pyvoc(trained_tsne_array, comp=config.COMPILE_CSVS_FOR_TRAINING, emgmm_params=config.EMGMM_PARAMS) -> np.ndarray:
-    replacement_func = train_emgmm_with_learned_tsne_space
-    logger.warn(f'This function will be deprecated in the future. To resolve this warning, replace this '
-                f'function with {replacement_func.__qualname__} instead.')
-    return replacement_func(trained_tsne_array, comp=comp, emgmm_params=emgmm_params)
-def bsoid_feats_umapapp(data: list, fps: int = config.VIDEO_FPS) -> Tuple:
-    replacement_func = train_umap_unsupervised_with_xy_features_umapapp
-    logger.warn(f'DEPRECATION WARNING. This function, {inspect.stack()[0][3]}, will be deprecated in'
-                f' favour of a more clear '
-                f'and concise function. Caller = {inspect.stack()[1][3]}. '
-                f'Current replacement is: {replacement_func.__qualname__}. '
-                f'This function only still exists to ensure dependencies aren\'t broken on updating entire module')
-    return replacement_func(data, fps)
-def main_py(*args, **kwargs):
-    """
-    :param train_folders: list, training data folders
-    :return f_10fps: 2D array, features
-    :return trained_tsne: 2D array, trained t-SNE space
-    :return gmm_assignments: Converged EM-GMM group assignments
-    :return classifier: obj, MLP classifier
-    :return scores: 1D array, cross-validated accuracy
-    """
-    """ *** DEPRECATION WARNING ***
-    Only remove after README is updated. """
-    replacement_func = get_data_train_TSNE_then_GMM_then_SVM_then_return_EVERYTHING__py
-    err = f'Use `{replacement_func.__qualname__}` instead'
-    logger.error(err)
-    raise DeprecationWarning(err)
-@config.cfig_log_entry_exit(logger)
-def main_voc(train_folders: list):
-    replacement_func = train__import_data_and_process__train_tsne__train_gmm__train_clf__voc
-    warning = f'This function, {likelihoodprocessing.get_current_function()}, will be deprecated soon. Instead, use: ' \
-              f'{replacement_func.__qualname__}.'
-    logger.warning(warning)
-    return replacement_func(train_folders)
 
 
 ########################################################################################################################
