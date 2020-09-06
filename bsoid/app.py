@@ -30,7 +30,9 @@ def clear_output_folders():
     for folder_path in folders_to_clear:
         files_not_placeholder = [f for f in os.listdir(folder_path) if f != '.placeholder' and not os.path.isdir(os.path.join(folder_path, f))]
         for non_placeholder_file in files_not_placeholder:
-            os.remove(os.path.join(folder_path, non_placeholder_file))
+            file_to_delete_full_path = os.path.join(folder_path, non_placeholder_file)
+            logger.debug(f'{inspect.stack()[0][3]}(): Deleting file: {file_to_delete_full_path}')
+            os.remove(file_to_delete_full_path)
 
     return
 
