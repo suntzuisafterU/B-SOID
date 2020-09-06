@@ -22,7 +22,8 @@ logger = bsoid.config.initialize_logger(__name__)
 bsoid_runtime_description = 'BSOID command line utility. Do BSOID stuff. Expand on this later.'
 
 map_command_to_func = {
-
+    'cleanoutput': bsoid.app.clear_output_folders,
+    'clean': bsoid.app.clear_output_folders,
 }
 
 

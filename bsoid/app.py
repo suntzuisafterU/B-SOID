@@ -19,8 +19,8 @@ from bsoid.util import visuals
 logger = config.initialize_logger(__name__)
 
 
-
 ###
+
 def clear_output_folders():
     """
     For each folder specified below (magic variables be damned), delete everything in that folder except

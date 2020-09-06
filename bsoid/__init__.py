@@ -2,6 +2,6 @@
 __version__ = '0.0.1'  # TODO: HIGH: ensure version number is correct before pushing. See setup.py for version.
 
 # General imports for packages
-from . import config, classify, feature_engineering, train
+from . import app, config, classify, feature_engineering, train
 from .util import check_arg, io, likelihoodprocessing, logger_config, statistics, videoprocessing, visuals
 
