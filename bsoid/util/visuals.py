@@ -544,7 +544,9 @@ def save_graph_to_file(figure, file_title, file_type_extension=config.DEFAULT_SA
         logger.error(path_not_exists_err)
         raise ValueError(path_not_exists_err)
     if not hasattr(figure, 'savefig'):
-        cannot_save_input_figure_error = f'Figure is not savable with current interface. repr(figure) = {repr(figure)}.'
+        cannot_save_input_figure_error = f'Figure is not savable with current interface. ' \
+                                         f'Requires ability to use .savefig() method. ' \
+                                         f'repr(figure) = {repr(figure)}.'
         logger.error(cannot_save_input_figure_error)
         raise AttributeError(cannot_save_input_figure_error)
     # After type checking: save fig to file
@@ -557,8 +559,9 @@ def save_graph_to_file(figure, file_title, file_type_extension=config.DEFAULT_SA
 def plot_tmat(transition_matrix: np.ndarray, fps: int, save_fig_to_file=True, fig_file_prefix='transition_matrix'):
     """Original implementation as plot_tmat()"""
     replacement_func = plot_transition_matrix
-    warning_msg = f'This function, {inspect.stack()[0][3]}, will be deprecated soon. Instead, use: '\
-                  f'{replacement_func.__qualname__}.'
+    warning_msg = f'This function, {inspect.stack()[0][3]}, will be deprecated soon. Instead, ' \
+                  f'use: {replacement_func.__qualname__} with args: ' \
+                  f'transition_matrix, fps, save_fig_to_file=True, fig_file_prefix="transition_matrix".'
     logger.warning(warning_msg)
     return replacement_func(transition_matrix, fps, save_fig_to_file, fig_file_prefix)
 
@@ -625,7 +628,7 @@ def plot_accuracy_bsoidpy(scores) -> None:
     # if save_fig_to_file:
     #     fig.savefig(os.path.join(OUTPUT_PATH, fig_file_prefix+'_'+timestr+'.svg'))
     replacement_func = plot_accuracy_SVM
-    logger.warning(f'This function, plot_accuracy_bsoidpy(), will be deprecated.'
+    logger.warning(f'This function, {inspect.stack()[0][3]}, will be deprecated.'
                    f'Instead use: {replacement_func.__qualname__}')
     return replacement_func(scores, True, 'clf_scores')
 # def plot_classes_bsoidpy(data, assignments) -> None:
