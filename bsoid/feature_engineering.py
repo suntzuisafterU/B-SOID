@@ -35,12 +35,12 @@ logger = config.initialize_logger(__name__)
 
 ########################################################################################################################
 
-@config.cfig_log_entry_exit(logger)
-def extract_7_features_bsoid_tsne_py(list_of_arrays_data: List[np.ndarray], bodyparts=config.BODYPARTS_PY_LEGACY, fps=config.VIDEO_FPS, comp: int = config.COMPILE_CSVS_FOR_TRAINING) -> List[np.ndarray]:
+def extract_7_features_bsoid_tsne_py(list_of_arrays_data: List[np.ndarray], bodyparts: dict=config.BODYPARTS_PY_LEGACY, fps: int = config.VIDEO_FPS, comp: int = config.COMPILE_CSVS_FOR_TRAINING) -> List[np.ndarray]:
     """
     Trains t-SNE (unsupervised) given a set of features based on (x,y) positions
 
-    :param list_of_arrays_data: list of 3D array
+    (Original implementation source: bsoid_py:bsoid_tsne()
+    :param list_of_arrays_data: list of 3D arrays
     :param bodyparts: dict, body parts with their orders in config
     :param fps: scalar, argument specifying camera frame-rate in config
     :param comp: boolean (0 or 1), argument to compile data or not in config
@@ -56,6 +56,11 @@ def extract_7_features_bsoid_tsne_py(list_of_arrays_data: List[np.ndarray], body
     check_arg.ensure_type(list_of_arrays_data, list)
     check_arg.ensure_type(list_of_arrays_data[0], np.ndarray)
 
+    logger.debug(f'config.VIDEO_FPS in {inspect.stack()[0][3]} = {config.VIDEO_FPS}')
+    logger.debug(f'fps in {inspect.stack()[0][3]} = {fps}')
+
+    if not isinstance(fps, int):
+        raise TypeError(f'fps is not integer. value = {fps}, type={type(fps)}')
     ###
     win_len = np.int(np.round(0.05 / (1 / fps)) * 2 - 1)
     features: List[np.ndarray] = []
@@ -81,7 +86,6 @@ def extract_7_features_bsoid_tsne_py(list_of_arrays_data: List[np.ndarray], body
 
         # Create some intermediate features first
         inter_forepaw_distance = data_array[:, 2 * bodyparts['Forepaw/Shoulder1']:2 * bodyparts['Forepaw/Shoulder1'] + 2] - data_array[:, 2 * bodyparts['Forepaw/Shoulder2']:2 * bodyparts['Forepaw/Shoulder2'] + 2]  # Originally: 'fpd'
-
         cfp__center_between_forepaws = np.vstack((
             (data_array[:, 2 * bodyparts['Forepaw/Shoulder1']] + data_array[:, 2 * bodyparts['Forepaw/Shoulder2']]) / 2,
             (data_array[:, 2 * bodyparts['Forepaw/Shoulder1'] + 1] + data_array[:, 2 * bodyparts['Forepaw/Shoulder1'] + 1]) / 2),
@@ -93,7 +97,7 @@ def extract_7_features_bsoid_tsne_py(list_of_arrays_data: List[np.ndarray], body
         chp__center_between_hindpaws = np.vstack((
             ((data_array[:, 2 * bodyparts['Hindpaw/Hip1']] + data_array[:, 2 * bodyparts['Hindpaw/Hip2']]) / 2),
             ((data_array[:, 2 * bodyparts['Hindpaw/Hip1'] + 1] + data_array[:, 2 * bodyparts['Hindpaw/Hip2'] + 1]) / 2),
-        )).T
+        )).T  # Originally: chp
         chp__center_between_hindpaws__minus__proximal_tail = np.vstack(([
             chp__center_between_hindpaws[:, 0] - data_array[:, 2 * bodyparts['Tailbase']],
             chp__center_between_hindpaws[:, 1] - data_array[:, 2 * bodyparts['Tailbase'] + 1],
@@ -136,7 +140,7 @@ def extract_7_features_bsoid_tsne_py(list_of_arrays_data: List[np.ndarray], body
             snout__proximal_tail__angle[k] = np.dot(np.dot(np.sign(c[2]), 180) / np.pi, math.atan2(np.linalg.norm(c), np.dot(snout__proximal_tail__distance__aka_BODYLENGTH[k, :], snout__proximal_tail__distance__aka_BODYLENGTH[k + 1, :])))
             snout_speed__aka_snout__displacement[k] = np.linalg.norm(data_array[k + 1, 2 * bodyparts['Snout/Head']:2 * bodyparts['Snout/Head'] + 1] - data_array[k, 2 * bodyparts['Snout/Head']:2 * bodyparts['Snout/Head'] + 1])
             tail_speed__aka_proximal_tail__displacement[k] = np.linalg.norm(data_array[k + 1, 2 * bodyparts['Tailbase']:2 * bodyparts['Tailbase'] + 1] - data_array[k, 2 * bodyparts['Tailbase']:2 * bodyparts['Tailbase'] + 1])
-        # Smooth features
+        # Smooth time-varying features
         snout__proximal_tail__angle__smoothed = likelihoodprocessing.boxcar_center(snout__proximal_tail__angle, win_len)  # Originally: sn_pt_ang_smth
         snout_speed__aka_snout_displacement_smoothed = likelihoodprocessing.boxcar_center(snout_speed__aka_snout__displacement, win_len)  # Originally: sn_disp_smth
         tail_speed__aka_proximal_tail__displacement__smoothed = likelihoodprocessing.boxcar_center(tail_speed__aka_proximal_tail__displacement, win_len)  # Originally: pt_disp_smth
@@ -159,5 +163,28 @@ def extract_7_features_bsoid_tsne_py(list_of_arrays_data: List[np.ndarray], body
 
     return features
 
+
+def integrate_features_into_100ms_bins(data: List[np.ndarray], features: List[np.ndarray], fps: int) -> List[np.ndarray]:
+    """"""
+    features_10fps = []
+    for n, features_n in enumerate(features):
+        feats1 = np.zeros(len(data[n]))
+        for k in range(round(fps / 10) - 1, len(features_n[0]), round(fps / 10)):
+            if k > round(fps / 10) - 1:
+                feats1 = np.concatenate((
+                    feats1.reshape(feats1.shape[0], feats1.shape[1]),
+                    np.hstack((np.mean((features_n[0:4, range(k - round(fps / 10), k)]), axis=1), np.sum((features_n[4:7, range(k - round(fps / 10), k)]),axis=1))).reshape(len(features[0]), 1)
+                ), axis=1)
+            else:
+                feats1 = np.hstack((
+                    np.mean((features_n[0:4, range(k - round(fps / 10), k)]), axis=1),
+                    np.sum((features_n[4:7, range(k - round(fps / 10), k)]), axis=1),
+                )).reshape(len(features[0]), 1)
+        logger.info(f'{inspect.stack()[0][3]}(): Done integrating features into 100ms bins from CSV file {n+1}.')
+        features_10fps.append(feats1)
+    return features_10fps
+
+
+########################################################################################################################
 
 
