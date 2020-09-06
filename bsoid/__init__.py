@@ -4,7 +4,7 @@ __version__ = '0.0.1'  # TODO: HIGH: ensure version number is correct before pus
 
 # user-facing io api
 from bsoid.util.io import (
-    read_dlc_csv,
+    read_csv,
     read_csvs,
 )
 
