@@ -3,6 +3,7 @@ Functions related to opening/saving files should go here
 """
 
 from typing import List, Tuple
+import glob
 import inspect
 import numpy as np
 import os
@@ -12,6 +13,8 @@ import sys
 
 
 from bsoid import config
+from bsoid.util import likelihoodprocessing
+from bsoid.util.bsoid_logging import get_current_function
 
 logger = config.initialize_logger(__name__)
 
@@ -91,6 +94,46 @@ def read_csv(csv_file_path: str, **kwargs) -> pd.DataFrame:
     return df
 
 
+def check_for_csv_files_in_path(folder_path: str, check_recursively=False) -> List[str]:
+    """
+
+    :param folder_path: (str) an absolute path to a folder which will be checked by this function
+    :param check_recursively: (bool) indicates whether or not the folder should be
+        checked recursively into ALL subfolders or not checked recursively at all.
+    :return: (List[str]) A list of absolute paths to csvs
+    """
+    # Arg checking
+    if not os.path.isdir(folder_path) and os.path.abspath(folder_path):
+        folder_err = f'Invalid folder specified. Check that it exists and that'
+        logger.error(folder_err)
+        raise ValueError(folder_err)
+    #
+    path_to_check_for_csvs = f'{folder_path}{os.path.sep}**{os.path.sep}*.csv'
+    logger.debug(f'{get_current_function()}: Path that is being checked using glob selection: {path_to_check_for_csvs}')
+    filenames = glob.glob(path_to_check_for_csvs, recursive=check_recursively)
+    likelihoodprocessing.sort_list_nicely_in_place(filenames)
+    logger.info(f'{get_current_function()}: Total files found: {len(filenames)}. List of files found: {filenames}.')
+    if False in [os.path.abspath(folder) for folder in filenames]:
+        raise ValueError(f'FOLDERS NOT ABS PATHS: ', filenames)
+
+    return filenames
+
+
+def read_in_training_folders_dlc_output_csvs(folders_paths: List[str]) -> List[pd.DataFrame]:
+    """ (Mimics old implementation)
+    For each folder specified in [input param],
+    """
+    raise NotImplementedError(f'Not yet implemented. Still needs logic worked out. Not yet used anyways.')
+    dfs_list = []
+    # TODO: low:
+    for train_folder_path in folders_paths:
+        # Get all CSVs recursively in path
+        csv_paths = check_folder_contents_for_csv_files(train_folder_path)
+        logger.debug(f'{get_current_function()}: csv paths = {csv_paths}')
+
+    return dfs_list
+
+
 def read_csvs(source) -> List[pd.DataFrame]:
     """
     Give a source/sources of .csv file, return a list of Pandas DataFrames
@@ -101,6 +144,7 @@ def read_csvs(source) -> List[pd.DataFrame]:
 
     :return:
     """
+    raise NotImplementedError(' Development put on hold. Not yet implemented.')
     # Check args
     if isinstance(source, str):
         sources = [source, ]
@@ -119,12 +163,12 @@ def read_csvs(source) -> List[pd.DataFrame]:
     return list_df
 
 
-def check_folder_recursively_for_csv_files(absolute_folder_path) -> List[str]:
+def check_folder_contents_for_csv_files(absolute_folder_path, check_recursively=False) -> List[str]:
     """
-
-
-    :param absolute_folder_path:
-    :return:
+    Finished.
+    # TODO: purpose
+    :param absolute_folder_path: (str) an absolute path, TODO
+    :return: TODO
     """
     # Check args
     if not os.path.isdir(absolute_folder_path):
@@ -134,20 +178,10 @@ def check_folder_recursively_for_csv_files(absolute_folder_path) -> List[str]:
         raise ValueError(value_err)
     # Continue if values valid
 
-
-    return
-
-
-def get_filenames_csvs_from_folders_recursively_in_dlc_project_path(folder: str) -> List:
-    """
-    Get_filenames() makes the assumption that the folder is in PROJECT Path; however, it is an obfuscated assumption
-    and bad. A new function that DOES NOT RESOLVE PATH IMPLICITLY WITHIN should be created and used.
-    :param folder:
-    :return:
-    """
-    path_to_check_for_csvs = f'{config.DLC_PROJECT_PATH}{os.path.sep}{folder}{os.path.sep}**{os.path.sep}*.csv'
+    path_to_check_for_csvs = f'{absolute_folder_path}{os.path.sep}**{os.path.sep}*.csv'
     logger.debug(f'{get_current_function()}: Path that is being checked using glob selection: {path_to_check_for_csvs}')
-    filenames = glob.glob(path_to_check_for_csvs, recursive=True)
-    sort_list_nicely_in_place(filenames)
+    filenames = glob.glob(path_to_check_for_csvs, recursive=check_recursively)
+    likelihoodprocessing.sort_list_nicely_in_place(filenames)
     logger.info(f'{get_current_function()}: Total files found: {len(filenames)}. List of files found: {filenames}.')
     return filenames
+
