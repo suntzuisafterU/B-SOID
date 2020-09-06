@@ -62,11 +62,15 @@ def get_mp4_videos_from_folder_in_BASEPATH(folder_name: str) -> List[str]:
     return video_names
 
 
-def write_annotated_frames_to_disk_from_video(path_to_video: str, labels, fps: int, output_path: str = config.FRAME_DIR):
+def write_annotated_frames_to_disk_from_video(path_to_video: str, labels, fps: int = config.VIDEO_FPS, output_path: str = config.FRAMES_OUTPUT_PATH, pct_frames_to_label = config.PERCENT_FRAMES_TO_LABEL):
     """
     This function serves to supersede the old 'vid2frame()' function for future clarity.
 
     Extracts frames every 100ms to match the labels for visualizations  # TODO: Q: are we sure it pulls frames every 100ms when the FPS is variable?
+
+    Assumptions:
+        -
+
     :param path_to_video: string, path to video
     :param labels: 1D array, labels from training
     :param fps: scalar, frame-rate of original camera
@@ -77,12 +81,13 @@ def write_annotated_frames_to_disk_from_video(path_to_video: str, labels, fps: i
         err = f'{__name__}:{inspect.stack()[0][3]}Path to video was not found. Path = {path_to_video}'
         logger.error(err)
         raise ValueError(err)
+    frames_to_skip = round(fps * pct_frames_to_label)
+    set_unique_labels = set(np.unique(labels))
     cv2_video_object = cv2.VideoCapture(path_to_video)
     progress_bar = tqdm(total=int(cv2_video_object.get(cv2.CAP_PROP_FRAME_COUNT)))
-    # width = cv2_video_object.get(3)  # TODO: low: address unused variable
-    # height = cv2_video_object.get(4)  # TODO: low: address unused variable
-    labels = np.hstack((labels[0], labels))  # fill the first frame
-    count = 0  # TODO: med: rename `count` -- what is it counting? `i` already tracks iterations over the while loop
+    # width, height = cv2_video_object.get(3), cv2_video_object.get(4)  # TODO: low: address unused variables
+    labels = np.hstack((labels[0], labels))  # fill the first frame  # TODO: why need to fill first frame?
+    frame_count = 0  # TODO: med: rename `count` -- what is it counting? Other variable `i` already tracks iterations over the while loop
     i = 0
     font_scale, font = 1, cv2.FONT_HERSHEY_COMPLEX
     rectangle_bgr = (0, 0, 0)
@@ -90,21 +95,33 @@ def write_annotated_frames_to_disk_from_video(path_to_video: str, labels, fps: i
         is_frame_retrieved, frame = cv2_video_object.read()
         if is_frame_retrieved:
             # Prepare writing info to image
-            text_to_be_inserted = f'Group{labels[i]}'
+            text_to_be_inserted = f'Label__'
+            # Try appending label
+            try:
+                label_word = config.map_group_to_behaviour[labels[i]]
+                text_to_be_inserted += label_word
+            except KeyError:
+                text_to_be_inserted += f'NotFound. Group: {labels[i]}'
+                label_not_found_err = f'Label number not found: {labels[i]}. Set of unique ' \
+                                      f'label numbers = {set_unique_labels}'
+                logger.error(label_not_found_err)
             text_width, text_height = cv2.getTextSize(text_to_be_inserted, font, fontScale=font_scale, thickness=1)[0]
+            # TODO: evaluate magic variables RE: text offsetting on images
             text_offset_x, text_offset_y = 50, 50
-            box_coordinates = ((text_offset_x - 12, text_offset_y + 12),
-                               (text_offset_x + text_width + 12, text_offset_y - text_height - 8))
+            box_coordinates = (
+                (text_offset_x - 12, text_offset_y + 12),  # pt1, or top left point
+                (text_offset_x + text_width + 12, text_offset_y - text_height - 8),  # pt2, or bottom right point
+            )
             cv2.rectangle(frame, box_coordinates[0], box_coordinates[1], rectangle_bgr, cv2.FILLED)
             cv2.putText(img=frame, text=text_to_be_inserted, org=(text_offset_x, text_offset_y),
                         fontFace=font, fontScale=font_scale, color=(255, 255, 255), thickness=1)
             # Write to image
-            cv2.imwrite(os.path.join(output_path, f'frame{i}.png'), frame)
+            cv2.imwrite(os.path.join(output_path, f'frame_drawn_{i+1}__frame_number_{frame_count+1}.png'), frame)
 
             # Save & set metrics, prepare for next frame, and update progress bar
-            count += round(fps / 10)  # i.e. at 60fps, this skips every 5
-            cv2_video_object.set(1, count)
-            progress_bar.update(round(fps / 10))
+            frame_count += frames_to_skip
+            cv2_video_object.set(1, frame_count)  # first arg: 'propID' (like property ID), second arg is 'value'
+            progress_bar.update(frames_to_skip)
             i += 1
         else:  # No more frames left to retrieve. Release object and finish.
             cv2_video_object.release()
@@ -138,46 +155,49 @@ def import_vidfolders(folders: List[str], output_path: List[str]):
 
 ########################################################################################################################
 
-def create_labeled_vid(labels, crit=3, num_randomly_generated_examples=5, frame_dir=config.FRAME_DIR, output_path=config.SHORTVID_DIR) -> None:
+def create_labeled_vid(labels, critical_behaviour_min_duration=3, num_randomly_generated_examples=5, frame_dir=config.FRAMES_OUTPUT_PATH, output_path=config.SHORTVID_DIR) -> None:
     """
     (Generalized create_labeled_video() function that works between _py, _umap, and _voc submodules)
     TODO: low: purpose
     :param labels: 1D array, labels from training or testing
-    :param crit: scalar, minimum duration for random selection of behaviors, default 300ms
+    :param critical_behaviour_min_duration: scalar, minimum duration for random selection of behaviors, default 300ms
     :param num_randomly_generated_examples: scalar, number of randomly generated examples, default 5  # TODO: low: default is actually 3..does counts refer to cv2.VideoWriter pathing?
     :param frame_dir: string, directory to where you extracted vid images in LOCAL_CONFIG
     :param output_path: string, directory to where you want to store short video examples in LOCAL_CONFIG
     """
-    # Create list of only .png images found in `frame_dir`
-    images = [img for img in os.listdir(frame_dir) if img.endswith(".png")]
+    # Create list of only .png images found in the frames directory
+    images: List[str] = [img for img in os.listdir(frame_dir) if img.endswith(".png")]
     sort_list_nicely_in_place(images)
     four_character_code = cv2.VideoWriter_fourcc(*'mp4v')
     frame = cv2.imread(os.path.join(frame_dir, images[0]))
     height, width, layers = frame.shape
     ranges_list, idx2_list = [], []
-    rle_n, rle_idx, rle_lengths = repeating_numbers(labels)
+
+    n, idx, lengths = repeating_numbers(labels)
+
     #
-    for idx_length, length in enumerate(rle_lengths):
-        if length >= crit:
-            ranges_list.append(range(rle_idx[idx_length], rle_idx[idx_length] + length))
+    for idx_length, length in enumerate(lengths):
+        if length >= critical_behaviour_min_duration:
+            ranges_list.append(range(idx[idx_length], idx[idx_length] + length))
             idx2_list.append(idx_length)
 
     # Loop over the range generated from the total unique labels available
-    for idx_label in tqdm(range(len(np.unique(labels))), desc='Creating video (TODO: update this bar description)'):
+    for idx_label in tqdm(range(len(np.unique(labels))), desc=f'{inspect.stack()[0][3]}(): Creating video (TODO: update this bar description)'):
         a = []  # TODO: low: `a` needs more description
         for idx_range in range(len(ranges_list)):
-            if rle_n[idx2_list[idx_range]] == idx_label:
+            if n[idx2_list[idx_range]] == idx_label:
                 a += [ranges_list[idx_range], ]  # Previously: a.append(ranges[idx_range])
         try:
             random_ranges = random.sample(a, num_randomly_generated_examples)  # TODO: add a min() function to `counts` argument?
             for idx_random_range in range(len(random_ranges)):
                 grp_images = []
-                video_name = f'group_{idx_label}_example_{idx_random_range}.mp4'
+                video_name = f'group_{idx_label}__example_{idx_random_range}.mp4'
                 # Loop over list of randomly generated ranges
                 for a_random_range in random_ranges[idx_random_range]:
                     # Aggregate images into a list that correspond to the randomly generated numbers/ranges
                     grp_images += [images[a_random_range], ]  # grp_images.append(images[random_range])
-                grp_images = []
+                # grp_images = []
+
                 # Open video writer
                 video_writer = cv2.VideoWriter(
                     os.path.join(output_path, video_name),
@@ -191,7 +211,11 @@ def create_labeled_vid(labels, crit=3, num_randomly_generated_examples=5, frame_
                 # Release and continue
                 cv2.destroyAllWindows()
                 video_writer.release()
-        except:  # TODO: low: exception is very general. Address?
+        except Exception as e:  # TODO: low: exception is very general. Address?
+            err = f'{inspect.stack()[0][3]}: Unexpected exception occurred when trying to make video. ' \
+                  f'Review exception and address/make function more robust instead of failing silently. ' \
+                  f'Exception = {repr(e)}.'
+            logger.error(err)
             pass
     return
 
@@ -259,19 +283,22 @@ def get_frames_from_video_then_create_labeled_video(path_to_video, labels, fps, 
     :param output_path: TODO
     :return:
     """
+    warning = f'Current function: {inspect.stack()[0][3]}(). Instead of calling this, call the two functions ' \
+              f'inside explicitly. '
+    logger.warning(warning)
     write_annotated_frames_to_disk_from_video(path_to_video, labels, fps, output_path)
-    create_labeled_vid(labels, crit=3, num_randomly_generated_examples=5, frame_dir=output_path, output_path=config.SHORTVID_DIR)
+    create_labeled_vid(labels, critical_behaviour_min_duration=3, num_randomly_generated_examples=5, frame_dir=output_path, output_path=config.SHORTVID_DIR)
 
 
 ###
 # Legacy functions (some of which will be deprecated)
-def vid2frame(path_to_video: str, labels, fps: int, output_path: str = config.FRAME_DIR):
+def vid2frame(path_to_video: str, labels, fps: int, output_path: str = config.FRAMES_OUTPUT_PATH):
     """ # # # DEPRECATION WARNING # # # """
     replacement_func = write_annotated_frames_to_disk_from_video
     logger.error(f'This function, vid2frame(), will be deprecated shortly. The replacement '
-                f'function is called "{replacement_func.__qualname__}" and aims to make usage more clear and DRY. '
-                f'If you are reading this, this function was kept for backwards compatibility reasons. '
-                f'Caller = {inspect.stack()[1][3]}')
+                 f'function is called "{replacement_func.__qualname__}" and aims to make usage more clear and DRY. '
+                 f'If you are reading this, this function was kept for backwards compatibility reasons. ' 
+                 f'Caller = {inspect.stack()[1][3]}')
     return replacement_func(path_to_video, labels, fps, output_path)
 
 
@@ -279,6 +306,6 @@ def main(path_to_video, labels, fps, output_path):  # To be deprecated
     """# # # DEPRECATION WARNING # # #"""
     replacement_function = get_frames_from_video_then_create_labeled_video
     logger.error('This function, bsoid.util.videoprocessing.main(), will be deprecated in the future in '
-                'favour of a refactored, more descriptive function. Currently, that function is: '
-                f'{replacement_function.__qualname__}. Caller = {inspect.stack()[1][3]}')
+                 'favour of a refactored, more descriptive function. Currently, that function is: '
+                 f'{replacement_function.__qualname__}. Caller = {inspect.stack()[1][3]}')
     return replacement_function(path_to_video, labels, fps, output_path)

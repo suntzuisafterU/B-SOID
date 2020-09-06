@@ -34,9 +34,9 @@ pd.set_option('display.max_colwidth', None)
 np.set_printoptions(threshold=1_000)
 
 
-from bsoid.util import logger_config
+from bsoid.util import bsoid_logging
 
-deco__log_entry_exit: callable = logger_config.log_entry_exit  # TODO: temporary measure to enable logging when entering/exiting functions
+deco__log_entry_exit: callable = bsoid_logging.log_entry_exit  # TODO: temporary measure to enable logging when entering/exiting functions
 
 ########################################################################################################################
 # Fetch the B-SOiD project directory regardless of clone location
@@ -79,7 +79,7 @@ PLOT_GRAPHS: bool = configuration.getboolean('APP', 'PLOT_GRAPHS')
 SAVE_GRAPHS_TO_FILE: bool = configuration.getboolean('APP', 'SAVE_GRAPHS_TO_FILE')
 DEFAULT_SAVED_GRAPH_FILE_FORMAT: str = configuration.get('APP', 'DEFAULT_SAVED_GRAPH_FILE_FORMAT')
 GENERATE_VIDEOS: bool = configuration.getboolean('APP', 'GENERATE_VIDEOS')
-
+PERCENT_FRAMES_TO_LABEL: float = configuration.getfloat('APP', 'PERCENT_FRAMES_TO_LABEL')
 
 
 # Now, pick an example video that corresponds to one of the csv files from the PREDICT_FOLDERS  # TODO: ************* This note from the original author implies that VID_NAME must be a video that corresponds to a csv from PREDICT_FOLDERS
@@ -141,18 +141,15 @@ for folder in PREDICT_FOLDERS:
     assert os.path.isdir(compiled_folder_path), f'Prediction folder does not exist: {compiled_folder_path}'
 
 # Create a folder to store extracted images.
-config_value_alternate_output_path_for_annotated_frames = configuration.get(
-    'PATH', 'ALTERNATE_OUTPUT_PATH_FOR_ANNOTATED_FRAMES')
+config_value_alternate_output_path_for_annotated_frames = configuration.get('PATH', 'ALTERNATE_OUTPUT_PATH_FOR_ANNOTATED_FRAMES')
 
-config_value_alternate_output_path_for_annotated_frames = config_value_alternate_output_path_for_annotated_frames \
-    if config_value_alternate_output_path_for_annotated_frames \
-    else os.path.join(OUTPUT_PATH, 'frames')  # '/home/aaron/Documents/OST-with-DLC/B-SOID/OUTPUT/frames'
+FRAMES_OUTPUT_PATH = config_value_alternate_output_path_for_annotated_frames = configuration.get('PATH', 'ALTERNATE_OUTPUT_PATH_FOR_ANNOTATED_FRAMES') if configuration.get('PATH', 'ALTERNATE_OUTPUT_PATH_FOR_ANNOTATED_FRAMES') else FRAMES_OUTPUT_PATH  # '/home/aaron/Documents/OST-with-DLC/B-SOID/OUTPUT/frames'
 assert os.path.isdir(config_value_alternate_output_path_for_annotated_frames), \
     f'config_value_alternate_output_path_for_annotated_frames does not exist. ' \
     f'config_value_alternate_output_path_for_annotated_frames = ' \
     f'\'{config_value_alternate_output_path_for_annotated_frames}\'. Check config.ini pathing.'
 
-FRAME_DIR = config_value_alternate_output_path_for_annotated_frames  # Legacy name
+# FRAME_DIR = config_value_alternate_output_path_for_annotated_frames  # Legacy name
 
 ########################################################################################################################
 ##### LOGGER INSTANTIATION #####
@@ -188,7 +185,7 @@ assert os.path.isdir(config_file_log_folder_path), f'Path does not exist: {confi
 # )
 
 # Instantiate logger decorator capable for
-initialize_logger: callable = logger_config.preload_logger_with_config_vars(
+initialize_logger: callable = bsoid_logging.preload_logger_with_config_vars(
     logger_name, log_format, stdout_log_level, file_log_level, log_file_file_path)
 
 
@@ -264,7 +261,7 @@ max_rows_to_read_in_from_csv: int = configuration.getint('TESTING', 'max_rows_to
 ########################################################################################################################
 ##### LEGACY VARIABLES #####
 # This version requires the six body parts Snout/Head, Forepaws/Shoulders, Hindpaws/Hips, Tailbase.
-BODYPARTS_PY_LEGACY = {
+BODYPARTS_PY_LEGACY = {  # It appears as though the names correlate to the expected index of the feature when in Numpy array form
     'Snout/Head': 0,
     'Neck': None,
     'Forepaw/Shoulder1': 1,
@@ -305,9 +302,60 @@ def get_config_str() -> str:
     return config_string.strip()
 
 
+
+
+map_group_to_behaviour = {
+    1: 'orient right',
+    2: 'body lick',
+    3: 'rearing',
+    4: 'nose poke',
+    5: 'tall wall-rear',
+    6: 'face groom',
+    7: 'wall-rear',
+    8: 'head groom',
+    9: 'nose poke',
+    10: 'pause',
+    11: 'locomote',
+    12: 'orient right',
+    13: 'paw groom',
+    14: 'locomote',
+    15: 'orient left',
+    16: 'orient left',
+}
+"""
+
+
+## Here are the example groups that we have extracted from multiple animals using B-SOiD
+
+### Groups 1-4:
+#### Group 1 (top left): Oreint right (+); Group 2 (top right): Body lick; 
+
+![Mouse Action Groups 1-4](../examples/group1_4.gif)
+#### Group3 (bottom left): Rearing; Group 4 (bottom right): Nose poke (+).
+
+### Groups 5-8:
+#### Group 5 (top left): Tall wall-rear; Group 6 (top right): Face groom; 
+![Mouse Action Groups 5-8](../examples/group5_8.gif)
+#### Group 7 (bottom left): Wall-rear; Group 8 (bottom right): Head groom.
+
+### Groups 9-12:
+#### Group 9 (top left): Nose poke (-); Group 10 (top right): Pause; 
+![Mouse Action Groups 9-12](../examples/group9_12.gif)
+#### Group 11 (bottom left): Locomote (+); Group 12 (bottom right): Orient right (-).
+
+### Groups 13-16:
+#### Group 13 (top left): Paw groom; Group 14 (top right): Locomote (-); 
+![Mouse Action Groups 13-16](../examples/group13_16.gif)
+#### Group 15 (bottom left): Orient left (+); Group 16 (bottom right): Orient left (-).
+
+More example videos are in [this](../examples) directory .
+
+"""
+
 if __name__ == '__main__':
     print(get_config_str())
-    print(max_rows_to_read_in_from_csv)
-    print(VIDEO_FPS)
-    print(runtime_timestr)
+    print(f'max_rows_to_read_in_from_csv = {max_rows_to_read_in_from_csv}')
+    print(f'VIDEO_FPS = {VIDEO_FPS}')
+    print(f'runtime_timestr = {runtime_timestr}')
+
     pass
