@@ -36,7 +36,7 @@ np.set_printoptions(threshold=1_000)
 
 from bsoid.util import logger_config
 
-cfig_log_entry_exit: callable = logger_config.log_entry_exit  # TODO: temporary measure to enable logging when entering/exiting functions
+deco__log_entry_exit: callable = logger_config.log_entry_exit  # TODO: temporary measure to enable logging when entering/exiting functions
 
 ########################################################################################################################
 # Fetch the B-SOiD project directory regardless of clone location

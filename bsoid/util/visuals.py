@@ -26,7 +26,7 @@ TM = NotImplementedError('TODO: HIGH: The source of TM has not been determined. 
 
 
 #######################################################################################################################
-@config.cfig_log_entry_exit(logger)
+@config.deco__log_entry_exit(logger)
 def plot_tsne_in_3d(data, **kwargs):  # TODO: HIGH: consider reducing the total data when plotting because, if TONS of data is plotted in 3d, it can be very laggy when viewing and especially rotating
     """
     Plot trained tsne
@@ -126,7 +126,7 @@ def plot_classes_bsoidumap(data, assignments, **kwargs) -> object:
     plt.legend(ncol=3)
     plt.show()
     return fig
-@config.cfig_log_entry_exit(logger)
+@config.deco__log_entry_exit(logger)
 def plot_classes_EMGMM_assignments(data, assignments, save_fig_to_file: bool, fig_file_prefix='train_assignments', **kwargs):
     """
     Plot trained TSNE for EM-GMM assignments
@@ -192,7 +192,7 @@ def plot_classes_bsoidapp(data, assignments) -> Tuple:
 
 
 #######################################################################################################################
-@config.cfig_log_entry_exit(logger)
+@config.deco__log_entry_exit(logger)
 def plot_accuracy_MLP(scores, show_plot=config.PLOT_GRAPHS, save_fig_to_file=config.SAVE_GRAPHS_TO_FILE, fig_file_prefix='classifier_accuracy_score', **kwargs) -> Tuple:
     """
     TODO: low: purpose
@@ -226,7 +226,7 @@ def plot_accuracy_MLP(scores, show_plot=config.PLOT_GRAPHS, save_fig_to_file=con
         fig_file_name = f'{fig_file_prefix}_{time_str}'
         save_graph_to_file(fig, fig_file_name)
     return fig, plt
-@config.cfig_log_entry_exit(logger)
+@config.deco__log_entry_exit(logger)
 def plot_accuracy_SVM(scores, save_fig_to_file=config.SAVE_GRAPHS_TO_FILE, fig_file_prefix='classifier_accuracy_score', **kwargs):
     """
     This is the new interface for plotting accuracy for an SVM classifier.
@@ -270,7 +270,7 @@ def plot_accuracy_SVM(scores, save_fig_to_file=config.SAVE_GRAPHS_TO_FILE, fig_f
 
 
 #######################################################################################################################
-@config.cfig_log_entry_exit(logger)
+@config.deco__log_entry_exit(logger)
 def plot_feats_bsoidUMAPAPP(feats: list, labels: list) -> None:
     """
     :param feats: list, features for multiple sessions
@@ -357,7 +357,7 @@ def plot_feats_bsoidUMAPAPP(feats: list, labels: list) -> None:
                 save_graph_to_file(fig, fig_file_name)  # fig.savefig(os.path.join(config.OUTPUT_PATH, f'{my_file}_{time_str}.svg'))
 
         plt.show()
-@config.cfig_log_entry_exit(logger)
+@config.deco__log_entry_exit(logger)
 def plot_feats_bsoidpy(feats, labels) -> None:
     """
     :param feats: list, features for multiple sessions
@@ -441,7 +441,7 @@ def plot_feats_bsoidpy(feats, labels) -> None:
                 file_name = f'feature_{j + 1}__histogram__{time_str}'  # my_file = f'feat{j + 1}_hist' ;fig.savefig(os.path.join(config.OUTPUT_PATH, f'{my_file}_{time_str}.svg'))
                 save_graph_to_file(fig, file_name)
         plt.show()
-@config.cfig_log_entry_exit(logger)
+@config.deco__log_entry_exit(logger)
 def plot_feats_bsoidvoc(feats: Union[List, np.ndarray], labels: list) -> None:
     """
     :param feats: list, features for multiple sessions
@@ -609,7 +609,7 @@ def plot_accuracy_bsoidumap(scores) -> None:
     # my_file = 'clf_scores'
     # fig.savefig(os.path.join(OUTPUT_PATH, f'{fig_file_prefix}_{timestr}.svg'))
     plot_accuracy_MLP(scores, show_plot=True, save_fig_to_file=True)
-@config.cfig_log_entry_exit(logger)
+@config.deco__log_entry_exit(logger)
 def plot_accuracy_bsoidpy(scores) -> None:
     """ ** DEPRECATION WARNING ** """
     # fig = plt.figure(facecolor='w', edgecolor='k')

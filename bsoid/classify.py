@@ -483,7 +483,7 @@ def bsoid_frameshift_voc(data_new, fps: int, clf_MLP) -> List[np.ndarray]:
     logger.info(f'Done frameshift-predicting a total of {len(data_new)} files.')
     return labels_frameshifted_high
 
-@config.cfig_log_entry_exit(logger)
+@config.deco__log_entry_exit(logger)
 def main_py(predict_folders: List[str], scaler, fps, svm_classifier__behavioural_model) -> Tuple[Any, List, List, List]:
     """
     :param predict_folders: list, data folders

@@ -23,8 +23,8 @@ logger = config.initialize_logger(__name__)
 
 def clear_output_folders():
     """
-    For each folder specified below (magic variables be damned), delete everything in that folder except
-    for the .placeholder file
+    For each folder specified below (magic variables be damned),
+        delete everything in that folder except for the .placeholder file and any sub-folders there-in.
     """
     folders_to_clear = [config.OUTPUT_PATH, config.GRAPH_OUTPUT_PATH, config.SHORT_VIDEOS_OUTPUT_PATH, config.FRAMES_OUTPUT_PATH]
     for folder_path in folders_to_clear:
@@ -35,6 +35,7 @@ def clear_output_folders():
             os.remove(file_to_delete_full_path)
 
     return
+
 
 ########################################################################################################################
 

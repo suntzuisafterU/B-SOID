@@ -176,7 +176,7 @@ def remove_top_n_rows_of_dataframe(in_df, n_rows: int = 1, copy=False):
 #     return
 
 
-@config.cfig_log_entry_exit(logger)
+@config.deco__log_entry_exit(logger)
 def process_raw_data_and_filter_adaptively(df_input_data: pd.DataFrame) -> Tuple[np.ndarray, List]:
     """
 
@@ -259,7 +259,7 @@ def process_raw_data_and_filter_adaptively(df_input_data: pd.DataFrame) -> Tuple
     return final_array_filtered_data, percent_filterd_per_bodypart__perc_rect
 
 
-@config.cfig_log_entry_exit(logger)
+@config.deco__log_entry_exit(logger)
 def adaptive_filter_data_app(input_df: pd.DataFrame, BODYPARTS: dict):  # TODO: rename function for clarity?
     """
     TODO: purpose
