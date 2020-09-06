@@ -134,11 +134,11 @@ def log_entry_exit(logger=None):
         def function_wrapper(*args, **kwargs):
             start_time = time.perf_counter()
             if logger:
-                logger.debug(f'Now entering: {func.__qualname__}.')
+                logger.debug(f'Now entering: {func.__qualname__}().')
             result = func(*args, *kwargs)
             end_time = time.perf_counter()
             if logger:
-                logger.debug(f'Now exiting: {func.__qualname__}. Time spent in function: {round(end_time-start_time, 1)} seconds')
+                logger.debug(f'Now exiting: {func.__qualname__}(). Time spent in function: {round(end_time-start_time, 1)} seconds')
             return result
         return function_wrapper
     return decorator
