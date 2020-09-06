@@ -63,6 +63,9 @@ DLC_PROJECT_PATH = configuration.get('PATH', 'DLC_PROJECT_PATH')
 # Resolve output path
 config_output_path = configuration.get('PATH', 'OUTPUT_PATH')
 OUTPUT_PATH = config_output_path if config_output_path else default_output_path
+GRAPH_OUTPUT_PATH = os.path.join(OUTPUT_PATH, 'graphs')
+FRAMES_OUTPUT_PATH = os.path.join(OUTPUT_PATH, 'frames')
+SHORT_VIDEOS_OUTPUT_PATH = os.path.join(OUTPUT_PATH, 'short_videos')
 # Resolve runtime application settings
 MODEL_NAME = configuration.get('APP', 'OUTPUT_MODEL_NAME')  # Machine learning model name
 RANDOM_STATE: int = configuration.getint('MODEL', 'RANDOM_STATE', fallback=random.randint(1, 100_000_000))
