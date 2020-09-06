@@ -90,10 +90,17 @@ SHORTVID_DIR = short_video_output_directory  # LEGACY. To be deprecated.
 
 
 assert os.path.isdir(DLC_PROJECT_PATH), f'BASEPATH DOES NOT EXIST: {DLC_PROJECT_PATH}'
-assert os.path.isdir(OUTPUT_PATH), f'OUTPUT PATH DOES NOT EXIST: {OUTPUT_PATH}'
 assert os.path.isfile(VIDEO_TO_LABEL_PATH) or not VIDEO_TO_LABEL_PATH, \
     f'Video does not exist: {VIDEO_TO_LABEL_PATH}. Check pathing in config.ini file.'
 
+#########################################
+### OUTPUT PATH CHECK/CREATION
+
+# TODO: create OUTPUT PATH files in case user does not use default output path in BSOID project
+assert os.path.isdir(OUTPUT_PATH), f'OUTPUT PATH DOES NOT EXIST: {OUTPUT_PATH}'
+
+
+########################################################################################################################
 
 # Specify where the OST project lives. Modify on your local machine as necessary.
 # OST_BASE_PROJECT_PATH = configuration.get('PATH', 'OST_BASE_PROJECT_PATH')
@@ -284,6 +291,8 @@ BODYPARTS_VOC_LEGACY = {
 
 
 ###
+assert isinstance(VIDEO_FPS, int), f''
+
 
 def get_config_str() -> str:
     config_string = ''
@@ -293,7 +302,7 @@ def get_config_str() -> str:
 
 
 if __name__ == '__main__':
-    print('OUTPUTPATH:', OUTPUT_PATH)
     print(get_config_str())
     print(max_rows_to_read_in_from_csv)
+    print(VIDEO_FPS)
     pass
