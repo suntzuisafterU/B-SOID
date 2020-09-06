@@ -12,8 +12,9 @@ import os
 import time
 
 
-from bsoid import config
-from bsoid.util import visuals
+from bsoid import config, feature_engineering
+from bsoid.util import io, visuals
+from bsoid.util.bsoid_logging import get_current_function  # for debugging purposes
 
 
 logger = config.initialize_logger(__name__)
@@ -42,6 +43,61 @@ def clear_output_folders() -> None:
             os.remove(file_to_delete_full_path)
 
     return None
+
+
+def build_classifier_new_pipeline() -> None:
+    """
+
+    """
+    # Get data
+    dfs_raw_list: List[pd.DataFrame] = []
+    for train_path in config.TRAIN_FOLDERS_PATHS:
+        logger.debug(f'train_path = {train_path}')
+        csvs = io.check_folder_contents_for_csv_files(train_path, check_recursively=True)
+        logger.debug(f'csvs = {csvs}')
+        for csv_i in csvs:
+            df_csv_i: pd.DataFrame = io.read_csv(csv_i)
+            dfs_raw_list.append(df_csv_i)
+    logger.debug(f'len(dfsList) = {len(dfs_raw_list)}')
+
+    # Adaptively filter
+    dfs_list_filtered: List[pd.DataFrame] = [feature_engineering.adaptively_filter_dlc_output(df) for df in dfs_raw_list]
+
+
+    raise Exception('Safely stop')
+
+
+    file_names_list, list_of_arrays_of_training_data, _perc_rect = likelihoodprocessing.import_csvs_data_from_folders_in_PROJECTPATH_and_process_data(train_folders)
+    # Check that outputs are fine for runtime
+    if len(file_names_list) == 0:
+        zero_folders_error = f'{inspect.stack()[0][3]}: Zero training folders were specified. Check ' \
+                             f'your config file!!! Train folders = {train_folders} // Filenames = {file_names_list}.'
+        logger.error(zero_folders_error)
+        raise ValueError(zero_folders_error)
+    if len(file_names_list[0]) == 0:
+        zero_filenames_error = f'{inspect.stack()[0][3]}: Zero file names were found. filenames = {file_names_list}.'
+        logger.error(zero_filenames_error)
+        raise ValueError(zero_filenames_error)
+
+    # Train TSNE
+    features_10fps, features_10fps_scaled, trained_tsne_list, scaler = extract_features_and_train_TSNE(list_of_arrays_of_training_data)  # features_10fps, features_10fps_scaled, trained_tsne_list, scaler = bsoid_tsne_py(list_of_arrays_of_training_data)  # replace with: extract_features_and_train_TSNE
+
+    # Train GMM
+    gmm_assignments = train_emgmm_with_learned_tsne_space(trained_tsne_list)  # gmm_assignments = bsoid_gmm_pyvoc(trained_tsne)  # replaced with below
+
+    # Train SVM
+    classifier, scores = bsoid_svm_py(features_10fps_scaled, gmm_assignments)
+
+    # Plot to view progress if necessary
+    if config.PLOT_GRAPHS:
+        logger.debug(f'Enter GRAPH PLOTTING section of {inspect.stack()[0][3]}')
+        visuals.plot_classes_EMGMM_assignments(trained_tsne_list, gmm_assignments, config.SAVE_GRAPHS_TO_FILE)
+        visuals.plot_accuracy_SVM(scores)
+        visuals.plot_feats_bsoidpy(features_10fps, gmm_assignments)
+        logger.debug(f'Exiting GRAPH PLOTTING section of {inspect.stack()[0][3]}')
+    return features_10fps, trained_tsne_list, scaler, gmm_assignments, classifier, scores
+
+    return
 
 
 ########################################################################################################################
@@ -114,3 +170,9 @@ def sample_runtime_function(*args, **kwargs):
 #
 #     logger.error(f'{inspect.stack()[0][3]}: Saved stuff...elaborate on this message later.')  # TODO: elaborate on log message
 #     return features_10fps, trained_tsne, scaler_object, gmm_assignments, classifier, scores
+
+
+if __name__ == '__main__':
+    # Run this file for ebugging purposes
+    build_classifier_new_pipeline()
+
