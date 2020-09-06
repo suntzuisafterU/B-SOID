@@ -99,17 +99,17 @@ def import_csvs_data_from_folders_in_PROJECTPATH_and_process_data(folders_in_pro
     for idx_folder, folder in enumerate(folders_in_project_path):  # Loop through folders
         filenames_found_in_current_folder: List[str] = get_filenames_csvs_from_folders_recursively_in_dlc_project_path(folder)
         for idx_filename, filename in enumerate(filenames_found_in_current_folder):
-            logger.debug(f'Importing CSV file #{idx_filename+1}, {filename}, from folder #{idx_folder+1}')
+            logger.debug(f'{get_current_function()}(): Importing CSV file #{idx_filename+1}, {filename}, from folder #{idx_folder+1}')
             df_current_file_data = pd.read_csv(filename, low_memory=False)
             array_current_file_data_adaptively_filtered, perc_rect = process_raw_data_and_filter_adaptively(df_current_file_data)
-            logger.debug(f'Done preprocessing (x,y) from file #{idx_filename+1}, folder #{idx_folder+1}.')
+            logger.debug(f'{get_current_function()}(): Done preprocessing (x,y) from file #{idx_filename+1}, folder #{idx_folder+1}.')
             raw_data_list.append(df_current_file_data)
             perc_rect_list.append(perc_rect)
             list_of_arrays_of_data.append(array_current_file_data_adaptively_filtered)
         file_names_list.append(filenames_found_in_current_folder)
-        logger.debug(f'Processed {len(filenames_found_in_current_folder)} CSV files from folder: {folder}')
+        logger.debug(f'{get_current_function()}(): Processed {len(filenames_found_in_current_folder)} CSV files from folder: {folder}')
     # array_of_arrays_of_data: np.ndarray = np.array(data_list)
-    logger.info(f'{get_current_function()}: Processed a total of {len(list_of_arrays_of_data)} CSV files')  # and compiled into a {array_of_arrays_of_data.shape} data list/array.')
+    logger.info(f'{get_current_function()}(): Processed a total of {len(list_of_arrays_of_data)} CSV files')  # and compiled into a {array_of_arrays_of_data.shape} data list/array.')
     return file_names_list, list_of_arrays_of_data, perc_rect_list
 
 
@@ -127,18 +127,20 @@ def import_folders_app(ost_project_path, input_folders_list: list, BODYPARTS: di
     for idx_folder, folder in enumerate(input_folders_list):  # Loop through folders
         file_names_in_current_folder = get_filenames_csvs_from_folders_recursively_in_dlc_project_path(ost_project_path, folder)
         for idx_filename, filename in enumerate(file_names_in_current_folder):
-            logger.debug(f'Importing CSV file {idx_filename+1} from folder {idx_folder+1}')
+            logger.debug(f'{get_current_function()}(): Importing CSV file {idx_filename+1} from folder {idx_folder+1}')
             df_file_i = pd.read_csv(filename, low_memory=False)
             df_file_i_filtered, perc_rect = adaptive_filter_data_app(df_file_i, BODYPARTS)  # curr_df_filt, perc_rect = adaptive_filter_data_app(df_file_i, BODYPARTS)
-            logger.debug(f'Done preprocessing (x,y) from file {idx_filename+1}, folder {idx_folder+1}.')
+            logger.debug(f'{get_current_function()}(): Done preprocessing (x,y) from file {idx_filename+1}, folder {idx_folder+1}.')
             # rawdata_li.append(curr_df)
             perc_rect_list.append(perc_rect)
             data_list.append(df_file_i_filtered)
         fldrs.append(folder)
         all_file_names_list.append(file_names_in_current_folder)
-        logger.info(f'Processed {len(file_names_in_current_folder)} CSV files from folder: {folder}')
+        logger.info(f'{get_current_function()}(): Processed {len(file_names_in_current_folder)} CSV '
+                    f'files from folder: {folder}')
     data_array = np.array(data_list)
-    logger.info(f'Processed a total of {len(data_list)} CSV files and compiled into a {data_array.shape} data list.')
+    logger.info(f'{get_current_function()}(): Processed a total of {len(data_list)} CSV '
+                f'files and compiled into a {data_array.shape} data list.')
     return fldrs, all_file_names_list, data_array, perc_rect_list
 
 
@@ -188,8 +190,8 @@ def process_raw_data_and_filter_adaptively(df_input_data: pd.DataFrame) -> Tuple
         5       3                             1013.0330810546875                                 651.7833251953125                                 0.999998927116394   ...
 
     :return
-        currdf_filt: 2D array, filtered data
-        perc_rect: 1D array, percent filtered per BODYPART
+        : 2D array, filtered data
+        : 1D array, percent filtered per BODYPART
     """
     # Type checking args
     if not isinstance(df_input_data, pd.DataFrame):
