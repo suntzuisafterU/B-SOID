@@ -123,22 +123,24 @@ assert os.path.isdir(OUTPUT_PATH), f'OUTPUT PATH DOES NOT EXIST: {OUTPUT_PATH}'
 ##### TRAIN_FOLDERS, PREDICT_FOLDERS
 # TRAIN_FOLDERS, PREDICT_FOLDERS are lists of folders that are implicitly understood to exist within BASE_PATH
 
+
+# TODO: the hope is that we move away from relative paths like in the old TRAIN_/PREDIC_FOLDERS variables that IMPLICITLY assume location and we instead add absolute pathing and/or relative pathing resolution that ends up in absolute pathing
 # Data folders used to training neural network.
-# TRAIN_FOLDERS: List[str] = ['NOT_DLC_OUTPUT__SAMPLE_WITHOUT_INDEX', ]  # TRAIN_FOLDERS = [os.path.sep+'training-datasets', ]
+# TRAIN_FOLDERS are expected to exist in the DLC Project path
 TRAIN_FOLDERS = [
     'sample_train_data_folder',
 ]
-for folder in TRAIN_FOLDERS:
-    compiled_folder_path = os.path.join(DLC_PROJECT_PATH, folder)
-    assert os.path.isdir(compiled_folder_path), f'Training folder does not exist: {compiled_folder_path}'
+TRAIN_FOLDERS_PATHS = [os.path.join(DLC_PROJECT_PATH, folder) for folder in TRAIN_FOLDERS if not os.path.isdir(folder)]
+for folder in TRAIN_FOLDERS_PATHS:
+    assert os.path.isdir(folder), f'Training folder does not exist: {folder}'
 
 
 PREDICT_FOLDERS: List[str] = [
     'sample_predic_data_folder',
 ]
-for folder in PREDICT_FOLDERS:
-    compiled_folder_path = os.path.join(DLC_PROJECT_PATH, folder)
-    assert os.path.isdir(compiled_folder_path), f'Prediction folder does not exist: {compiled_folder_path}'
+PREDICT_FOLDERS_PATHS = [os.path.join(DLC_PROJECT_PATH, folder) for folder in PREDICT_FOLDERS]
+for folder in PREDICT_FOLDERS_PATHS:
+    assert os.path.isdir(folder), f'Prediction folder does not exist: {folder}'
 
 # Create a folder to store extracted images.
 config_value_alternate_output_path_for_annotated_frames = configuration.get('PATH', 'ALTERNATE_OUTPUT_PATH_FOR_ANNOTATED_FRAMES')
