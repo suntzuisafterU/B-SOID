@@ -26,6 +26,7 @@ def get_feature_distribution(features: np.ndarray):
         p_cts:
         edges:
     """
+
     if not isinstance(features, np.ndarray):
         raise TypeError(f"Argument `features` expected to be of type np.ndarray but instead "
                         f"found {type(features)} (value: {features}).")
@@ -82,7 +83,7 @@ def transition_matrix(labels) -> pd.DataFrame:  # source: bsoid_py, bsoid_umap, 
 
 def rle(in_array) -> Tuple:  # TODO: rename function for clarity?
     """
-    Run length encoding. Partial credit to R rle function. Multi datatype arrays catered for including non Numpy.
+    Run length encoding. Partial credit to R rle function. Multi datatype arrays catered-for including non-Numpy.
 
     {
         - R Documentation excerpt -
@@ -113,7 +114,7 @@ def rle(in_array) -> Tuple:  # TODO: rename function for clarity?
     if num_array_elements != 0:
         y = np.array(array[1:] != array[:-1])                           # Pairwise unequal (string safe)
         i = np.append(np.where(y), num_array_elements - 1)              # Must include last element position
-        run_lengths = np.diff(np.append(-1, i))                         # Run lengths  # TODO: low: REVIEW: np.append signature is different from usage here
+        run_lengths = np.diff(np.append(-1, i))                         # Run lengths
         start_positions = np.cumsum(np.append(0, run_lengths))[:-1]     # Positions
         values = array[i]
         return run_lengths, start_positions, values
@@ -145,11 +146,14 @@ def behv_dur(labels) -> Tuple[pd.DataFrame, pd.DataFrame]:
     :return runlen_df: object, behavioral duration run lengths data frame
     :return dur_stats: object, behavioral duration statistics data frame
     """
+    # Create runlengths DataFrame
     run_lengths, start_positions, values = rle(labels)
     df_lengths = pd.DataFrame(run_lengths, columns={'Run lengths'})
     df_grp = pd.DataFrame(values, columns={'B-SOiD labels'})
     df_positions = pd.DataFrame(start_positions, columns={'Start time (frames)'})
     df_runlengths = pd.concat([df_grp, df_positions, df_lengths], axis=1)
+
+    # Create duration statistics DataFrame
     beh_t = behv_time(labels)
     dur_means, dur_quantile10, dur_quantile25, dur_quantile50, dur_quantile75, dur_quantile90 = [], [], [], [], [], []
     for i in range(len(np.unique(values))):
@@ -168,37 +172,39 @@ def behv_dur(labels) -> Tuple[pd.DataFrame, pd.DataFrame]:
             dur_quantile75.append(0)
             dur_quantile90.append(0)
 
-    all_data = np.concatenate([np.array(beh_t).reshape(len(np.array(beh_t)), 1),
-                              np.array(dur_means).reshape(len(np.array(dur_means)), 1),
-                              np.array(dur_quantile10).reshape(len(np.array(dur_quantile10)), 1),
-                              np.array(dur_quantile25).reshape(len(np.array(dur_quantile25)), 1),
-                              np.array(dur_quantile50).reshape(len(np.array(dur_quantile50)), 1),
-                              np.array(dur_quantile75).reshape(len(np.array(dur_quantile75)), 1),
-                              np.array(dur_quantile90).reshape(len(np.array(dur_quantile90)), 1)], axis=1)
-    dur_statistics_columns = pd.MultiIndex.from_tuples([('Stats', 'Percent of time'),
-                                                        ('', 'Mean duration (frames)'),
-                                                        ('', '10th %tile (frames)'),
-                                                        ('', '25th %tile (frames)'),
-                                                        ('', '50th %tile (frames)'),
-                                                        ('', '75th %tile (frames)'),
-                                                        ('', '90th %tile (frames)')],
-                                                       names=['', 'B-SOiD labels'])
-    df_dur_statistics = pd.DataFrame(all_data, columns=dur_statistics_columns)
+    all_duration_data_as_array = np.concatenate([
+        np.array(beh_t).reshape(len(np.array(beh_t)), 1),
+        np.array(dur_means).reshape(len(np.array(dur_means)), 1),
+        np.array(dur_quantile10).reshape(len(np.array(dur_quantile10)), 1),
+        np.array(dur_quantile25).reshape(len(np.array(dur_quantile25)), 1),
+        np.array(dur_quantile50).reshape(len(np.array(dur_quantile50)), 1),
+        np.array(dur_quantile75).reshape(len(np.array(dur_quantile75)), 1),
+        np.array(dur_quantile90).reshape(len(np.array(dur_quantile90)), 1)
+    ], axis=1)
+    duration_statistics_columns = pd.MultiIndex.from_tuples([('Stats',  'Percent of time'),
+                                                             ('',       'Mean duration (frames)'),
+                                                             ('',       '10th %tile (frames)'),
+                                                             ('',       '25th %tile (frames)'),
+                                                             ('',       '50th %tile (frames)'),
+                                                             ('',       '75th %tile (frames)'),
+                                                             ('',       '90th %tile (frames)')],
+                                                            names=['', 'B-SOiD labels'])
+    df_dur_statistics = pd.DataFrame(all_duration_data_as_array, columns=duration_statistics_columns)
+
     return df_runlengths, df_dur_statistics
 
 
 # TODO: rename main()? Should only be called "main" if this module is called at runtime as standalone file?
-@config.cfig_log_entry_exit(logger)
 def main(labels) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
     (Original function implementation across _py, _umap, and _voc submodules. Kept, for now, for
         backwards compatibility reasons.)
     """
     replacement_func = get_runlengths_statistics_transition_matrix_from_labels
-    logger.error('This function, bsoid.util.statistics.main(), will be deprecated in future. Check back for a '
-                   f'renamed/refactored version later. '
-                   f'Current replacement: {get_runlengths_statistics_transition_matrix_from_labels.__qualname__}.'
-                   f'CALLER = {inspect.stack()[0][3]}')
+    logger.error(f'This function, bsoid.util.statistics.main(), will be deprecated in future. Check back for a '
+                 f'renamed/refactored version later. '
+                 f'Current replacement: {get_runlengths_statistics_transition_matrix_from_labels.__qualname__}.'
+                 f'CALLER = {inspect.stack()[0][3]}.')
     return replacement_func(labels)
 
 @config.cfig_log_entry_exit(logger)
@@ -216,12 +222,8 @@ def get_runlengths_statistics_transition_matrix_from_labels(labels) -> Tuple[pd.
     return df_runlengths, df_dur_statistics, tm
 
 
+### LEGACY FUNCTIONS ###################################################################################################
 
-
-########################################################################################################################
-
-### LEGACY FUNCTIONS
-@config.cfig_log_entry_exit(logger)
 def feat_dist(features: np.ndarray) -> Tuple[List, List, List, List]:
     """   *** DEPRECATION WARNING ***   """
     replacement_func = get_feature_distribution
@@ -229,8 +231,6 @@ def feat_dist(features: np.ndarray) -> Tuple[List, List, List, List]:
           f'{replacement_func.__qualname__} (potential caller of this function = {inspect.stack()[1][3]}).'
     logger.warning(err)
     return replacement_func(features)
-
-@config.cfig_log_entry_exit(logger)
 def main_app(labels, n):
     """
     TODO: why is the _app version different?
