@@ -4,13 +4,150 @@ Functions related to opening/saving files should go here
 
 from typing import List, Tuple
 import inspect
+import numpy as np
+import os
 import pandas as pd
+import re
+import sys
 
 
-def read_csv(source) -> List[pd.DataFrame]:
+from bsoid import config
+
+logger = config.initialize_logger(__name__)
+
+
+########################################################################################################################
+
+
+def read_dlc_csv(csv_file_path: str, **kwargs) -> pd.DataFrame:
     """
+    Reads in a CSV that is assumed to be an output of DLC. The raw CSV is re-formatted to be more
+    friendly towards data manipulation later in the feature engineering pipeline.
+    * NO MATH IS DONE HERE, NO DATA IS REMOVED *
 
+    :param csv_file_path:
+
+    EXAMPLE data: DataFrame directly after invoking pd.read_csv(csv, header=None):
+                  0                                               1                                               2                                               3                                                4  ...
+        0     scorer  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000  ...
+        1  bodyparts                                      Snout/Head                                      Snout/Head                                      Snout/Head                               Forepaw/Shoulder1  ...
+        2     coords                                               x                                               y                                      likelihood                                               x  ...
+        3          0                                 1013.7373046875                                661.953857421875                                             1.0                              1020.1138305664062  ...
+        4          1                              1012.7627563476562                               660.2426147460938                                             1.0                              1020.0912475585938  ...
+
+    :return: (DataFrame)
+
+        EXAMPLE OUTPUT:
+          bodyparts_coords        Snout/Head_x       Snout/Head_y Snout/Head_likelihood Forepaw/Shoulder1_x Forepaw/Shoulder1_y Forepaw/Shoulder1_likelihood  ...                                          scorer
+        0                0     1013.7373046875   661.953857421875                   1.0  1020.1138305664062   621.7146606445312           0.9999985694885254  ...  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000
+        1                1  1012.7627563476562  660.2426147460938                   1.0  1020.0912475585938   622.9310913085938           0.9999995231628418  ...  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000
+        2                2  1012.5982666015625   660.308349609375                   1.0  1020.1837768554688   623.5087280273438           0.9999994039535522  ...  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000
+        3                3  1013.2752685546875  661.3504028320312                   1.0     1020.6982421875   624.2875366210938           0.9999998807907104  ...  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000
+        4                4  1013.4093017578125  661.3643188476562                   1.0  1020.6074829101562     624.48486328125           0.9999998807907104  ...  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000
     """
-    list_df = []
+    # Arg checking
+    if not os.path.isfile(csv_file_path):
+        err = f'Input filepath to csv was not a valid file path: {csv_file_path} (type = {type(csv_file_path)}.'
+        logger.error(err)
+        raise ValueError(err)
+    # Read in kwargs
+    nrows = kwargs.get('nrows', sys.maxsize)
+
+    # # # # # # #
+    # Read in CSV
+    df = pd.read_csv(csv_file_path, header=None, nrows=nrows)
+    # # Manipulate Frame based on top row
+    # Check that the top row is like [scorer, DLCModel, DLCModel.1, DLCModel.2, ...] OR [scorer, DLCModel, DLCModel,...]
+    # Use regex to truncate the
+    top_row_values_set: set = set([re.sub(r'(.*)(\.\w+)?', r'\1', x) for x in df.iloc[0]])
+    top_row_without_scorer: tuple = tuple(top_row_values_set - {'scorer', })
+    if len(top_row_without_scorer) != 1:
+        non_standard_dlc_top_row_err = f'The top row of this DLC file ({csv_file_path}) is not standard. ' \
+                                       f'Top row values set = {top_row_values_set}. / ' \
+                                       f'DataFrame = {df.head().to_string()}'
+        logger.error(non_standard_dlc_top_row_err)
+        raise ValueError(non_standard_dlc_top_row_err)
+    # Save scorer/model name for later column creation
+    dlc_scorer = top_row_without_scorer[0]
+    # Remove top row
+    df = df.iloc[1:, :]
+    # # Manipulate Frame based on next two rows
+    # Create columns based on next two rows. Combine the tow rows of each column and separate with "_"
+    array_of_next_two_rows = np.array(df.iloc[:2, :])
+    new_column_names: List[str] = []
+    for col_idx in range(array_of_next_two_rows.shape[1]):
+        new_col = f'{array_of_next_two_rows[0, col_idx]}_{array_of_next_two_rows[1, col_idx]}'
+        new_column_names += [new_col, ]
+    df.columns = new_column_names
+    # Remove next two rows now that columns instantiated
+    df = df.iloc[2:, :]
+
+    # # Final touches
+    # Instantiate 'scorer' column so we can track the model if needed later
+    df['scorer'] = dlc_scorer
+    # Reset index (good practice) after chopping off top 3 columns so index starts at 0 again
+    df = df.reset_index(drop=True)
+
+    return df
+
+
+def read_csvs(source) -> List[pd.DataFrame]:
+    """
+    Give a source/sources of .csv file, return a list of Pandas DataFrames
+    :param sources: (valid types: str, List[str], or Tuple[str]) sources of .csv files to read in. These
+        csv files are expected to be of DLC output after video analysis. The general layout format
+        expected is as follows:
+
+
+    :return:
+    """
+    # Check args
+    if isinstance(source, str):
+        sources = [source, ]
+    elif isinstance(source, list) or isinstance(source, tuple):
+        sources = source
+    else:
+        type_err = f'An invalid type was detected. Type was expected to be in {{str, List[str], Tuple[str]}}'
+        logger.error(type_err)
+        raise TypeError(type_err)
+    # Resolve csv file paths
+
+    # Read in csv files and return
+
+    list_df: List[pd.DataFrame] = []
 
     return list_df
+
+
+def check_folder_recursively_for_csv_files(absolute_folder_path) -> List[str]:
+    """
+
+
+    :param absolute_folder_path:
+    :return:
+    """
+    # Check args
+    if not os.path.isdir(absolute_folder_path):
+        value_err = f'This path is not a valid path to a folder: {absolute_folder_path} ' \
+                    f'(type = {type(absolute_folder_path)}).'
+        logger.error(value_err)
+        raise ValueError(value_err)
+    # Continue if values valid
+
+
+    return
+
+
+def get_filenames_csvs_from_folders_recursively_in_dlc_project_path(folder: str) -> List:
+    """
+    Get_filenames() makes the assumption that the folder is in PROJECT Path; however, it is an obfuscated assumption
+    and bad. A new function that DOES NOT RESOLVE PATH IMPLICITLY WITHIN should be created and used.
+    :param folder:
+    :return:
+    """
+    path_to_check_for_csvs = f'{config.DLC_PROJECT_PATH}{os.path.sep}{folder}{os.path.sep}**{os.path.sep}*.csv'
+    logger.debug(f'{get_current_function()}: Path that is being checked using glob selection: {path_to_check_for_csvs}')
+    filenames = glob.glob(path_to_check_for_csvs, recursive=True)
+    sort_list_nicely_in_place(filenames)
+    logger.info(f'{get_current_function()}: Total files found: {len(filenames)}. List of files found: {filenames}.')
+    return filenames
