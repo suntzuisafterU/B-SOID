@@ -19,13 +19,14 @@ logger = config.initialize_logger(__name__)
 ########################################################################################################################
 
 
-def read_dlc_csv(csv_file_path: str, **kwargs) -> pd.DataFrame:
+def read_csv(csv_file_path: str, **kwargs) -> pd.DataFrame:
     """
     Reads in a CSV that is assumed to be an output of DLC. The raw CSV is re-formatted to be more
-    friendly towards data manipulation later in the feature engineering pipeline.
-    * NO MATH IS DONE HERE, NO DATA IS REMOVED *
+    friendly towards data manipulation later in the B-SOiD feature engineering pipeline.
+        * NO MATH IS DONE HERE, NO DATA IS REMOVED *
 
-    :param csv_file_path:
+    :param csv_file_path: (str, absolute path) The input file path requires the CSV file in question to be
+        an output of the DLC process. If the file is not, use pd.read_csv() instead.
 
     EXAMPLE data: DataFrame directly after invoking pd.read_csv(csv, header=None):
                   0                                               1                                               2                                               3                                                4  ...
@@ -36,7 +37,6 @@ def read_dlc_csv(csv_file_path: str, **kwargs) -> pd.DataFrame:
         4          1                              1012.7627563476562                               660.2426147460938                                             1.0                              1020.0912475585938  ...
 
     :return: (DataFrame)
-
         EXAMPLE OUTPUT:
           bodyparts_coords        Snout/Head_x       Snout/Head_y Snout/Head_likelihood Forepaw/Shoulder1_x Forepaw/Shoulder1_y Forepaw/Shoulder1_likelihood  ...                                          scorer
         0                0     1013.7373046875   661.953857421875                   1.0  1020.1138305664062   621.7146606445312           0.9999985694885254  ...  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000
