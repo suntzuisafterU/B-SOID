@@ -10,6 +10,13 @@ from bsoid.util.io import (
 
 
 # General imports for packages
-from . import app, config, classify, feature_engineering, train
+from . import (
+    app,
+    config,
+    classify,
+    feature_engineering,
+    main_LEGACY,  # TODO: low: remove this after rewiring legacy code
+    train
+)
 from .util import check_arg, io, likelihoodprocessing, bsoid_logging, statistics, videoprocessing, visuals
 
