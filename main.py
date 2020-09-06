@@ -24,7 +24,8 @@ bsoid_runtime_description = 'BSOID command line utility. Do BSOID stuff. Expand 
 map_command_to_func = {
     'cleanoutput': bsoid.app.clear_output_folders,
     'clean': bsoid.app.clear_output_folders,
-    'buildandrunlegacy': bsoid.main_LEGACY.test_function_to_build_then_run_py
+    'buildandrunlegacy': bsoid.main_LEGACY.test_function_to_build_then_run_py,
+    'newbuild': bsoid.app.build_classifier_new_pipeline,
 }
 
 
