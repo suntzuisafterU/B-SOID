@@ -49,7 +49,7 @@ def plot_tsne_in_3d(data, **kwargs):  # TODO: HIGH: consider reducing the total 
     plt.title('Embedding of the training set by t-SNE')
     plt.show()
 #######################################################################################################################
-def plot_duration_histogram(lengths, grp, save_fig_to_file: bool = True, fig_file_prefix='duration_hist_100msbins') -> object:
+def plot_duration_histogram(lengths, grp, save_fig_to_file: bool = config.SAVE_GRAPHS_TO_FILE, fig_file_prefix='duration_histogram_100ms_bins') -> object:
     """
     TODO: low: purpose
     :param lengths: 1D array, run lengths of each bout.
@@ -66,7 +66,7 @@ def plot_duration_histogram(lengths, grp, save_fig_to_file: bool = True, fig_fil
         ax.hist(x, density=True, color=colormap[i], alpha=0.3, label=f'Group {i}')
     plt.legend(loc='Upper right')
     plt.show()
-    time_str = time.strftime("%Y%m%d_%H%M")  # TODO: low: move this to config file
+    time_str = config.runtime_timestr  # time_str = time.strftime("%Y%m%d_%H%M")  # TODO: low: move this to config file
     if save_fig_to_file:
         fig_file_name = f'{fig_file_prefix}_{time_str}'
         save_graph_to_file(fig, fig_file_name)
@@ -95,7 +95,7 @@ def plot_transition_matrix(transition_matrix: np.ndarray, fps, save_fig_to_file,
     plt.ylabel("Current frame behavior")
     plt.show()
     if save_fig_to_file:
-        fig_file_name = f'{fig_file_prefix}{fps}'
+        fig_file_name = f'{fig_file_prefix}_{fps}FPS'
         save_graph_to_file(fig, fig_file_name)
     return fig
 def plot_classes_bsoidumap(data, assignments, **kwargs) -> object:
@@ -143,7 +143,7 @@ def plot_classes_EMGMM_assignments(data, assignments, save_fig_to_file: bool, fi
     marker = kwargs.get('marker', 'o')
     alpha = kwargs.get('alpha', 0.8)
     # Plot graph
-    time_str = time.strftime("%Y%m%d_%H%M")
+    time_str = config.runtime_timestr  # time_str = time.strftime("%Y%m%d_%H%M")
     uk = list(np.unique(assignments))
     R = np.linspace(0, 1, len(uk))
     colormap = plt.cm.get_cmap("Spectral")(R)
@@ -192,7 +192,8 @@ def plot_classes_bsoidapp(data, assignments) -> Tuple:
 
 
 #######################################################################################################################
-def plot_accuracy_MLP(scores, show_plot: bool, save_fig_to_file: bool, fig_file_prefix='clf_scores', **kwargs) -> Tuple:
+@config.cfig_log_entry_exit(logger)
+def plot_accuracy_MLP(scores, show_plot=config.PLOT_GRAPHS, save_fig_to_file=config.SAVE_GRAPHS_TO_FILE, fig_file_prefix='classifier_accuracy_score', **kwargs) -> Tuple:
     """
     TODO: low: purpose
     :param scores: 1D array, cross-validated accuracies for MLP classifier.
@@ -217,7 +218,7 @@ def plot_accuracy_MLP(scores, show_plot: bool, save_fig_to_file: bool, fig_file_
     plt.scatter(x, scores, s=s, c=c, alpha=alpha)
     ax.set_xlabel('MLP classifier')
     ax.set_ylabel('Accuracy')
-    time_str = time.strftime("%Y%m%d_%H%M")
+    time_str = config.runtime_timestr  # time_str = time.strftime("%Y%m%d_%H%M")
     # Plot and save as specified
     if show_plot:
         plt.show()
@@ -225,9 +226,8 @@ def plot_accuracy_MLP(scores, show_plot: bool, save_fig_to_file: bool, fig_file_
         fig_file_name = f'{fig_file_prefix}_{time_str}'
         save_graph_to_file(fig, fig_file_name)
     return fig, plt
-
 @config.cfig_log_entry_exit(logger)
-def plot_accuracy_SVM(scores, save_fig_to_file=True, fig_file_prefix='clf_scores', **kwargs):
+def plot_accuracy_SVM(scores, save_fig_to_file=config.SAVE_GRAPHS_TO_FILE, fig_file_prefix='classifier_accuracy_score', **kwargs):
     """
     This is the new interface for plotting accuracy for an SVM classifier.
     :param scores: (1D array) cross-validated accuracies for SVM classifier.
@@ -244,7 +244,7 @@ def plot_accuracy_SVM(scores, save_fig_to_file=True, fig_file_prefix='clf_scores
     alpha = kwargs.get('alpha', 0.5)
     #
     # TODO: decouple the fig saving and the plotting. Current state is due to legacy.
-    time_str = time.strftime("%Y%m%d_%H%M")
+    time_str = config.runtime_timestr  # time_str = time.strftime("%Y%m%d_%H%M")
     fig = plt.figure(facecolor=facecolor, edgecolor=edgecolor)
     fig.suptitle(f"Performance on {config.HOLDOUT_PERCENT * 100} % data")
     ax = fig.add_subplot(111)
@@ -276,7 +276,7 @@ def plot_feats_bsoidUMAPAPP(feats: list, labels: list) -> None:
     :param feats: list, features for multiple sessions
     :param labels: list, labels for multiple sessions
     """
-    time_str = time.strftime("%Y%m%d_%H%M")
+    time_str = config.runtime_timestr  # time_str = time.strftime("%Y%m%d_%H%M")
     feat_ls = ("Relative snout to forepaws placement", "Relative snout to hind paws placement",
                "Inter-forepaw distance", "Body length", "Body angle",
                "Snout displacement", "Tail-base displacement")
@@ -363,7 +363,7 @@ def plot_feats_bsoidpy(feats, labels) -> None:
     :param feats: list, features for multiple sessions
     :param labels: list, labels for multiple sessions
     """
-    time_str = time.strftime("%Y%m%d_%H%M")
+    time_str = config.runtime_timestr  # time_str = time.strftime("%Y%m%d_%H%M")
     feat_ls = ("Relative snout to forepaws placement",
                "Relative snout to hind paws placement",
                "Inter-forepaw distance",
@@ -406,8 +406,7 @@ def plot_feats_bsoidpy(feats, labels) -> None:
                         if i < len(np.unique(labels_k)) - 1:
                             plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
                 if config.SAVE_GRAPHS_TO_FILE:
-                    time_str = time.strftime("%Y%m%d_%H%M")
-                    file_name = f'sess{k+1}_feat{j+1}_hist_{time_str}'  # = my_file+'_'+time_str
+                    file_name = f'session_{k+1}__feature_{j+1}__histogram__{time_str}'  # = my_file+'_'+time_str
                     save_graph_to_file(fig, file_name)  # fig.savefig(os.path.join(config.OUTPUT_PATH, my_file+'_'+time_str+'.svg'))
             plt.show()
     else:
@@ -439,7 +438,7 @@ def plot_feats_bsoidpy(feats, labels) -> None:
                     if i < len(np.unique(labels)) - 1:
                         plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
             if config.SAVE_GRAPHS_TO_FILE:
-                file_name = f'feat{j + 1}_hist_{time_str}'  # my_file = f'feat{j + 1}_hist' ;fig.savefig(os.path.join(config.OUTPUT_PATH, f'{my_file}_{time_str}.svg'))
+                file_name = f'feature_{j + 1}__histogram__{time_str}'  # my_file = f'feat{j + 1}_hist' ;fig.savefig(os.path.join(config.OUTPUT_PATH, f'{my_file}_{time_str}.svg'))
                 save_graph_to_file(fig, file_name)
         plt.show()
 @config.cfig_log_entry_exit(logger)
@@ -448,7 +447,7 @@ def plot_feats_bsoidvoc(feats: Union[List, np.ndarray], labels: list) -> None:
     :param feats: list, features for multiple sessions
     :param labels: list, labels for multiple sessions
     """
-    timestr = time.strftime("%Y%m%d_%H%M")
+    time_str = config.runtime_timestr  # timestr = time.strftime("%Y%m%d_%H%M")
     feat_ls = ("Distance between points 1 & 5", "Distance between points 1 & 8",
                "Angle change between points 1 & 2", "Angle change between points 1 & 4",
                "Point 3 displacement", "Point 7 displacement")
@@ -460,10 +459,7 @@ def plot_feats_bsoidvoc(feats: Union[List, np.ndarray], labels: list) -> None:
             feats_k = np.array(feats[k])
             R = np.linspace(0, 1, len(np.unique(labels_k)))
             color = plt.cm.get_cmap("Spectral")(R)
-            # feat_ls = ("Distance between points 1 & 5", "Distance between points 1 & 8",
-            #            "Angle change between points 1 & 2", "Angle change between points 1 & 4",
-            #            "Point 3 displacement", "Point 7 displacement")
-            for j in range(0, feats_k.shape[0]):
+            for j in range(feats_k.shape[0]):  # iterating over number of rows
                 fig = plt.figure(facecolor='w', edgecolor='k')
                 for i in range(0, len(np.unique(labels_k))):
                     plt.subplot(len(np.unique(labels_k)), 1, i + 1)
@@ -489,18 +485,17 @@ def plot_feats_bsoidvoc(feats: Union[List, np.ndarray], labels: list) -> None:
                         if i < len(np.unique(labels_k)) - 1:
                             plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
                 if config.SAVE_GRAPHS_TO_FILE:
-                    file_name = f'sess{k + 1}_feat{j + 1}_hist_{timestr}'
+                    file_name = f'session_{k + 1}__feature_{j+1}__histogram_{time_str}'
                     save_graph_to_file(fig, file_name)  # fig.savefig(os.path.join(config.OUTPUT_PATH, str.join('', (my_file, '_'+timestr, '.svg'))))
             plt.show()
-    else:
+    elif isinstance(labels, np.ndarray):
         R = np.linspace(0, 1, len(np.unique(labels)))
         color_map = plt.cm.get_cmap("Spectral")(R)
-        # feat_ls = ("Distance between points 1 & 5", "Distance between points 1 & 8",
-        #            "Angle change between points 1 & 2", "Angle change between points 1 & 4",
-        #            "Point 3 displacement", "Point 7 displacement")
+        # Iterating over number of rows
         for j in range(feats.shape[0]):
             fig = plt.figure(facecolor='w', edgecolor='k')
-            for i in range(0, len(np.unique(labels))):
+            # Iterating over unique labels (by index)
+            for i in range(len(np.unique(labels))):
                 plt.subplot(len(np.unique(labels)), 1, i + 1)
                 if j == 0 or j == 1 or j == 4 or j == 5:
                     plt.hist(feats[j, labels == i],
@@ -524,13 +519,14 @@ def plot_feats_bsoidvoc(feats: Union[List, np.ndarray], labels: list) -> None:
                     if i < len(np.unique(labels)) - 1:
                         plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
             if config.SAVE_GRAPHS_TO_FILE:
-                fig_file_name = f'feat{j + 1}_hist_{timestr}'  # my_file = f'feat{j + 1}_hist'; fig.savefig(os.path.join(config.OUTPUT_PATH, str.join('', (my_file, '_'+timestr, '.svg'))))
+                fig_file_name = f'feature_{j + 1}__histogram_{time_str}'  # my_file = f'feat{j + 1}_hist'; fig.savefig(os.path.join(config.OUTPUT_PATH, str.join('', (my_file, '_'+timestr, '.svg'))))
                 save_graph_to_file(fig, fig_file_name)
         plt.show()
+    else:
+        raise TypeError(f'unexpected type for labels: {type(labels)}')
 
 
-def save_graph_to_file(figure, file_title, file_type_extension=config.DEFAULT_SAVED_GRAPH_FILE_FORMAT,
-                       alternate_save_path: str = None) -> None:
+def save_graph_to_file(figure, file_title, file_type_extension=config.DEFAULT_SAVED_GRAPH_FILE_FORMAT, alternate_save_path: str = None) -> None:
     """
 
     :param figure: (object) a figure object. Must have a savefig() function
