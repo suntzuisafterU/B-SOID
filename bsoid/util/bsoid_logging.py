@@ -3,6 +3,7 @@ Encapsulate logging for BSOID
 """
 
 from logging.handlers import SMTPHandler
+import inspect
 import logging
 import re
 import time
@@ -141,6 +142,11 @@ def log_entry_exit(logger=None):
             return result
         return function_wrapper
     return decorator
+
+
+def get_current_function():
+    """"""
+    return inspect.stack()[1][3]
 
 
 if __name__ == '__main__':
