@@ -14,7 +14,7 @@ import math
 import numpy as np
 
 # # # B-SOiD imports # # #
-from bsoid import config
+from bsoid import config, feature_engineering
 from bsoid.util import check_arg, likelihoodprocessing, videoprocessing, visuals
 
 logger = config.initialize_logger(__name__)
@@ -508,13 +508,27 @@ def main_py(predict_folders: List[str], scaler, fps, svm_classifier__behavioural
     if config.PLOT_GRAPHS:
         visuals.plot_feats_bsoidpy(features_new, labels_frameshift_low)
 
+    # TODO: HIGH: Ensure that the labels predicted on predict_folders matches to the video that will be labeled hereafter
     if config.GENERATE_VIDEOS:
         if len(labels_frameshift_low) > 0:
-            videoprocessing.get_frames_from_video_then_create_labeled_video(
-                path_to_video=config.VIDEO_TO_LABEL_PATH,
-                labels=labels_frameshift_low[config.IDENTIFICATION_ORDER],
-                fps=fps,
-                output_path=config.FRAME_DIR)
+            # 1
+            videoprocessing.write_annotated_frames_to_disk_from_video(
+                config.VIDEO_TO_LABEL_PATH,
+                labels_frameshift_low[config.IDENTIFICATION_ORDER]
+            )
+            # 2
+            videoprocessing.create_labeled_vid(
+                labels_frameshift_low[config.IDENTIFICATION_ORDER],
+                critical_behaviour_min_duration=3,
+                num_randomly_generated_examples=5,
+                frame_dir=config.FRAMES_OUTPUT_PATH,
+                output_path=config.SHORT_VIDEOS_OUTPUT_PATH
+            )
+            # videoprocessing.get_frames_from_video_then_create_labeled_video(
+            #     path_to_video=config.VIDEO_TO_LABEL_PATH,
+            #     labels=labels_frameshift_low[config.IDENTIFICATION_ORDER],
+            #     fps=fps,
+            #     output_path=config.FRAMES_OUTPUT_PATH)
         else:
             logger.error(f'{__name__}::{inspect.stack()[0][3]}::config.GENERATE_VIDEOS = {config.GENERATE_VIDEOS}; '
                          f'however, the generation of '
@@ -536,13 +550,13 @@ def main_umap(predict_folders: List[str], fps, clf) -> Tuple[List[np.ndarray], L
     labels_frameshift: List = bsoid_frameshift_umap(data_new, fps, clf)
 
     # if config.GENERATE_VIDEOS:
-    #     videoprocessing.get_frames_from_video_then_create_labeled_video(config.VIDEO_TO_LABEL_PATH, labels_fs[config.ID][0:-1:int(round(fps / 10))], fps, config.FRAME_DIR)
+    #     videoprocessing.get_frames_from_video_then_create_labeled_video(config.VIDEO_TO_LABEL_PATH, labels_fs[config.ID][0:-1:int(round(fps / 10))], fps, config.FRAMES_OUTPUT_PATH)
     if config.GENERATE_VIDEOS:
         videoprocessing.get_frames_from_video_then_create_labeled_video(
             path_to_video=config.VIDEO_TO_LABEL_PATH,
             labels=labels_frameshift[config.IDENTIFICATION_ORDER][:-1:int(round(fps / 10))],
             fps=fps,
-            output_path=config.FRAME_DIR)
+            output_path=config.FRAMES_OUTPUT_PATH)
 
     return data_new, labels_frameshift
 def main_voc(predict_folders: List[str], fps, behv_model) -> Tuple[List[np.ndarray], Any, Any, Any]:
@@ -569,7 +583,7 @@ def main_voc(predict_folders: List[str], fps, behv_model) -> Tuple[List[np.ndarr
             path_to_video=config.VIDEO_TO_LABEL_PATH,
             labels=labels_frameshift_low[config.IDENTIFICATION_ORDER],
             fps=fps,
-            output_path=config.FRAME_DIR)
+            output_path=config.FRAMES_OUTPUT_PATH)
 
     return data_new, features_new, labels_frameshift_low, labels_frameshift_high
 
@@ -591,8 +605,14 @@ def bsoid_extract_py(data, bodyparts: dict = config.BODYPARTS_PY_LEGACY, fps: in
     :param fps:
     :return:
     """
+    replacement_1 = feature_engineering.extract_7_features_bsoid_tsne_py
+    replacement_2 = feature_engineering.integrate_features_into_100ms_bins
     logger.warning(f'This function, {inspect.stack()[0][3]}(), is the old but '
-                   f'correct implementation of feature extraction for bsoid_py.')
+                   f'correct implementation of feature extraction for bsoid_py.'
+                   f'Caller = {inspect.stack()[1][3]}. Likely to be replaced by 2 functions that split up the work:'
+                   f'replace_1 = {replacement_1.__qualname__} / replace_2 = {replacement_2.__qualname__}.'
+                   f'In fact, these functions may end up deprecated because new feature engineering '
+                   f'pipelining is being implemented :) Stay tuned!')
     if isinstance(data, np.ndarray):
         data = list(data)
 
