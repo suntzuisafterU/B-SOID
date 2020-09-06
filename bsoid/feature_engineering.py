@@ -24,6 +24,7 @@ import math
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+import pandas as pd
 import time
 import umap
 
@@ -34,6 +35,105 @@ logger = config.initialize_logger(__name__)
 
 
 ########################################################################################################################
+
+def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.DataFrame, List]:  # TODO: implement new adaptive-filter_data for new data pipelineing
+    """ Successor function to old method in likelikhood processing. Uses new DF format.
+    Takes in a
+
+    Follows same form as legacy only for continuity reasons. Can be refactored for performance later.
+
+    :param df_input_data: (DataFrame) expected: raw DataFrame of DLC results right after
+        reading in using bsoid.read_csv().
+
+        EXAMPLE `df_input_data` input:
+              bodyparts_coords        Snout/Head_x       Snout/Head_y Snout/Head_likelihood Forepaw/Shoulder1_x Forepaw/Shoulder1_y Forepaw/Shoulder1_likelihood  ...                                          scorer
+            0                0     1013.7373046875   661.953857421875                   1.0  1020.1138305664062   621.7146606445312           0.9999985694885254  ...  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000
+            1                1  1012.7627563476562  660.2426147460938                   1.0  1020.0912475585938   622.9310913085938           0.9999995231628418  ...  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000
+            2                2  1012.5982666015625   660.308349609375                   1.0  1020.1837768554688   623.5087280273438           0.9999994039535522  ...  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000
+            3                3  1013.2752685546875  661.3504028320312                   1.0     1020.6982421875   624.2875366210938           0.9999998807907104  ...  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000
+            4                4  1013.4093017578125  661.3643188476562                   1.0  1020.6074829101562     624.48486328125           0.9999998807907104  ...  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000
+    :param copy: (bool) Indicates whether to create an entirely new DataFrame object as a result.
+
+    :return
+        : DataFrame of filtered data
+        : 1D array, percent filtered per BODYPART
+    """
+    # Type checking args
+    if not isinstance(in_df, pd.DataFrame):
+        raise TypeError(f'Input data was expected to be of type pandas.DataFrame but '
+                        f'instead found: {type(in_df)}.')
+    df = in_df.copy() if copy else in_df
+
+    # Continue if args valid
+    x_index, y_index, l_index, percent_filterd_per_bodypart__perc_rect = [], [], [], []
+
+    # # Remove top row. The top row only contained project name headers
+    # df_input_data_with_projectname_header_removed: pd.DataFrame = df_input_data[1:]
+
+    # # Convert data to raw array
+    # array_input_data_with_projectname_header_removed = np.array(df_input_data_with_projectname_header_removed)
+
+    # Loop over columns, aggregate which indices in the data fall under which category.
+    #   x, y, and likelihood are the three main types of columns output from DLC.
+    raise NotImplementedError('finish below off later')   #TODO: finish off function ########################################
+    number_of_cols = len(array_input_data_with_projectname_header_removed[0])  # number_of_cols = len(array_input_data_with_top_row_removed[0])
+
+
+    for idx_col, column in enumerate(df.columns):
+        column_suffix = column.split('_')[-1]  # Columns take the regular form `FEATURE_(x|y|likelihood|coords|)`, so split by _ OK
+        if column_suffix == "likelihood":
+            l_index.append(column_suffix)
+        elif column_suffix == "x":
+            x_index.append(column_suffix)
+        elif column_suffix == "y":
+            y_index.append(column_suffix)
+        elif column_suffix == 'coords':
+            pass  # Ignore. Usually this is the index column and is only seen once. No data in this column.
+        else:
+            err = f'An inappropriate column header was found: ' \
+                  f'{column_suffix}. Column = {column}' \
+                  f'Check on CSV to see if has an unexpected output format.'
+            logger.error(err)
+            raise ValueError(err)
+
+    ########## TODO: finish this ##########################################################################################################################################################
+    # Remove the first column (called "coords", the index which counts rows but has no useful data)
+    array_input_data_without_coords = array_input_data_with_projectname_header_removed[:, 1:]  # curr_df1 = array_input_data_with_top_row_removed[:, 1:]
+    # Slice data into separate arrays based on column names (derived earlier from the respective index)
+    data_x = array_input_data_without_coords[:, np.array(x_index) - 1]
+    data_y = array_input_data_without_coords[:, np.array(y_index) - 1]
+    data_likelihood = array_input_data_without_coords[:, np.array(l_index) - 1]
+
+    array_data_filtered = np.zeros((data_x.shape[0]-1, (data_x.shape[1]) * 2))  # Initialized as zeroes with  # currdf_filt: np.ndarray = np.zeros((data_x.shape[0]-1, (data_x.shape[1]) * 2))
+
+    logger.debug(f'{inspect.stack()[0][3]}: Computing data threshold to forward fill any sub-threshold (x,y)...')
+    percent_filterd_per_bodypart__perc_rect = [0 for _ in range(data_likelihood.shape[1])]  # for _ in range(data_lh.shape[1]): perc_rect.append(0)
+
+    # Loop over data and do adaptive filtering
+    logger.debug(f'{inspect.stack()[0][3]}: Loop over data and do adaptive filtering.')
+    for x in tqdm(range(data_likelihood.shape[1]), desc=f'{inspect.stack()[0][3]}: Adaptively filtering data...'):
+        histogram, bin_edges = np.histogram(data_likelihood[1:, x].astype(np.float))
+        rise_a = np.where(np.diff(histogram) >= 0)
+        if rise_a[0][0] > 1:
+            llh = ((bin_edges[rise_a[0][0]] + bin_edges[rise_a[0][0]-1]) / 2)
+        else:
+            llh = ((bin_edges[rise_a[0][1]] + bin_edges[rise_a[0][1]-1]) / 2)
+        data_lh_float = data_likelihood[1:, x].astype(np.float)
+        percent_filterd_per_bodypart__perc_rect[x] = np.sum(data_lh_float < llh) / data_likelihood.shape[0]
+        for i in range(1, data_likelihood.shape[0] - 1):
+            if data_lh_float[i] < llh:
+                array_data_filtered[i, (2 * x):(2 * x + 2)] = array_data_filtered[i - 1, (2 * x):(2 * x + 2)]
+            else:
+                array_data_filtered[i, (2 * x):(2 * x + 2)] = np.hstack([data_x[i, x], data_y[i, x]])
+
+    # Remove first row in data array (values are all zeroes)
+    array_filtered_data_without_first_row = np.array(array_data_filtered[1:])
+
+    # Convert all data to np.float
+    final_array_filtered_data = array_filtered_data_without_first_row.astype(np.float)
+
+    return final_array_filtered_data, percent_filterd_per_bodypart__perc_rect
+
 
 def extract_7_features_bsoid_tsne_py(list_of_arrays_data: List[np.ndarray], bodyparts: dict=config.BODYPARTS_PY_LEGACY, fps: int = config.VIDEO_FPS, comp: int = config.COMPILE_CSVS_FOR_TRAINING) -> List[np.ndarray]:
     """
