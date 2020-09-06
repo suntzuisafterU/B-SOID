@@ -44,7 +44,7 @@ BSOID_BASE_PROJECT_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file
 # Output directory to where you want the analysis to be stored
 default_output_path = os.path.join(BSOID_BASE_PROJECT_PATH, 'output')
 # Set runtime string for consistency
-runtime_timestr = time.strftime("%Y%m%d_%H%M")
+runtime_timestr = time.strftime("%Y-%m-%d_%HH%MM")
 # Set loggers default vars
 default_log_folder_path = Path(BSOID_BASE_PROJECT_PATH, 'logs').absolute()
 default_log_file_name = 'default.log'
@@ -81,7 +81,8 @@ DEFAULT_SAVED_GRAPH_FILE_FORMAT: str = configuration.get('APP', 'DEFAULT_SAVED_G
 GENERATE_VIDEOS: bool = configuration.getboolean('APP', 'GENERATE_VIDEOS')
 
 
-# Now, pick an example video that corresponds to one of the csv files from the PREDICT_FOLDERS
+
+# Now, pick an example video that corresponds to one of the csv files from the PREDICT_FOLDERS  # TODO: ************* This note from the original author implies that VID_NAME must be a video that corresponds to a csv from PREDICT_FOLDERS
 # VID_NAME = os.path.join(OST_BASE_PROJECT_PATH, 'GUI_projects', 'labelled_videos', '002_ratA_inc2_above.mp4')  # '/home/aaron/Documents/OST-with-DLC/GUI_projects/labelled_videos/002_ratA_inc2_above.mp4'
 VIDEO_TO_LABEL_PATH: str = configuration.get('APP', 'VIDEO_TO_LABEL_PATH')
 short_video_output_directory = os.path.join(OUTPUT_PATH, 'short_videos')
@@ -308,4 +309,5 @@ if __name__ == '__main__':
     print(get_config_str())
     print(max_rows_to_read_in_from_csv)
     print(VIDEO_FPS)
+    print(runtime_timestr)
     pass
