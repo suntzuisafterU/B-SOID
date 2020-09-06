@@ -18,7 +18,7 @@ from bsoid.util.likelihoodprocessing import sort_list_nicely_in_place
 logger = config.initialize_logger(__name__)
 
 
-def repeating_numbers(labels) -> Tuple[List, List, List]:  # TODO: low: rename function for clarity
+def repeating_numbers(labels) -> Tuple[List, List[int], List[int]]:  # TODO: low: rename function for clarity
     """
     TODO: med: purpose // purpose unclear
     :param labels: (list) predicted labels
@@ -29,7 +29,7 @@ def repeating_numbers(labels) -> Tuple[List, List, List]:  # TODO: low: rename f
     """
     n_list, idx, lengths = [], [], []
     i = 0
-    while i < len(labels) - 1:  # TODO: low: replace with a FOR-loop for clarity?
+    while i < len(labels) - 1:
         current_label = labels[i]
         n_list.append(current_label)
         start_index = i
@@ -56,7 +56,7 @@ def get_mp4_videos_from_folder_in_BASEPATH(folder_name: str) -> List[str]:
         raise TypeError(err)
     path_to_folder = os.path.join(config.DLC_PROJECT_PATH, folder_name)
     path_to_folder_with_glob = f'{path_to_folder}/*.mp4'
-    logger.debug(f'{inspect.stack()[0][3]}:get_mp4_videos_from_folder_in_BASEPATH():Path to check for videos: {path_to_folder_with_glob}')
+    logger.debug(f'{inspect.stack()[0][3]}(): Path to check for videos: {path_to_folder_with_glob}.')
     video_names = glob.glob(path_to_folder_with_glob)
     sort_list_nicely_in_place(video_names)
     return video_names
@@ -138,8 +138,7 @@ def import_vidfolders(folders: List[str], output_path: List[str]):
 
 ########################################################################################################################
 
-def create_labeled_vid(labels, crit=3, num_randomly_generated_examples=5,
-                       frame_dir=config.FRAME_DIR, output_path=config.SHORTVID_DIR) -> None:
+def create_labeled_vid(labels, crit=3, num_randomly_generated_examples=5, frame_dir=config.FRAME_DIR, output_path=config.SHORTVID_DIR) -> None:
     """
     (Generalized create_labeled_video() function that works between _py, _umap, and _voc submodules)
     TODO: low: purpose
@@ -156,19 +155,19 @@ def create_labeled_vid(labels, crit=3, num_randomly_generated_examples=5,
     frame = cv2.imread(os.path.join(frame_dir, images[0]))
     height, width, layers = frame.shape
     ranges_list, idx2_list = [], []
-    n, idx, lengths = repeating_numbers(labels)
+    rle_n, rle_idx, rle_lengths = repeating_numbers(labels)
     #
-    for idx_length, length in enumerate(lengths):
+    for idx_length, length in enumerate(rle_lengths):
         if length >= crit:
-            ranges_list.append(range(idx[idx_length], idx[idx_length] + length))
+            ranges_list.append(range(rle_idx[idx_length], rle_idx[idx_length] + length))
             idx2_list.append(idx_length)
 
     # Loop over the range generated from the total unique labels available
-    for idx_label in tqdm(range(len(np.unique(labels)))):
+    for idx_label in tqdm(range(len(np.unique(labels))), desc='Creating video (TODO: update this bar description)'):
         a = []  # TODO: low: `a` needs more description
         for idx_range in range(len(ranges_list)):
-            if n[idx2_list[idx_range]] == idx_label:
-                a += [ranges_list[idx_range], ]  # Previously: a.append(ranges[idx_range]). Remove comment as necessary.
+            if rle_n[idx2_list[idx_range]] == idx_label:
+                a += [ranges_list[idx_range], ]  # Previously: a.append(ranges[idx_range])
         try:
             random_ranges = random.sample(a, num_randomly_generated_examples)  # TODO: add a min() function to `counts` argument?
             for idx_random_range in range(len(random_ranges)):
@@ -183,8 +182,9 @@ def create_labeled_vid(labels, crit=3, num_randomly_generated_examples=5,
                 video_writer = cv2.VideoWriter(
                     os.path.join(output_path, video_name),
                     four_character_code,
-                    5,  # TODO: med: 5 is a magic variable? FPS?
-                    (width, height))
+                    5,  # TODO: med: 5 is a magic variable? FPS? #########################################################
+                    (width, height)
+                )
                 # Loop over all images and write to file
                 for image in grp_images:
                     video_writer.write(cv2.imread(os.path.join(frame_dir, image)))
