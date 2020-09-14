@@ -5,7 +5,7 @@ Summary statistics
 did not adhere to DRY standards and creates a single source of statistics utility.
 """
 
-from typing import Dict, List, Tuple
+from typing import List, Tuple
 import inspect
 import numpy as np
 import pandas as pd

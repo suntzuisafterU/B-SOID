@@ -3,7 +3,7 @@ likelihood processing utilities
 Forward fill low likelihood (x,y)
 """
 
-from typing import Any, List, Tuple
+from typing import List, Tuple
 from tqdm import tqdm
 import glob
 import inspect
@@ -13,14 +13,13 @@ import pandas as pd
 import re
 
 from bsoid import config
-from . import io
 
 
 logger = config.initialize_logger(__name__)
 
 
 ########################################################################################################################
-def get_current_function():
+def get_current_function() -> str:
     """"""
     return inspect.stack()[1][3]
 

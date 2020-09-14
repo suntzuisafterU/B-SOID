@@ -519,7 +519,7 @@ def main_py(predict_folders: List[str], scaler, fps, svm_classifier__behavioural
             # 2
             videoprocessing.create_labeled_vid(
                 labels_frameshift_low[config.IDENTIFICATION_ORDER],
-                critical_behaviour_min_duration=3,
+                critical_behaviour_minimum_duration=3,
                 num_randomly_generated_examples=5,
                 frame_dir=config.FRAMES_OUTPUT_PATH,
                 output_path=config.SHORT_VIDEOS_OUTPUT_PATH

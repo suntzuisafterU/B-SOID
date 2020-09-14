@@ -2,7 +2,7 @@
 Functions related to opening/saving files should go here
 """
 
-from typing import List, Tuple
+from typing import List
 import glob
 import inspect
 import numpy as np
@@ -137,7 +137,7 @@ def read_in_training_folders_dlc_output_csvs(folders_paths: List[str]) -> List[p
 def read_csvs(source) -> List[pd.DataFrame]:
     """
     Give a source/sources of .csv file, return a list of Pandas DataFrames
-    :param sources: (valid types: str, List[str], or Tuple[str]) sources of .csv files to read in. These
+    :param source: (valid types: str, List[str], or Tuple[str]) sources of .csv files to read in. These
         csv files are expected to be of DLC output after video analysis. The general layout format
         expected is as follows:
 

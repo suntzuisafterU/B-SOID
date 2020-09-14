@@ -62,7 +62,7 @@ def get_mp4_videos_from_folder_in_BASEPATH(folder_name: str) -> List[str]:
     return video_names
 
 
-def write_annotated_frames_to_disk_from_video(path_to_video: str, labels, fps: int = config.VIDEO_FPS, output_path: str = config.FRAMES_OUTPUT_PATH, pct_frames_to_label = config.PERCENT_FRAMES_TO_LABEL):
+def write_annotated_frames_to_disk_from_video(path_to_video: str, labels, fps: int = config.VIDEO_FPS, output_path: str = config.FRAMES_OUTPUT_PATH, pct_frames_to_label: float = config.PERCENT_FRAMES_TO_LABEL):
     """
     This function serves to supersede the old 'vid2frame()' function for future clarity.
 
@@ -155,36 +155,42 @@ def import_vidfolders(folders: List[str], output_path: List[str]):
 
 ########################################################################################################################
 
-def create_labeled_vid(labels, critical_behaviour_min_duration=3, num_randomly_generated_examples=5, frame_dir=config.FRAMES_OUTPUT_PATH, output_path=config.SHORTVID_DIR) -> None:
+def create_labeled_vid(labels, critical_behaviour_minimum_duration=3, num_randomly_generated_examples=5, frame_dir=config.FRAMES_OUTPUT_PATH, output_path=config.SHORTVID_DIR) -> None:
     """
     (Generalized create_labeled_video() function that works between _py, _umap, and _voc submodules)
     TODO: low: purpose
     :param labels: 1D array, labels from training or testing
-    :param critical_behaviour_min_duration: scalar, minimum duration for random selection of behaviors, default 300ms
+    :param critical_behaviour_minimum_duration: scalar, minimum duration for random selection of behaviors, default 300ms
     :param num_randomly_generated_examples: scalar, number of randomly generated examples, default 5  # TODO: low: default is actually 3..does counts refer to cv2.VideoWriter pathing?
     :param frame_dir: string, directory to where you extracted vid images in LOCAL_CONFIG
     :param output_path: string, directory to where you want to store short video examples in LOCAL_CONFIG
     """
     # Create list of only .png images found in the frames directory
     images: List[str] = [img for img in os.listdir(frame_dir) if img.endswith(".png")]
+    if len(images) <= 0:
+        empty_list_err = f''  # TODO:
+        logger.error(empty_list_err)
+        raise ValueError(empty_list_err)
     sort_list_nicely_in_place(images)
-    four_character_code = cv2.VideoWriter_fourcc(*'mp4v')
-    frame = cv2.imread(os.path.join(frame_dir, images[0]))
-    height, width, layers = frame.shape
-    ranges_list, idx2_list = [], []
 
+    # Extract first image in images list. Set dimensions.
+    four_character_code = cv2.VideoWriter_fourcc(*'mp4v')
+    first_image = cv2.imread(os.path.join(frame_dir, images[0]))
+    height, width, _layers = first_image.shape
+
+    # ?
+    ranges_list, idx2_list = [], []
     n, idx, lengths = repeating_numbers(labels)
 
-    #
     for idx_length, length in enumerate(lengths):
-        if length >= critical_behaviour_min_duration:
-            ranges_list.append(range(idx[idx_length], idx[idx_length] + length))
+        if length >= critical_behaviour_minimum_duration:
+            ranges_list.append(range(idx[idx_length], idx[idx_length]+length))
             idx2_list.append(idx_length)
 
     # Loop over the range generated from the total unique labels available
     for idx_label in tqdm(range(len(np.unique(labels))), desc=f'{inspect.stack()[0][3]}(): Creating video (TODO: update this bar description)'):
         a = []  # TODO: low: `a` needs more description
-        for idx_range in range(len(ranges_list)):
+        for idx_range in range(len(ranges_list)):  # TODO: low: could making this loop into a comprehension be more readable?
             if n[idx2_list[idx_range]] == idx_label:
                 a += [ranges_list[idx_range], ]  # Previously: a.append(ranges[idx_range])
         try:
@@ -214,7 +220,7 @@ def create_labeled_vid(labels, critical_behaviour_min_duration=3, num_randomly_g
         except Exception as e:  # TODO: low: exception is very general. Address?
             err = f'{inspect.stack()[0][3]}: Unexpected exception occurred when trying to make video. ' \
                   f'Review exception and address/make function more robust instead of failing silently. ' \
-                  f'Exception = {repr(e)}.'
+                  f'Exception is: {repr(e)}.'
             logger.error(err)
             pass
     return
@@ -237,7 +243,7 @@ def create_labeled_vid_app(labels, crit, counts, output_fps, video_frames_direct
     sort_list_nicely_in_place(images)
     four_character_code = cv2.VideoWriter_fourcc(*'avc1')  # fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     frame = cv2.imread(os.path.join(video_frames_directory, images[0]))
-    height, width, layers = frame.shape
+    height, width, _layers = frame.shape
     ranges, idx2 = [], []
     n, idx, lengths = repeating_numbers(labels)
     for idx_length, length in enumerate(lengths):
@@ -287,7 +293,7 @@ def get_frames_from_video_then_create_labeled_video(path_to_video, labels, fps, 
               f'inside explicitly. '
     logger.warning(warning)
     write_annotated_frames_to_disk_from_video(path_to_video, labels, fps, output_path)
-    create_labeled_vid(labels, critical_behaviour_min_duration=3, num_randomly_generated_examples=5, frame_dir=output_path, output_path=config.SHORTVID_DIR)
+    create_labeled_vid(labels, critical_behaviour_minimum_duration=3, num_randomly_generated_examples=5, frame_dir=output_path, output_path=config.SHORTVID_DIR)
 
 
 ###

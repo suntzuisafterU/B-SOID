@@ -10,11 +10,9 @@ from mpl_toolkits.mplot3d import Axes3D  # Despite being "unused", this import M
 from typing import List, Tuple, Union
 import inspect
 import os
-import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sn
-import time
 
 from bsoid import config
 from bsoid.util import likelihoodprocessing
@@ -271,9 +269,9 @@ def plot_accuracy_SVM(scores, save_fig_to_file=config.SAVE_GRAPHS_TO_FILE, fig_f
 
 #######################################################################################################################
 @config.deco__log_entry_exit(logger)
-def plot_feats_bsoidUMAPAPP(feats: list, labels: list) -> None:
+def plot_feats_bsoidUMAPAPP(feats, labels: list) -> None:
     """
-    :param feats: list, features for multiple sessions
+    :param feats: list (or numpy array??), features for multiple sessions  # TODO
     :param labels: list, labels for multiple sessions
     """
     time_str = config.runtime_timestr  # time_str = time.strftime("%Y%m%d_%H%M")
@@ -282,7 +280,7 @@ def plot_feats_bsoidUMAPAPP(feats: list, labels: list) -> None:
                "Snout displacement", "Tail-base displacement")
 
     labels_is_type_list = isinstance(labels, list)
-    if labels_is_type_list:
+    if isinstance(labels, list):
         for k in range(len(feats)):
             labels_k = np.array(labels[k])
             feats_k = np.array(feats[k])
@@ -320,7 +318,7 @@ def plot_feats_bsoidUMAPAPP(feats: list, labels: list) -> None:
                     fig_file_name = f'sess{k + 1}_feat{j + 1}_hist'
                     fig.savefig(os.path.join(config.OUTPUT_PATH, fig_file_name+'_'+time_str+'.svg'))
             plt.show()
-    else:
+    elif isinstance(labels, np.ndarray):
         R = np.linspace(0, 1, len(np.unique(labels)))
         color = plt.cm.get_cmap("Spectral")(R)
         # feat_ls = ("Relative snout to forepaws placement", "Relative snout to hind paws placement",
@@ -357,6 +355,11 @@ def plot_feats_bsoidUMAPAPP(feats: list, labels: list) -> None:
                 save_graph_to_file(fig, fig_file_name)  # fig.savefig(os.path.join(config.OUTPUT_PATH, f'{my_file}_{time_str}.svg'))
 
         plt.show()
+    else:
+        type_err = f''
+        logger.error(type_err)
+        raise TypeError(type_err)
+
 @config.deco__log_entry_exit(logger)
 def plot_feats_bsoidpy(feats, labels) -> None:
     """
