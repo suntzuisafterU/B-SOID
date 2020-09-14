@@ -26,6 +26,10 @@ import random
 import sys
 import time
 
+
+from bsoid.util import bsoid_logging
+
+
 # Debug opts
 pd.set_option('display.max_rows', None)
 pd.set_option('display.max_columns', None)
@@ -33,8 +37,6 @@ pd.set_option('display.width', None)
 pd.set_option('display.max_colwidth', None)
 np.set_printoptions(threshold=1_000)
 
-
-from bsoid.util import bsoid_logging
 
 deco__log_entry_exit: callable = bsoid_logging.log_entry_exit  # TODO: temporary measure to enable logging when entering/exiting functions
 
@@ -60,6 +62,7 @@ configuration.read(os.path.join(BSOID_BASE_PROJECT_PATH, config_file_name))
 ##### READ CONFIG FOR RUNTIME VARIABLES #####
 
 DLC_PROJECT_PATH = configuration.get('PATH', 'DLC_PROJECT_PATH')
+
 # Resolve output path
 config_output_path = configuration.get('PATH', 'OUTPUT_PATH')
 OUTPUT_PATH = config_output_path if config_output_path else default_output_path
@@ -93,7 +96,7 @@ SHORTVID_DIR = short_video_output_directory  # LEGACY. To be deprecated.
 # ID = identification_order  # TODO: DEPRECATE. ID WAS A MISTAKE, BUT NOT SURE WHY/WHAT IT DOES
 
 
-assert os.path.isdir(DLC_PROJECT_PATH), f'BASEPATH DOES NOT EXIST: {DLC_PROJECT_PATH}'
+assert os.path.isdir(DLC_PROJECT_PATH), f'DLC_PROJECT_PATH DOES NOT EXIST: {DLC_PROJECT_PATH}'
 assert os.path.isfile(VIDEO_TO_LABEL_PATH) or not VIDEO_TO_LABEL_PATH, \
     f'Video does not exist: {VIDEO_TO_LABEL_PATH}. Check pathing in config.ini file.'
 
@@ -257,13 +260,19 @@ TSNE_PARAMS = {
 
 ########################################################################################################################
 ##### TESTING VARIABLES #####
-max_rows_to_read_in_from_csv: int = configuration.getint('TESTING', 'max_rows_to_read_in_from_csv') if configuration.getint('TESTING', 'max_rows_to_read_in_from_csv') else sys.maxsize
+# try:
+#     max_rows_to_read_in_from_csv = configuration.getint('TESTING', 'MAX_ROWS_TO_READ_IN_FROM_CSV')
+# except ValueError:  # In the case that the value is empty (since it is optional), assign max possible size to read in
+#     max_rows_to_read_in_from_csv = sys.maxsize
+max_rows_to_read_in_from_csv: int = configuration.getint('TESTING', 'max_rows_to_read_in_from_csv') if configuration.get('TESTING', 'max_rows_to_read_in_from_csv') else sys.maxsize
 
 
 ########################################################################################################################
 ##### LEGACY VARIABLES #####
 # This version requires the six body parts Snout/Head, Forepaws/Shoulders, Hindpaws/Hips, Tailbase.
-BODYPARTS_PY_LEGACY = {  # It appears as though the names correlate to the expected index of the feature when in Numpy array form
+#   It appears as though the names correlate to the expected index of the feature when in Numpy array form.
+#   __
+BODYPARTS_PY_LEGACY = {
     'Snout/Head': 0,
     'Neck': None,
     'Forepaw/Shoulder1': 1,
@@ -302,8 +311,6 @@ def get_config_str() -> str:
     for section in configuration.sections():
         config_string += f'SECTION: {section} // OPTIONS: {configuration.options(section)}\n'
     return config_string.strip()
-
-
 
 
 map_group_to_behaviour = {
