@@ -3,7 +3,7 @@
 
 Every function in this file is an entire runtime sequence encapsulated.
 """
-from typing import List
+from typing import Any, List, Tuple
 import inspect
 import pandas as pd
 import os
@@ -32,15 +32,40 @@ def clear_output_folders() -> None:
     # Loop over all folders to empty
     for folder_path in folders_to_clear:
         # Parse all files in current folder_path, but exclusive placeholders, folders
-        files_not_placeholder = [f for f in os.listdir(folder_path) if
-                                 f != '.placeholder' and not os.path.isdir(os.path.join(folder_path, f))]
+        valid_files_to_delete = [file_name for file_name in os.listdir(folder_path)
+                                 if file_name != '.placeholder'
+                                 and not os.path.isdir(os.path.join(folder_path, file_name))]
         # Loop over remaining files (within current folder iter) that are to be deleted next
-        for non_placeholder_file in files_not_placeholder:
-            file_to_delete_full_path = os.path.join(folder_path, non_placeholder_file)
-            logger.debug(f'{inspect.stack()[0][3]}(): Deleting file: {file_to_delete_full_path}')
-            os.remove(file_to_delete_full_path)
+        for file in valid_files_to_delete:
+            file_to_delete_full_path = os.path.join(folder_path, file)
+            try:
+                os.remove(file_to_delete_full_path)
+                logger.debug(f'{inspect.stack()[0][3]}(): Deleted file: {file_to_delete_full_path}')
+            except PermissionError as pe:
+                logger.warning(f'{inspect.stack()[0][3]}(): Could not delete file: {file_to_delete_full_path} / '
+                             f'{repr(pe)}')
 
     return None
+
+
+def clear_logs() -> None:
+    log_folder = config.config_file_log_folder_path
+    confirmation = input(f'You are about to destroy ALL files in your log '
+                         f'folder ({log_folder}) -- are you sure you want to do this? [Y/N]: ').strip().upper()
+
+    if confirmation == 'Y' or confirmation == 'YES':
+        files_to_delete = [file for file in os.listdir(log_folder) if file != '.placeholder']
+        for file in files_to_delete:
+            file_to_delete_path = os.path.join(log_folder, file)
+            try:
+                os.remove(file_to_delete_path)
+                logger.debug(f'{inspect.stack()[0][3]}(): deleted file: {file_to_delete_path}')
+            except PermissionError as pe:
+                logger.warning(f'{inspect.stack()[0][3]}(): Could not delete file: {file_to_delete_path} / {repr(pe)}')
+    else:
+        print('Clearing log files canceled. Have a great day!')
+
+    return
 
 
 def build_classifier_new_pipeline() -> None:
@@ -51,7 +76,7 @@ def build_classifier_new_pipeline() -> None:
     dfs_raw_list: List[pd.DataFrame] = []
     for train_path in config.TRAIN_FOLDERS_PATHS:
         logger.debug(f'train_path = {train_path}')
-        csvs = io.check_folder_contents_for_csv_files(train_path, check_recursively=True)
+        csvs: List[str] = io.check_folder_contents_for_csv_files(train_path, check_recursively=True)
         logger.debug(f'csvs = {csvs}')
         for csv_i in csvs:
             df_csv_i: pd.DataFrame = io.read_csv(csv_i)
@@ -59,13 +84,28 @@ def build_classifier_new_pipeline() -> None:
     logger.debug(f'len(dfsList) = {len(dfs_raw_list)}')
 
     # Adaptively filter
-    dfs_list_filtered: List[pd.DataFrame] = [feature_engineering.adaptively_filter_dlc_output(df) for df in dfs_raw_list]
+    # TODO: finish adaptive filtering function
+    dfs_list_filtered: List[Tuple[pd.DataFrame, List]] = [feature_engineering.adaptively_filter_dlc_output(df)
+                                                          for df in dfs_raw_list]
 
 
-    raise Exception('Safely stop')
+    # Loop over DataFrames, engineer features!
+    # TODO: finish feature engineering
+    dfs_engineered_features: List[pd.DataFrame] = [feature_engineering.extract_features(df)
+                                                   for df, _ in dfs_list_filtered]
+
+
+
+
+
+    ####################################################################################################################
 
 
     file_names_list, list_of_arrays_of_training_data, _perc_rect = likelihoodprocessing.import_csvs_data_from_folders_in_PROJECTPATH_and_process_data(train_folders)
+
+
+
+
     # Check that outputs are fine for runtime
     if len(file_names_list) == 0:
         zero_folders_error = f'{inspect.stack()[0][3]}: Zero training folders were specified. Check ' \
@@ -76,6 +116,10 @@ def build_classifier_new_pipeline() -> None:
         zero_filenames_error = f'{inspect.stack()[0][3]}: Zero file names were found. filenames = {file_names_list}.'
         logger.error(zero_filenames_error)
         raise ValueError(zero_filenames_error)
+
+
+
+
 
     # Train TSNE
     features_10fps, features_10fps_scaled, trained_tsne_list, scaler = extract_features_and_train_TSNE(list_of_arrays_of_training_data)  # features_10fps, features_10fps_scaled, trained_tsne_list, scaler = bsoid_tsne_py(list_of_arrays_of_training_data)  # replace with: extract_features_and_train_TSNE
@@ -93,6 +137,8 @@ def build_classifier_new_pipeline() -> None:
         visuals.plot_accuracy_SVM(scores)
         visuals.plot_feats_bsoidpy(features_10fps, gmm_assignments)
         logger.debug(f'Exiting GRAPH PLOTTING section of {inspect.stack()[0][3]}')
+
+
     return features_10fps, trained_tsne_list, scaler, gmm_assignments, classifier, scores
 
     return
