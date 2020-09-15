@@ -197,8 +197,11 @@ def extract_features_and_train_TSNE(list_of_arrays_data: List[np.ndarray], bodyp
             f_10fps_scaled.append(feats1_stnd)
             logger.info(f'Training t-SNE to embed {f_10fps_scaled[n].shape[1]} instances from '
                         f'{f_10fps_scaled[n].shape[0]} D into 3 D from CSV file {n + 1}...')
-            trained_tsne_i = TSNE_bthsne(f_10fps_scaled[n].T, dimensions=3, perplexity=np.sqrt(f_10fps_scaled[n].shape[1]),
-                                         theta=0.5, rand_seed=config.RANDOM_STATE)
+            trained_tsne_i = TSNE_bthsne(
+                f_10fps_scaled[n].T,
+                dimensions=3, perplexity=np.sqrt(f_10fps_scaled[n].shape[1]),
+                theta=0.5, rand_seed=config.RANDOM_STATE
+            )
             trained_tsne.append(trained_tsne_i)
             logger.info('Done embedding into 3 D.')
         else:
@@ -207,7 +210,7 @@ def extract_features_and_train_TSNE(list_of_arrays_data: List[np.ndarray], bodyp
             raise ValueError(err)
 
     if comp == 1:
-        scaler = StandardScaler()
+        scaler: StandardScaler = StandardScaler()
         scaler.fit(features_10fps.T)  # TODO: HIGH: variable `f_10fps` referenced before assignment. Error in logic above? ########################## IMPORTANT ###############################
         f_10fps_scaled = scaler.transform(features_10fps.T).T
         logger.info(f'{inspect.stack()[0][3]}:Training t-SNE to embed {f_10fps_scaled.shape[1]} instances'
@@ -645,7 +648,7 @@ def train_emgmm_with_learned_tsne_space(trained_tsne_array, comp=config.COMPILE_
     assignments = np.array(assignments_list)
     return assignments
 @config.deco__log_entry_exit(logger)
-def bsoid_svm_py(feats, labels, comp: int = config.COMPILE_CSVS_FOR_TRAINING, holdout_pct: float = config.HOLDOUT_PERCENT, cv_it: int = config.CROSSVALIDATION_K, svm_params: dict = config.SVM_PARAMS):
+def bsoid_svm_py(feats, labels, comp: int = config.COMPILE_CSVS_FOR_TRAINING, holdout_pct: float = config.HOLDOUT_PERCENT, cv_it: int = config.CROSSVALIDATION_K, svm_params: dict = config.SVM_PARAMS) -> Tuple[Any, Any]:
     # TODO: low: depending on COMP value, could return two lists or a classifier and a list...consistency?!!!!
     """
     Train SVM classifier
@@ -765,7 +768,7 @@ def get_data_train_TSNE_then_GMM_then_SVM_then_return_EVERYTHING__py(train_folde
     if config.PLOT_GRAPHS:
         logger.debug(f'Enter GRAPH PLOTTING section of {inspect.stack()[0][3]}')
         visuals.plot_classes_EMGMM_assignments(trained_tsne_list, gmm_assignments, config.SAVE_GRAPHS_TO_FILE)
-        visuals.plot_accuracy_SVM(scores)
+        visuals.plot_accuracy_SVM(scores, fig_file_prefix='TODO__replaceThisFigFilePrefixToSayIfItsKFOLDAccuracyOrTestAccuracy')
         visuals.plot_feats_bsoidpy(features_10fps, gmm_assignments)
         logger.debug(f'Exiting GRAPH PLOTTING section of {inspect.stack()[0][3]}')
     return features_10fps, trained_tsne_list, scaler, gmm_assignments, classifier, scores
