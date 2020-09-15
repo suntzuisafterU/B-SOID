@@ -366,5 +366,5 @@ if __name__ == '__main__':
     print(f'max_rows_to_read_in_from_csv = {max_rows_to_read_in_from_csv}')
     print(f'VIDEO_FPS = {VIDEO_FPS}')
     print(f'runtime_timestr = {runtime_timestr}')
-
+    print(f'config_file_log_folder_path = {config_file_log_folder_path}')
     pass
