@@ -233,7 +233,7 @@ def plot_accuracy_SVM(scores, save_fig_to_file=config.SAVE_GRAPHS_TO_FILE, fig_f
     :param fig_file_prefix:
     :return: None
     """
-    logger.debug(f'{inspect.stack()[0][3]}: entering function.')
+    # logger.debug(f'{inspect.stack()[0][3]}(): entering function.')  # Temporary debugging measure
     # Parse kwargs
     facecolor = kwargs.get('facecolor', 'w')
     edgecolor = kwargs.get('edgecolor', 'k')
@@ -264,7 +264,7 @@ def plot_accuracy_SVM(scores, save_fig_to_file=config.SAVE_GRAPHS_TO_FILE, fig_f
     if save_fig_to_file:
         fig_file_name = f'{fig_file_prefix}_{time_str}'
         save_graph_to_file(fig, fig_file_name)  # fig.savefig(os.path.join(config.OUTPUT_PATH, f'{fig_file_prefix}_{timestr}.svg'))
-    logger.debug(f'{inspect.stack()[0][3]}: leaving function.')
+    # logger.debug(f'{inspect.stack()[0][3]}: leaving function.')
 
 
 #######################################################################################################################

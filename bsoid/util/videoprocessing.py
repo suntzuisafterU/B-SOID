@@ -3,7 +3,7 @@
 Extracting frames from videos
 """
 
-from typing import List, Tuple
+from typing import Any, List, Tuple, Union
 from tqdm import tqdm
 import cv2
 import glob
@@ -18,44 +18,53 @@ from bsoid.util.likelihoodprocessing import sort_list_nicely_in_place
 logger = config.initialize_logger(__name__)
 
 
-def repeating_numbers(labels) -> Tuple[List, List[int], List[int]]:  # TODO: low: rename function for clarity
+@config.deco__log_entry_exit(logger)
+def augmented_runlength_encoding(labels: Union[List, np.ndarray]) -> Tuple[List[Any], List[int], List[int]]:  # TODO: low: rename function for clarity
     """
     TODO: med: purpose // purpose unclear
-    :param labels: (list) predicted labels
+    :param labels: (list or np.ndarray) predicted labels
     :return
-        n_list: (list) the label number
+        label_list: (list) the label number
         idx: (list) label start index
         lengths: (list) how long each bout lasted for
     """
-    n_list, idx, lengths = [], [], []
+    label_list, idx_list, lengths_list = [], [], []
     i = 0
     while i < len(labels) - 1:
+        # 1/3: Record current index
+        idx_list.append(i)
+        # 2/3: Record current label
         current_label = labels[i]
-        n_list.append(current_label)
+        label_list.append(current_label)
+        # Iterate over i while current label and next label are same
         start_index = i
-        idx.append(i)
-        while i < len(labels) - 1 and labels[i] == labels[i + 1]:
+        while i < len(labels)-1 and labels[i] == labels[i + 1]:
             i += 1
         end_index = i
+        # 3/3: Calculate length of repetitions, then record lengths to list
         length = end_index - start_index
-        lengths.append(length)
+        lengths_list.append(length)
+        # Increment and continue
         i += 1
-    return n_list, idx, lengths
+
+    return label_list, idx_list, lengths_list
 
 
-def get_mp4_videos_from_folder_in_BASEPATH(folder_name: str) -> List[str]:
+def get_mp4_videos_from_folder_in_BASEPATH(folder_name: str, video_extension: str = 'mp4') -> List[str]:
     """
     Previously named `get_video_names()`
-    Gets a list of .mp4 files within a folder
+    Gets a list of video files within a folder
     :param folder_name: str, folder path. Must reside in BASE_PATH.
+    :param video_extension:
     :return: (List[str]) video file names all of which have a .mp4 extension
     """
     if not isinstance(folder_name, str):
-        err = f'`folder_name` was expected to be of type str but instead found {type(folder_name)}.'
+        err = f'`{inspect.stack()[0][3]}(): folder_name was expected to be of type str but instead found {type(folder_name)}.'
         logger.error(err)
         raise TypeError(err)
     path_to_folder = os.path.join(config.DLC_PROJECT_PATH, folder_name)
-    path_to_folder_with_glob = f'{path_to_folder}/*.mp4'
+
+    path_to_folder_with_glob = f'{path_to_folder}/*.{video_extension}'
     logger.debug(f'{inspect.stack()[0][3]}(): Path to check for videos: {path_to_folder_with_glob}.')
     video_names = glob.glob(path_to_folder_with_glob)
     sort_list_nicely_in_place(video_names)
@@ -81,7 +90,7 @@ def write_annotated_frames_to_disk_from_video(path_to_video: str, labels, fps: i
         err = f'{__name__}:{inspect.stack()[0][3]}Path to video was not found. Path = {path_to_video}'
         logger.error(err)
         raise ValueError(err)
-    frames_to_skip = round(fps * pct_frames_to_label)
+    frames_to_skip_after_each_write = round(fps * (1 / pct_frames_to_label))
     set_unique_labels = set(np.unique(labels))
     cv2_video_object = cv2.VideoCapture(path_to_video)
     progress_bar = tqdm(total=int(cv2_video_object.get(cv2.CAP_PROP_FRAME_COUNT)))
@@ -116,12 +125,12 @@ def write_annotated_frames_to_disk_from_video(path_to_video: str, labels, fps: i
             cv2.putText(img=frame, text=text_to_be_inserted, org=(text_offset_x, text_offset_y),
                         fontFace=font, fontScale=font_scale, color=(255, 255, 255), thickness=1)
             # Write to image
-            cv2.imwrite(os.path.join(output_path, f'frame_drawn_{i+1}__frame_number_{frame_count+1}.png'), frame)
+            cv2.imwrite(os.path.join(output_path, f'frame drawn: {i+1} / video_frame_number_{frame_count+1}.png'), frame)
 
             # Save & set metrics, prepare for next frame, and update progress bar
-            frame_count += frames_to_skip
+            frame_count += frames_to_skip_after_each_write
             cv2_video_object.set(1, frame_count)  # first arg: 'propID' (like property ID), second arg is 'value'
-            progress_bar.update(frames_to_skip)
+            progress_bar.update(frames_to_skip_after_each_write)
             i += 1
         else:  # No more frames left to retrieve. Release object and finish.
             cv2_video_object.release()
@@ -165,12 +174,15 @@ def create_labeled_vid(labels, critical_behaviour_minimum_duration=3, num_random
     :param frame_dir: string, directory to where you extracted vid images in LOCAL_CONFIG
     :param output_path: string, directory to where you want to store short video examples in LOCAL_CONFIG
     """
+    # TODO: med: in the case that
     # Create list of only .png images found in the frames directory
     images: List[str] = [img for img in os.listdir(frame_dir) if img.endswith(".png")]
     if len(images) <= 0:
-        empty_list_err = f''  # TODO:
+        empty_list_err = f'{inspect.stack()[0][3]}(): Zero .png frames were found in {frame_dir}. ' \
+                         f'Could not created labeled video. Exiting early.'  # TODO:
         logger.error(empty_list_err)
-        raise ValueError(empty_list_err)
+        # raise ValueError(empty_list_err)
+        return
     sort_list_nicely_in_place(images)
 
     # Extract first image in images list. Set dimensions.
@@ -178,51 +190,68 @@ def create_labeled_vid(labels, critical_behaviour_minimum_duration=3, num_random
     first_image = cv2.imread(os.path.join(frame_dir, images[0]))
     height, width, _layers = first_image.shape
 
-    # ?
+    # ?  TODO
+    labels_list, idx_list, lengths_list = augmented_runlength_encoding(labels)
     ranges_list, idx2_list = [], []
-    n, idx, lengths = repeating_numbers(labels)
 
-    for idx_length, length in enumerate(lengths):
-        if length >= critical_behaviour_minimum_duration:
-            ranges_list.append(range(idx[idx_length], idx[idx_length]+length))
-            idx2_list.append(idx_length)
+    # Loop over lengths
+    for idx_length_i, length_i in enumerate(lengths_list):
+
+        if length_i >= critical_behaviour_minimum_duration:
+            ranges_list.append(range(idx_list[idx_length_i], idx_list[idx_length_i]+length_i))
+            idx2_list.append(idx_length_i)
 
     # Loop over the range generated from the total unique labels available
     for idx_label in tqdm(range(len(np.unique(labels))), desc=f'{inspect.stack()[0][3]}(): Creating video (TODO: update this bar description)'):
-        a = []  # TODO: low: `a` needs more description
+        a: List[range] = []  # TODO: low: `a` needs more description
         for idx_range in range(len(ranges_list)):  # TODO: low: could making this loop into a comprehension be more readable?
-            if n[idx2_list[idx_range]] == idx_label:
+            if labels_list[idx2_list[idx_range]] == idx_label:
                 a += [ranges_list[idx_range], ]  # Previously: a.append(ranges[idx_range])
         try:
-            random_ranges = random.sample(a, num_randomly_generated_examples)  # TODO: add a min() function to `counts` argument?
-            for idx_random_range in range(len(random_ranges)):
+            random_ranges = random.sample(a, min(len(a), num_randomly_generated_examples))
+            for idx_random_range, random_range_i in enumerate(random_ranges):
                 grp_images = []
-                video_name = f'group_{idx_label}__example_{idx_random_range}.mp4'
-                # Loop over list of randomly generated ranges
-                for a_random_range in random_ranges[idx_random_range]:
-                    # Aggregate images into a list that correspond to the randomly generated numbers/ranges
-                    grp_images += [images[a_random_range], ]  # grp_images.append(images[random_range])
-                # grp_images = []
 
-                # Open video writer
-                video_writer = cv2.VideoWriter(
-                    os.path.join(output_path, video_name),
-                    four_character_code,
-                    5,  # TODO: med: 5 is a magic variable? FPS? #########################################################
-                    (width, height)
-                )
-                # Loop over all images and write to file
-                for image in grp_images:
-                    video_writer.write(cv2.imread(os.path.join(frame_dir, image)))
-                # Release and continue
+                # Loop over list of randomly generated ranges
+                for a_random_range in random_ranges[idx_random_range]:  # TODO: substitute for `random_range_i`?
+                    # Aggregate images into a list that correspond to the randomly generated numbers/ranges
+                    try:
+                        images_of_interest = images[a_random_range]
+                    except IndexError as ie:  # Index out of range
+                        # Original implementation allowed this part to fail silently...address this later when there is time!
+                        index_err = f'{inspect.stack()[0][3]}(): Indexing error. ' \
+                                    f'The "random range" appears to be out of bounds for the ' \
+                                    f'images actually available. Check logic above. ' \
+                                    f'Originally, this error failed silently but it should be addressed later. ' \
+                                    f'Original error: {repr(ie)}'
+                        logger.error(index_err)
+                    else:  # Execute else block if no errors
+                        grp_images.append(images_of_interest)
+
+                if len(grp_images) > 0:
+                    video_name = f'group_{idx_label} / example_{idx_random_range}.mp4'
+                    # Open video writer object
+                    video_writer = cv2.VideoWriter(
+                        os.path.join(output_path, video_name),
+                        four_character_code,
+                        5,  # TODO: med: 5 is a magic variable? FPS? #########################################################
+                        (width, height)
+                    )
+                    # Loop over all images and write to file with video writer
+                    for image in grp_images:
+                        video_writer.write(cv2.imread(os.path.join(frame_dir, image)))
+                    # Release video writer and continue
+
+                    video_writer.release()
                 cv2.destroyAllWindows()
-                video_writer.release()
+
         except Exception as e:  # TODO: low: exception is very general. Address?
             err = f'{inspect.stack()[0][3]}: Unexpected exception occurred when trying to make video. ' \
                   f'Review exception and address/make function more robust instead of failing silently. ' \
                   f'Exception is: {repr(e)}.'
             logger.error(err)
-            pass
+
+            raise e
     return
 
 
@@ -245,7 +274,7 @@ def create_labeled_vid_app(labels, crit, counts, output_fps, video_frames_direct
     frame = cv2.imread(os.path.join(video_frames_directory, images[0]))
     height, width, _layers = frame.shape
     ranges, idx2 = [], []
-    n, idx, lengths = repeating_numbers(labels)
+    n, idx, lengths = augmented_runlength_encoding(labels)
     for idx_length, length in enumerate(lengths):
         if length >= crit:
             ranges.append(range(idx[idx_length], idx[idx_length] + length))
