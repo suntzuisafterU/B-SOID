@@ -163,12 +163,13 @@ def read_csvs(source) -> List[pd.DataFrame]:
     return list_df
 
 
-def check_folder_contents_for_csv_files(absolute_folder_path, check_recursively=False) -> List[str]:
+def check_folder_contents_for_csv_files(absolute_folder_path: str, check_recursively: bool = False) -> List[str]:
     """
     Finished.
     # TODO: purpose
     :param absolute_folder_path: (str) an absolute path, TODO
     :return: TODO
+        Returns List of absolute paths to CSVs detected
     """
     # Check args
     if not os.path.isdir(absolute_folder_path):
