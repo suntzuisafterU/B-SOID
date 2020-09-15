@@ -438,9 +438,9 @@ def bsoid_frameshift_umap(data_new, fps: int, clf_MLP) -> List:
         for m in range(len(labels)):
             labels[m] = labels[m][::-1]
         labels_pad = -1 * np.ones([len(labels), len(max(labels, key=lambda x: len(x)))])
-        for n, l in enumerate(labels):
-            labels_pad[n][0:len(l)] = l
-            labels_pad[n] = labels_pad[n][::-1]
+        for n, label_n in enumerate(labels):
+            labels_pad[n][0:len(label_n)] = label_n
+            labels_pad[n] = labels_pad[n][::-1]  # Reverse labels_pad[n]
             if n > 0:
                 labels_pad[n][0:n] = labels_pad[n - 1][0:n]
         labels_fs.append(labels_pad.astype(int))
@@ -469,8 +469,8 @@ def bsoid_frameshift_voc(data_new, fps: int, clf_MLP) -> List[np.ndarray]:
         for m in range(len(labels)):
             labels[m] = labels[m][::-1]
         labels_pad = -1 * np.ones([len(labels), len(max(labels, key=lambda x: len(x)))])
-        for n, l in enumerate(labels):
-            labels_pad[n][0:len(l)] = l
+        for n, label_n in enumerate(labels):
+            labels_pad[n][0:len(label_n)] = label_n
             labels_pad[n] = labels_pad[n][::-1]
             if n > 0:
                 labels_pad[n][0:n] = labels_pad[n - 1][0:n]
@@ -511,12 +511,12 @@ def main_py(predict_folders: List[str], scaler, fps, svm_classifier__behavioural
     # TODO: HIGH: Ensure that the labels predicted on predict_folders matches to the video that will be labeled hereafter
     if config.GENERATE_VIDEOS:
         if len(labels_frameshift_low) > 0:
-            # 1
+            # 1/2 write frames to disk
             videoprocessing.write_annotated_frames_to_disk_from_video(
                 config.VIDEO_TO_LABEL_PATH,
                 labels_frameshift_low[config.IDENTIFICATION_ORDER]
             )
-            # 2
+            # 2/2 created labeled video
             videoprocessing.create_labeled_vid(
                 labels_frameshift_low[config.IDENTIFICATION_ORDER],
                 critical_behaviour_minimum_duration=3,
@@ -530,7 +530,7 @@ def main_py(predict_folders: List[str], scaler, fps, svm_classifier__behavioural
             #     fps=fps,
             #     output_path=config.FRAMES_OUTPUT_PATH)
         else:
-            logger.error(f'{__name__}::{inspect.stack()[0][3]}::config.GENERATE_VIDEOS = {config.GENERATE_VIDEOS}; '
+            logger.error(f'{inspect.stack()[0][3]}(): config.GENERATE_VIDEOS = {config.GENERATE_VIDEOS}; '
                          f'however, the generation of '
                          f'a video could NOT occur because labels_fs_low is a list of length zero and '
                          f'config.ID is attempting to index an empty list.')
