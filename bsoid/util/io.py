@@ -4,7 +4,7 @@ Functions related to opening/saving files should go here
 
 from typing import List
 import glob
-import inspect
+# import inspect
 import numpy as np
 import os
 import pandas as pd
@@ -32,7 +32,7 @@ def read_csv(csv_file_path: str, **kwargs) -> pd.DataFrame:
         an output of the DLC process. If the file is not, use pd.read_csv() instead.
 
     EXAMPLE data: DataFrame directly after invoking pd.read_csv(csv, header=None):
-                  0                                               1                                               2                                               3                                                4  ...
+                   0                                              1                                               2                                               3                                                4  ...
         0     scorer  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000  ...
         1  bodyparts                                      Snout/Head                                      Snout/Head                                      Snout/Head                               Forepaw/Shoulder1  ...
         2     coords                                               x                                               y                                      likelihood                                               x  ...
@@ -41,12 +41,12 @@ def read_csv(csv_file_path: str, **kwargs) -> pd.DataFrame:
 
     :return: (DataFrame)
         EXAMPLE OUTPUT:
-          bodyparts_coords        Snout/Head_x       Snout/Head_y Snout/Head_likelihood Forepaw/Shoulder1_x Forepaw/Shoulder1_y Forepaw/Shoulder1_likelihood  ...                                          scorer
-        0                0     1013.7373046875   661.953857421875                   1.0  1020.1138305664062   621.7146606445312           0.9999985694885254  ...  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000
-        1                1  1012.7627563476562  660.2426147460938                   1.0  1020.0912475585938   622.9310913085938           0.9999995231628418  ...  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000
-        2                2  1012.5982666015625   660.308349609375                   1.0  1020.1837768554688   623.5087280273438           0.9999994039535522  ...  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000
-        3                3  1013.2752685546875  661.3504028320312                   1.0     1020.6982421875   624.2875366210938           0.9999998807907104  ...  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000
-        4                4  1013.4093017578125  661.3643188476562                   1.0  1020.6074829101562     624.48486328125           0.9999998807907104  ...  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000
+                 Snout/Head_x       Snout/Head_y Snout/Head_likelihood Forepaw/Shoulder1_x Forepaw/Shoulder1_y Forepaw/Shoulder1_likelihood  ...                                          scorer
+        0     1013.7373046875   661.953857421875                   1.0  1020.1138305664062   621.7146606445312           0.9999985694885254  ...  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000
+        1  1012.7627563476562  660.2426147460938                   1.0  1020.0912475585938   622.9310913085938           0.9999995231628418  ...  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000
+        2  1012.5982666015625   660.308349609375                   1.0  1020.1837768554688   623.5087280273438           0.9999994039535522  ...  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000
+        3  1013.2752685546875  661.3504028320312                   1.0     1020.6982421875   624.2875366210938           0.9999998807907104  ...  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000
+        4  1013.4093017578125  661.3643188476562                   1.0  1020.6074829101562     624.48486328125           0.9999998807907104  ...  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000
     """
     # Arg checking
     if not os.path.isfile(csv_file_path):
@@ -61,7 +61,7 @@ def read_csv(csv_file_path: str, **kwargs) -> pd.DataFrame:
     df = pd.read_csv(csv_file_path, header=None, nrows=nrows)
     # # Manipulate Frame based on top row
     # Check that the top row is like [scorer, DLCModel, DLCModel.1, DLCModel.2, ...] OR [scorer, DLCModel, DLCModel,...]
-    # Use regex to truncate the
+    # Use regex to truncate the decimal/number suffix if present.
     top_row_values_set: set = set([re.sub(r'(.*)(\.\w+)?', r'\1', x) for x in df.iloc[0]])
     top_row_without_scorer: tuple = tuple(top_row_values_set - {'scorer', })
     if len(top_row_without_scorer) != 1:
@@ -72,8 +72,9 @@ def read_csv(csv_file_path: str, **kwargs) -> pd.DataFrame:
         raise ValueError(non_standard_dlc_top_row_err)
     # Save scorer/model name for later column creation
     dlc_scorer = top_row_without_scorer[0]
-    # Remove top row
+    # Remove top row (e.g.: [scorer, DLCModel, DLCModel, ... ]) now that we have saved the model name
     df = df.iloc[1:, :]
+
     # # Manipulate Frame based on next two rows
     # Create columns based on next two rows. Combine the tow rows of each column and separate with "_"
     array_of_next_two_rows = np.array(df.iloc[:2, :])
@@ -82,10 +83,13 @@ def read_csv(csv_file_path: str, **kwargs) -> pd.DataFrame:
         new_col = f'{array_of_next_two_rows[0, col_idx]}_{array_of_next_two_rows[1, col_idx]}'
         new_column_names += [new_col, ]
     df.columns = new_column_names
-    # Remove next two rows now that columns instantiated
+
+    # Remove next two rows (just column names, no data here) now that columns names are instantiated
     df = df.iloc[2:, :]
 
     # # Final touches
+    # Delete "coords" column since it is just a numerical counting of rows. Not useful data.
+    df = df.drop('bodyparts_coords', axis=1)
     # Instantiate 'scorer' column so we can track the model if needed later
     df['scorer'] = dlc_scorer
     # Reset index (good practice) after chopping off top 3 columns so index starts at 0 again
@@ -141,7 +145,6 @@ def read_csvs(source) -> List[pd.DataFrame]:
         csv files are expected to be of DLC output after video analysis. The general layout format
         expected is as follows:
 
-
     :return:
     """
     raise NotImplementedError(' Development put on hold. Not yet implemented.')
@@ -154,12 +157,10 @@ def read_csvs(source) -> List[pd.DataFrame]:
         type_err = f'An invalid type was detected. Type was expected to be in {{str, List[str], Tuple[str]}}'
         logger.error(type_err)
         raise TypeError(type_err)
+
     # Resolve csv file paths
-
     # Read in csv files and return
-
     list_df: List[pd.DataFrame] = []
-
     return list_df
 
 
@@ -186,3 +187,8 @@ def check_folder_contents_for_csv_files(absolute_folder_path: str, check_recursi
     logger.info(f'{get_current_function()}: Total files found: {len(filenames)}. List of files found: {filenames}.')
     return filenames
 
+
+if __name__ == '__main__':
+    path = f'C:\\Users\\killian\\projects\\OST-with-DLC\\GUI_projects\\EPM-DLC-projects\\sample_train_data_folder\\Video1DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000.csv'
+    read_csv(path)
+    pass
