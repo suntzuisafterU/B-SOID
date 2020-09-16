@@ -207,7 +207,7 @@ def main(labels) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
                  f'CALLER = {inspect.stack()[0][3]}.')
     return replacement_func(labels)
 
-@config.deco__log_entry_exit(logger)
+# @config.deco__log_entry_exit(logger)
 def get_runlengths_statistics_transition_matrix_from_labels(labels) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """ TODO: rename function for concision when purpose made clearer
     TODO: med: purpose

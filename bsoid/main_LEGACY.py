@@ -66,7 +66,7 @@ def build_py(train_folders) -> Tuple[Any, Any, Any, Any, Any, Any]:
     with open(os.path.join(OUTPUT_PATH, f'bsoid_{config.MODEL_NAME}.sav'), 'wb') as model_file:
         joblib.dump([classifier, scaler_object], model_file)
 
-    logger.error(f'{inspect.stack()[0][3]}: Saved stuff...TODO: elaborate on this message later.')  # TODO: see msg
+    logger.error(f'{inspect.stack()[0][3]}: Saved model to file. Form: [classifier, scaler_object]')  # TODO: see msg
     return features_10fps, trained_tsne, scaler_object, gmm_assignments, classifier, scores
 @config.deco__log_entry_exit(logger)
 def run_py(predict_folders):  # TODO: HIGH: break up this function and rename. TOo many things happening.
