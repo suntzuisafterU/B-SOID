@@ -207,6 +207,8 @@ def plot_accuracy_MLP(scores, show_plot=config.PLOT_GRAPHS, save_fig_to_file=con
     s = kwargs.get('s', 40)
     c = kwargs.get('c', 'r')
     alpha = kwargs.get('alpha', 0.5)
+    xlabel = kwargs.get('xlabel', 'MLP classifier')
+    ylabel = kwargs.get('ylabel', 'Accuracy')
     # Plot as needed
     fig = plt.figure(facecolor=facecolor, edgecolor=edgecolor)
     fig.suptitle(f"Performance on {config.HOLDOUT_PERCENT * 100} % data")
@@ -214,8 +216,8 @@ def plot_accuracy_MLP(scores, show_plot=config.PLOT_GRAPHS, save_fig_to_file=con
     ax.boxplot(scores, notch=None)
     x = np.random.normal(1, 0.04, size=len(scores))
     plt.scatter(x, scores, s=s, c=c, alpha=alpha)
-    ax.set_xlabel('MLP classifier')
-    ax.set_ylabel('Accuracy')
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
     time_str = config.runtime_timestr  # time_str = time.strftime("%Y%m%d_%H%M")
     # Plot and save as specified
     if show_plot:
@@ -240,6 +242,8 @@ def plot_accuracy_SVM(scores, save_fig_to_file=config.SAVE_GRAPHS_TO_FILE, fig_f
     s = kwargs.get('s', 40)
     c = kwargs.get('c', 'r')
     alpha = kwargs.get('alpha', 0.5)
+    xlabel = kwargs.get('xlabel', 'SVM classifier')
+    ylabel = kwargs.get('ylabel', 'Accuracy')
     #
     # TODO: decouple the fig saving and the plotting. Current state is due to legacy.
     time_str = config.runtime_timestr  # time_str = time.strftime("%Y%m%d_%H%M")
@@ -258,20 +262,19 @@ def plot_accuracy_SVM(scores, save_fig_to_file=config.SAVE_GRAPHS_TO_FILE, fig_f
             logger.error(f'x = {x} // scores = {scores}')
 
     plt.scatter(x, scores, s=s, c=c, alpha=alpha)  # TODO: HIGH!!!! Why does this error occur?:
-    ax.set_xlabel('SVM classifier')
-    ax.set_ylabel('Accuracy')
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
     plt.show()
     if save_fig_to_file:
         fig_file_name = f'{fig_file_prefix}_{time_str}'
         save_graph_to_file(fig, fig_file_name)  # fig.savefig(os.path.join(config.OUTPUT_PATH, f'{fig_file_prefix}_{timestr}.svg'))
-    # logger.debug(f'{inspect.stack()[0][3]}: leaving function.')
 
 
 #######################################################################################################################
 @config.deco__log_entry_exit(logger)
-def plot_feats_bsoidUMAPAPP(feats, labels: list) -> None:
+def plot_feats_bsoidUMAPAPP(features, labels: list) -> None:
     """
-    :param feats: list (or numpy array??), features for multiple sessions  # TODO
+    :param features: list (or numpy array??), features for multiple sessions  # TODO
     :param labels: list, labels for multiple sessions
     """
     time_str = config.runtime_timestr  # time_str = time.strftime("%Y%m%d_%H%M")
@@ -279,13 +282,13 @@ def plot_feats_bsoidUMAPAPP(feats, labels: list) -> None:
                "Inter-forepaw distance", "Body length", "Body angle",
                "Snout displacement", "Tail-base displacement")
 
-    labels_is_type_list = isinstance(labels, list)
+    # labels_is_type_list = isinstance(labels, list)
     if isinstance(labels, list):
-        for k in range(len(feats)):
+        for k in range(len(features)):
             labels_k = np.array(labels[k])
-            feats_k = np.array(feats[k])
+            feats_k = np.array(features[k])
             R = np.linspace(0, 1, len(np.unique(labels_k)))
-            color = plt.cm.get_cmap("Spectral")(R)
+            color_map = plt.cm.get_cmap("Spectral")(R)
             # feat_ls = ("Relative snout to forepaws placement", "Relative snout to hind paws placement",
             #            "Inter-forepaw distance", "Body length", "Body angle",
             #            "Snout displacement", "Tail-base displacement")
@@ -297,7 +300,7 @@ def plot_feats_bsoidUMAPAPP(feats, labels: list) -> None:
                         plt.hist(feats_k[j, labels_k == i],
                                  bins=np.linspace(0, np.mean(feats_k[j, :]) + 3 * np.std(feats_k[j, :]), num=50),
                                  range=(0, np.mean(feats_k[j, :]) + 3 * np.std(feats_k[j, :])),
-                                 color=color[i], density=True)
+                                 color=color_map[i], density=True)
                         fig.suptitle(f"{feat_ls[j]} pixels")
                         plt.xlim(0, np.mean(feats_k[j, :]) + 3 * np.std(feats_k[j, :]))
                         if i < len(np.unique(labels_k)) - 1:
@@ -308,7 +311,7 @@ def plot_feats_bsoidUMAPAPP(feats, labels: list) -> None:
                                                   np.mean(feats_k[j, :]) + 3 * np.std(feats_k[j, :]), num=50),
                                  range=(np.mean(feats_k[j, :]) - 3 * np.std(feats_k[j, :]),
                                         np.mean(feats_k[j, :]) + 3 * np.std(feats_k[j, :])),
-                                 color=color[i], density=True)
+                                 color=color_map[i], density=True)
                         plt.xlim(np.mean(feats_k[j, :]) - 3 * np.std(feats_k[j, :]),
                                  np.mean(feats_k[j, :]) + 3 * np.std(feats_k[j, :]))
                         fig.suptitle(f"{feat_ls[j]} pixels")
@@ -320,32 +323,32 @@ def plot_feats_bsoidUMAPAPP(feats, labels: list) -> None:
             plt.show()
     elif isinstance(labels, np.ndarray):
         R = np.linspace(0, 1, len(np.unique(labels)))
-        color = plt.cm.get_cmap("Spectral")(R)
+        color_map = plt.cm.get_cmap("Spectral")(R)
         # feat_ls = ("Relative snout to forepaws placement", "Relative snout to hind paws placement",
         #            "Inter-forepaw distance", "Body length", "Body angle",
         #            "Snout displacement", "Tail-base displacement")
-        for j in range(feats.shape[0]):
+        for j in range(features.shape[0]):
             fig = plt.figure(facecolor='w', edgecolor='k')
             for i in range(len(np.unique(labels))-1):
                 plt.subplot(len(np.unique(labels)), 1, i + 1)
                 if j == 2 or j == 3 or j == 5 or j == 6:
-                    plt.hist(feats[j, labels == i],
-                             bins=np.linspace(0, np.mean(feats[j, :]) + 3 * np.std(feats[j, :]), num=50),
-                             range=(0, np.mean(feats[j, :]) + 3 * np.std(feats[j, :])),
-                             color=color[i], density=True)
+                    plt.hist(features[j, labels == i],
+                             bins=np.linspace(0, np.mean(features[j, :]) + 3 * np.std(features[j, :]), num=50),
+                             range=(0, np.mean(features[j, :]) + 3 * np.std(features[j, :])),
+                             color=color_map[i], density=True)
                     fig.suptitle(f"{feat_ls[j]} pixels")
-                    plt.xlim(0, np.mean(feats[j, :]) + 3 * np.std(feats[j, :]))
+                    plt.xlim(0, np.mean(features[j, :]) + 3 * np.std(features[j, :]))
                     if i < len(np.unique(labels)) - 1:
                         plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
                 else:
-                    plt.hist(feats[j, labels == i],
-                             bins=np.linspace(np.mean(feats[j, :]) - 3 * np.std(feats[j, :]),
-                                              np.mean(feats[j, :]) + 3 * np.std(feats[j, :]), num=50),
-                             range=(np.mean(feats[j, :]) - 3 * np.std(feats[j, :]),
-                                    np.mean(feats[j, :]) + 3 * np.std(feats[j, :])),
-                             color=color[i], density=True)
-                    plt.xlim(np.mean(feats[j, :]) - 3 * np.std(feats[j, :]),
-                             np.mean(feats[j, :]) + 3 * np.std(feats[j, :]))
+                    plt.hist(features[j, labels == i],
+                             bins=np.linspace(np.mean(features[j, :]) - 3 * np.std(features[j, :]),
+                                              np.mean(features[j, :]) + 3 * np.std(features[j, :]), num=50),
+                             range=(np.mean(features[j, :]) - 3 * np.std(features[j, :]),
+                                    np.mean(features[j, :]) + 3 * np.std(features[j, :])),
+                             color=color_map[i], density=True)
+                    plt.xlim(np.mean(features[j, :]) - 3 * np.std(features[j, :]),
+                             np.mean(features[j, :]) + 3 * np.std(features[j, :]))
                     fig.suptitle(f"{feat_ls[j]} pixels")
                     if i < len(np.unique(labels)) - 1:
                         plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
