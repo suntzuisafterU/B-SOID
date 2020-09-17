@@ -159,7 +159,7 @@ def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.Da
         percent_filterd_per_bodypart__perc_rect[idx_col_i] = np.sum(data_likelihood_col_i < likelihood_threshold) / data_likelihood.shape[0]
 
         for i in range(0, data_likelihood.shape[0] - 1):
-            if data_likelihood_col_i[i] < likelihood_threshold:
+            if data_likelihood_col_i[i+1] < likelihood_threshold:
                 array_data_filtered[i + 1, (2 * idx_col_i):(2 * idx_col_i + 2)] = \
                     array_data_filtered[
                         i,
