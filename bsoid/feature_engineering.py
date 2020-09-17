@@ -148,18 +148,18 @@ def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.Da
         rise_0, rise_1 = rise_arr[0], rise_arr[1]
         # Threshold for bin_edges?
         if rise_arr[0] > 1:
-            likelihood: np.ndarray = (bin_edges[rise_0] + bin_edges[rise_0 - 1]) / 2
+            likelihood_threshold: np.ndarray = (bin_edges[rise_0] + bin_edges[rise_0 - 1]) / 2
         else:
-            likelihood: np.ndarray = (bin_edges[rise_1] + bin_edges[rise_1 - 1]) / 2
+            likelihood_threshold: np.ndarray = (bin_edges[rise_1] + bin_edges[rise_1 - 1]) / 2
 
         # Change data type to float because its currently string
         data_likelihood_col_i = data_likelihood[:, idx_col_i].astype(np.float)
 
         # Record percent filtered (for "reasons")
-        percent_filterd_per_bodypart__perc_rect[idx_col_i] = np.sum(data_likelihood_col_i < likelihood) / data_likelihood.shape[0]
+        percent_filterd_per_bodypart__perc_rect[idx_col_i] = np.sum(data_likelihood_col_i < likelihood_threshold) / data_likelihood.shape[0]
 
         for i in range(0, data_likelihood.shape[0] - 1):
-            if data_likelihood_col_i[i] < likelihood:
+            if data_likelihood_col_i[i] < likelihood_threshold:
                 array_data_filtered[i + 1, (2 * idx_col_i):(2 * idx_col_i + 2)] = \
                     array_data_filtered[
                         i,
@@ -468,7 +468,7 @@ def integrate_features_into_100ms_bins(data: List[np.ndarray], features: List[np
             if k > round(fps / 10) - 1:
                 feats1 = np.concatenate((
                     feats1.reshape(feats1.shape[0], feats1.shape[1]),
-                    np.hstack((np.mean((features_n[0:4, range(k - round(fps / 10), k)]), axis=1), np.sum((features_n[4:7, range(k - round(fps / 10), k)]),axis=1))).reshape(len(features[0]), 1)
+                    np.hstack((np.mean((features_n[0:4, range(k - round(fps / 10), k)]), axis=1), np.sum((features_n[4:7, range(k - round(fps / 10), k)]), axis=1))).reshape(len(features[0]), 1)
                 ), axis=1)
             else:
                 feats1 = np.hstack((
@@ -483,3 +483,6 @@ def integrate_features_into_100ms_bins(data: List[np.ndarray], features: List[np
 ########################################################################################################################
 
 
+"""
+1017.8032226563                                   673.5625610352                                                1                                   993.3309326172                                   635.4532470703                                     0.9999818802
+3           1                                1018.4616088867                                   663.2183837891                                     0.9999999404                                   992.0748901367                                   632.7528686523                                     0.9999664426"""
