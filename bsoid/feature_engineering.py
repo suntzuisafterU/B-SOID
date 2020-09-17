@@ -149,9 +149,9 @@ def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.Da
         rise_0, rise_1 = rise_arr[0], rise_arr[1]
         # Threshold for bin_edges?
         if rise_arr[0] > 1:
-            likelihood: np.ndarray = (bin_edges[rise_0] + bin_edges[rise_0-1]) / 2
+            likelihood: np.ndarray = (bin_edges[rise_0] + bin_edges[rise_0 - 1]) / 2
         else:
-            likelihood: np.ndarray = (bin_edges[rise_1] + bin_edges[rise_1-1]) / 2
+            likelihood: np.ndarray = (bin_edges[rise_1] + bin_edges[rise_1 - 1]) / 2
 
         # Remove top row since its just labels
         data_likelihood_float: np.ndarray = data_likelihood[1:, idx_col_i].astype(np.float)
