@@ -130,7 +130,7 @@ def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.Da
 
     # The below variable is instantiated with same rows as total minus 1 (for reasons TBD) and
     #   with column room for x and y values (it appears as though the likelihood values disappear)
-    array_data_filtered = np.zeros((data_x.shape[0], (data_x.shape[1]) * 2))  # Initialized as zeroes with  # currdf_filt: np.ndarray = np.zeros((data_x.shape[0]-1, (data_x.shape[1]) * 2))
+    array_data_filtered = np.zeros((data_x.shape[0], (data_x.shape[1]) * 2))  # Initialized as zeroes to be populated later  # currdf_filt: np.ndarray = np.zeros((data_x.shape[0]-1, (data_x.shape[1]) * 2))
 
     logger.debug(f'{inspect.stack()[0][3]}: Computing data threshold to forward fill any sub-threshold (x,y)...')
     percent_filterd_per_bodypart__perc_rect = [0 for _ in range(data_likelihood.shape[1])]  # for _ in range(data_lh.shape[1]): perc_rect.append(0)
@@ -160,17 +160,9 @@ def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.Da
 
         for i in range(0, data_likelihood.shape[0] - 1):
             if data_likelihood_col_i[i+1] < likelihood_threshold:
-                array_data_filtered[i + 1, (2 * idx_col_i):(2 * idx_col_i + 2)] = \
-                    array_data_filtered[
-                        i,
-                        (2 * idx_col_i):(2 * idx_col_i + 2)
-                    ]
+                array_data_filtered[i + 1, (2 * idx_col_i):(2 * idx_col_i + 2)] = array_data_filtered[i, (2 * idx_col_i):(2 * idx_col_i + 2)]
             else:
-                array_data_filtered[i + 1, (2 * idx_col_i):(2 * idx_col_i + 2)] = \
-                    np.hstack(
-                        [data_x[i, idx_col_i],
-                         data_y[i, idx_col_i]]
-                    )
+                array_data_filtered[i + 1, (2 * idx_col_i):(2 * idx_col_i + 2)] = np.hstack([data_x[i, idx_col_i], data_y[i, idx_col_i]])
 
     # Remove first row in data array (values are all zeroes)
     array_filtered_data_without_first_row = np.array(array_data_filtered[1:]).astype(np.float64)
