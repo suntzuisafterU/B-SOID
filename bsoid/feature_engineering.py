@@ -160,9 +160,17 @@ def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.Da
 
         for i in range(0, data_likelihood.shape[0] - 1):
             if data_likelihood_col_i[i] < likelihood:
-                array_data_filtered[i + 1, (2 * idx_col_i):(2 * idx_col_i + 2)] = array_data_filtered[i - 0, (2 * idx_col_i):(2 * idx_col_i + 2)]
+                array_data_filtered[i + 1, (2 * idx_col_i):(2 * idx_col_i + 2)] = \
+                    array_data_filtered[
+                        i,
+                        (2 * idx_col_i):(2 * idx_col_i + 2)
+                    ]
             else:
-                array_data_filtered[i + 1, (2 * idx_col_i):(2 * idx_col_i + 2)] = np.hstack([data_x[i, idx_col_i], data_y[i, idx_col_i]])
+                array_data_filtered[i + 1, (2 * idx_col_i):(2 * idx_col_i + 2)] = \
+                    np.hstack(
+                        [data_x[i, idx_col_i],
+                         data_y[i, idx_col_i]]
+                    )
 
     # Remove first row in data array (values are all zeroes)
     array_filtered_data_without_first_row = np.array(array_data_filtered[1:]).astype(np.float64)
