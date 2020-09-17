@@ -235,7 +235,7 @@ def process_raw_data_and_filter_adaptively(df_input_data: pd.DataFrame) -> Tuple
         # Get likelihood value based on value of first rise element.
         rise_0, rise_1 = rise_arr[0], rise_arr[1]
         if rise_0 > 1:
-            likelihood: float = (bin_edges[rise_0] + bin_edges[rise_0-1]) / 2
+            likelihood: float = (bin_edges[rise_0] + bin_edges[rise_0 - 1]) / 2
         else:
             likelihood: float = (bin_edges[rise_1] + bin_edges[rise_1 - 1]) / 2
 
