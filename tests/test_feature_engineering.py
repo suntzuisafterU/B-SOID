@@ -48,6 +48,14 @@ First two rows of new:
 
 ---
 
+Last two rows of original:
+{arr_original_adaptive_filter_output[-2:, :]}
+
+Last two rows of new:
+{arr_new_adaptive_filter_output[-2:, :]}
+
+---
+
 Original output: {arr_original_adaptive_filter_output}
 New output: {arr_new_adaptive_filter_output}
 """
