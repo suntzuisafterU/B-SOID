@@ -120,8 +120,7 @@ def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.Da
         raise ValueError(err)
 
     # Sanity check
-    if len(coords_cols_names) > 0:
-        raise ValueError(f'coords should not exist anymore')
+    if len(coords_cols_names) > 0: raise ValueError(f'coords should not exist anymore')
 
     # Slice data into separate arrays based on column names (derived earlier from the respective index)
     data_x: np.ndarray = np.array(df.iloc[:, np.array(x_index)])
@@ -129,9 +128,9 @@ def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.Da
     data_likelihood: np.ndarray = np.array(df.iloc[:, np.array(l_index)])
     # Note: at this point, the above 3 data arrays will all have the exact same shape
 
-    # The below variable is instantiated with same rows as total minus 1 (for reasons TBD) and with column room for x and y values.
-    # (It appears as though the likelihood values disappear)
-    array_data_filtered = np.zeros((data_x.shape[0]-1, (data_x.shape[1]) * 2))  # Initialized as zeroes with  # currdf_filt: np.ndarray = np.zeros((data_x.shape[0]-1, (data_x.shape[1]) * 2))
+    # The below variable is instantiated with same rows as total minus 1 (for reasons TBD) and
+    #   with column room for x and y values (it appears as though the likelihood values disappear)
+    array_data_filtered = np.zeros((data_x.shape[0], (data_x.shape[1]) * 2))  # Initialized as zeroes with  # currdf_filt: np.ndarray = np.zeros((data_x.shape[0]-1, (data_x.shape[1]) * 2))
 
     logger.debug(f'{inspect.stack()[0][3]}: Computing data threshold to forward fill any sub-threshold (x,y)...')
     percent_filterd_per_bodypart__perc_rect = [0 for _ in range(data_likelihood.shape[1])]  # for _ in range(data_lh.shape[1]): perc_rect.append(0)
@@ -140,7 +139,7 @@ def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.Da
     # logger.debug(f'{inspect.stack()[0][3]}: Loop over data and do adaptive filtering.')
     for idx_col_i in tqdm(range(data_likelihood.shape[1]), desc=f'{inspect.stack()[0][3]}(): Adaptively filtering data...'):
         # Get histogram of likelihood data in col_i (ignoring first row since its just labels (e.g.: [x  x  x  x ...]))
-        histogram, bin_edges = np.histogram(data_likelihood[1:, idx_col_i].astype(np.float))
+        histogram, bin_edges = np.histogram(data_likelihood[:, idx_col_i].astype(np.float))
         # Determine "rise"
         rise_arr = np.where(np.diff(histogram) >= 0)
         if isinstance(rise_arr, tuple):  # Sometimes np.where returns a tuple depending on input dims
@@ -153,14 +152,14 @@ def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.Da
         else:
             likelihood: np.ndarray = (bin_edges[rise_1] + bin_edges[rise_1 - 1]) / 2
 
-        # Remove top row since its just labels
-        data_likelihood_float: np.ndarray = data_likelihood[1:, idx_col_i].astype(np.float)
+        # Change data type to float because its currently string
+        data_likelihood_col_i = data_likelihood[:, idx_col_i].astype(np.float)
 
         # Record percent filtered (for "reasons")
-        percent_filterd_per_bodypart__perc_rect[idx_col_i] = np.sum(data_likelihood_float < likelihood) / data_likelihood.shape[0]
+        percent_filterd_per_bodypart__perc_rect[idx_col_i] = np.sum(data_likelihood_col_i < likelihood) / data_likelihood.shape[0]
 
         for i in range(1, data_likelihood.shape[0] - 1):
-            if data_likelihood_float[i] < likelihood:
+            if data_likelihood_col_i[i] < likelihood:
                 array_data_filtered[i, (2 * idx_col_i):(2 * idx_col_i + 2)] = array_data_filtered[i - 1, (2 * idx_col_i):(2 * idx_col_i + 2)]
             else:
                 array_data_filtered[i, (2 * idx_col_i):(2 * idx_col_i + 2)] = np.hstack([data_x[i, idx_col_i], data_y[i, idx_col_i]])
@@ -168,6 +167,7 @@ def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.Da
     # Remove first row in data array (values are all zeroes)
     array_filtered_data_without_first_row = np.array(array_data_filtered[1:])
 
+    # Create DataFrame with columns
     columns_ordered = []
     for x_idx, y_idx in zip(x_index, y_index):
         columns_ordered += [map_back_index_to_col_name[x_idx], map_back_index_to_col_name[y_idx]]
