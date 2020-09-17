@@ -42,6 +42,7 @@ def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.Da
 
     Follows same form as legacy only for continuity reasons. Can be refactored for performance later.
 
+    :param in_df:
     :param df_input_data: (DataFrame) expected: raw DataFrame of DLC results right after
         reading in using bsoid.read_csv().
 
@@ -199,124 +200,147 @@ Author also specifies that: the features are also smoothed over, or averaged acr
     a sliding window of size equivalent to 60ms (30ms prior to and after the frame of interest).
 """
 
-#
-# def extract_features_7(in_df: pd.DataFrame, copy: bool = False) -> pd.DataFrame:
-#     # TODO: is copy even necessary?
-#     """ *NEW*
-#
-#     :param in_df: (DataFrame)
-#     :param copy:
-#     :return: (DataFrame)
-#     """
-#     # Arg checking
-#     check_arg.ensure_type(in_df, pd.DataFrame)
-#
-#     # Required columns checking
-#     required_cols = ('')
-#     set_df_columns = set(in_df.columns)
-#
-#     #
-#     df = in_df.copy() if copy else in_df
-#
-#     # Do
-#
-# #
-#     inter_forepaw_distance = data_array[:, 2 * bodyparts['Forepaw/Shoulder1']:2 * bodyparts['Forepaw/Shoulder1'] + 2] - data_array[:, 2 * bodyparts['Forepaw/Shoulder2']:2 * bodyparts['Forepaw/Shoulder2'] + 2]  # Previously: 'fpd'
-#
-#     cfp__center_between_forepaws = np.vstack((
-#         (data_array[:, 2 * bodyparts['Forepaw/Shoulder1']] + data_array[:, 2 * bodyparts['Forepaw/Shoulder2']]) / 2,
-#         (data_array[:, 2 * bodyparts['Forepaw/Shoulder1'] + 1] + data_array[:,
-#                                                                  2 * bodyparts['Forepaw/Shoulder1'] + 1]) / 2),
-#     ).T  # Previously: cfp
-#
-#     dFT__cfp_pt__center_between_forepaws__minus__proximal_tail = np.vstack(([
-#         cfp__center_between_forepaws[:, 0] - data_array[:, 2 * bodyparts['Tailbase']],
-#         cfp__center_between_forepaws[:, 1] - data_array[:, 2 * bodyparts['Tailbase'] + 1],
-#     ])).T  # Previously: cfp_pt
-#     chp__center_between_hindpaws = np.vstack((
-#         ((data_array[:, 2 * bodyparts['Hindpaw/Hip1']] + data_array[:, 2 * bodyparts['Hindpaw/Hip2']]) / 2),
-#         ((data_array[:, 2 * bodyparts['Hindpaw/Hip1'] + 1] + data_array[:, 2 * bodyparts['Hindpaw/Hip2'] + 1]) / 2),
-#     )).T
-#     chp__center_between_hindpaws__minus__proximal_tail = np.vstack(([
-#         chp__center_between_hindpaws[:, 0] - data_array[:, 2 * bodyparts['Tailbase']],
-#         chp__center_between_hindpaws[:, 1] - data_array[:, 2 * bodyparts['Tailbase'] + 1],
-#     ])).T  # chp_pt
-#     snout__proximal_tail__distance__aka_BODYLENGTH = np.vstack(([
-#         data_array[:, 2 * bodyparts['Snout/Head']] - data_array[:, 2 * bodyparts['Tailbase']],
-#         data_array[:, 2 * bodyparts['Snout/Head'] + 1] - data_array[:, 2 * bodyparts['Tailbase'] + 1],
-#     ])).T  # previously: sn_pt
-#
-#     ### Create the 4 static measurement features
-#     inter_forepaw_distance__normalized = np.zeros(num_data_rows)  # originally: fpd_norm
-#     cfp_pt__center_between_forepaws__minus__proximal_tail__normalized = np.zeros(num_data_rows)  # originally: cfp_pt_norm
-#     chp__proximal_tail__normalized = np.zeros(num_data_rows)  # originally: chp_pt_norm
-#     snout__proximal_tail__distance__aka_BODYLENGTH__normalized = np.zeros(num_data_rows)  # originally: sn_pt_norm
-#     for j in range(1, num_data_rows):
-#         # Each of these steps below produces a single-valued-array (shape: (1,1)) and inserted it into the noramlized
-#         inter_forepaw_distance__normalized[j] = np.array(np.linalg.norm(inter_forepaw_distance[j, :]))
-#         cfp_pt__center_between_forepaws__minus__proximal_tail__normalized[j] = np.linalg.norm(
-#             dFT__cfp_pt__center_between_forepaws__minus__proximal_tail[j, :])
-#         chp__proximal_tail__normalized[j] = np.linalg.norm(chp__center_between_hindpaws__minus__proximal_tail[j, :])
-#         snout__proximal_tail__distance__aka_BODYLENGTH__normalized[j] = np.linalg.norm(
-#             snout__proximal_tail__distance__aka_BODYLENGTH[j, :])
-#     ## "Smooth" features for final use
-#     # Body length (1)
-#     snout__proximal_tail__distance__aka_BODYLENGTH__normalized_smoothed = likelihoodprocessing.boxcar_center(
-#         snout__proximal_tail__distance__aka_BODYLENGTH__normalized, win_len)  # sn_pt_norm_smth
-#     # Inter-forepaw distance (4)
-#     inter_forepaw_distance__normalized__smoothed = likelihoodprocessing.boxcar_center(inter_forepaw_distance__normalized,
-#                                                                                       win_len)  # fpd_norm_smth
-#     # (2)
-#     snout__center_forepaws__normalized__smoothed = likelihoodprocessing.boxcar_center(
-#         snout__proximal_tail__distance__aka_BODYLENGTH__normalized - cfp_pt__center_between_forepaws__minus__proximal_tail__normalized,
-#         win_len)  # sn_cfp_norm_smth
-#     # (3)
-#     snout__center_hindpaws__normalized__smoothed = likelihoodprocessing.boxcar_center(
-#         snout__proximal_tail__distance__aka_BODYLENGTH__normalized - chp__proximal_tail__normalized,
-#         win_len)  # sn_chp_norm_smth
-#
-#     ### Create the 3 time-varying features
-#     snout__proximal_tail__angle = np.zeros(num_data_rows - 1)  # originally: sn_pt_ang
-#     snout_speed__aka_snout__displacement = np.zeros(num_data_rows - 1)  # originally: sn_disp
-#     tail_speed__aka_proximal_tail__displacement = np.zeros(num_data_rows - 1)  # originally: pt_disp
-#     for k in range(num_data_rows - 1):
-#         b_3d = np.hstack([snout__proximal_tail__distance__aka_BODYLENGTH[k + 1, :], 0])
-#         a_3d = np.hstack([snout__proximal_tail__distance__aka_BODYLENGTH[k, :], 0])
-#         c = np.cross(b_3d, a_3d)
-#         snout__proximal_tail__angle[k] = np.dot(np.dot(np.sign(c[2]), 180) / np.pi, math.atan2(np.linalg.norm(c), np.dot(
-#             snout__proximal_tail__distance__aka_BODYLENGTH[k, :],
-#             snout__proximal_tail__distance__aka_BODYLENGTH[k + 1, :])))
-#         snout_speed__aka_snout__displacement[k] = np.linalg.norm(
-#             data_array[k + 1, 2 * bodyparts['Snout/Head']:2 * bodyparts['Snout/Head'] + 1] - data_array[k,
-#                                                                                              2 * bodyparts['Snout/Head']:2 *
-#                                                                                                                          bodyparts[
-#                                                                                                                              'Snout/Head'] + 1])
-#         tail_speed__aka_proximal_tail__displacement[k] = np.linalg.norm(
-#             data_array[k + 1, 2 * bodyparts['Tailbase']:2 * bodyparts['Tailbase'] + 1] - data_array[k,
-#                                                                                          2 * bodyparts['Tailbase']:2 *
-#                                                                                                                    bodyparts[
-#                                                                                                                        'Tailbase'] + 1])
-#     snout__proximal_tail__angle__smoothed = likelihoodprocessing.boxcar_center(snout__proximal_tail__angle,
-#                                                                                win_len)  # sn_pt_ang_smth =>
-#     snout_speed__aka_snout_displacement_smoothed = likelihoodprocessing.boxcar_center(snout_speed__aka_snout__displacement,
-#                                                                                       win_len)  # sn_disp_smth =>
-#     tail_speed__aka_proximal_tail__displacement__smoothed = likelihoodprocessing.boxcar_center(
-#         tail_speed__aka_proximal_tail__displacement, win_len)  # originally: pt_disp_smth
-#
-#     # Append final features to features list
-#     features.append(np.vstack((
-#         snout__center_forepaws__normalized__smoothed[1:],  # 2
-#         snout__center_hindpaws__normalized__smoothed[1:],  # 3
-#         inter_forepaw_distance__normalized__smoothed[1:],  # 4
-#         snout__proximal_tail__distance__aka_BODYLENGTH__normalized_smoothed[1:],  # 1
-#         # time-varying features
-#         snout__proximal_tail__angle__smoothed[:],  # 7
-#         snout_speed__aka_snout_displacement_smoothed[:],  # 5
-#         tail_speed__aka_proximal_tail__displacement__smoothed[:],)  # 6
-#
-#
-#
-#     return df
+
+def engineer_features_7(in_df: pd.DataFrame, map_names: dict = None, copy: bool = False) -> pd.DataFrame:
+    # TODO: is copy even necessary?
+    """ *NEW*
+
+    :param in_df: (DataFrame)
+    :param map_names (dict)
+    :param copy:
+    :return: (DataFrame)
+    """
+    data_array = np.zeros((2, 3,))  # Deleteme
+    bodyparts = {}  # Deleteme
+    num_data_rows = len(in_df)  # Deleteme
+    win_len = 60/0.25  # Deleteme
+    features = []  # Deleteme
+
+    # Args checks
+    check_arg.ensure_type(in_df, pd.DataFrame)
+
+    # Required columns checking
+    required_cols = ('', )
+    set_df_columns = set(in_df.columns)
+
+    # Solve kwargs
+    df = in_df.copy() if copy else in_df
+
+    # Do
+    shoulder_left_x = 'Forepaw/Shoulder1_x'
+    shoulder_right_x = 'Forepaw/Shoulder2_x'
+
+    delta_shoulder_left_x_shoulder_right_x = 'delta_shoulders_left_right_x'
+    delta_shoulder_left_x_shoulder_right_x = 'delta_shoulders_left_right_x'
+
+    ################
+    # Create intermediate variables to solve for final features.
+    #   It looks like, for all intermediate variables, it takes an average between current i and i+1 values.
+    inter_forepaw_distance = data_array[:, 2 * bodyparts['Forepaw/Shoulder1']:2 * bodyparts['Forepaw/Shoulder1'] + 2] - \
+                             data_array[:, 2 * bodyparts['Forepaw/Shoulder2']:2 * bodyparts['Forepaw/Shoulder2'] + 2]  # Previously: 'fpd'
+
+    df[delta_shoulder_left_x_shoulder_right_x] = df[shoulder_left_x] - df[shoulder_right_x]
+
+    #
+
+    cfp__center_between_forepaws = np.vstack((
+        (data_array[:, 2 * bodyparts['Forepaw/Shoulder1']] + data_array[:, 2 * bodyparts['Forepaw/Shoulder2']]) / 2,
+        (data_array[:, 2 * bodyparts['Forepaw/Shoulder1'] + 1] + data_array[:, 2 * bodyparts['Forepaw/Shoulder1'] + 1]) / 2),
+    ).T  # Previously: cfp
+
+    #
+
+    dFT__cfp_pt__center_between_forepaws__minus__proximal_tail = np.vstack(([
+        cfp__center_between_forepaws[:, 0] - data_array[:, 2 * bodyparts['Tailbase']],
+        cfp__center_between_forepaws[:, 1] - data_array[:, 2 * bodyparts['Tailbase'] + 1],
+    ])).T  # Previously: cfp_pt
+    chp__center_between_hindpaws = np.vstack((
+        ((data_array[:, 2 * bodyparts['Hindpaw/Hip1']] + data_array[:, 2 * bodyparts['Hindpaw/Hip2']]) / 2),
+        ((data_array[:, 2 * bodyparts['Hindpaw/Hip1'] + 1] + data_array[:, 2 * bodyparts['Hindpaw/Hip2'] + 1]) / 2),
+    )).T
+    chp__center_between_hindpaws__minus__proximal_tail = np.vstack(([
+        chp__center_between_hindpaws[:, 0] - data_array[:, 2 * bodyparts['Tailbase']],
+        chp__center_between_hindpaws[:, 1] - data_array[:, 2 * bodyparts['Tailbase'] + 1],
+    ])).T  # chp_pt
+    snout__proximal_tail__distance__aka_BODYLENGTH = np.vstack(([
+        data_array[:, 2 * bodyparts['Snout/Head']] - data_array[:, 2 * bodyparts['Tailbase']],
+        data_array[:, 2 * bodyparts['Snout/Head'] + 1] - data_array[:, 2 * bodyparts['Tailbase'] + 1],
+    ])).T  # previously: sn_pt
+
+    ### Create the 4 static measurement features
+    inter_forepaw_distance__normalized = np.zeros(num_data_rows)  # originally: fpd_norm
+    cfp_pt__center_between_forepaws__minus__proximal_tail__normalized = np.zeros(num_data_rows)  # originally: cfp_pt_norm
+    chp__proximal_tail__normalized = np.zeros(num_data_rows)  # originally: chp_pt_norm
+    snout__proximal_tail__distance__aka_BODYLENGTH__normalized = np.zeros(num_data_rows)  # originally: sn_pt_norm
+    for j in range(1, num_data_rows):
+        # Each of these steps below produces a single-valued-array (shape: (1,1)) and inserted it into the noramlized
+        inter_forepaw_distance__normalized[j] = np.array(np.linalg.norm(inter_forepaw_distance[j, :]))
+        cfp_pt__center_between_forepaws__minus__proximal_tail__normalized[j] = np.linalg.norm(
+            dFT__cfp_pt__center_between_forepaws__minus__proximal_tail[j, :])
+        chp__proximal_tail__normalized[j] = np.linalg.norm(chp__center_between_hindpaws__minus__proximal_tail[j, :])
+        snout__proximal_tail__distance__aka_BODYLENGTH__normalized[j] = np.linalg.norm(
+            snout__proximal_tail__distance__aka_BODYLENGTH[j, :])
+    ## "Smooth" features for final use
+    # Body length (1)
+    snout__proximal_tail__distance__aka_BODYLENGTH__normalized_smoothed = likelihoodprocessing.boxcar_center(
+        snout__proximal_tail__distance__aka_BODYLENGTH__normalized, win_len)  # sn_pt_norm_smth
+    # Inter-forepaw distance (4)
+    inter_forepaw_distance__normalized__smoothed = likelihoodprocessing.boxcar_center(inter_forepaw_distance__normalized,
+                                                                                      win_len)  # fpd_norm_smth
+    # (2)
+    snout__center_forepaws__normalized__smoothed = likelihoodprocessing.boxcar_center(
+        snout__proximal_tail__distance__aka_BODYLENGTH__normalized - cfp_pt__center_between_forepaws__minus__proximal_tail__normalized,
+        win_len)  # sn_cfp_norm_smth
+    # (3)
+    snout__center_hindpaws__normalized__smoothed = likelihoodprocessing.boxcar_center(
+        snout__proximal_tail__distance__aka_BODYLENGTH__normalized - chp__proximal_tail__normalized,
+        win_len)  # sn_chp_norm_smth
+
+
+
+    ### Create the 3 time-varying features
+    snout__proximal_tail__angle = np.zeros(num_data_rows - 1)  # originally: sn_pt_ang
+    snout_speed__aka_snout__displacement = np.zeros(num_data_rows - 1)  # originally: sn_disp
+    tail_speed__aka_proximal_tail__displacement = np.zeros(num_data_rows - 1)  # originally: pt_disp
+    for k in range(num_data_rows - 1):
+        b_3d = np.hstack([snout__proximal_tail__distance__aka_BODYLENGTH[k + 1, :], 0])
+        a_3d = np.hstack([snout__proximal_tail__distance__aka_BODYLENGTH[k, :], 0])
+        c = np.cross(b_3d, a_3d)
+        snout__proximal_tail__angle[k] = np.dot(np.dot(np.sign(c[2]), 180) / np.pi, math.atan2(np.linalg.norm(c), np.dot(
+            snout__proximal_tail__distance__aka_BODYLENGTH[k, :],
+            snout__proximal_tail__distance__aka_BODYLENGTH[k + 1, :])))
+        snout_speed__aka_snout__displacement[k] = np.linalg.norm(
+            data_array[k + 1, 2 * bodyparts['Snout/Head']:2 * bodyparts['Snout/Head'] + 1] - data_array[k,
+                                                                                             2 * bodyparts['Snout/Head']:2 *
+                                                                                                                         bodyparts[
+                                                                                                                             'Snout/Head'] + 1])
+        tail_speed__aka_proximal_tail__displacement[k] = np.linalg.norm(
+            data_array[k + 1, 2 * bodyparts['Tailbase']:2 * bodyparts['Tailbase'] + 1] - data_array[k,
+                                                                                         2 * bodyparts['Tailbase']:2 *
+                                                                                                                   bodyparts[
+                                                                                                                       'Tailbase'] + 1])
+    snout__proximal_tail__angle__smoothed = likelihoodprocessing.boxcar_center(snout__proximal_tail__angle,
+                                                                               win_len)  # sn_pt_ang_smth =>
+    snout_speed__aka_snout_displacement_smoothed = likelihoodprocessing.boxcar_center(snout_speed__aka_snout__displacement,
+                                                                                      win_len)  # sn_disp_smth =>
+    tail_speed__aka_proximal_tail__displacement__smoothed = likelihoodprocessing.boxcar_center(
+        tail_speed__aka_proximal_tail__displacement, win_len)  # originally: pt_disp_smth
+
+    # Append final features to features list
+    features.append(np.vstack((
+        snout__center_forepaws__normalized__smoothed[1:],  # 2
+        snout__center_hindpaws__normalized__smoothed[1:],  # 3
+        inter_forepaw_distance__normalized__smoothed[1:],  # 4
+        snout__proximal_tail__distance__aka_BODYLENGTH__normalized_smoothed[1:],  # 1
+        # time-varying features
+        snout__proximal_tail__angle__smoothed[:],  # 7
+        snout_speed__aka_snout_displacement_smoothed[:],  # 5
+        tail_speed__aka_proximal_tail__displacement__smoothed[:],  # 6
+    )))
+
+
+
+    return df
 
 
 def extract_7_features_bsoid_tsne_py(list_of_arrays_data: List[np.ndarray], bodyparts: dict=config.BODYPARTS_PY_LEGACY, fps: int = config.VIDEO_FPS, comp: int = config.COMPILE_CSVS_FOR_TRAINING) -> List[np.ndarray]:
