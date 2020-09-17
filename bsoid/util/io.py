@@ -75,7 +75,7 @@ def read_csv(csv_file_path: str, **kwargs) -> pd.DataFrame:
     # Remove top row (e.g.: [scorer, DLCModel, DLCModel, ... ]) now that we have saved the model name
     df = df.iloc[1:, :]
 
-    # # Manipulate Frame based on next two rows
+    # # Manipulate Frame based on next two rows to create column names.
     # Create columns based on next two rows. Combine the tow rows of each column and separate with "_"
     array_of_next_two_rows = np.array(df.iloc[:2, :])
     new_column_names: List[str] = []
