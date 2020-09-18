@@ -1,3 +1,4 @@
+from typing import List
 from unittest import TestCase, skip
 import numpy as np
 import os
@@ -6,7 +7,11 @@ import pandas as pd
 import bsoid
 
 
-test_file_name = 'TRUNCATED_sample__Video1DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000 - Copy.csv'
+########################################################################################################################
+
+# test_file_name = 'TRUNCATED_sample__Video1DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000 - Copy.csv'
+test_file_name = 'FullSample_Video1DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000.csv'
+
 
 single_test_file_location = os.path.join(bsoid.config.BSOID_BASE_PROJECT_PATH, 'tests', 'test_data', test_file_name)
 
@@ -31,6 +36,7 @@ class TestFeatureEngineering(TestCase):
 
         # Assert
         is_filtered_data_equal = np.array_equal(arr_original_adaptive_filter_output, arr_new_adaptive_filter_output)
+        top_n_rows_display, bottom_n_rows_display = 6, 4
         err_not_equal = f"""
 ------------------------------------------------------------------------------------------------------------------------
 Original output shape:
@@ -40,26 +46,68 @@ New output shape:
 
 ---
 
-First two rows of original:
-{arr_original_adaptive_filter_output[:2, :]}
+First {top_n_rows_display} rows of original:
+{arr_original_adaptive_filter_output[:top_n_rows_display, :]}
 
-First two rows of new:
-{arr_new_adaptive_filter_output[:2, :]}
-
----
-
-Last two rows of original:
-{arr_original_adaptive_filter_output[-2:, :]}
-
-Last two rows of new:
-{arr_new_adaptive_filter_output[-2:, :]}
+First {top_n_rows_display} rows of new:
+{arr_new_adaptive_filter_output[:top_n_rows_display, :]}
 
 ---
 
-Original output: {arr_original_adaptive_filter_output}
-New output: {arr_new_adaptive_filter_output}
+Last {bottom_n_rows_display} rows of original:
+{arr_original_adaptive_filter_output[-bottom_n_rows_display:, :]}
+
+Last {bottom_n_rows_display} rows of new:
+{arr_new_adaptive_filter_output[-bottom_n_rows_display:, :]}
+
+---
+
+
+New raw Data:
+{df_input_data_new}
+
+---
+
+Original output:
+{arr_original_adaptive_filter_output}
+
+New output:
+{arr_new_adaptive_filter_output}
+
+---
+
+Difference:
+{arr_original_adaptive_filter_output-arr_new_adaptive_filter_output}
 """
 
         self.assertTrue(is_filtered_data_equal, err_not_equal)
 
+    def test___newFEGoodAsOldFE(self):
+        # Arrange
+        # Read in data
+        df_input_data_original = pd.read_csv(single_test_file_location, nrows=bsoid.config.max_rows_to_read_in_from_csv)
+        arr_input_data_original_filtered, _ = bsoid.util.likelihoodprocessing.process_raw_data_and_filter_adaptively(
+            df_input_data_original)
+        input_data_original_ready: List[np.ndarray] = bsoid.feature_engineering.extract_7_features_bsoid_tsne_py(
+            [arr_input_data_original_filtered, ])
 
+        df_input_data_new = bsoid.io.read_csv(single_test_file_location, nrows=bsoid.config.max_rows_to_read_in_from_csv)
+        df_input_data_new_filtered, _ = bsoid.feature_engineering.adaptively_filter_dlc_output(df_input_data_new)
+        input_data_new_ready: pd.DataFrame = bsoid.feature_engineering.engineer_7_features_dataframe(
+            df_input_data_new_filtered)
+
+        # Set up functions for feature engineering
+        old_func: callable = bsoid.feature_engineering.extract_7_features_bsoid_tsne_py
+        new_func: callable = bsoid.feature_engineering.engineer_7_features_dataframe
+        # Act
+        old_result_list_arrays: List[np.ndarray] = old_func(input_data_original_ready)
+        old: np.ndarray = old_result_list_arrays[0]
+        new_df: pd.DataFrame = new_func(input_data_new_ready)
+        new: np.ndarray = np.array(new_df)
+
+        # Assert
+        arrays_equal: bool = np.array_equal(old, new)
+        fail_msg = f"""
+
+"""
+        self.assertTrue(arrays_equal, fail_msg)
