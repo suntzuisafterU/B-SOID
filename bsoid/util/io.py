@@ -90,6 +90,8 @@ def read_csv(csv_file_path: str, **kwargs) -> pd.DataFrame:
     # # Final touches
     # Delete "coords" column since it is just a numerical counting of rows. Not useful data.
     df = df.drop('bodyparts_coords', axis=1)
+    # Convert all values to float in case they are parsed as string
+    df = df.astype(np.float)
     # Instantiate 'scorer' column so we can track the model if needed later
     df['scorer'] = dlc_scorer
     # Reset index (good practice) after chopping off top 3 columns so index starts at 0 again
