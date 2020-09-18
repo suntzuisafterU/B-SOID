@@ -59,9 +59,14 @@ def extract_7_features_bsoid_tsne_py(list_of_arrays_data: List[np.ndarray], body
 
     ### *note* Sometimes data is (incorrectly) submitted as an array of arrays (the number of arrays in the overarching array or, if correctly typed, list) is the same # of CSV files read in). Fix type then continue.
     if isinstance(list_of_arrays_data, np.ndarray):
-        logger.warning(f'')  # TODO: expand on warning
+        logger.warning(f'TODO: expand on warning: list of arrays was expected to be a list but instead found np array')  # TODO: expand on warning
         list_of_arrays_data = list(list_of_arrays_data)
+
     # Check args
+    if len(list_of_arrays_data) == 0:
+        err_empty_list_input = f'TODO: empty list input'  # TODO
+        logger.error(err_empty_list_input)
+        raise ValueError(err_empty_list_input)
     check_arg.ensure_type(list_of_arrays_data, list)
     check_arg.ensure_type(list_of_arrays_data[0], np.ndarray)
 
@@ -74,6 +79,7 @@ def extract_7_features_bsoid_tsne_py(list_of_arrays_data: List[np.ndarray], body
         logger.debug(f'{inspect.stack()[0][3]}() (to be deprecated!): Extracting features from CSV file {i+1}...')
         num_data_rows = len(data_array)
         #
+        # inter_forepaw_distance resultant shape is (all rows, 2 columns)
         inter_forepaw_distance = data_array[:, 2 * bodyparts['Forepaw/Shoulder1']:2 * bodyparts['Forepaw/Shoulder1'] + 2] - data_array[:, 2 * bodyparts['Forepaw/Shoulder2']:2 * bodyparts['Forepaw/Shoulder2'] + 2]  # Previously: 'fpd'
 
         cfp__center_between_forepaws = np.vstack((
@@ -104,6 +110,7 @@ def extract_7_features_bsoid_tsne_py(list_of_arrays_data: List[np.ndarray], body
         chp__proximal_tail__normalized = np.zeros(num_data_rows)            # originally: chp_pt_norm
         snout__proximal_tail__distance__aka_BODYLENGTH__normalized = np.zeros(num_data_rows)  # originally: sn_pt_norm
         for j in range(1, num_data_rows):
+            # Each of these steps below produces a single-valued-array (shape: (1,1)) and inserted it into the noramlized
             inter_forepaw_distance__normalized[j] = np.array(np.linalg.norm(inter_forepaw_distance[j, :]))
             cfp_pt__center_between_forepaws__minus__proximal_tail__normalized[j] = np.linalg.norm(dFT__cfp_pt__center_between_forepaws__minus__proximal_tail[j, :])
             chp__proximal_tail__normalized[j] = np.linalg.norm(chp__center_between_hindpaws__minus__proximal_tail[j, :])
