@@ -86,48 +86,53 @@ Difference:
     def test___newFEGoodAsOldFE(self):
         # Arrange
         # Set up functions for feature engineering
-        old_func: callable = bsoid.feature_engineering.extract_7_features_bsoid_tsne_py
-        new_func: callable = bsoid.feature_engineering.engineer_7_features_dataframe
+        old_feature_engineer: callable = bsoid.feature_engineering.extract_7_features_bsoid_tsne_py
+        new_feature_engineer: callable = bsoid.feature_engineering.engineer_7_features_dataframe
         # Read in data
         df_input_data_original = pd.read_csv(single_test_file_location, nrows=bsoid.config.max_rows_to_read_in_from_csv)
         arr_input_data_original_filtered, _ = bsoid.util.likelihoodprocessing.process_raw_data_and_filter_adaptively(
             df_input_data_original)
-        input_data_original_ready: List[np.ndarray] = bsoid.feature_engineering.extract_7_features_bsoid_tsne_py(
-            [arr_input_data_original_filtered, ])
+        # input_data_original_ready: List[np.ndarray] = bsoid.feature_engineering.extract_7_features_bsoid_tsne_py(
+        #     [arr_input_data_original_filtered, ])
 
         df_input_data_new = bsoid.io.read_csv(single_test_file_location, nrows=bsoid.config.max_rows_to_read_in_from_csv)
         df_input_data_new_filtered, _ = bsoid.feature_engineering.adaptively_filter_dlc_output(df_input_data_new)
 
         # Act
-        old_result_list_arrays: List[np.ndarray] = old_func(input_data_original_ready)
-        old: np.ndarray = old_result_list_arrays[0]
-        new_df: pd.DataFrame = new_func(df_input_data_new_filtered)
-        new: np.ndarray = new_df.values.T
+        old_result_list_arrays: List[np.ndarray] = old_feature_engineer([arr_input_data_original_filtered, ])
+        old_result_final: np.ndarray = old_result_list_arrays[0].T
+
+        new_result: pd.DataFrame = new_feature_engineer(df_input_data_new_filtered)
+        new_result_final: np.ndarray = new_result.values
 
         # Assert
-        arrays_are_equal: bool = np.array_equal(old, new)
+        arrays_are_equal: bool = np.array_equal(old_result_final, new_result_final)
         top_n_rows, bottom_n_rows = 3, 3
         fail_msg = f"""
 Old array shape:
-{old.shape}
+{old_result_final.shape}
 
 New array shape:
-{new.shape}
+{new_result_final.shape}
 
 ---
 
 Old result top {top_n_rows} rows:
-{old[:top_n_rows, :]}
+{old_result_final[:top_n_rows, :]}
 
 New result top {top_n_rows} rows:
-{new[:top_n_rows, :]}
+{new_result_final[:top_n_rows, :]}
 
 ---
 
 Old result bottom {bottom_n_rows} rows:
-{old[:bottom_n_rows, :]}
+{old_result_final[:bottom_n_rows, :]}
 
 New result bottom {bottom_n_rows} rows:
-{new[:bottom_n_rows, :]}
+{new_result_final[:bottom_n_rows, :]}
+
+---
+DIFF:
+{new_result_final - old_result_final}
 """
         self.assertTrue(arrays_are_equal, fail_msg)
