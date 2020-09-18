@@ -254,9 +254,9 @@ def process_raw_data_and_filter_adaptively(df_input_data: pd.DataFrame) -> Tuple
     array_filtered_data_without_first_row = np.array(array_data_filtered[1:])
 
     # Convert all data to np.float
-    final_array_filtered_data = array_filtered_data_without_first_row.astype(np.float)  # TODO: remove this line? np.float is just an alias for Python's built-in float
+    final__array_filtered_data = array_filtered_data_without_first_row.astype(np.float)  # TODO: remove this line? np.float is just an alias for Python's built-in float
 
-    return final_array_filtered_data, percent_filterd_per_bodypart__perc_rect
+    return final__array_filtered_data, percent_filterd_per_bodypart__perc_rect
 
 
 @config.deco__log_entry_exit(logger)

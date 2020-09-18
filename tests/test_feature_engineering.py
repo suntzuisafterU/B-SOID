@@ -11,6 +11,7 @@ import bsoid
 
 # test_file_name = 'TRUNCATED_sample__Video1DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000 - Copy.csv'
 test_file_name = 'FullSample_Video1DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000.csv'
+test_file_name = 'RowsDeleted_FullSample_Video1DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000.csv'
 
 
 single_test_file_location = os.path.join(bsoid.config.BSOID_BASE_PROJECT_PATH, 'tests', 'test_data', test_file_name)
@@ -101,11 +102,32 @@ Difference:
         old_result_list_arrays: List[np.ndarray] = old_func(input_data_original_ready)
         old: np.ndarray = old_result_list_arrays[0]
         new_df: pd.DataFrame = new_func(df_input_data_new_filtered)
-        new: np.ndarray = np.array(new_df)
+        new: np.ndarray = new_df.values.T
 
         # Assert
-        arrays_equal: bool = np.array_equal(old, new)
+        arrays_are_equal: bool = np.array_equal(old, new)
+        top_n_rows, bottom_n_rows = 3, 3
         fail_msg = f"""
+Old array shape:
+{old.shape}
 
+New array shape:
+{new.shape}
+
+---
+
+Old result top {top_n_rows} rows:
+{old[:top_n_rows, :]}
+
+New result top {top_n_rows} rows:
+{new[:top_n_rows, :]}
+
+---
+
+Old result bottom {bottom_n_rows} rows:
+{old[:bottom_n_rows, :]}
+
+New result bottom {bottom_n_rows} rows:
+{new[:bottom_n_rows, :]}
 """
-        self.assertTrue(arrays_equal, fail_msg)
+        self.assertTrue(arrays_are_equal, fail_msg)
