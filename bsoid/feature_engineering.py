@@ -250,10 +250,7 @@ def engineer_7_features_dataframe(df: pd.DataFrame, map_names: dict = None, copy
 
     # fpd
     # inter_forepaw_distance = data_array[:, 2 * bodyparts['Forepaw/Shoulder1']:2 * bodyparts['Forepaw/Shoulder1'] + 2] - data_array[:, 2 * bodyparts['Forepaw/Shoulder2']:2 * bodyparts['Forepaw/Shoulder2'] + 2]  # Previously: 'fpd'
-    inter_forepaw_distance = np.array(
-        df[[left_shoulder_x, left_shoulder_y]].values - df[[right_shoulder_x, right_shoulder_y]].values)  # Previously: 'fpd'
-
-    # assert inter_forepaw_distance.shape[0] == 2, f'Houston we have a problem'  # TODO: remove after debuggign
+    inter_forepaw_distance = df[[left_shoulder_x, left_shoulder_y]].values - df[[right_shoulder_x, right_shoulder_y]].values  # Previously: 'fpd'
 
     # cfp
     # cfp__center_between_forepaws = np.vstack((
@@ -265,16 +262,6 @@ def engineer_7_features_dataframe(df: pd.DataFrame, map_names: dict = None, copy
         (df[left_shoulder_y].values + df[right_shoulder_y].values) / 2,
     )).T  # Previously: cfp
 
-    # cfp_pt
-    # dFT__cfp_pt__center_between_forepaws__minus__proximal_tail = np.vstack(([
-    #     cfp__center_between_forepaws[:, 0] - data_array[:, 2 * bodyparts['Tailbase']],
-    #     cfp__center_between_forepaws[:, 1] - data_array[:, 2 * bodyparts['Tailbase'] + 1],
-    # ])).T  # Previously: cfp_pt
-    dFT__cfp_pt__center_between_forepaws__minus__proximal_tail = np.vstack(([  # Not works!
-        cfp__center_between_forepaws[:, 0] - df[tailbase_x].values,  # - data_array[:, 2 * bodyparts['Tailbase']],
-        cfp__center_between_forepaws[:, 1] - df[tailbase_y].values,
-    ])).T
-
     # chp
     # chp__center_between_hindpaws = np.vstack((
     #     ((data_array[:, 2 * bodyparts['Hindpaw/Hip1']] + data_array[:, 2 * bodyparts['Hindpaw/Hip2']]) / 2),
@@ -284,7 +271,15 @@ def engineer_7_features_dataframe(df: pd.DataFrame, map_names: dict = None, copy
         (df[left_hip_x].values + df[right_hip_x].values) / 2,
         (df[left_hip_y].values + df[right_hip_y].values) / 2,
     )).T
-
+    # cfp_pt
+    # dFT__cfp_pt__center_between_forepaws__minus__proximal_tail = np.vstack(([
+    #     cfp__center_between_forepaws[:, 0] - data_array[:, 2 * bodyparts['Tailbase']],
+    #     cfp__center_between_forepaws[:, 1] - data_array[:, 2 * bodyparts['Tailbase'] + 1],
+    # ])).T  # Previously: cfp_pt
+    dFT__cfp_pt__center_between_forepaws__minus__proximal_tail = np.vstack(([  # Not works!
+        cfp__center_between_forepaws[:, 0] - df[tailbase_x].values,  # - data_array[:, 2 * bodyparts['Tailbase']],
+        cfp__center_between_forepaws[:, 1] - df[tailbase_y].values,
+    ])).T
     # chp_pt
     # chp__center_between_hindpaws__minus__proximal_tail = np.vstack(([
     #     chp__center_between_hindpaws[:, 0] - data_array[:, 2 * bodyparts['Tailbase']],
@@ -314,11 +309,9 @@ def engineer_7_features_dataframe(df: pd.DataFrame, map_names: dict = None, copy
     for j in range(1, num_data_rows):
         # Each of these steps below produces a single-valued-array (shape: (1,1)) and inserted it into the noramlized
         inter_forepaw_distance__normalized[j] = np.array(np.linalg.norm(inter_forepaw_distance[j, :]))
-
         cfp_pt__center_between_forepaws__minus__proximal_tail__normalized[j] = np.linalg.norm(dFT__cfp_pt__center_between_forepaws__minus__proximal_tail[j, :])
         chp__proximal_tail__normalized[j] = np.linalg.norm(chp__center_between_hindpaws__minus__proximal_tail[j, :])
-        snout__proximal_tail__distance__aka_BODYLENGTH__normalized[j] = np.linalg.norm(
-            snout__proximal_tail__distance__aka_BODYLENGTH[j, :])
+        snout__proximal_tail__distance__aka_BODYLENGTH__normalized[j] = np.linalg.norm(snout__proximal_tail__distance__aka_BODYLENGTH[j, :])
     ## "Smooth" features for final use
     # Body length (1)
     snout__proximal_tail__distance__aka_BODYLENGTH__normalized_smoothed = likelihoodprocessing.boxcar_center(
@@ -484,7 +477,8 @@ def extract_7_features_bsoid_tsne_py(list_of_arrays_data: List[np.ndarray], body
         inter_forepaw_distance = data_array[:, 2 * bodyparts['Forepaw/Shoulder1'] : 2 * bodyparts['Forepaw/Shoulder1'] + 2] - data_array[:, 2 * bodyparts['Forepaw/Shoulder2']:2 * bodyparts['Forepaw/Shoulder2'] + 2]  # Originally: 'fpd'
         cfp__center_between_forepaws = np.vstack((
             (data_array[:, 2 * bodyparts['Forepaw/Shoulder1']] + data_array[:, 2 * bodyparts['Forepaw/Shoulder2']]) / 2,
-            (data_array[:, 2 * bodyparts['Forepaw/Shoulder1'] + 1] + data_array[:, 2 * bodyparts['Forepaw/Shoulder1'] + 1]) / 2)).T  # Originally: cfp
+            (data_array[:, 2 * bodyparts['Forepaw/Shoulder1'] + 1] + data_array[:, 2 * bodyparts['Forepaw/Shoulder2'] + 1]) / 2  # TODO: RECHECK THIS LINE
+        )).T  # Originally: cfp
 
         dFT__cfp_pt__center_between_forepaws__minus__proximal_tail = np.vstack(([
             cfp__center_between_forepaws[:, 0] - data_array[:, 2 * bodyparts['Tailbase']],
