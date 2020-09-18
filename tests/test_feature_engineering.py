@@ -84,6 +84,9 @@ Difference:
 
     def test___newFEGoodAsOldFE(self):
         # Arrange
+        # Set up functions for feature engineering
+        old_func: callable = bsoid.feature_engineering.extract_7_features_bsoid_tsne_py
+        new_func: callable = bsoid.feature_engineering.engineer_7_features_dataframe
         # Read in data
         df_input_data_original = pd.read_csv(single_test_file_location, nrows=bsoid.config.max_rows_to_read_in_from_csv)
         arr_input_data_original_filtered, _ = bsoid.util.likelihoodprocessing.process_raw_data_and_filter_adaptively(
@@ -93,16 +96,11 @@ Difference:
 
         df_input_data_new = bsoid.io.read_csv(single_test_file_location, nrows=bsoid.config.max_rows_to_read_in_from_csv)
         df_input_data_new_filtered, _ = bsoid.feature_engineering.adaptively_filter_dlc_output(df_input_data_new)
-        input_data_new_ready: pd.DataFrame = bsoid.feature_engineering.engineer_7_features_dataframe(
-            df_input_data_new_filtered)
 
-        # Set up functions for feature engineering
-        old_func: callable = bsoid.feature_engineering.extract_7_features_bsoid_tsne_py
-        new_func: callable = bsoid.feature_engineering.engineer_7_features_dataframe
         # Act
         old_result_list_arrays: List[np.ndarray] = old_func(input_data_original_ready)
         old: np.ndarray = old_result_list_arrays[0]
-        new_df: pd.DataFrame = new_func(input_data_new_ready)
+        new_df: pd.DataFrame = new_func(df_input_data_new_filtered)
         new: np.ndarray = np.array(new_df)
 
         # Assert
