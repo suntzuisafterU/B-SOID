@@ -126,29 +126,35 @@ assert os.path.isdir(OUTPUT_PATH), f'OUTPUT PATH DOES NOT EXIST: {OUTPUT_PATH}'
 ##### TRAIN_FOLDERS, PREDICT_FOLDERS
 # TRAIN_FOLDERS, PREDICT_FOLDERS are lists of folders that are implicitly understood to exist within BASE_PATH
 
-
-# TODO: the hope is that we move away from relative paths like in the old TRAIN_/PREDIC_FOLDERS variables that IMPLICITLY assume location and we instead add absolute pathing and/or relative pathing resolution that ends up in absolute pathing
 # Data folders used to training neural network.
-# TRAIN_FOLDERS are expected to exist in the DLC Project path
+# TRAIN FOLDERS: TRAIN_FOLDERS are expected to exist in the DLC Project path
 TRAIN_FOLDERS = [
     'sample_train_data_folder',
 ]
 TRAIN_FOLDERS_PATHS = [os.path.join(DLC_PROJECT_PATH, folder) for folder in TRAIN_FOLDERS if not os.path.isdir(folder)]
-for folder in TRAIN_FOLDERS_PATHS:
-    assert os.path.isdir(folder), f'Training folder does not exist: {folder}'
 
+for folder_path in TRAIN_FOLDERS_PATHS:
+    assert os.path.isdir(folder_path), f'Training folder does not exist: {folder_path}'
+    assert os.path.isabs(folder_path), f'Predict folder PATH is not absolute and should be: {folder_path}'
 
+# PREDICT FOLDERS:
 PREDICT_FOLDERS: List[str] = [
     'sample_predic_data_folder',
 ]
 PREDICT_FOLDERS_PATHS = [os.path.join(DLC_PROJECT_PATH, folder) for folder in PREDICT_FOLDERS]
-for folder in PREDICT_FOLDERS_PATHS:
-    assert os.path.isdir(folder), f'Prediction folder does not exist: {folder}'
+
+for folder_path in PREDICT_FOLDERS_PATHS:
+    assert os.path.isdir(folder_path), f'Prediction folder does not exist: {folder_path}'
+    assert os.path.isabs(folder_path), f'Predict folder PATH is not absolute and should be: {folder_path}'
 
 # Create a folder to store extracted images.
-config_value_alternate_output_path_for_annotated_frames = configuration.get('PATH', 'ALTERNATE_OUTPUT_PATH_FOR_ANNOTATED_FRAMES')
+config_value_alternate_output_path_for_annotated_frames = configuration.get(  # TODO:low:address.deleteable?duplicate?
+    'PATH', 'ALTERNATE_OUTPUT_PATH_FOR_ANNOTATED_FRAMES')
 
-FRAMES_OUTPUT_PATH = config_value_alternate_output_path_for_annotated_frames = configuration.get('PATH', 'ALTERNATE_OUTPUT_PATH_FOR_ANNOTATED_FRAMES') if configuration.get('PATH', 'ALTERNATE_OUTPUT_PATH_FOR_ANNOTATED_FRAMES') else FRAMES_OUTPUT_PATH  # '/home/aaron/Documents/OST-with-DLC/B-SOID/OUTPUT/frames'
+FRAMES_OUTPUT_PATH = config_value_alternate_output_path_for_annotated_frames = \
+    configuration.get('PATH', 'ALTERNATE_OUTPUT_PATH_FOR_ANNOTATED_FRAMES') \
+    if configuration.get('PATH', 'ALTERNATE_OUTPUT_PATH_FOR_ANNOTATED_FRAMES') \
+    else FRAMES_OUTPUT_PATH  # '/home/aaron/Documents/OST-with-DLC/B-SOID/OUTPUT/frames'
 assert os.path.isdir(config_value_alternate_output_path_for_annotated_frames), \
     f'config_value_alternate_output_path_for_annotated_frames does not exist. ' \
     f'config_value_alternate_output_path_for_annotated_frames = ' \
@@ -176,7 +182,7 @@ log_format = configuration.get('LOGGING', 'LOG_FORMAT', raw=True)
 stdout_log_level = configuration.get('LOGGING', 'STREAM_LOG_LEVEL', fallback=None)
 file_log_level = configuration.get('LOGGING', 'FILE_LOG_LEVEL', fallback=None)
 log_file_file_path = str(Path(config_file_log_folder_path, config_file_name).absolute())
-# if debug >= 2: print('log_file_file_path AKA os.path.join(config_file_log_folder_path, config_file_name):::', log_file_file_path)
+
 assert os.path.isdir(config_file_log_folder_path), f'Path does not exist: {config_file_log_folder_path}'
 
 
@@ -298,12 +304,17 @@ BODYPARTS_VOC_LEGACY = {
 }
 
 ## *NOTE*: BASE_PATH: is likely to be deprecated in the future
-# BASE_PATH = 'C:\\Users\\killian\\projects\\OST-with-DLC\\GUI_projects\\OST-DLC-projects\\pwd-may11-2020-john-howland-2020-05-11'  # TODO: HIGH: bad!!!! magic variable
+# BASE_PATH = 'C:\\Users\\killian\\projects\\OST-with-DLC\\GUI_projects\\' \
+#             'OST-DLC-projects\\pwd-may11-2020-john-howland-2020-05-11'  # TODO: low: delete later. Deprecated.
 # BASE_PATH = '/home/aaron/Documents/OST-with-DLC/GUI_projects/OST-DLC-projects/pwd-may11-2020-john-howland-2020-05-11'
 
 
+def get_part(part):
+    return configuration['DLC_FEATURES'][part]
+
+bodyparts = {key: configuration['DLC_FEATURES'][key] for key in configuration['DLC_FEATURES']}
+
 ###
-assert isinstance(VIDEO_FPS, int), f''
 
 
 def get_config_str() -> str:
@@ -313,6 +324,7 @@ def get_config_str() -> str:
     return config_string.strip()
 
 
+# Below dict created according to BSOID/segmented_behaviours/README.md
 map_group_to_behaviour = {
     1: 'orient right',
     2: 'body lick',
@@ -331,9 +343,8 @@ map_group_to_behaviour = {
     15: 'orient left',
     16: 'orient left',
 }
-"""
 
-
+"""BSOID/segmented_behaviours/README.md
 ## Here are the example groups that we have extracted from multiple animals using B-SOiD
 
 ### Groups 1-4:
@@ -362,6 +373,8 @@ More example videos are in [this](../examples) directory .
 """
 
 if __name__ == '__main__':
+    print(bodyparts)
+    print()
     print(get_config_str())
     print(f'max_rows_to_read_in_from_csv = {max_rows_to_read_in_from_csv}')
     print(f'VIDEO_FPS = {VIDEO_FPS}')
