@@ -40,7 +40,9 @@ np.set_printoptions(threshold=1_000)
 
 deco__log_entry_exit: callable = bsoid_logging.log_entry_exit  # TODO: temporary measure to enable logging when entering/exiting functions
 
+
 ########################################################################################################################
+# Set default vars
 # Fetch the B-SOiD project directory regardless of clone location
 BSOID_BASE_PROJECT_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # Output directory to where you want the analysis to be stored
@@ -57,13 +59,11 @@ configuration = configparser.ConfigParser()
 configuration.read(os.path.join(BSOID_BASE_PROJECT_PATH, config_file_name))
 
 
-
 ########################################################################################################################
 ##### READ CONFIG FOR RUNTIME VARIABLES #####
 
 DLC_PROJECT_PATH = configuration.get('PATH', 'DLC_PROJECT_PATH')
 
-# Resolve output path
 config_output_path = configuration.get('PATH', 'OUTPUT_PATH')
 OUTPUT_PATH = config_output_path if config_output_path else default_output_path
 GRAPH_OUTPUT_PATH = os.path.join(OUTPUT_PATH, 'graphs')
@@ -84,25 +84,28 @@ DEFAULT_SAVED_GRAPH_FILE_FORMAT: str = configuration.get('APP', 'DEFAULT_SAVED_G
 GENERATE_VIDEOS: bool = configuration.getboolean('APP', 'GENERATE_VIDEOS')
 PERCENT_FRAMES_TO_LABEL: float = configuration.getfloat('APP', 'PERCENT_FRAMES_TO_LABEL')
 DEFAULT_TEST_FILE: str = os.path.join(BSOID_BASE_PROJECT_PATH, 'tests', 'test_data', configuration.get('TESTING', 'DEFAULT_TEST_FILE'))
-assert os.path.isfile(DEFAULT_TEST_FILE), f'Test file was not found: {DEFAULT_TEST_FILE}'
+
+
 
 # Now, pick an example video that corresponds to one of the csv files from the PREDICT_FOLDERS  # TODO: ************* This note from the original author implies that VID_NAME must be a video that corresponds to a csv from PREDICT_FOLDERS
 # VID_NAME = os.path.join(OST_BASE_PROJECT_PATH, 'GUI_projects', 'labelled_videos', '002_ratA_inc2_above.mp4')  # '/home/aaron/Documents/OST-with-DLC/GUI_projects/labelled_videos/002_ratA_inc2_above.mp4'
 VIDEO_TO_LABEL_PATH: str = configuration.get('APP', 'VIDEO_TO_LABEL_PATH')
 short_video_output_directory = os.path.join(OUTPUT_PATH, 'short_videos')
-assert os.path.isdir(short_video_output_directory), f'`short_video_output_directory` dir. (value={short_video_output_directory}) must exist for runtime but does not.'
-
 
 SHORTVID_DIR = short_video_output_directory  # LEGACY. To be deprecated.
 # ID = identification_order  # TODO: DEPRECATE. ID WAS A MISTAKE, BUT NOT SURE WHY/WHAT IT DOES
+
+# Assertions to ensure that, before runtime, the config variables are valid.
+assert os.path.isfile(DEFAULT_TEST_FILE), f'Test file was not found: {DEFAULT_TEST_FILE}'
+assert COMPILE_CSVS_FOR_TRAINING in {0, 1}, f'Invalid COMP value detected: {COMPILE_CSVS_FOR_TRAINING}.'
+
+assert os.path.isdir(short_video_output_directory),\
+    f'`short_video_output_directory` dir. (value={short_video_output_directory}) must exist for runtime but does not.'
 
 
 assert os.path.isdir(DLC_PROJECT_PATH), f'DLC_PROJECT_PATH DOES NOT EXIST: {DLC_PROJECT_PATH}'
 assert os.path.isfile(VIDEO_TO_LABEL_PATH) or not VIDEO_TO_LABEL_PATH, \
     f'Video does not exist: {VIDEO_TO_LABEL_PATH}. Check pathing in config.ini file.'
-
-#########################################
-### OUTPUT PATH CHECK/CREATION
 
 # TODO: create OUTPUT PATH files in case user does not use default output path in BSOID project
 assert os.path.isdir(OUTPUT_PATH), f'OUTPUT PATH DOES NOT EXIST: {OUTPUT_PATH}'
@@ -110,39 +113,30 @@ assert os.path.isdir(OUTPUT_PATH), f'OUTPUT PATH DOES NOT EXIST: {OUTPUT_PATH}'
 
 ########################################################################################################################
 
-# Specify where the OST project lives. Modify on your local machine as necessary.
-# OST_BASE_PROJECT_PATH = configuration.get('PATH', 'OST_BASE_PROJECT_PATH')
-# OST_BASE_PROJECT_PATH = os.path.join('C:\\', 'Users', 'killian', 'projects', 'OST-with-DLC')
-# BASE_PATH = '/home/aaron/Documents/OST-with-DLC/GUI_projects/OST-DLC-projects/pwd-may11-2020-john-howland-2020-05-11'
-
-
-########################################################################################################################
-
-### DLC PROJECT CONFIG VARS  # TODO: HIGH: IMPLEMENT
+### DLC PROJECT CONFIG VARS  # TODO: MED: IMPLEMENT
 # DLC_PROJECT_CONFIG_YAML = configparser.ConfigParser()
 # configuration.read(os.path.join(DLC_PROJECT_PATH, 'config.yaml'))
 
 ########################################################################################################################
 
 ##### TRAIN_FOLDERS, PREDICT_FOLDERS
-# TRAIN_FOLDERS, PREDICT_FOLDERS are lists of folders that are implicitly understood to exist within BASE_PATH
+# TRAIN_FOLDERS & PREDICT_FOLDERS are lists of folders that are implicitly understood to exist within BASE_PATH
 
-# Data folders used to training neural network.
 # TRAIN FOLDERS: TRAIN_FOLDERS are expected to exist in the DLC Project path
 TRAIN_FOLDERS = [
     'sample_train_data_folder',
 ]
 TRAIN_FOLDERS_PATHS = [os.path.join(DLC_PROJECT_PATH, folder) for folder in TRAIN_FOLDERS if not os.path.isdir(folder)]
 
-for folder_path in TRAIN_FOLDERS_PATHS:
-    assert os.path.isdir(folder_path), f'Training folder does not exist: {folder_path}'
-    assert os.path.isabs(folder_path), f'Predict folder PATH is not absolute and should be: {folder_path}'
-
 # PREDICT FOLDERS:
 PREDICT_FOLDERS: List[str] = [
     'sample_predic_data_folder',
 ]
 PREDICT_FOLDERS_PATHS = [os.path.join(DLC_PROJECT_PATH, folder) for folder in PREDICT_FOLDERS]
+
+for folder_path in TRAIN_FOLDERS_PATHS:
+    assert os.path.isdir(folder_path), f'Training folder does not exist: {folder_path}'
+    assert os.path.isabs(folder_path), f'Predict folder PATH is not absolute and should be: {folder_path}'
 
 for folder_path in PREDICT_FOLDERS_PATHS:
     assert os.path.isdir(folder_path), f'Prediction folder does not exist: {folder_path}'
@@ -361,10 +355,11 @@ More example videos are in [this](../examples) directory .
 
 """
 
+
 if __name__ == '__main__':
-    print(bodyparts)
-    print()
     print(get_config_str())
+    print(f'bodyparts: {bodyparts}')
+    print()
     print(f'max_rows_to_read_in_from_csv = {max_rows_to_read_in_from_csv}')
     print(f'VIDEO_FPS = {VIDEO_FPS}')
     print(f'runtime_timestr = {runtime_timestr}')
