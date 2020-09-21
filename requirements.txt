@@ -9,7 +9,7 @@ pandas>=1.0.3
 psutil>=5.7.0
 opencv-python
 seaborn>=0.10.0
-scikit-learn
+scikit-learn>=0.22.1
 streamlit>=0.64.0
 tables
 tqdm>=4.46.0
