@@ -40,6 +40,7 @@ def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.Da
     """ *NEW* --> Successor function to old method in likelikhood processing. Uses new DF format.
     Takes in a ____ TODO...
 
+    (Described as adaptive high-pass filter by original author)
     Follows same form as legacy only for continuity reasons. Can be refactored for performance later.
 
     Note: you'll end up with 1 less row as a result than you started with.
@@ -54,7 +55,8 @@ def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.Da
             2                2  1012.5982666015625   660.308349609375                   1.0  1020.1837768554688   623.5087280273438           0.9999994039535522  ...  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000
             3                3  1013.2752685546875  661.3504028320312                   1.0     1020.6982421875   624.2875366210938           0.9999998807907104  ...  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000
             4                4  1013.4093017578125  661.3643188476562                   1.0  1020.6074829101562     624.48486328125           0.9999998807907104  ...  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000
-    :param copy: (bool) Indicates whether to create an entirely new DataFrame object as a result.
+    :param copy: (bool) Indicates whether to create an entirely new DataFrame object as a result so that
+        the original input DataFrame is not changed afterwards.
 
     :return
         : DataFrame of filtered data
@@ -134,20 +136,20 @@ def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.Da
     #   with column room for x and y values (it appears as though the likelihood values disappear)
     array_data_filtered = np.zeros((data_x.shape[0], (data_x.shape[1]) * 2))  # Initialized as zeroes to be populated later  # currdf_filt: np.ndarray = np.zeros((data_x.shape[0]-1, (data_x.shape[1]) * 2))
 
-    logger.debug(f'{inspect.stack()[0][3]}: Computing data threshold to forward fill any sub-threshold (x,y)...')
-    percent_filterd_per_bodypart__perc_rect = [0 for _ in range(data_likelihood.shape[1])]  # for _ in range(data_lh.shape[1]): perc_rect.append(0)
+    logger.debug(f'{inspect.stack()[0][3]}(): Computing data threshold to forward fill any sub-threshold (x,y)...')
+    percent_filterd_per_bodypart__perc_rect: List = [0 for _ in range(data_likelihood.shape[1])]  # for _ in range(data_lh.shape[1]): perc_rect.append(0)
 
-    # Loop over data and do adaptive filtering
+    # Loop over data and do adaptive filtering.
     # logger.debug(f'{inspect.stack()[0][3]}: Loop over data and do adaptive filtering.')
     for idx_col_i in tqdm(range(data_likelihood.shape[1]), desc=f'{inspect.stack()[0][3]}(): Adaptively filtering data...'):
         # Get histogram of likelihood data in col_i (ignoring first row since its just labels (e.g.: [x  x  x  x ...]))
         histogram, bin_edges = np.histogram(data_likelihood[:, idx_col_i].astype(np.float))
-        # Determine "rise"
+        # Determine "rise".
         rise_arr = np.where(np.diff(histogram) >= 0)
         if isinstance(rise_arr, tuple):  # Sometimes np.where returns a tuple depending on input dims
             rise_arr = rise_arr[0]
-
         rise_0, rise_1 = rise_arr[0], rise_arr[1]
+
         # Threshold for bin_edges?
         if rise_arr[0] > 1:
             likelihood_threshold: np.ndarray = (bin_edges[rise_0] + bin_edges[rise_0 - 1]) / 2
@@ -160,25 +162,31 @@ def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.Da
         # Record percent filtered (for "reasons")
         percent_filterd_per_bodypart__perc_rect[idx_col_i] = np.sum(data_likelihood_col_i < likelihood_threshold) / data_likelihood.shape[0]
 
-        for i in range(0, data_likelihood.shape[0] - 1):
+        # Note: the slicing below is just slicing the x and y columns.
+        for i in range(data_likelihood.shape[0] - 1):  # TODO: low: rename `i`
+            # array_data_filtered[i+1, (2 * idx_col_i):(2 * idx_col_i + 2)] = \
+            #     array_data_filtered[i, (2 * idx_col_i):(2 * idx_col_i + 2)] \
+            #     if data_likelihood_col_i[i + 1] < likelihood_threshold \
+            #     else np.hstack([data_x[i, idx_col_i], data_y[i, idx_col_i]])
             if data_likelihood_col_i[i + 1] < likelihood_threshold:
-                array_data_filtered[i + 1, (2 * idx_col_i):(2 * idx_col_i + 2)] = array_data_filtered[i, (2 * idx_col_i):(2 * idx_col_i + 2)]
+                array_data_filtered[i + 1, (2 * idx_col_i):(2 * idx_col_i + 2)] = \
+                    array_data_filtered[i, (2 * idx_col_i):(2 * idx_col_i + 2)]
             else:
-                array_data_filtered[i + 1, (2 * idx_col_i):(2 * idx_col_i + 2)] = np.hstack([data_x[i, idx_col_i], data_y[i, idx_col_i]])
+                array_data_filtered[i + 1, (2 * idx_col_i):(2 * idx_col_i + 2)] = \
+                    np.hstack([data_x[i, idx_col_i], data_y[i, idx_col_i]])
 
+    ### Adaptive filtering is all done. Clean up and return.
     # Remove first row in data array (values are all zeroes)
-    array_filtered_data_without_first_row = np.array(array_data_filtered[1:]).astype(np.float64)
+    array_filtered_data_without_first_row = np.array(array_data_filtered[1:]).astype(np.float)
 
-    # Create DataFrame with columns
-    columns_ordered = []
+    # Create DataFrame with columns by looping over x/y indices.
+    columns_ordered: List[str] = []
     for x_idx, y_idx in zip(x_index, y_index):
         columns_ordered += [map_back_index_to_col_name[x_idx], map_back_index_to_col_name[y_idx]]
 
+    # Create frame, replace 'scorer' column. Return.
     df_adaptively_filtered_data = pd.DataFrame(array_filtered_data_without_first_row, columns=columns_ordered)
     df_adaptively_filtered_data['scorer'] = scorer_value
-
-    # # Convert all data to np.float
-    # final_array_filtered_data = array_filtered_data_without_first_row.astype(np.float)
 
     return df_adaptively_filtered_data, percent_filterd_per_bodypart__perc_rect
 
@@ -194,7 +202,6 @@ def engineer_7_features_dataframe(df: pd.DataFrame, map_names: dict = None, copy
     :param copy:
     :return: (DataFrame)
     """
-    num_data_rows = len(df)  # Deleteme
     if win_len is None:
         win_len = original_feature_extraction_win_len_formula(config.VIDEO_FPS)
 
@@ -229,6 +236,7 @@ def engineer_7_features_dataframe(df: pd.DataFrame, map_names: dict = None, copy
     # Solve kwargs
 
     # Do
+    num_data_rows: int = len(df)
     left_shoulder_x = f'{config.get_part("left_shoulder/forepaw")}_x'
     left_shoulder_y = f'{config.get_part("left_shoulder/forepaw")}_y'
     right_shoulder_x = f'{config.get_part("RIGHT_SHOULDER/FOREPAW")}_x'
@@ -241,12 +249,9 @@ def engineer_7_features_dataframe(df: pd.DataFrame, map_names: dict = None, copy
     tailbase_y = f'{config.get_part("Tailbase")}_y'
     head_x = f'{config.get_part("SNOUT/HEAD")}_x'
     head_y = f'{config.get_part("SNOUT/HEAD")}_y'
-    # delta_shoulder_left_x_shoulder_right_x = 'delta_shoulders_left_right_x'
-    # delta_shoulder_left_x_shoulder_right_y = 'delta_shoulders_left_right_y'
 
-    ################
+    ####################################################################################################################
     # Create intermediate variables to solve for final features.
-    #   It looks like, for all intermediate variables, it takes an average between current i and i+1 values.
 
     # fpd
     # inter_forepaw_distance = data_array[:, 2 * bodyparts['Forepaw/Shoulder1']:2 * bodyparts['Forepaw/Shoulder1'] + 2] - data_array[:, 2 * bodyparts['Forepaw/Shoulder2']:2 * bodyparts['Forepaw/Shoulder2'] + 2]  # Previously: 'fpd'
@@ -330,9 +335,7 @@ def engineer_7_features_dataframe(df: pd.DataFrame, map_names: dict = None, copy
         chp__proximal_tail__normalized,
         win_len)  # sn_chp_norm_smth
 
-
-
-    ### Create the 3 time-varying features
+    ### Create the 3 time-varying features (out of a total of 7 final features)
     snout__proximal_tail__angle = np.zeros(num_data_rows - 1)  # originally: sn_pt_ang
     snout_speed__aka_snout__displacement = np.zeros(num_data_rows - 1)  # originally: sn_disp
     tail_speed__aka_proximal_tail__displacement = np.zeros(num_data_rows - 1)  # originally: pt_disp
@@ -367,7 +370,7 @@ def engineer_7_features_dataframe(df: pd.DataFrame, map_names: dict = None, copy
     snout_speed__aka_snout_displacement_smoothed = likelihoodprocessing.boxcar_center(snout_speed__aka_snout__displacement, win_len)  # sn_disp_smth =>
     tail_speed__aka_proximal_tail__displacement__smoothed = likelihoodprocessing.boxcar_center(tail_speed__aka_proximal_tail__displacement, win_len)  # originally: pt_disp_smth
 
-    # Append final features to features list
+    # Create DataFrame to host final features product
 
     features = np.vstack((
         snout__center_forepaws__normalized__smoothed[1:],  # 2  # TODO: problems
@@ -395,14 +398,14 @@ def engineer_7_features_dataframe(df: pd.DataFrame, map_names: dict = None, copy
     return df_engineered_features
 
 
-
 ########################################################################################################################
 
 
 """ DELETE THIS STRING
 7 Features listed in paper (terms in brackets are cursive and were written in math format. See paper page 12/13):
     1. body length (or "[d_ST]"): distance from snout to base of tail
-    2. [d_SF]: distance of front paws to base of tail relative to body length (formally: [d_SF] = [d_ST] - [d_FT], where [d_FT] is the distance between front paws and base of tail
+    2. [d_SF]: distance of front paws to base of tail relative to body length (formally: [d_SF] = [d_ST] - [d_FT],
+        where [d_FT] is the distance between front paws and base of tail
     3. [d_SB]: distance of back paws to base of tail relative to body length (formally: [d_SB] = [d_ST] - [d_BT]
     4. Inter-forepaw distance (or "[d_FP]"): the distance between the two front paws
 
@@ -416,41 +419,49 @@ Author also specifies that: the features are also smoothed over, or averaged acr
 
 
 def original_feature_extraction_win_len_formula(fps: int):
+    """"""
     win_len = np.int(np.round(0.05 / (1 / fps)) * 2 - 1)
     return win_len
 
 
-def extract_7_features_bsoid_tsne_py(list_of_arrays_data: List[np.ndarray], bodyparts: dict = config.BODYPARTS_PY_LEGACY, fps: int = config.VIDEO_FPS, comp: int = config.COMPILE_CSVS_FOR_TRAINING, win_len: int = None) -> List[np.ndarray]:
-    """  (Legacy?)
+def extract_7_features_bsoid_tsne_py(list_of_arrays_data: List[np.ndarray],
+                                     bodyparts: dict = config.BODYPARTS_PY_LEGACY,
+                                     fps: int = config.VIDEO_FPS,
+                                     comp: int = config.COMPILE_CSVS_FOR_TRAINING, win_len: int = None
+                                     ) -> List[np.ndarray]:
+    """  * Legacy * (original implementation source: bsoid_py:bsoid_tsne()
+
     Trains t-SNE (unsupervised) given a set of features based on (x,y) positions
 
-    (Original implementation source: bsoid_py:bsoid_tsne()
-    :param win_len: TODO
-    :param list_of_arrays_data: list of 3D arrays
+    :param list_of_arrays_data: list of 2D arrays. Each array is processed data from a different DLC CSV output.
     :param bodyparts: dict, body parts with their orders in config
     :param fps: scalar, argument specifying camera frame-rate in config
-    :param comp: boolean (0 or 1), argument to compile data or not in config
-    :return f_10fps: 2D array, features
-    :return f_10fps_sc: 2D array, standardized features
-    :return trained_tsne: 2D array, trained t-SNE space
+    :param comp: int (0 or 1), argument to compile data or not (set in config)
+    :param win_len:
+    :return
+        f_10fps: 2D array, features
+        f_10fps_sc: 2D array, standardized features
+        trained_tsne: 2D array, trained t-SNE space
     """
-    ### *note* Sometimes data is (incorrectly) submitted as an array of arrays (the number of arrays in the overarching array or, if correctly typed, list) is the same # of CSV files read in). Fix type then continue.
+    # *note* Sometimes data is (incorrectly) submitted as an array of arrays.
+    #   The number of arrays in the overarching array or, if correctly typed, list is the same # of
+    #   CSV files read in. Fix type then continue.
     if isinstance(list_of_arrays_data, np.ndarray):
-        warn = f'{inspect.stack()[0][3]}(): TODO: expand on this warning. Input was expected to be a list of arrays but instead found array of arrays'
-        logger.warning(warn)  # TODO: expand on warning
+        warn = f'{inspect.stack()[0][3]}(): TODO: expand on this warning. Input was expected to be a ' \
+               f'list of arrays but instead found array of arrays. Calling function: {inspect.stack()[1][3]}()'
+        logger.warning(warn)
         list_of_arrays_data = list(list_of_arrays_data)
     # Check args
     check_arg.ensure_type(list_of_arrays_data, list)
     check_arg.ensure_type(list_of_arrays_data[0], np.ndarray)
 
-    logger.debug(f'config.VIDEO_FPS in {inspect.stack()[0][3]} = {config.VIDEO_FPS}')
-    logger.debug(f'fps in {inspect.stack()[0][3]} = {fps}')
-
     if not isinstance(fps, int):
         raise TypeError(f'fps is not integer. value = {fps}, type={type(fps)}')
-    ###
+
     if win_len is None:
         win_len = original_feature_extraction_win_len_formula(fps)
+
+    ### Do
 
     features: List[np.ndarray] = []
 
@@ -556,31 +567,32 @@ def extract_7_features_bsoid_tsne_py(list_of_arrays_data: List[np.ndarray], body
     return features
 
 
-def integrate_features_into_100ms_bins(data: List[np.ndarray], features: List[np.ndarray], fps: int) -> List[np.ndarray]:
-    """ (legacy?)
-
-    :param data:
+def integrate_features_into_100ms_bins(data: List[np.ndarray], features: List[np.ndarray],
+                                       fps: int) -> List[np.ndarray]:
+    """ * Legacy *
+    TODO
+    :param data: (List of arrays)
     :param features:
     :param fps:
     :return:
     """
-    features_10fps = []
+    features_10fps: List[np.ndarray] = []
     for n, features_n in enumerate(features):
-        feats1 = np.zeros(len(data[n]))
+        features_100ms_n = np.zeros(len(data[n]))
         for k in range(round(fps / 10) - 1, len(features_n[0]), round(fps / 10)):
             if k > round(fps / 10) - 1:
-                feats1 = np.concatenate((
-                    feats1.reshape(feats1.shape[0], feats1.shape[1]),
-                    np.hstack((np.mean((features_n[0:4, range(k - round(fps / 10), k)]), axis=1), np.sum((features_n[4:7, range(k - round(fps / 10), k)]), axis=1))).reshape(len(features[0]), 1)
-                ), axis=1)
+                features_100ms_n = np.concatenate((
+                    features_100ms_n.reshape(features_100ms_n.shape[0], features_100ms_n.shape[1]),
+                    np.hstack((np.mean(
+                        (features_n[0:4, range(k - round(fps / 10), k)]), axis=1),
+                               np.sum((features_n[4:7, range(k - round(fps / 10), k)]), axis=1)))
+                    .reshape(len(features[0]), 1)), axis=1)
             else:
-                feats1 = np.hstack((
+
+                features_100ms_n = np.hstack((
                     np.mean((features_n[0:4, range(k - round(fps / 10), k)]), axis=1),
                     np.sum((features_n[4:7, range(k - round(fps / 10), k)]), axis=1),
                 )).reshape(len(features[0]), 1)
-        logger.info(f'{inspect.stack()[0][3]}(): Done integrating features into 100ms bins from CSV file {n+1}.')
-        features_10fps.append(feats1)
+        logger.debug(f'{inspect.stack()[0][3]}(): Done integrating features into 100ms bins from CSV file {n+1}.')
+        features_10fps.append(features_100ms_n)
     return features_10fps
-
-
-########################################################################################################################
