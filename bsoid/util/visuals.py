@@ -30,6 +30,10 @@ def plot_tsne_in_3d(data, **kwargs):  # TODO: HIGH: consider reducing the total 
     Plot trained tsne
     :param data: trained_tsne TODO: expand desc. and include type
     """
+    if not isinstance(data, np.ndarray):
+        err = f'data was expected to be of type array but instead found type: {type(data)}.'
+        logger.error(err)
+        raise TypeError(err)
     # TODO: low: reduce
     # Parse kwargs
     x_label = kwargs.get('x_label', 'Dim. 1')
@@ -64,9 +68,8 @@ def plot_duration_histogram(lengths, grp, save_fig_to_file: bool = config.SAVE_G
         ax.hist(x, density=True, color=colormap[i], alpha=0.3, label=f'Group {i}')
     plt.legend(loc='Upper right')
     plt.show()
-    time_str = config.runtime_timestr  # time_str = time.strftime("%Y%m%d_%H%M")  # TODO: low: move this to config file
     if save_fig_to_file:
-        fig_file_name = f'{fig_file_prefix}_{time_str}'
+        fig_file_name = f'{fig_file_prefix}_{config.runtime_timestr}'
         save_graph_to_file(fig, fig_file_name)
     return fig
 def plot_transition_matrix(transition_matrix: np.ndarray, fps, save_fig_to_file, fig_file_prefix) -> object:
@@ -107,6 +110,7 @@ def plot_classes_bsoidumap(data, assignments, **kwargs) -> object:
     s = kwargs.get('s', 0.5)
     marker = kwargs.get('marker', 'o')
     alpha = kwargs.get('alpha', 0.8)
+    title = kwargs.get('title', 'UMAP enhanced clustering')
     #
     uk = list(np.unique(assignments))
     R = np.linspace(0, 1, len(uk))
@@ -120,26 +124,26 @@ def plot_classes_bsoidumap(data, assignments, **kwargs) -> object:
     ax.set_xlabel('Dim. 1')
     ax.set_ylabel('Dim. 2')
     ax.set_zlabel('Dim. 3')
-    plt.title('UMAP enhanced clustering')
+    plt.title(title)
     plt.legend(ncol=3)
     plt.show()
     return fig
 @config.deco__log_entry_exit(logger)
-def plot_classes_EMGMM_assignments(data, assignments, save_fig_to_file: bool, fig_file_prefix='train_assignments', **kwargs):
+def plot_classes_EMGMM_assignments(data: np.ndarray, assignments, save_fig_to_file: bool, fig_file_prefix='train_assignments', **kwargs):
     """
     Plot trained TSNE for EM-GMM assignments
     :param data: 2D array, trained_tsne
     :param assignments: 1D array, EM-GMM assignments
     """
     if not isinstance(data, np.ndarray):
-        err = f'Expected `data` to be of type numpy.ndarray but '\
-              f'instead found: {type(data)} (value = {data}).'
+        err = f'Expected `data` to be of type numpy.ndarray but instead found: {type(data)} (value = {data}).'
         logger.error(err)
         raise TypeError(err)
     # Parse kwargs
     s = kwargs.get('s', 0.5)
     marker = kwargs.get('marker', 'o')
     alpha = kwargs.get('alpha', 0.8)
+    title = kwargs.get('title', 'Assignments by GMM')
     # Plot graph
     time_str = config.runtime_timestr  # time_str = time.strftime("%Y%m%d_%H%M")
     uk = list(np.unique(assignments))
@@ -155,7 +159,7 @@ def plot_classes_EMGMM_assignments(data, assignments, save_fig_to_file: bool, fi
     ax.set_ylabel('Dim. 2')
     ax.set_zlabel('Dim. 3')
     ax.view_init(70, 135)
-    plt.title('Assignments by GMM')
+    plt.title(title)
     plt.legend(ncol=3)
     plt.show()
     # my_file = 'train_assignments'
@@ -227,7 +231,8 @@ def plot_accuracy_MLP(scores, show_plot=config.PLOT_GRAPHS, save_fig_to_file=con
         save_graph_to_file(fig, fig_file_name)
     return fig, plt
 @config.deco__log_entry_exit(logger)
-def plot_accuracy_SVM(scores, save_fig_to_file=config.SAVE_GRAPHS_TO_FILE, fig_file_prefix='classifier_accuracy_score', **kwargs):
+def plot_accuracy_SVM(scores, save_fig_to_file=config.SAVE_GRAPHS_TO_FILE,
+                      fig_file_prefix='classifier_accuracy_score', **kwargs):
     """
     This is the new interface for plotting accuracy for an SVM classifier.
     :param scores: (1D array) cross-validated accuracies for SVM classifier.
@@ -259,7 +264,7 @@ def plot_accuracy_SVM(scores, save_fig_to_file=config.SAVE_GRAPHS_TO_FILE, fig_f
         logger.debug(f'{likelihoodprocessing.get_current_function()}: both inputs are arrays. '
                      f'x.shape = {x.shape} // scores.shape = {scores.shape}')
         if x.shape != scores.shape:
-            logger.error(f'x = {x} // scores = {scores}')
+            logger.error(f'{inspect.stack()[0][3]}(): x = {x} // scores = {scores}')
 
     plt.scatter(x, scores, s=s, c=c, alpha=alpha)  # TODO: HIGH!!!! Why does this error occur?:
     ax.set_xlabel(xlabel)
@@ -277,11 +282,16 @@ def plot_feats_bsoidUMAPAPP(features, labels: list) -> None:
     :param features: list (or numpy array??), features for multiple sessions  # TODO
     :param labels: list, labels for multiple sessions
     """
+    # NOTE: the order of the below feature labels is arbitrary and conserved from the original
+    #   implementation where the ordering was hard-coded into feature-engineering process.
+    feature_labels = ("Relative snout to forepaws placement",
+                      "Relative snout to hind paws placement",
+                      "Inter-forepaw distance",
+                      "Body length",
+                      "Body angle",
+                      "Snout displacement",
+                      "Tail-base displacement", )
     time_str = config.runtime_timestr  # time_str = time.strftime("%Y%m%d_%H%M")
-    feat_ls = ("Relative snout to forepaws placement", "Relative snout to hind paws placement",
-               "Inter-forepaw distance", "Body length", "Body angle",
-               "Snout displacement", "Tail-base displacement")
-
     # labels_is_type_list = isinstance(labels, list)
     if isinstance(labels, list):
         for k in range(len(features)):
@@ -301,7 +311,7 @@ def plot_feats_bsoidUMAPAPP(features, labels: list) -> None:
                                  bins=np.linspace(0, np.mean(feats_k[j, :]) + 3 * np.std(feats_k[j, :]), num=50),
                                  range=(0, np.mean(feats_k[j, :]) + 3 * np.std(feats_k[j, :])),
                                  color=color_map[i], density=True)
-                        fig.suptitle(f"{feat_ls[j]} pixels")
+                        fig.suptitle(f"{feature_labels[j]} pixels")
                         plt.xlim(0, np.mean(feats_k[j, :]) + 3 * np.std(feats_k[j, :]))
                         if i < len(np.unique(labels_k)) - 1:
                             plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
@@ -314,7 +324,7 @@ def plot_feats_bsoidUMAPAPP(features, labels: list) -> None:
                                  color=color_map[i], density=True)
                         plt.xlim(np.mean(feats_k[j, :]) - 3 * np.std(feats_k[j, :]),
                                  np.mean(feats_k[j, :]) + 3 * np.std(feats_k[j, :]))
-                        fig.suptitle(f"{feat_ls[j]} pixels")
+                        fig.suptitle(f"{feature_labels[j]} pixels")
                         if i < len(np.unique(labels_k)) - 1:
                             plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
                 if config.SAVE_GRAPHS_TO_FILE:
@@ -336,7 +346,7 @@ def plot_feats_bsoidUMAPAPP(features, labels: list) -> None:
                              bins=np.linspace(0, np.mean(features[j, :]) + 3 * np.std(features[j, :]), num=50),
                              range=(0, np.mean(features[j, :]) + 3 * np.std(features[j, :])),
                              color=color_map[i], density=True)
-                    fig.suptitle(f"{feat_ls[j]} pixels")
+                    fig.suptitle(f"{feature_labels[j]} pixels")
                     plt.xlim(0, np.mean(features[j, :]) + 3 * np.std(features[j, :]))
                     if i < len(np.unique(labels)) - 1:
                         plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
@@ -349,7 +359,7 @@ def plot_feats_bsoidUMAPAPP(features, labels: list) -> None:
                              color=color_map[i], density=True)
                     plt.xlim(np.mean(features[j, :]) - 3 * np.std(features[j, :]),
                              np.mean(features[j, :]) + 3 * np.std(features[j, :]))
-                    fig.suptitle(f"{feat_ls[j]} pixels")
+                    fig.suptitle(f"{feature_labels[j]} pixels")
                     if i < len(np.unique(labels)) - 1:
                         plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
 
@@ -364,24 +374,25 @@ def plot_feats_bsoidUMAPAPP(features, labels: list) -> None:
         raise TypeError(type_err)
 
 @config.deco__log_entry_exit(logger)
-def plot_feats_bsoidpy(feats, labels) -> None:
-    """
-    :param feats: list, features for multiple sessions
+def plot_feats_bsoidpy(features, labels) -> None:
+    """ *Legacy*
+    :param features: list, features for multiple sessions
     :param labels: list, labels for multiple sessions
     """
+    # NOTE: the order of the below feature labels is arbitrary and conserved from the original
+    #   implementation where the ordering was hard-coded into feature-engineering process.
+    feature_labels = ("Relative snout to forepaws placement",
+                      "Relative snout to hind paws placement",
+                      "Inter-forepaw distance",
+                      "Body length",
+                      "Body angle",
+                      "Snout displacement",
+                      "Tail-base displacement", )
     time_str = config.runtime_timestr  # time_str = time.strftime("%Y%m%d_%H%M")
-    feat_ls = ("Relative snout to forepaws placement",
-               "Relative snout to hind paws placement",
-               "Inter-forepaw distance",
-               "Body length",
-               "Body angle",
-               "Snout displacement",
-               "Tail-base displacement")
-    is_labels_list = isinstance(labels, list)
-    if is_labels_list:
-        for k in range(len(feats)):
+    if isinstance(labels, list):
+        for k in range(len(features)):
             labels_k = np.array(labels[k])
-            feats_k = np.array(feats[k])
+            feats_k = np.array(features[k])
             R = np.linspace(0, 1, len(np.unique(labels_k)))
             colormap = plt.cm.get_cmap("Spectral")(R)
             for j in range(feats_k.shape[0]):
@@ -394,7 +405,7 @@ def plot_feats_bsoidpy(feats, labels) -> None:
                                  range=(0, np.mean(feats_k[j, :]) + 3 * np.std(feats_k[j, :])),
                                  color=colormap[i],
                                  density=True)
-                        fig.suptitle(f"{feat_ls[j]} pixels")
+                        fig.suptitle(f"{feature_labels[j]} pixels")
                         plt.xlim(0, np.mean(feats_k[j, :]) + 3 * np.std(feats_k[j, :]))
                         if i < len(np.unique(labels_k)) - 1:
                             plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
@@ -408,61 +419,62 @@ def plot_feats_bsoidpy(feats, labels) -> None:
                                  density=True)
                         plt.xlim(np.mean(feats_k[j, :]) - 3 * np.std(feats_k[j, :]),
                                  np.mean(feats_k[j, :]) + 3 * np.std(feats_k[j, :]))
-                        fig.suptitle(f"{feat_ls[j]} pixels")
+                        fig.suptitle(f"{feature_labels[j]} pixels")
                         if i < len(np.unique(labels_k)) - 1:
                             plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
                 if config.SAVE_GRAPHS_TO_FILE:
                     file_name = f'session_{k+1}__feature_{j+1}__histogram__{time_str}'  # = my_file+'_'+time_str  # TODO: HIGH: clarify on what a "session" is/means to the user.
                     save_graph_to_file(fig, file_name)  # fig.savefig(os.path.join(config.OUTPUT_PATH, my_file+'_'+time_str+'.svg'))
             plt.show()
-    else:
+    elif isinstance(labels, np.ndarray):
         R = np.linspace(0, 1, len(np.unique(labels)))
         colormap = plt.cm.get_cmap("Spectral")(R)
-        for j in range(feats.shape[0]):
+        for j in range(features.shape[0]):
             fig = plt.figure(facecolor='w', edgecolor='k')
             for i in range(len(np.unique(labels))):
                 plt.subplot(len(np.unique(labels)), 1, i + 1)
                 if j == 2 or j == 3 or j == 5 or j == 6:
-                    plt.hist(feats[j, labels == i],
-                             bins=np.linspace(0, np.mean(feats[j, :]) + 3 * np.std(feats[j, :]), num=50),
-                             range=(0, np.mean(feats[j, :]) + 3 * np.std(feats[j, :])),
+                    plt.hist(features[j, labels == i],
+                             bins=np.linspace(0, np.mean(features[j, :]) + 3 * np.std(features[j, :]), num=50),
+                             range=(0, np.mean(features[j, :]) + 3 * np.std(features[j, :])),
                              color=colormap[i], density=True)
-                    fig.suptitle(f"{feat_ls[j]} pixels")
-                    plt.xlim(0, np.mean(feats[j, :]) + 3 * np.std(feats[j, :]))
+                    fig.suptitle(f"{feature_labels[j]} pixels")
+                    plt.xlim(0, np.mean(features[j, :]) + 3 * np.std(features[j, :]))
                     if i < len(np.unique(labels)) - 1:
                         plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
                 else:
-                    plt.hist(feats[j, labels == i],
-                             bins=np.linspace(np.mean(feats[j, :]) - 3 * np.std(feats[j, :]),
-                                              np.mean(feats[j, :]) + 3 * np.std(feats[j, :]), num=50),
-                             range=(np.mean(feats[j, :]) - 3 * np.std(feats[j, :]),
-                                    np.mean(feats[j, :]) + 3 * np.std(feats[j, :])),
+                    plt.hist(features[j, labels == i],
+                             bins=np.linspace(np.mean(features[j, :]) - 3 * np.std(features[j, :]),
+                                              np.mean(features[j, :]) + 3 * np.std(features[j, :]), num=50),
+                             range=(np.mean(features[j, :]) - 3 * np.std(features[j, :]),
+                                    np.mean(features[j, :]) + 3 * np.std(features[j, :])),
                              color=colormap[i], density=True)
-                    plt.xlim(np.mean(feats[j, :]) - 3 * np.std(feats[j, :]),
-                             np.mean(feats[j, :]) + 3 * np.std(feats[j, :]))
-                    fig.suptitle(f"{feat_ls[j]} pixels")
+                    plt.xlim(np.mean(features[j, :]) - 3 * np.std(features[j, :]),
+                             np.mean(features[j, :]) + 3 * np.std(features[j, :]))
+                    fig.suptitle(f"{feature_labels[j]} pixels")
                     if i < len(np.unique(labels)) - 1:
                         plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
             if config.SAVE_GRAPHS_TO_FILE:
                 file_name = f'feature_{j + 1}__histogram__{time_str}'  # my_file = f'feat{j + 1}_hist' ;fig.savefig(os.path.join(config.OUTPUT_PATH, f'{my_file}_{time_str}.svg'))
                 save_graph_to_file(fig, file_name)
         plt.show()
+    else: raise TypeError(f'invalid type detected for labels: {type(labels)}')
+
 @config.deco__log_entry_exit(logger)
-def plot_feats_bsoidvoc(feats: Union[List, np.ndarray], labels: list) -> None:
+def plot_feats_bsoidvoc(features, labels: list) -> None:
     """
-    :param feats: list, features for multiple sessions
+    :param features: list, features for multiple sessions
     :param labels: list, labels for multiple sessions
     """
     time_str = config.runtime_timestr  # timestr = time.strftime("%Y%m%d_%H%M")
-    feat_ls = ("Distance between points 1 & 5", "Distance between points 1 & 8",
-               "Angle change between points 1 & 2", "Angle change between points 1 & 4",
-               "Point 3 displacement", "Point 7 displacement")
+    feature_labels = ("Distance between points 1 & 5", "Distance between points 1 & 8",
+                      "Angle change between points 1 & 2", "Angle change between points 1 & 4",
+                      "Point 3 displacement", "Point 7 displacement")
 
-    is_labels_type_list = isinstance(labels, list)
-    if is_labels_type_list:
-        for k in range(len(feats)):
+    if isinstance(labels, list):
+        for k in range(len(features)):
             labels_k = np.array(labels[k])
-            feats_k = np.array(feats[k])
+            feats_k = np.array(features[k])
             R = np.linspace(0, 1, len(np.unique(labels_k)))
             color = plt.cm.get_cmap("Spectral")(R)
             for j in range(feats_k.shape[0]):  # iterating over number of rows
@@ -474,7 +486,7 @@ def plot_feats_bsoidvoc(feats: Union[List, np.ndarray], labels: list) -> None:
                                  bins=np.linspace(0, np.mean(feats_k[j, :]) + 3 * np.std(feats_k[j, :]), num=50),
                                  range=(0, np.mean(feats_k[j, :]) + 3 * np.std(feats_k[j, :])),
                                  color=color[i], density=True)
-                        fig.suptitle(f"{feat_ls[j]} pixels")
+                        fig.suptitle(f"{feature_labels[j]} pixels")
                         plt.xlim(0, np.mean(feats_k[j, :]) + 3 * np.std(feats_k[j, :]))
                         if i < len(np.unique(labels_k)) - 1:
                             plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
@@ -487,7 +499,7 @@ def plot_feats_bsoidvoc(feats: Union[List, np.ndarray], labels: list) -> None:
                                  color=color[i], density=True)
                         plt.xlim(np.mean(feats_k[j, :]) - 3 * np.std(feats_k[j, :]),
                                  np.mean(feats_k[j, :]) + 3 * np.std(feats_k[j, :]))
-                        fig.suptitle(f"{feat_ls[j]} pixels")
+                        fig.suptitle(f"{feature_labels[j]} pixels")
                         if i < len(np.unique(labels_k)) - 1:
                             plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
                 if config.SAVE_GRAPHS_TO_FILE:
@@ -498,43 +510,42 @@ def plot_feats_bsoidvoc(feats: Union[List, np.ndarray], labels: list) -> None:
         R = np.linspace(0, 1, len(np.unique(labels)))
         color_map = plt.cm.get_cmap("Spectral")(R)
         # Iterating over number of rows
-        for j in range(feats.shape[0]):
+        for j in range(features.shape[0]):
             fig = plt.figure(facecolor='w', edgecolor='k')
             # Iterating over unique labels (by index)
             for i in range(len(np.unique(labels))):
                 plt.subplot(len(np.unique(labels)), 1, i + 1)
                 if j == 0 or j == 1 or j == 4 or j == 5:
-                    plt.hist(feats[j, labels == i],
-                             bins=np.linspace(0, np.mean(feats[j, :]) + 3 * np.std(feats[j, :]), num=50),
-                             range=(0, np.mean(feats[j, :]) + 3 * np.std(feats[j, :])),
+                    plt.hist(features[j, labels == i],
+                             bins=np.linspace(0, np.mean(features[j, :]) + 3 * np.std(features[j, :]), num=50),
+                             range=(0, np.mean(features[j, :]) + 3 * np.std(features[j, :])),
                              color=color_map[i], density=True)
-                    fig.suptitle(f"{feat_ls[j]} pixels")
-                    plt.xlim(0, np.mean(feats[j, :]) + 3 * np.std(feats[j, :]))
+                    fig.suptitle(f"{feature_labels[j]} pixels")
+                    plt.xlim(0, np.mean(features[j, :]) + 3 * np.std(features[j, :]))
                     if i < len(np.unique(labels)) - 1:
                         plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
                 else:
-                    plt.hist(feats[j, labels == i],
-                             bins=np.linspace(np.mean(feats[j, :]) - 3 * np.std(feats[j, :]),
-                                              np.mean(feats[j, :]) + 3 * np.std(feats[j, :]), num=50),
-                             range=(np.mean(feats[j, :]) - 3 * np.std(feats[j, :]),
-                                    np.mean(feats[j, :]) + 3 * np.std(feats[j, :])),
+                    plt.hist(features[j, labels == i],
+                             bins=np.linspace(np.mean(features[j, :]) - 3 * np.std(features[j, :]),
+                                              np.mean(features[j, :]) + 3 * np.std(features[j, :]), num=50),
+                             range=(np.mean(features[j, :]) - 3 * np.std(features[j, :]),
+                                    np.mean(features[j, :]) + 3 * np.std(features[j, :])),
                              color=color_map[i], density=True)
-                    plt.xlim(np.mean(feats[j, :]) - 3 * np.std(feats[j, :]),
-                             np.mean(feats[j, :]) + 3 * np.std(feats[j, :]))
-                    fig.suptitle(f"{feat_ls[j]} pixels")
+                    plt.xlim(np.mean(features[j, :]) - 3 * np.std(features[j, :]),
+                             np.mean(features[j, :]) + 3 * np.std(features[j, :]))
+                    fig.suptitle(f"{feature_labels[j]} pixels")
                     if i < len(np.unique(labels)) - 1:
                         plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
             if config.SAVE_GRAPHS_TO_FILE:
                 fig_file_name = f'feature_{j + 1}__histogram_{time_str}'  # my_file = f'feat{j + 1}_hist'; fig.savefig(os.path.join(config.OUTPUT_PATH, str.join('', (my_file, '_'+timestr, '.svg'))))
                 save_graph_to_file(fig, fig_file_name)
         plt.show()
-    else:
-        raise TypeError(f'unexpected type for labels: {type(labels)}')
+    else: raise TypeError(f'unexpected type for labels: {type(labels)}')
 
 
-def save_graph_to_file(figure, file_title, file_type_extension=config.DEFAULT_SAVED_GRAPH_FILE_FORMAT, alternate_save_path: str = None) -> None:
+def save_graph_to_file(figure: object, file_title: str, file_type_extension=config.DEFAULT_SAVED_GRAPH_FILE_FORMAT,
+                       alternate_save_path: str = None) -> None:
     """
-
     :param figure: (object) a figure object. Must have a savefig() function
     :param file_title: (str)
     :param alternate_save_path:
@@ -633,36 +644,3 @@ def plot_accuracy_bsoidpy(scores) -> None:
     logger.warning(f'This function, {inspect.stack()[0][3]}, will be deprecated.'
                    f'Instead use: {replacement_func.__qualname__}')
     return replacement_func(scores, True, 'clf_scores')
-# def plot_classes_bsoidpy(data, assignments) -> None:
-#     replacement_func = plot_classes_EMGMM_assignments
-#     warn = f'This function will be deprecated. Instead, replace its use with: {replacement_func.__qualname__}'
-#     # warnings.warn(warn)
-#     logger.warning(warn)
-#     return replacement_func(data, assignments, save_fig_to_file=True)
-# def plot_classes_app(data, assignments):
-#     """ Plot umap_embeddings for HDBSCAN assignments
-#     :param data: 2D array, umap_embeddings
-#     :param assignments: 1D array, HDBSCAN assignments
-#     """
-#     uk = list(np.unique(assignments))
-#     R = np.linspace(0, 1, len(uk))
-#     cmap = plt.cm.get_cmap("Spectral")(R)
-#     umap_x, umap_y, umap_z = data[:, 0], data[:, 1], data[:, 2]
-#     # umap_x, umap_y= data[:, 0], data[:, 1]
-#     fig = plt.figure()
-#     ax = fig.add_subplot(111, projection='3d')
-#     # ax = fig.add_subplot(111)
-#     for g in np.unique(assignments):
-#         idx = np.where(np.array(assignments) == g)
-#         ax.scatter(umap_x[idx], umap_y[idx], umap_z[idx], c=cmap[g],
-#                    label=g, s=0.5, marker='o', alpha=0.8)
-#         # ax.scatter(umap_x[idx], umap_y[idx], c=cmap[g],
-#         #            label=g, s=0.5, marker='o', alpha=0.8)
-#     ax.set_xlabel('Dim. 1')
-#     ax.set_ylabel('Dim. 2')
-#     ax.set_zlabel('Dim. 3')
-#     # plt.title('UMAP enhanced clustering')
-#     plt.legend(ncol=3)
-#     # plt.show()
-#
-#     return fig, plt
