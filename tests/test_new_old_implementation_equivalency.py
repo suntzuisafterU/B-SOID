@@ -32,20 +32,29 @@ class TestNewFunctionEquivalencyToLegacy(TestCase):
         data_as_array, _ = bsoid.util.likelihoodprocessing.process_raw_data_and_filter_adaptively(df_input_data)
 
         # Act
-        features_output_original_function: np.ndarray = bsoid_py_extract_function__as_is([data_as_array], body_parts, fps)[0]
-        features_output_new_function: np.ndarray = new_feature_extraction_function([data_as_array], body_parts, fps)[0]
+        features_output_original: np.ndarray = bsoid_py_extract_function__as_is([data_as_array], body_parts, fps)[0]
+        features_output_new: np.ndarray = new_feature_extraction_function([data_as_array], body_parts, fps)[0]
 
         # Assert (Note: usually multiple asserts in a single test is bad form, but we can refactor this test later)
         # # 1/1: Assert outcomes are equal second
-        is_features_data_output_equal = (features_output_original_function==features_output_new_function).all()
+        is_features_data_output_equal = (features_output_original == features_output_new).all()
         arrays_not_equal_err = f"""
 Arrays not identical.
-original output array shape: {features_output_original_function.shape}
-new output array shape: {features_output_new_function.shape}
+original output array shape: {features_output_original.shape}
+new output array shape: {features_output_new.shape}
 
-original output array: {features_output_original_function}
-new output array: {features_output_new_function}
-""".strip()
+---
+
+original output array: {features_output_original}
+new output array: {features_output_new}
+
+---
+
+diff:
+{features_output_new - features_output_original}
+
+
+"""
         self.assertTrue(is_features_data_output_equal, msg=arrays_not_equal_err)
 
     def test__legacy_bsoid_extract_has_same_output_as_functionally_segregated_equivalent(self):
@@ -72,28 +81,22 @@ new output array: {features_output_new_function}
 
         # Act
         # # Get outcome of original function
-        features_output_original: List[np.ndarray] = bsoid_py_extract_function__original(
-            [data_as_array, ], body_parts, fps)
+        features_output_original: np.ndarray = bsoid_py_extract_function__original(
+            [data_as_array, ], body_parts, fps)[0]
         # # Get outcomes of new segregated functions
         features_output_new_function_1_of_2_done: List[np.ndarray] = first_extraction_seg_func(
             [data_as_array, ], body_parts, fps)
-        features_output_new = second_extraction_seg_func(
-            [data_as_array, ], features_output_new_function_1_of_2_done, fps)
+        features_output_new: np.ndarray = second_extraction_seg_func(
+            [data_as_array, ], features_output_new_function_1_of_2_done, fps)[0]
 
         # Assert (Note: usually multiple asserts in a single test is bad form, but we can refactor this test later)
-        # 1/2: Assert types first
-        is_old_output_list = isinstance(features_output_original, list)
-        is_new_output_list = isinstance(features_output_new, list)
-        self.assertTrue(is_old_output_list)
-        self.assertTrue(is_new_output_list)
 
-        # # 2/2: Assert outcomes are equal second
-        is_features_data_output_equal = False not in [
-            (a1 == a2).all() for a1, a2 in zip(features_output_original, features_output_new)]
+        # # 1/1: Assert outcomes are equal second
+        is_features_data_output_equal = (features_output_original == features_output_new).all()
         arrays_not_equal_err = f"""
 Arrays not identical.
-original output array shape: {features_output_original[0].shape}
-new output array shape: {features_output_new[0].shape}
+original output array shape: {features_output_original.shape}
+new output array shape: {features_output_new.shape}
 
 original output array: {features_output_original}
 new output array: {features_output_new}
@@ -101,9 +104,9 @@ new output array: {features_output_new}
 original output array: {features_output_original}
 new output array: {features_output_new}
 
-diff:
-
-""".strip()
+diff (new - old):
+{features_output_new - features_output_original}
+"""
         self.assertTrue(is_features_data_output_equal, msg=arrays_not_equal_err)
 
     def test__consistency_of_feature_extraction(self):  # TODO: fill in function name later
@@ -143,13 +146,13 @@ new output array shape: {new_function_features_output[0].shape}
 
 original output array: {original_function_features_output}
 new output array: {new_function_features_output}
-""".strip()
+"""
         self.assertTrue(is_features_data_output_equal, msg=arrays_not_equal_err)
 
     @skip
     def test__old_vs_new_feature_extraction__bsoid_voc(self):
         """
-        TODO: Finish test implementation.
+        TODO: NOT YET CORRECTLY IMPLEMENTED. Finish test implementation.
             - Needs a proper file to use as test data
             - Needs to have "new" function correctly segregated and added as the function to test against
         """
@@ -167,7 +170,7 @@ new output array: {new_function_features_output}
         features_output_original_function: List[np.ndarray] = train_umap_unsupervised_umapapp___as_is(
             [data_as_array, ], fps)
         features_output_new_function: List[np.ndarray] = new_feature_extraction_function(
-            [data_as_array, ], fps)
+            [data_as_array, ], fps=fps)
 
         # Assert (Note: usually multiple asserts in a single test is bad form, but we can refactor this test later)
         # 1/2: Assert types first
