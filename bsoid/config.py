@@ -83,7 +83,8 @@ SAVE_GRAPHS_TO_FILE: bool = configuration.getboolean('APP', 'SAVE_GRAPHS_TO_FILE
 DEFAULT_SAVED_GRAPH_FILE_FORMAT: str = configuration.get('APP', 'DEFAULT_SAVED_GRAPH_FILE_FORMAT')
 GENERATE_VIDEOS: bool = configuration.getboolean('APP', 'GENERATE_VIDEOS')
 PERCENT_FRAMES_TO_LABEL: float = configuration.getfloat('APP', 'PERCENT_FRAMES_TO_LABEL')
-
+DEFAULT_TEST_FILE: str = os.path.join(BSOID_BASE_PROJECT_PATH, 'tests', 'test_data', configuration.get('TESTING', 'DEFAULT_TEST_FILE'))
+assert os.path.isfile(DEFAULT_TEST_FILE), f'Test file was not found: {DEFAULT_TEST_FILE}'
 
 # Now, pick an example video that corresponds to one of the csv files from the PREDICT_FOLDERS  # TODO: ************* This note from the original author implies that VID_NAME must be a video that corresponds to a csv from PREDICT_FOLDERS
 # VID_NAME = os.path.join(OST_BASE_PROJECT_PATH, 'GUI_projects', 'labelled_videos', '002_ratA_inc2_above.mp4')  # '/home/aaron/Documents/OST-with-DLC/GUI_projects/labelled_videos/002_ratA_inc2_above.mp4'
@@ -160,8 +161,6 @@ assert os.path.isdir(config_value_alternate_output_path_for_annotated_frames), \
     f'config_value_alternate_output_path_for_annotated_frames = ' \
     f'\'{config_value_alternate_output_path_for_annotated_frames}\'. Check config.ini pathing.'
 
-# FRAME_DIR = config_value_alternate_output_path_for_annotated_frames  # Legacy name
-
 ########################################################################################################################
 ##### LOGGER INSTANTIATION #####
 
@@ -184,16 +183,6 @@ file_log_level = configuration.get('LOGGING', 'FILE_LOG_LEVEL', fallback=None)
 log_file_file_path = str(Path(config_file_log_folder_path, config_file_name).absolute())
 
 assert os.path.isdir(config_file_log_folder_path), f'Path does not exist: {config_file_log_folder_path}'
-
-
-# Instantiate logger
-# bsoid_logger: logging.Logger = logger_config.create_generic_logger(
-#     logger_name=logger_name,
-#     log_format=log_format,
-#     stdout_log_level=stdout_log_level,
-#     file_log_level=file_log_level,
-#     file_log_file_path=log_file_file_path,
-# )
 
 # Instantiate logger decorator capable for
 initialize_logger: callable = bsoid_logging.preload_logger_with_config_vars(
