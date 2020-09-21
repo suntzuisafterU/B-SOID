@@ -7,12 +7,14 @@ The dataset from *Yttri lab, Alexander Hsu,* has been tested against multiple hu
 ![Mouse Action Cluster Demo 1x](demo/bsoidv1_OCDmouse15sec.gif)
 We also tested the generalizability with the dataset from *Ahmari lab , Jared Kopelman, Shirley Jiang, & Sean Piantadosi*, and was predictive of actual behavior.
 
-## Why B-SOiD ("B-side")?
+## Why B-SOiD (pronounced "B-side")?
 [DeepLabCut](https://github.com/AlexEMG/DeepLabCut)<sup>1,2,3</sup> has revolutionized the way behavioral scientists analyze data. The algorithm utilizes recent advances in computer vision and deep learning to automatically estimate 3D-poses. Interpreting the positions of an animal can be useful in studying behavior; however, it does not encompass the whole dynamic range of naturalistic behaviors. 
 
 Behavioral segmentation of open field in DeepLabCut, or B-SOID ("B-side"), is an unsupervised learning algorithm in MATLAB/Python that serves to discover behaviors that are not pre-defined by users. Our algorithm can segregate statistically different sub-second rodent behaviors with a single video-camera. Upon estimating the positions, this algorithm agnostically separates statistically significant distributions in the 3-dimensional action space and are found to be correlated with different observable rodent behaviors.
 
 This usage of this algorithm has been outlined below, and is extremely flexible in adapting to what the user wants. With the ever-blooming advances in ways to study an animal behavior, our algorithm builds on and integrates what has already been robustly tested to help advance scientific research.
+
+---
 
 ## Installation
 
@@ -23,9 +25,19 @@ Change your current working directory to the location where you want the cloned 
 ```bash
 git clone https://github.com/YttriLab/B-SOID.git
 ```
+---
 
-## Usage
-### MATLAB: Follow these [steps](docs/matlab_tutorial.md).
+## New usage instructions
+
+### Python3
+Here are the [instructions](docs/bsoid_new_tutorial.md) for usage
+
+TODO: Instructions go here
+
+---
+
+## Old Usage Instructions
+### ~~MATLAB: Follow these [steps](docs/matlab_tutorial.md).~~ MATLAB implementation under construction. Currently not functional.
 
 ### Python3: Watch this [tutorial video](demo/bsoid_py_tutorial_v2.mp4). 
 Here are the [command lines](docs/python3_tutorial.md) for you to copy and paste.
@@ -36,11 +48,15 @@ Here are the [command lines](docs/bsoid_umap_tutorial.md) for you to copy and pa
 ### There's an app for that! (UMAP + HDBSCAN)
 Here are the [command lines](docs/bsoid_app_init.md) for you to copy and paste to initialize the app.
 
+---
+
 ## Contributing
 
-Pull requests are welcome. For recommended changes that you would like to see, open an issue. Or join our [slack group](https://join.slack.com/t/b-soid/shared_invite/zt-dksalgqu-Eix8ZVYYFVVFULUhMJfvlw)
+Pull requests are welcome. For recommended changes that you would like to see, open an issue. Or 
+join our [slack group](https://join.slack.com/t/b-soid/shared_invite/zt-dksalgqu-Eix8ZVYYFVVFULUhMJfvlw)
 
-We are a neuroscience lab and welcome all contributions to improve this algorithm. Please do not hesitate to contact us for any question/suggestion.
+We are a neuroscience lab and welcome all contributions to improve this algorithm. 
+Please do not hesitate to contact us for any question/suggestion.
 
 ## License
 
