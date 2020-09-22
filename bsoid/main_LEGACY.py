@@ -33,8 +33,10 @@ def build_py(train_folders) -> Tuple[Any, Any, Any, Any, Any, Any]:
     :returns f_10fps, trained_tsne, gmm_assignments, classifier, scores: see bsoid_py.train
     """
 
+    # Do everything
     features_10fps, trained_tsne, scaler_object, gmm_assignments, classifier, scores = train.get_data_train_TSNE_then_GMM_then_SVM_then_return_EVERYTHING__py(train_folders)
 
+    # Save it all
     all_data = np.concatenate([
         features_10fps.T,
         trained_tsne,
@@ -56,18 +58,20 @@ def build_py(train_folders) -> Tuple[Any, Any, Any, Any, Any, Any]:
         names=['Type', 'Frame@10Hz'])
     df_training_data = pd.DataFrame(all_data, columns=multi_index_columns)
 
-    # Write training data to csv
+    # Write training data to file
     training_data_labels_10hz_csv_filename = f'BSOiD__{config.MODEL_NAME}__' \
                                              f'train_data_labels__10Hz__{config.runtime_timestr}.csv'
     df_training_data.to_csv(os.path.join(OUTPUT_PATH, training_data_labels_10hz_csv_filename),
                             index=True, chunksize=10000, encoding='utf-8')
 
     # Save model data to file
-    with open(os.path.join(OUTPUT_PATH, f'bsoid_{config.MODEL_NAME}.sav'), 'wb') as model_file:
+    model_filename = config.MODEL_FILENAME  # model_filename = f'bsoid_{config.MODEL_NAME}.sav'
+    with open(os.path.join(OUTPUT_PATH, model_filename), 'wb') as model_file:
         joblib.dump([classifier, scaler_object], model_file)
 
-    logger.error(f'{inspect.stack()[0][3]}: Saved model to file. Form: [classifier, scaler_object]')  # TODO: see msg
+    logger.error(f'{inspect.stack()[0][3]}(): Saved model to file. Form: [classifier, scaler_object]')  # TODO: see msg
     return features_10fps, trained_tsne, scaler_object, gmm_assignments, classifier, scores
+
 @config.deco__log_entry_exit(logger)
 def run_py(predict_folders):  # TODO: HIGH: break up this function and rename. TOo many things happening.
     """
@@ -81,7 +85,7 @@ def run_py(predict_folders):  # TODO: HIGH: break up this function and rename. T
     """
 
     # Read in existing model name
-    model_file_to_read = f'bsoid_{config.MODEL_NAME}.sav'
+    model_file_to_read = config.MODEL_FILENAME  # model_file_to_read = f'bsoid_{config.MODEL_NAME}.sav'
     path_to_model_file = os.path.join(OUTPUT_PATH, model_file_to_read)
     try:
         with open(path_to_model_file, 'rb') as fr:
@@ -89,7 +93,7 @@ def run_py(predict_folders):  # TODO: HIGH: break up this function and rename. T
     except FileNotFoundError as fnfe:
         file_not_found_err = f'Model not found: {path_to_model_file}.'  # TODO: HIGH: expand on err
         logger.error(file_not_found_err)
-        raise FileNotFoundError(file_not_found_err + f' // original EXCEPTION: {repr(fnfe)}.')
+        raise FileNotFoundError(f'{file_not_found_err} // original EXCEPTION: {repr(fnfe)}.')
 
     #
     data_new, features_new, labels_fs_low, labels_fs_high = classify.main_py(predict_folders, scaler, VIDEO_FPS, behavioural_model)
@@ -124,20 +128,22 @@ def run_py(predict_folders):  # TODO: HIGH: break up this function and rename. T
         csvname = os.path.basename(filenames[i]).rpartition('.')[0]
         df_predictions.to_csv((os.path.join(OUTPUT_PATH, f'BSOiD__labels__10Hz__{config.runtime_timestr}__{csvname}.csv')), index=True, chunksize=10000, encoding='utf-8')
 
-        runlen_df1, dur_stats1, df_tm1 = util.statistics.get_runlengths_statistics_transition_matrix_from_labels(labels_fs_low[i])
+        df1_runlengths, df1_duration_statistics, df1_transition_matrix = util.statistics.get_runlengths_statistics_transition_matrix_from_labels(labels_fs_low[i])
 
-        # if PLOT_TRAINING:
-        #     plot_tmat(df_tm1, fps_video)
+        if config.PLOT_GRAPHS:
+            fig_filename = f'{inspect.stack()[0][3]}_df1_transition_matrix'
+            # TODO: resolve typing below
+            util.visuals.plot_transition_matrix(df1_transition_matrix, config.VIDEO_FPS,
+                                                save_fig_to_file=config.SAVE_GRAPHS_TO_FILE, fig_file_prefix=fig_filename)
 
         # Save (stuff?) to CSV
-
-        runlen_df1.to_csv((os.path.join(OUTPUT_PATH, f'BSOiD__runlengths__10Hz__{time_str}__{csvname}.csv')), index=True, chunksize=10000, encoding='utf-8')
-        dur_stats1.to_csv((os.path.join(OUTPUT_PATH, f'BSOiD__statistics__10Hz__{time_str}__{csvname}.csv')), index=True, chunksize=10000, encoding='utf-8')
-        df_tm1.to_csv((os.path.join(OUTPUT_PATH, f'BSOiD__transitions__10Hz__{time_str}__{csvname}.csv')), index=True, chunksize=10000, encoding='utf-8')
+        df1_runlengths.to_csv((os.path.join(OUTPUT_PATH, f'BSOiD__runlengths__10Hz__{time_str}__{csvname}.csv')), index=True, chunksize=10000, encoding='utf-8')
+        df1_duration_statistics.to_csv((os.path.join(OUTPUT_PATH, f'BSOiD__statistics__10Hz__{time_str}__{csvname}.csv')), index=True, chunksize=10000, encoding='utf-8')
+        df1_transition_matrix.to_csv((os.path.join(OUTPUT_PATH, f'BSOiD__transitions__10Hz__{time_str}__{csvname}.csv')), index=True, chunksize=10000, encoding='utf-8')
 
         #
-        labels_fshigh_pad = np.pad(labels_fs_high[i], (6, 0), 'edge')
-        df2 = pd.DataFrame(labels_fshigh_pad, columns={'B-SOiD labels'})
+        labels_frameshiftHigh_pad = np.pad(labels_fs_high[i], (6, 0), 'edge')
+        df2 = pd.DataFrame(labels_frameshiftHigh_pad, columns={'B-SOiD labels'})
         df2.loc[len(df2)] = ''  # TODO: low: address duplicate line here and below
         df2.loc[len(df2)] = ''
         df2 = df2.shift()
@@ -145,24 +151,22 @@ def run_py(predict_folders):  # TODO: HIGH: break up this function and rename. T
         df2 = df2.shift()
         df2.loc[0] = ''
         frames = [df2, all_dfs_list[0]]
-        df_xy_fs = pd.concat(frames, axis=1)
+        df_xy_frameshift = pd.concat(frames, axis=1)
         csvname = os.path.basename(filenames[i]).rpartition('.')[0]
+        df_xy_frameshift.to_csv((os.path.join(OUTPUT_PATH, f'BSOiD__labels__{VIDEO_FPS}Hz{time_str}__{csvname}.csv')), index=True, chunksize=10000, encoding='utf-8')
 
-        # runlen_df2.to_csv((os.path.join(OUTPUT_PATH, str.join('', ('bsoid_runlen_', str(VIDEO_FPS), 'Hz', timestr, csvname,
-        df_xy_fs.to_csv((os.path.join(OUTPUT_PATH, f'BSOiD__labels__{VIDEO_FPS}Hz{time_str}__{csvname}.csv')), index=True, chunksize=10000, encoding='utf-8')
+        #
+        df2_runlengths, df2_duration_statistics, df2_transition_matrix = util.statistics.get_runlengths_statistics_transition_matrix_from_labels(labels_fs_high[i])
 
-        runlen_df2, dur_stats2, df_tm2 = util.statistics.get_runlengths_statistics_transition_matrix_from_labels(labels_fs_high[i])
-        runlen_df2.to_csv((os.path.join(OUTPUT_PATH, f'BSOiD__NeedsAName__{VIDEO_FPS}Hz__{time_str}__{csvname}.csv')), index=True, chunksize=10000, encoding='utf-8')
+        df2_runlengths.to_csv((os.path.join(OUTPUT_PATH, f'BSOiD__NeedsAName__{VIDEO_FPS}Hz__{time_str}__{csvname}.csv')), index=True, chunksize=10000, encoding='utf-8')
+        df2_duration_statistics.to_csv((os.path.join(OUTPUT_PATH, f'BSOiD__statistics__{VIDEO_FPS}Hz__{time_str}__{csvname}.csv')), index=True, chunksize=10000, encoding='utf-8')
+        df2_transition_matrix.to_csv((os.path.join(OUTPUT_PATH, f'BSOiD__transitions__{VIDEO_FPS}Hz__{time_str}__{csvname}.csv')), index=True, chunksize=10000, encoding='utf-8')
 
-        # TODO: ############### Reformat the below lines using f-strings #################################################################################
-        dur_stats2.to_csv((os.path.join(OUTPUT_PATH, f'BSOiD__statistics__{VIDEO_FPS}Hz__{time_str}__{csvname}.csv')), index=True, chunksize=10000, encoding='utf-8')
-        df_tm2.to_csv((os.path.join(OUTPUT_PATH, f'BSOiD__transitions__{VIDEO_FPS}Hz__{time_str}__{csvname}.csv')), index=True, chunksize=10000, encoding='utf-8')
-
-    #
+    # Save _____ TODO
     with open(os.path.join(OUTPUT_PATH, 'bsoid_predictions.sav'), 'wb') as f:
         joblib.dump([labels_fs_low, labels_fs_high], f)
 
-    logger.info('All saved. Expand on this info message later.')
+    logger.debug('All saved. What is "all"? Expand on this info message later.')  # TODO
     return data_new, features_new, labels_fs_low, labels_fs_high
 
 
@@ -283,7 +287,7 @@ def run_umap(predict_folders) -> Tuple[Any, Any]:
     """
     time_str = time.strftime("_%Y%m%d_%H%M")
     # Read in model
-    with open(os.path.join(OUTPUT_PATH, f'bsoid_{config.MODEL_NAME}.sav'), 'rb') as fr:
+    with open(os.path.join(OUTPUT_PATH, config.MODEL_FILENAME), 'rb') as fr:
         f_10fps, f_10fps_sc, umap_embeddings, hdb_assignments, soft_assignments, soft_clusters, nn_classifier, scores, nn_assignments = joblib.load(fr)
 
     data_new, fs_labels = classify.main_umap(predict_folders, VIDEO_FPS, nn_classifier)
@@ -339,8 +343,9 @@ def run_voc(predict_folders) -> Tuple[Any, Any, Any, Any]:
     1. original features (number of training data points by 7 dimensions, columns 1-7)
     2. Neural net predicted labels (number of training data points by 1, columns 8)
     """
-
-    with open(os.path.join(OUTPUT_PATH, f'bsoid_{config.MODEL_NAME}.sav'), 'rb') as fr:
+    model_filename = f'bsoid_{config.MODEL_NAME}.sav'
+    model_filename = config.MODEL_FILENAME
+    with open(os.path.join(OUTPUT_PATH, model_filename), 'rb') as fr:
         behv_model = joblib.load(fr)
 
     data_new, feats_new, labels_fslow, labels_fshigh = classify.main_voc(predict_folders, VIDEO_FPS, behv_model)

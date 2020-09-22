@@ -589,10 +589,10 @@ def main_voc(predict_folders: List[str], fps, behv_model) -> Tuple[List[np.ndarr
     return data_new, features_new, labels_frameshift_low, labels_frameshift_high
 
 
-### Legacy functions (do not delete yet)
+### Legacy functions (do not delete yet, do not alter)
 def bsoid_extract_py(data, bodyparts: dict = config.BODYPARTS_PY_LEGACY, fps: int = config.VIDEO_FPS) -> List:
     """
-    * This is a pull from the original bsoid_py implementation. Do not add to this function or change it! *
+    * This is a pull from the original bsoid_py implementation. Do not add modify this function! *
 
     The two main functions that occur here are:
         1: extract 7 features
@@ -607,7 +607,7 @@ def bsoid_extract_py(data, bodyparts: dict = config.BODYPARTS_PY_LEGACY, fps: in
     :return:
     """
     replacement_1 = feature_engineering.extract_7_features_bsoid_tsne_py
-    replacement_2 = feature_engineering.integrate_features_into_100ms_bins
+    replacement_2 = feature_engineering.integrate_features_into_100ms_bins_LEGACY
     logger.warning(f'This function, {inspect.stack()[0][3]}(), is the old but '
                    f'correct implementation of feature extraction for bsoid_py.'
                    f'Caller = {inspect.stack()[1][3]}. Likely to be replaced by 2 functions that split up the work:'

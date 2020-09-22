@@ -11,7 +11,8 @@ import time
 
 
 from bsoid import config, feature_engineering
-from bsoid.util import io, visuals
+from bsoid.config import OUTPUT_PATH, VIDEO_FPS
+from bsoid.util import io, likelihoodprocessing, statistics, videoprocessing, visuals
 from bsoid.util.bsoid_logging import get_current_function  # for debugging purposes
 
 
@@ -25,6 +26,10 @@ def TEST_readcsv():
     path = f'C:\\Users\\killian\\projects\\OST-with-DLC\\GUI_projects\\EPM-DLC-projects\\' \
            f'sample_train_data_folder\\Video1DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000.csv'
     io.read_csv(path)
+def build_and_run_new_pipeline():
+    build_classifier_new_pipeline()
+    run_classifier_new_pipeline()
+    return
 
 
 def build_classifier_new_pipeline(train_folders: List[str] = config.TRAIN_FOLDERS_PATHS) -> None:
@@ -48,6 +53,7 @@ def build_classifier_new_pipeline(train_folders: List[str] = config.TRAIN_FOLDER
     # # # 1) Get data
     dfs_unfiltered_list: List[pd.DataFrame] = []
 
+    # Loop over train folders to fetch data
     for train_path in config.TRAIN_FOLDERS_PATHS:
         logger.debug(f'train_path = {train_path}')
         csv_files_paths: List[str] = io.check_folder_contents_for_csv_files(train_path, check_recursively=True)
@@ -70,21 +76,24 @@ def build_classifier_new_pipeline(train_folders: List[str] = config.TRAIN_FOLDER
         raise RuntimeError(warn_zero_csvs)
 
     # # # 2) Adaptively filter
-    # TODO: finish adaptive filtering function
-    dfs_list_filtered: List[Tuple[pd.DataFrame, List]] = [feature_engineering.adaptively_filter_dlc_output(df)
-                                                          for df in dfs_unfiltered_list]
+    dfs_list_filtered: List[Tuple[pd.DataFrame, List[float]]] = [feature_engineering.adaptively_filter_dlc_output(df)
+                                                                 for df in dfs_unfiltered_list]
 
+    # # # 3) Engineer features
     # Loop over DataFrames, engineer features!
-    # TODO: finish feature engineering
-    dfs_engineered_features: List[pd.DataFrame] = [feature_engineering.engineer_7_features_dataframe(df)
-                                                   for df, _ in dfs_list_filtered]
+    dfs_engineered_features: List[Tuple[pd.DataFrame, List[float]]] = [
+        (feature_engineering.engineer_7_features_dataframe(df), i) for df, i in dfs_list_filtered]
+    # Engineer into 100ms bins
+    dfs_features_100ms_bins = [(func(df), i) for df, i in dfs_engineered_features]
 
+    # Train TSNE
+
+    # Train GMM
+
+    # Train SVM
 
 
     raise Exception(f'Done for now')
-
-
-    ####################################################################################################################
 
 
     file_names_list, list_of_arrays_of_training_data, _perc_rect = likelihoodprocessing.import_csvs_data_from_folders_in_PROJECTPATH_and_process_data(train_folders)
@@ -107,10 +116,6 @@ def build_classifier_new_pipeline(train_folders: List[str] = config.TRAIN_FOLDER
         visuals.plot_feats_bsoidpy(features_10fps, gmm_assignments)
         logger.debug(f'Exiting GRAPH PLOTTING section of {inspect.stack()[0][3]}')
 
-
-
-    # return features_10fps, trained_tsne_list, scaler, gmm_assignments, classifier, scores
-    # features_10fps, trained_tsne, scaler_object, gmm_assignments, classifier, scores = train.get_data_train_TSNE_then_GMM_then_SVM_then_return_EVERYTHING__py(train_folders)
 
     all_data = np.concatenate([
         features_10fps.T,
@@ -140,12 +145,137 @@ def build_classifier_new_pipeline(train_folders: List[str] = config.TRAIN_FOLDER
                             index=True, chunksize=10000, encoding='utf-8')
 
     # Save model data to file
-    with open(os.path.join(OUTPUT_PATH, f'bsoid_{config.MODEL_NAME}.sav'), 'wb') as model_file:
+    with open(os.path.join(OUTPUT_PATH, config.MODEL_FILENAME), 'wb') as model_file:
         joblib.dump([classifier, scaler_object], model_file)
 
     logger.error(f'{inspect.stack()[0][3]}: Saved model to file. Form: [classifier, scaler_object]')  # TODO: see msg
-    return features_10fps, trained_tsne, scaler_object, gmm_assignments, classifier, scores
 
+    # END BUILD_PY
+
+def run_classifier_new_pipeline():
+    ####################################################################################################################
+    # START RUN_PY
+    predict_folders = config.PREDICT_FOLDERS
+    # Import preprocessed data
+    filenames, data_new, perc_rect = likelihoodprocessing.import_csvs_data_from_folders_in_PROJECTPATH_and_process_data(
+        predict_folders)
+
+    # Extract features
+    features_new = bsoid_extract_py(data_new)
+    # Predict labels
+    labels_frameshift_low: List = bsoid_predict_py(features_new, scaler, svm_classifier__behavioural_model)
+    # Create
+    labels_frameshift_high: List = bsoid_frameshift_py(data_new, scaler, fps, svm_classifier__behavioural_model)
+
+    if config.PLOT_GRAPHS:
+        visuals.plot_feats_bsoidpy(features_new, labels_frameshift_low)
+
+    # TODO: HIGH: Ensure that the labels predicted on predict_folders matches to the video that will be labeled hereafter
+    if config.GENERATE_VIDEOS:
+        if len(labels_frameshift_low) > 0:
+            # 1/2 write frames to disk
+            videoprocessing.write_annotated_frames_to_disk_from_video(
+                config.VIDEO_TO_LABEL_PATH,
+                labels_frameshift_low[config.IDENTIFICATION_ORDER]
+            )
+            # 2/2 created labeled video
+            videoprocessing.create_labeled_vid(
+                labels_frameshift_low[config.IDENTIFICATION_ORDER],
+                critical_behaviour_minimum_duration=3,
+                num_randomly_generated_examples=5,
+                frame_dir=config.FRAMES_OUTPUT_PATH,
+                output_path=config.SHORT_VIDEOS_OUTPUT_PATH
+            )
+        else:
+            logger.error(f'{inspect.stack()[0][3]}(): config.GENERATE_VIDEOS = {config.GENERATE_VIDEOS}; '
+                         f'however, the generation of '
+                         f'a video could NOT occur because labels_fs_low is a list of length zero and '
+                         f'config.ID is attempting to index an empty list.')
+
+    # return features_10fps, trained_tsne, scaler_object, gmm_assignments, classifier, scores
+    filenames: List[str] = []
+    all_dfs_list: List[pd.DataFrame] = []
+    for i, folder in enumerate(predict_folders):  # Loop through folders
+        file_names_csvs: List[
+            str] = util.likelihoodprocessing.get_filenames_csvs_from_folders_recursively_in_dlc_project_path(folder)
+        for j, csv_filename in enumerate(file_names_csvs):
+            logger.info(f'{inspect.stack()[0][3]}(): Importing CSV file {j + 1} from folder {i + 1}.')
+            curr_df = pd.read_csv(csv_filename, low_memory=False)
+            filenames.append(csv_filename)
+            all_dfs_list.append(curr_df)
+
+    for i, feature_new_i in enumerate(features_new):
+        all_data: np.ndarray = np.concatenate([
+            feature_new_i.T,
+            labels_fs_low[i].reshape(len(labels_fs_low[i]), 1),
+        ], axis=1)
+        multi_index_columns = pd.MultiIndex.from_tuples([
+            ('Features', 'Relative snout to forepaws placement'),
+            ('', 'Relative snout to hind paws placement'),
+            ('', 'Inter-forepaw distance'),
+            ('', 'Body length'),
+            ('', 'Body angle'),
+            ('', 'Snout displacement'),
+            ('', 'Tail-base displacement'),
+            ('SVM classifier', 'B-SOiD labels')],
+            names=['Type', 'Frame@10Hz'])
+        df_predictions = pd.DataFrame(all_data, columns=multi_index_columns)
+        # time_str = time.strftime("_%Y%m%d_%H%M")
+        time_str = config.runtime_timestr
+        csvname = os.path.basename(filenames[i]).rpartition('.')[0]
+        df_predictions.to_csv(
+            (os.path.join(OUTPUT_PATH, f'BSOiD__labels__10Hz__{config.runtime_timestr}__{csvname}.csv')), index=True,
+            chunksize=10000, encoding='utf-8')
+
+        runlen_df1, dur_stats1, df_tm1 = util.statistics.get_runlengths_statistics_transition_matrix_from_labels(
+            labels_fs_low[i])
+
+        # if PLOT_TRAINING:
+        #     plot_tmat(df_tm1, fps_video)
+
+        # Save (stuff?) to CSV
+
+        runlen_df1.to_csv((os.path.join(OUTPUT_PATH, f'BSOiD__runlengths__10Hz__{time_str}__{csvname}.csv')),
+                          index=True, chunksize=10000, encoding='utf-8')
+        dur_stats1.to_csv((os.path.join(OUTPUT_PATH, f'BSOiD__statistics__10Hz__{time_str}__{csvname}.csv')),
+                          index=True, chunksize=10000, encoding='utf-8')
+        df_tm1.to_csv((os.path.join(OUTPUT_PATH, f'BSOiD__transitions__10Hz__{time_str}__{csvname}.csv')), index=True,
+                      chunksize=10000, encoding='utf-8')
+
+        #
+        labels_fshigh_pad = np.pad(labels_fs_high[i], (6, 0), 'edge')
+        df2 = pd.DataFrame(labels_fshigh_pad, columns={'B-SOiD labels'})
+        df2.loc[len(df2)] = ''  # TODO: low: address duplicate line here and below
+        df2.loc[len(df2)] = ''
+        df2 = df2.shift()
+        df2.loc[0] = ''
+        df2 = df2.shift()
+        df2.loc[0] = ''
+        frames = [df2, all_dfs_list[0]]
+        df_xy_fs = pd.concat(frames, axis=1)
+        csvname = os.path.basename(filenames[i]).rpartition('.')[0]
+
+        # runlen_df2.to_csv((os.path.join(OUTPUT_PATH, str.join('', ('bsoid_runlen_', str(VIDEO_FPS), 'Hz', timestr, csvname,
+        df_xy_fs.to_csv((os.path.join(OUTPUT_PATH, f'BSOiD__labels__{VIDEO_FPS}Hz{time_str}__{csvname}.csv')),
+                        index=True, chunksize=10000, encoding='utf-8')
+
+        runlen_df2, dur_stats2, df_tm2 = util.statistics.get_runlengths_statistics_transition_matrix_from_labels(
+            labels_fs_high[i])
+        runlen_df2.to_csv((os.path.join(OUTPUT_PATH, f'BSOiD__NeedsAName__{VIDEO_FPS}Hz__{time_str}__{csvname}.csv')),
+                          index=True, chunksize=10000, encoding='utf-8')
+
+        # TODO: ############### Reformat the below lines using f-strings #################################################################################
+        dur_stats2.to_csv((os.path.join(OUTPUT_PATH, f'BSOiD__statistics__{VIDEO_FPS}Hz__{time_str}__{csvname}.csv')),
+                          index=True, chunksize=10000, encoding='utf-8')
+        df_tm2.to_csv((os.path.join(OUTPUT_PATH, f'BSOiD__transitions__{VIDEO_FPS}Hz__{time_str}__{csvname}.csv')),
+                      index=True, chunksize=10000, encoding='utf-8')
+
+    #
+    with open(os.path.join(OUTPUT_PATH, 'bsoid_predictions.sav'), 'wb') as f:
+        joblib.dump([labels_fs_low, labels_fs_high], f)
+
+    logger.info('All saved. Expand on this info message later.')
+    return data_new, features_new, labels_fs_low, labels_fs_high
 
 def clear_output_folders() -> None:
     """
