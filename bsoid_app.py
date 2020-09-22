@@ -29,6 +29,8 @@ from bsoid import classify, config
 from bsoid.config import BSOID_BASE_PROJECT_PATH, CROSSVALIDATION_K, DLC_PROJECT_PATH, HDBSCAN_PARAMS, HOLDOUT_PERCENT, MLP_PARAMS, OUTPUT_PATH, TRAIN_FOLDERS, UMAP_PARAMS
 from bsoid.util import likelihoodprocessing, statistics, videoprocessing, visuals
 
+logger = config.initialize_logger(__name__)
+
 
 ########################################################################################################################
 app_model_data_filename = f'DEFAULTAPPMODEL_data.sav'  # Default init
@@ -37,23 +39,24 @@ app_model_predictions_filename = f'DEFAULTAPPMODEL_predictions.sav'
 app_model_clusters_filename = f'DEFAULTAPPMODEL_clusters.sav'
 app_model_neuralnet_filename = f'DEFAULTAPPMODEL_neuralnet.sav'
 
+
 ########################################################################################################################
 
 def run_streamlit_app():
     # Introduction
     st.title('B-SOiD')
-    st.header('An open-source machine learning app for parsing (spatio-temporal) patterns.')
+    st.header('An open-source machine learning app for parsing spatio-temporal patterns.')
     st.subheader('Extract behavior from pose for any organism, any camera angle! '
                  'Note that keeping the checkboxes unchecked when not needed speeds up the processing.')
 
-    demo_vids = {
+    demo_videos = {
         "Open-field, unrestrained, wild-type (Yttri lab @ CMU)":
-            f"{BSOID_BASE_PROJECT_PATH}{os.path.sep}demo{os.path.sep}ClusteredBehavior_aligned.mp4",
+            f"{os.path.join(BSOID_BASE_PROJECT_PATH, 'demo', 'ClusteredBehavior_aligned.mp4')}",
         "Open-field, tethered, OCD model (Ahmari lab @ UPitt)":
-            f"{BSOID_BASE_PROJECT_PATH}{os.path.sep}demo{os.path.sep}bsoid_grm_demo.mp4"
+            f"{os.path.join(BSOID_BASE_PROJECT_PATH, 'demo', 'bsoid_grm_demo.mp4')}",
     }
-    vid = st.selectbox("Notable examples, please contribute!", list(demo_vids.keys()), 0)
-    with open(demo_vids[vid], 'rb') as video_file:
+    vid = st.selectbox("Notable examples, please contribute!", list(demo_videos.keys()), 0)
+    with open(demo_videos[vid], 'rb') as video_file:
         # video_file = open(demo_vids[vid], 'rb')
         video_bytes = video_file.read()
         st.video(video_bytes)
@@ -70,7 +73,7 @@ def run_streamlit_app():
 
         MODEL_NAME = st.sidebar.text_input('Enter your prior run variable file prefix:')
         if MODEL_NAME:
-            st.markdown(f'You have selected **{MODEL_NAME}_XXX.sav** as your prior variable files.')
+            st.markdown(f'You have selected **{MODEL_NAME}_[contents].sav** as your prior variable files.')
 
             app_model_data_filename = f'{MODEL_NAME}_data.sav'
             app_model_features_filename = f'{MODEL_NAME}_features.sav'
@@ -90,7 +93,7 @@ def run_streamlit_app():
         # BASE_PATH, TRAIN_FOLDERS, FPS, OUTPUT_PATH and MODEL_NAME designations
         st.subheader('Find your data')
         st.write('The __BASE PATH__ contains multiple nested directories.')
-        BASE_PATH = st.text_input('Enter a BASE PATH:', DLC_PROJECT_PATH)
+        BASE_PATH = st.text_input('Enter a DLC project "BASE PATH":', DLC_PROJECT_PATH)
         try:
             os.listdir(BASE_PATH)
             st.markdown(
@@ -99,7 +102,7 @@ def run_streamlit_app():
             st.error('No such directory')
         st.write('The __sub-directory(ies)__ each contain one or more .csv files. '
                  'Currently supporting _2D_ and _single_ animal.')
-        TRAIN_FOLDERS = []  # TODO: HIGH: TRAIN_FOLDERS is instantiated here but lower down TRAIN_FOLDERS[0] is ref'd. Error ***
+        TRAIN_FOLDERS = []
         num_project_path_sub_directories = int(st.number_input('How many BASE_PATH/SUB-DIRECTORIES for training?', value=3))
         st.markdown(f'Your will be training on **{num_project_path_sub_directories}** csv containing sub-directories.')
         for i in range(num_project_path_sub_directories):
@@ -198,8 +201,8 @@ def run_streamlit_app():
             st.write('This line chart shows __% body part below file-based threshold__')
             subllh_percent = pd.DataFrame(perc_rect_list)
             st.bar_chart(subllh_percent)
-        st.markdown('**_CHECK POINT_**: Processed a total of **{}** CSV files, '
-                    'and compiled into a **{}** data list.'.format(len(rawdata_list), training_data.shape))
+        st.markdown(f'**_CHECK POINT_**: Processed a total of **{len(rawdata_list)}** CSV files, '
+                    f'and compiled into a **{training_data.shape}** data list.')
         st.write('This allows you to scroll through and visualize raw vs processed data.')
         if st.checkbox("Show raw & processed data?", False):
             try:
@@ -207,7 +210,8 @@ def run_streamlit_app():
                     st.number_input('Enter csv/data-list index:', min_value=1, max_value=len(rawdata_list), value=1))
                 st.write(rawdata_list[ID - 1])
                 st.write(training_data[ID - 1])
-            except:  # TODO: med: exception is too generalized. Add note or make more specific.
+            except Exception as e:  # TODO: med: exception is too generalized. Add note or make more specific.
+                st.error(f'Error found: {repr(e)}.')
                 pass
 
 
@@ -280,40 +284,37 @@ def run_streamlit_app():
                                         np.sum((feats[n][dxy_smth.shape[0]:feats[n].shape[0],
                                                 range(k - round(FPS / 10), k)]), axis=1))).reshape(len(feats[0]), 1)
             if n > 0:
-                f_10fps = np.concatenate((f_10fps, feats1), axis=1)
+                features_10fps = np.concatenate((features_10fps, feats1), axis=1)
                 scaler = StandardScaler()
                 scaler.fit(feats1.T)
-                feats1_sc = scaler.transform(feats1.T).T
-                f_10fps_sc = np.concatenate((f_10fps_sc, feats1_sc), axis=1)
+                feats1_scaled = scaler.transform(feats1.T).T
+                features_10fps_scaled = np.concatenate((features_10fps_scaled, feats1_scaled), axis=1)
             else:
-                f_10fps = feats1
+                features_10fps = feats1
                 scaler = StandardScaler()
                 scaler.fit(feats1.T)
-                feats1_sc = scaler.transform(feats1.T).T
-                f_10fps_sc = feats1_sc  # scaling is important as I've seen wildly different stdev/feat between sessions
-        feats_train = f_10fps_sc.T
+                feats1_scaled = scaler.transform(feats1.T).T
+                features_10fps_scaled = feats1_scaled  # scaling is important as I've seen wildly different stdev/feat between sessions
+        features_10fps_train = features_10fps_scaled.T
         mem = virtual_memory()
-        if mem.available > f_10fps_sc.shape[0] * f_10fps_sc.shape[
-            1] * 32 * 100 + 256000000:  # TODO: low: magic variables
-            trained_umap = umap.UMAP(n_neighbors=100,  # power law
-                                     **UMAP_PARAMS).fit(feats_train)
+        if mem.available > features_10fps_scaled.shape[0] * features_10fps_scaled.shape[1] * 32 * 100 + 256_000_000:  # TODO: low: magic variables
+            trained_umap = umap.UMAP(**UMAP_PARAMS).fit(features_10fps_train)  # n_neighbors removed, moved to config
         else:
             st.info('Detecting that you are running low on available memory for this '
                     'computation, setting low_memory so will take longer.')
-            trained_umap = umap.UMAP(n_neighbors=100, low_memory=True,  # power law
-                                     **UMAP_PARAMS).fit(feats_train)
+            trained_umap = umap.UMAP(low_memory=True, **UMAP_PARAMS).fit(features_10fps_train)
         umap_embeddings = trained_umap.embedding_
-        st.info(f'Done non-linear transformation of **{feats_train.shape[0]}** instances '
-                f'from **{feats_train.shape[1]}** D into **{umap_embeddings.shape[1]}** D.')
+        st.info(f'Done non-linear transformation of **{features_10fps_train.shape[0]}** instances '
+                f'from **{features_10fps_train.shape[1]}** D into **{umap_embeddings.shape[1]}** D.')
         with open(os.path.join(OUTPUT_PATH, app_model_features_filename), 'wb') as file:
-            joblib.dump([f_10fps, f_10fps_sc, umap_embeddings], file)
+            joblib.dump([features_10fps, features_10fps_scaled, umap_embeddings], file)
         st.balloons()
 
     if last_run:
         with open(os.path.join(OUTPUT_PATH, app_model_features_filename), 'rb') as fr:
-            f_10fps, f_10fps_sc, umap_embeddings = joblib.load(fr)
-        st.markdown(f'**_CHECK POINT_**: Done non-linear transformation of **{f_10fps_sc.shape[1]}** instances '
-                    f'from **{f_10fps_sc.shape[0]}** D into **{umap_embeddings.shape[1]}** D.')
+            features_10fps, features_10fps_scaled, umap_embeddings = joblib.load(fr)
+        st.markdown(f'**_CHECK POINT_**: Done non-linear transformation of **{features_10fps_scaled.shape[1]}** instances '
+                    f'from **{features_10fps_scaled.shape[0]}** D into **{umap_embeddings.shape[1]}** D.')
 
     # HDBSCAN
     st.subheader('Perform density-based clustering.')
@@ -326,7 +327,7 @@ def run_streamlit_app():
     st.markdown(f'Your minimum cluster size ranges between **{cluster_range[0]}%** and **{cluster_range[1]}%**.')
     if st.button("Start clustering"):
         with open(os.path.join(OUTPUT_PATH, app_model_features_filename), 'rb') as fr:
-            f_10fps, f_10fps_sc, umap_embeddings = joblib.load(fr)
+            features_10fps, features_10fps_scaled, umap_embeddings = joblib.load(fr)
         highest_numulab = -np.infty
         numulab = []
         min_cluster_range = np.linspace(cluster_range[0], cluster_range[1], 25)
@@ -356,7 +357,7 @@ def run_streamlit_app():
     if st.checkbox("Show UMAP enhanced clustering plot?", True):
         st.write('Below are two cluster plots.')
         with open(os.path.join(OUTPUT_PATH, app_model_features_filename), 'rb') as fr:  # str.join('', (MODEL_NAME, '_feats.sav'))
-            f_10fps, f_10fps_sc, umap_embeddings = joblib.load(fr)
+            features_10fps, features_10fps_scaled, umap_embeddings = joblib.load(fr)
         with open(os.path.join(OUTPUT_PATH, app_model_clusters_filename), 'rb') as fr:  # str.join('', (MODEL_NAME, '_clusters.sav'))
             assignments, soft_clusters, soft_assignments = joblib.load(fr)
         fig1, plt1 = visuals.plot_classes_bsoidapp(umap_embeddings[assignments >= 0], assignments[assignments >= 0])
@@ -376,21 +377,21 @@ def run_streamlit_app():
                  ''')
     if st.button("Start training a behavioral neural network"):
         with open(os.path.join(OUTPUT_PATH, app_model_features_filename), 'rb') as fr:  # with open(os.path.join(OUTPUT_PATH, str.join('', (MODEL_NAME, '_feats.sav'))), 'rb') as fr:  f'{MODEL_NAME}_feats.sav'
-            f_10fps, f_10fps_sc, umap_embeddings = joblib.load(fr)
+            features_10fps, features_10fps_scaled, umap_embeddings = joblib.load(fr)
         with open(os.path.join(OUTPUT_PATH, app_model_clusters_filename), 'rb') as fr:  # with open(os.path.join(OUTPUT_PATH, str.join('', (MODEL_NAME, '_clusters.sav'))), 'rb') as fr:  f'{MODEL_NAME}_clusters.sav'
             assignments, soft_clusters, soft_assignments = joblib.load(fr)
 
-        feats_train, feats_test, labels_train, labels_test = train_test_split(
-            f_10fps.T, soft_assignments.T, test_size=HOLDOUT_PERCENT, random_state=config.RANDOM_STATE)
+        features_10fps_train, feats_test, labels_train, labels_test = train_test_split(
+            features_10fps.T, soft_assignments.T, test_size=HOLDOUT_PERCENT, random_state=config.RANDOM_STATE)
         st.info(
             f'Training feedforward neural network on randomly partitioned {(1 - HOLDOUT_PERCENT) * 100}% of training data...')
         classifier = MLPClassifier(**MLP_PARAMS)
-        classifier.fit(feats_train, labels_train)
+        classifier.fit(features_10fps_train, labels_train)
         clf = MLPClassifier(**MLP_PARAMS)
-        clf.fit(f_10fps.T, soft_assignments.T)
-        nn_assignments = clf.predict(f_10fps.T)
+        clf.fit(features_10fps.T, soft_assignments.T)
+        nn_assignments = clf.predict(features_10fps.T)
         st.info(f'Done training feedforward neural network '
-                f'mapping **{f_10fps.T.shape}** features to **{soft_assignments.T.shape}** assignments.')
+                f'mapping **{features_10fps.T.shape}** features to **{soft_assignments.T.shape}** assignments.')
         scores = cross_val_score(classifier, feats_test, labels_test, cv=CROSSVALIDATION_K, n_jobs=-1)
         with open(os.path.join(OUTPUT_PATH, app_model_neuralnet_filename), 'wb') as f:  # str.join('', (MODEL_NAME, '_neuralnet.sav'))
             joblib.dump([feats_test, labels_test, classifier, clf, scores, nn_assignments], f)
@@ -399,17 +400,17 @@ def run_streamlit_app():
     if last_run:  # app_model_neuralnet_filename
         with open(os.path.join(OUTPUT_PATH, app_model_neuralnet_filename), 'rb') as fr:  # str.join('', (MODEL_NAME, '_neuralnet.sav'))
             feats_test, labels_test, classifier, clf, scores, nn_assignments = joblib.load(fr)
-        st.markdown('**_CHECK POINT_**: Done training feedforward neural network '
-                    'mapping **{}** features to **{}** assignments.'.format(f_10fps.T.shape, soft_assignments.T.shape))
+        st.markdown(f'**_CHECK POINT_**: Done training feedforward neural network '
+                    f'mapping **{features_10fps.T.shape}** features to **{soft_assignments.T.shape}** assignments.')
 
-    if st.checkbox("Show confusion matrix on {}% data?".format(HOLDOUT_PERCENT * 100), False):
+    if st.checkbox(f"Show confusion matrix on {HOLDOUT_PERCENT * 100}% data?", False):
         with open(os.path.join(OUTPUT_PATH, app_model_neuralnet_filename), 'rb') as fr:  # f'{MODEL_NAME}_neuralnet.sav'
             feats_test, labels_test, classifier, clf, scores, nn_assignments = joblib.load(fr)
         np.set_printoptions(precision=2)  # TODO: low: move precision setting to top?
         titles_options = [("Non-normalized confusion matrix", None),
-                          ("Normalized confusion matrix", 'true')]
-        titlenames = ["counts", "norm"]
-        j = 0
+                          ("Normalized confusion matrix", 'true'), ]
+        titlenames = ["counts", "norm"]  # TODO: unused variable
+        j = 0  # TODO: unused variable
         st.write('Below are two confusion matrices - top: raw counts, bottom: probability. These matrices shows '
                  '**true positives in diagonal**, false negatives in rows, and false positives in columns')
         for title, normalize in titles_options:
@@ -446,9 +447,9 @@ def run_streamlit_app():
     if st.button('Export'):
         if any('Input features' in o for o in result1_options):
             with open(os.path.join(OUTPUT_PATH, app_model_features_filename), 'rb') as fr:  # str.join('', (MODEL_NAME, '_feats.sav'))
-                f_10fps, f_10fps_sc, umap_embeddings = joblib.load(fr)
+                features_10fps, features_10fps_scaled, umap_embeddings = joblib.load(fr)
             timestr = time.strftime("_%Y%m%d_%H%M")
-            feat_range, feat_med, p_cts, edges = statistics.feat_dist(f_10fps)
+            feat_range, feat_med, p_cts, edges = statistics.feat_dist(features_10fps)
             f_range_df = pd.DataFrame(feat_range, columns=['5%tile', '95%tile'])
             f_med_df = pd.DataFrame(feat_med, columns=['median'])
             f_pcts_df = pd.DataFrame(p_cts)
@@ -456,64 +457,61 @@ def run_streamlit_app():
             f_edge_df = pd.DataFrame(edges)
             f_edge_df.columns = pd.MultiIndex.from_product([f_edge_df.columns, ['edge']])
             f_dist_data = pd.concat((f_range_df, f_med_df, f_pcts_df, f_edge_df), axis=1)
-            f_dist_data.to_csv(
-                (os.path.join(OUTPUT_PATH, str.join('', ('feature_distribution_10Hz', timestr, '.csv')))),
+            f_dist_data.to_csv((os.path.join(OUTPUT_PATH, f'feature_distribution_10Hz{timestr}.csv')),  # str.join('', ('', timestr, '.csv'))
                 index=True, chunksize=10000, encoding='utf-8')
         if any('Feature corresponding labels' in o for o in result1_options):
             with open(os.path.join(OUTPUT_PATH, app_model_features_filename), 'rb') as fr:
-                f_10fps, f_10fps_sc, umap_embeddings = joblib.load(fr)
+                features_10fps, features_10fps_scaled, umap_embeddings = joblib.load(fr)
             with open(os.path.join(OUTPUT_PATH, app_model_clusters_filename), 'rb') as fr:
                 assignments, soft_clusters, soft_assignments = joblib.load(fr)
             with open(os.path.join(OUTPUT_PATH, app_model_neuralnet_filename), 'rb') as fr:
                 feats_test, labels_test, classifier, clf, scores, nn_assignments = joblib.load(fr)
             timestr = time.strftime("_%Y%m%d_%H%M")
             length_nm, angle_nm, disp_nm = [], [], []
-            for i, j in itertools.combinations(range(0, int(np.sqrt(f_10fps.shape[0]))),
-                                               2):  # TODO: low: remove range starts at 0, redundant?
+            for i, j in itertools.combinations(range(int(np.sqrt(features_10fps.shape[0]))), 2):  # TODO: low: remove range starts at 0, redundant?
                 length_nm.append(['distance between points:', i + 1, j + 1])
                 angle_nm.append(['angular change for points:', i + 1, j + 1])
-            for i in range(int(np.sqrt(f_10fps.shape[0]))):
+            for i in range(int(np.sqrt(features_10fps.shape[0]))):
                 disp_nm.append(['displacement for point:', i + 1, i + 1])
             m_columns = np.vstack((length_nm, angle_nm, disp_nm))
-            feat_nm_df = pd.DataFrame(f_10fps.T, columns=m_columns)
+            feat_nm_df = pd.DataFrame(features_10fps.T, columns=m_columns)
             umaphdb_data = np.concatenate([umap_embeddings, assignments.reshape(len(assignments), 1),
                                            soft_assignments.reshape(len(soft_assignments), 1),
-                                           nn_assignments.reshape(len(nn_assignments), 1)], axis=1)
+                                           nn_assignments.reshape(len(nn_assignments), 1), ], axis=1)
             multi_index_columns = pd.MultiIndex.from_tuples([
                 ('UMAP embeddings', 'Dimension 1'),
-                ('', 'Dimension 2'),
-                ('', 'Dimension 3'),
-                ('HDBSCAN', 'Assignment No.'),
-                ('HDBSCAN*SOFT', 'Assignment No.'),
-                ('Neural Net', 'Assignment No.')],
+                ('',                'Dimension 2'),
+                ('',                'Dimension 3'),
+                ('HDBSCAN',         'Assignment No.'),
+                ('HDBSCAN*SOFT',    'Assignment No.'),
+                ('Neural Net',      'Assignment No.')],
                 names=['Type', 'Frame@10Hz'], )
             umaphdb_df = pd.DataFrame(umaphdb_data, columns=multi_index_columns)
             training_data = pd.concat((feat_nm_df, umaphdb_df), axis=1)
-            soft_clust_prob = pd.DataFrame(soft_clusters)
-            training_data.to_csv((os.path.join(OUTPUT_PATH, str.join('', ('features_labels_10Hz', timestr, '.csv')))),
+            soft_clust_prob = pd.DataFrame(soft_clusters)  # TODO: ??? !!!
+            training_data.to_csv((os.path.join(OUTPUT_PATH, f'features_labels_10Hz{timestr}.csv')),  # str.join('', ('features_labels_10Hz', timestr, '.csv'))
                                  index=True, chunksize=10000, encoding='utf-8')
         if any('Soft assignment probabilities' in o for o in result1_options):
             with open(os.path.join(OUTPUT_PATH, app_model_clusters_filename), 'rb') as fr:
                 assignments, soft_clusters, soft_assignments = joblib.load(fr)
             timestr = time.strftime("_%Y%m%d_%H%M")
             soft_clust_prob = pd.DataFrame(soft_clusters)
-            soft_clust_prob.to_csv((os.path.join(OUTPUT_PATH, f'soft_cluster_prob_10Hz{timestr}.csv')), index=True,
-                                   chunksize=10000, encoding='utf-8')
+            soft_clust_prob.to_csv((os.path.join(OUTPUT_PATH, f'soft_cluster_prob_10Hz{timestr}.csv')),
+                                   index=True, chunksize=10000, encoding='utf-8')
         st.balloons()
 
     if st.sidebar.checkbox('Behavioral structure visual analysis?', False):
-        with open(os.path.join(OUTPUT_PATH, app_model_clusters_filename),
-                  'rb') as fr:  # TODO: low: refactor `str.join(...)`
+        with open(os.path.join(OUTPUT_PATH, app_model_clusters_filename), 'rb') as fr:
             assignments, soft_clusters, soft_assignments = joblib.load(fr)
         with open(os.path.join(OUTPUT_PATH, app_model_predictions_filename), 'rb') as fr:  # str.join('', (MODEL_NAME, '_predictions.sav'))),
-            flders, folders_list, filenames, data_new, fs_labels = joblib.load(fr)
-        selected_flder = st.sidebar.selectbox('select folder', [*flders])
+            folders, folders_list, filenames, data_new, frameshift_labels = joblib.load(fr)
+        selected_folder = st.sidebar.selectbox('select folder', [*folders])
         try:
-            indices = [i for i, s in enumerate(folders_list) if str(selected_flder) in s]
+            indices = [i for i, s in enumerate(folders_list) if str(selected_folder) in s]
             tm_c_all, tm_p_all = [], []
             for idx in indices:
-                df_runlengths, df_dur_statistics, B, df_tm, B_norm = statistics.main_app(fs_labels[idx], len(
-                    np.unique(soft_assignments)))
+                df_runlengths, df_dur_statistics, B, df_tm, B_norm = statistics.main_app(
+                    frameshift_labels[idx], len(np.unique(soft_assignments)))
                 tm_c_all.append(B)
                 tm_p_all.append(B_norm)
             tm_c_ave = np.nanmean(tm_c_all, axis=0)
@@ -575,11 +573,16 @@ def run_streamlit_app():
             except FileExistsError:
                 pass
             try:
-                os.mkdir(f'{DLC_PROJECT_PATH}{csv_dir}{os.path.sep}pngs{os.path.sep}{csv_filename}')  # os.mkdir(str.join('', (DLC_PROJECT_PATH, csv_dir, '/pngs', '/', csv_filename)))  # TODO: low: refactor `str.join(...)`
-            except FileExistsError:
-                pass  # TODO: low: fails silently
-            frame_dir = f'{DLC_PROJECT_PATH}{csv_dir}{os.path.sep}pngs{os.path.sep}{csv_filename}'  # TODO: low: refactor `str.join(...)`
-            st.markdown(f'You have created **{frame_dir}** as your PNG directory for video {vid_file}.')
+                path_to_make = os.path.join(DLC_PROJECT_PATH, csv_dir, 'pngs', csv_filename)  # path_to_make = f'{DLC_PROJECT_PATH}{csv_dir}{os.path.sep}pngs{os.path.sep}{csv_filename}'
+                if not os.path.isdir(path_to_make):
+                    os.mkdir(path_to_make)  # os.mkdir(str.join('', (DLC_PROJECT_PATH, csv_dir, '/pngs', '/', csv_filename)))
+
+            except FileExistsError as fee:
+                err = f'Error: {repr(fee)}'
+                logger.error(err)
+                pass
+            frame_dir = os.path.join(DLC_PROJECT_PATH, csv_dir, 'pngs', csv_filename)  # frame_dir = f'{DLC_PROJECT_PATH}{csv_dir}{os.path.sep}pngs{os.path.sep}{csv_filename}'  # TODO: low: refactor `str.join(...)`
+            st.markdown(f'You have created **{frame_dir}** as your PNG directory for video file {vid_file}.')
             probe = ffmpeg.probe(os.path.join(vid_dir, vid_file))
             video_info = next(s for s in probe['streams'] if s['codec_type'] == 'video')
             width = int(video_info['width'])
@@ -629,11 +632,10 @@ def run_streamlit_app():
                                       low_memory=False)  # TODO: low: rework this pathing...
                 curr_df_filt, perc_rect = likelihoodprocessing.adaptive_filter_LEGACY(curr_df)
                 test_data = [curr_df_filt]
-                labels_fs = []
-                labels_fs2 = []
-                fs_labels = []
+                labels_frameshift = []
+                fs_labels = frameshift_labels = []
                 # TODO: low: change loop variable names so each is unique (clarity)
-                for i in range(0, len(test_data)):
+                for i in range(len(test_data)):
                     feats_new = classify.bsoid_extract_app(test_data, FPS)
                     labels = classify.bsoid_predict_app(feats_new, clf)
                     for m in range(len(labels)):
@@ -644,37 +646,43 @@ def run_streamlit_app():
                         labels_pad[n] = labels_pad[n][::-1]
                         if n > 0:
                             labels_pad[n][0:n] = labels_pad[n - 1][0:n]
-                    labels_fs.append(labels_pad.astype(int))
-                for k in range(0, len(labels_fs)):
+                    labels_frameshift.append(labels_pad.astype(int))
+                for k in range(len(labels_frameshift)):
                     labels_fs2 = []
                     for l in range(math.floor(FPS / 10)):
-                        labels_fs2.append(labels_fs[k][l])
-                    fs_labels.append(np.array(labels_fs2).flatten('F'))
+                        labels_fs2.append(labels_frameshift[k][l])
+                    frameshift_labels.append(np.array(labels_fs2).flatten('F'))
                 st.info(f'Done frameshift-predicting **{csv_file}**.')
-                videoprocessing.create_labeled_vid_app(fs_labels[0], int(min_frames), int(number_examples),
-                                                       int(out_fps),
-                                                       frame_dir, shortvid_dir)
+                # def create_labeled_vid_app(labels, crit, counts, output_fps, video_frames_directory, output_path) -> None:
+                videoprocessing.create_labeled_vid_app(
+                    frameshift_labels[0], crit=int(min_frames), counts=int(number_examples),  # TODO: high: why is only the first frameshift_labels indexed?
+                    output_fps=int(out_fps), video_frames_directory=frame_dir, output_path=shortvid_dir)
                 st.balloons()
             if st.checkbox(f"Show example videos? (loading it up from {shortvid_dir})", False):
                 example_vid = st.selectbox('Select the video (.mp4 or .avi)', sorted(os.listdir(shortvid_dir)))
-                example_vid_file = open(os.path.join(str.join('', (shortvid_dir, '/', example_vid))), 'rb')
+                example_vid_file = open(os.path.join(str.join('', (shortvid_dir, os.path.sep, example_vid))), 'rb')
                 st.markdown(f'You have selected **{example_vid}** as your video from {shortvid_dir}.')
                 video_bytes = example_vid_file.read()
                 st.video(video_bytes)
 
-        if prediction_options == 'Bulk process all csvs':
+        if prediction_options == 'Bulk process all CSVs':
             st.write('Bulk processing will take some time for large datasets.'
                      'This includes a lot of files, long videos, and/or high frame-rates.')
             TEST_FOLDERS = []
             num_project_path_sub_directories: int = int(st.number_input('How many sub-directories for bulk predictions?', value=3))
             st.markdown(f'Your will be predicting on **{num_project_path_sub_directories}** csv containing sub-directories.')
             for i in range(num_project_path_sub_directories):
-                test_dir = st.text_input(f'Enter path to test directory number {i + 1} within base path:')
+                test_dir = st.text_input(f'Enter path to test directory number {i+1} within base path:')
                 try:
                     os.listdir(str.join('', (DLC_PROJECT_PATH, test_dir)))
+                    os.listdir(f'{DLC_PROJECT_PATH}{test_dir}')
                 except FileNotFoundError:
                     st.error('No such directory')
-                if not test_dir in TEST_FOLDERS:
+                except Exception as e:
+                    err = f'Unexpected error found: {repr(e)}'
+                    st.error(err)
+                    logger.error(err)
+                if test_dir not in TEST_FOLDERS:
                     TEST_FOLDERS.append(test_dir)
             st.markdown(f'You have selected sub-directory(ies) **{TEST_FOLDERS}**.')
             FPS = int(st.number_input('What is your framerate for these csvs?', value=60))  # TODO: Q: 60=magic variable?
@@ -695,8 +703,8 @@ def run_streamlit_app():
                          'folders, under sub-directory BSOID.')
                 with open(os.path.join(OUTPUT_PATH, app_model_neuralnet_filename), 'rb') as fr:
                     feats_test, labels_test, classifier, clf, scores, nn_assignments = joblib.load(fr)
-                flders, filenames, data_new, perc_rect = likelihoodprocessing.import_folders_app(DLC_PROJECT_PATH, TEST_FOLDERS, BODYPARTS)
-                labels_fs, labels_fs2, fs_labels = [], [], []  # TODO: HIGH: RE-EVALUATE VARIABLE NAMES --> `labels_fs` and `fs_labels` <-------
+                folders, filenames, data_new, perc_rect = likelihoodprocessing.import_folders_app(DLC_PROJECT_PATH, TEST_FOLDERS, BODYPARTS)
+                labels_frameshift, labels_fs2, frameshift_labels = [], [], []  # TODO: HIGH: RE-EVALUATE VARIABLE NAMES --> `labels_fs` and `fs_labels` <-------
                 bar = st.progress(0)
                 for i in range(len(data_new)):
                     feats_new = classify.bsoid_extract_app([data_new[i]], FPS)
@@ -709,13 +717,13 @@ def run_streamlit_app():
                         labels_pad[n] = labels_pad[n][::-1]
                         if n > 0:
                             labels_pad[n][0:n] = labels_pad[n - 1][0:n]
-                    labels_fs.append(labels_pad.astype(int))
+                    labels_frameshift.append(labels_pad.astype(int))
                     bar.progress(round((i + 1) / len(data_new) * 100))
-                for k in range(len(labels_fs)):
+                for k in range(len(labels_frameshift)):
                     labels_fs2 = []
                     for l in range(math.floor(FPS / 10)):
-                        labels_fs2.append(labels_fs[k][l])
-                    fs_labels.append(np.array(labels_fs2).flatten('F'))
+                        labels_fs2.append(labels_frameshift[k][l])
+                    frameshift_labels.append(np.array(labels_fs2).flatten('F'))
                 st.info(f'Done frameshift-predicting a total of **{len(data_new)}** files.')
                 filenames = []
                 all_df = []
@@ -727,13 +735,13 @@ def run_streamlit_app():
                         filenames.append(filename)
                         folders_list.append(folder)
                         all_df.append(curr_df)
-                for i in range(len(fs_labels)):
+                for i in range(len(frameshift_labels)):
                     timestr = time.strftime("_%Y%m%d_%H%M_")
                     csv_filename = os.path.basename(filenames[i]).rpartition('.')[0]
-                    fs_labels_pad = np.pad(fs_labels[i], (0, len(all_df[i]) - 2 - len(fs_labels[i])), 'edge')
+                    fs_labels_pad = np.pad(frameshift_labels[i], (0, len(all_df[i]) - 2 - len(frameshift_labels[i])), 'edge')
                     df2 = pd.DataFrame(fs_labels_pad, columns={'B-SOiD labels'})
                     df2.loc[len(df2)] = ''
-                    df2.loc[len(df2)] = ''
+                    df2.loc[len(df2)] = ''  # TODO: low: duplicate?
                     df2 = df2.shift()
                     df2.loc[0] = ''
                     df2 = df2.shift()
@@ -742,16 +750,14 @@ def run_streamlit_app():
                     xyfs_df = pd.concat(frames, axis=1)
 
                     df_runlengths, df_dur_statistics, B, df_tm, B_norm = \
-                        statistics.main_app(fs_labels[i], len(np.unique(nn_assignments)))
+                        statistics.main_app(frameshift_labels[i], len(np.unique(nn_assignments)))
                     try:
                         os.mkdir(str.join('', (DLC_PROJECT_PATH, folders_list[i], '/BSOID')))
                     except FileExistsError:
                         pass
                     if any('Predicted labels with original pose' in o for o in result2_options):
-                        xyfs_df.to_csv(os.path.join(
-                            DLC_PROJECT_PATH + folders_list[i] + '/BSOID',
-                            str.join('', ('labels_pose_', str(FPS), 'Hz', timestr, csv_filename, '.csv'))),
-                            index=True, chunksize=10000, encoding='utf-8')
+                        xyfs_filename = os.path.join(f'{DLC_PROJECT_PATH}{folders_list[i]}', 'BSOID', f'labels_pose_{FPS}Hz{timestr}{csv_filename}.csv')  # xyfs_filename = os.path.join(DLC_PROJECT_PATH + folders_list[i] + '/BSOID', str.join('', ('', str(FPS), 'Hz', timestr, csv_filename, '.csv')))
+                        xyfs_df.to_csv(xyfs_filename, index=True, chunksize=10000, encoding='utf-8')
                     if any('Behavioral bout lengths in chronological order' in o for o in result2_options):
                         df_runlengths.to_csv(os.path.join(
                             str.join('', (DLC_PROJECT_PATH, folders_list[i], '/BSOID')),
@@ -768,7 +774,7 @@ def run_streamlit_app():
                             str.join('', ('transitions_mat_', str(FPS), 'Hz', timestr, csv_filename, '.csv'))),
                             index=True, chunksize=10000, encoding='utf-8')
                 with open(os.path.join(OUTPUT_PATH, app_model_predictions_filename), 'wb') as f:
-                    joblib.dump([flders, folders_list, filenames, data_new, fs_labels], f)
+                    joblib.dump([folders, folders_list, filenames, data_new, frameshift_labels], f)
                 st.balloons()
 
     return
