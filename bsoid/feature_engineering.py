@@ -244,10 +244,18 @@ def engineer_7_features_dataframe(df: pd.DataFrame, map_names: dict = None, copy
                                     f'engineering but was not found. All submitted columns are: {df.columns}'
             logger.error(err_feature_y_missing)
             raise ValueError(err_feature_y_missing)
-
+    if 'scorer' in df.columns:
+        unique_scorers = np.unique(df['scorer'].values)
+        if len(unique_scorers) != 1:
+            err = f''
+            logger.error(err)
+            raise ValueError(err)
+    
     # Solve kwargs
 
     # Do
+
+
     num_data_rows: int = len(df)
     left_shoulder_x = f'{config.get_part("left_shoulder/forepaw")}_x'
     left_shoulder_y = f'{config.get_part("left_shoulder/forepaw")}_y'
@@ -269,24 +277,24 @@ def engineer_7_features_dataframe(df: pd.DataFrame, map_names: dict = None, copy
     inter_forepaw_distance = df[[left_shoulder_x, left_shoulder_y]].values - df[[right_shoulder_x, right_shoulder_y]].values  # Previously: 'fpd'
 
     # cfp
-    cfp__center_between_forepaws = np.vstack((  # Not works 2
+    cfp__center_between_forepaws = np.vstack((
         (df[left_shoulder_x].values + df[right_shoulder_x].values) / 2,
         (df[left_shoulder_y].values + df[right_shoulder_y].values) / 2,
     )).T  # Previously: cfp
 
     # chp
-    chp__center_between_hindpaws = np.vstack((  # Works 2
+    chp__center_between_hindpaws = np.vstack((
         (df[left_hip_x].values + df[right_hip_x].values) / 2,
         (df[left_hip_y].values + df[right_hip_y].values) / 2,
     )).T
     # cfp_pt
-    dFT__cfp_pt__center_between_forepaws__minus__proximal_tail = np.vstack(([  # Not works!
-        cfp__center_between_forepaws[:, 0] - df[tailbase_x].values,  # - data_array[:, 2 * bodyparts['Tailbase']],
+    dFT__cfp_pt__center_between_forepaws__minus__proximal_tail = np.vstack(([
+        cfp__center_between_forepaws[:, 0] - df[tailbase_x].values,
         cfp__center_between_forepaws[:, 1] - df[tailbase_y].values,
     ])).T
 
     # chp_pt
-    chp__center_between_hindpaws__minus__proximal_tail = np.vstack(([  # Works!
+    chp__center_between_hindpaws__minus__proximal_tail = np.vstack(([
         chp__center_between_hindpaws[:, 0] - df[tailbase_x].values,
         chp__center_between_hindpaws[:, 1] - df[tailbase_y].values,
     ])).T  # chp_pt
@@ -356,7 +364,9 @@ def engineer_7_features_dataframe(df: pd.DataFrame, map_names: dict = None, copy
     snout_speed__aka_snout_displacement_smoothed = likelihoodprocessing.boxcar_center(snout_speed__aka_snout__displacement, win_len)  # sn_disp_smth =>
     tail_speed__aka_proximal_tail__displacement__smoothed = likelihoodprocessing.boxcar_center(tail_speed__aka_proximal_tail__displacement, win_len)  # originally: pt_disp_smth
 
-    # Create DataFrame to host final features product
+    # Aggregate/organize features according to original implementation
+    # Note that the below features array is organized in shape: (number of features, number of records) which
+    #   is typically backwards from how DataFrames are composed.
     features = np.vstack((
         snout__center_forepaws__normalized__smoothed[1:],  # 2  # TODO: problems
         snout__center_hindpaws__normalized__smoothed[1:],  # 3
@@ -367,20 +377,43 @@ def engineer_7_features_dataframe(df: pd.DataFrame, map_names: dict = None, copy
         snout_speed__aka_snout_displacement_smoothed[:],  # 5
         tail_speed__aka_proximal_tail__displacement__smoothed[:],  # 6
     ))
+    # Create DataFrame for features. Flip the features so that the records run along the rows and the
+    #   features are in the columns.
+    features_for_dataframe = features.T
+    results_cols = ['DistFrontPawsTailbaseRelativeBodyLength',
+                    'DistBackPawsBaseTailRelativeBodyLength',
+                    'InterforepawDistance',
+                    'BodyLength',
+                    'SnoutToTailbaseChangeInAngle',
+                    'SnoutSpeed',
+                    'TailbaseSpeed', ]
 
-    results_cols = [
-        'DistFrontPawsTailbaseRelativeBodyLength',
-        'DistBackPawsBaseTailRelativeBodyLength',
-        'InterforepawDistance',
-        'BodyLength',
-        'SnoutToTailbaseChangeInAngle',
-        'SnoutSpeed',
-        'TailbaseSpeed',
-    ]
-
-    df_engineered_features = pd.DataFrame(features.T, columns=results_cols)
+    df_engineered_features = pd.DataFrame(features_for_dataframe, columns=results_cols)
 
     return df_engineered_features
+
+
+def integrate_df_feature_into_100ms_bins_NEW(df, feature: str, copy: bool = False, fps=config.VIDEO_FPS) -> pd.DataFrame:
+    """
+    Use old algorithm to integrate features
+    :param df:
+    :param features_list:
+    :param copy: (bool)
+    :param fps:
+    :return:
+    """
+    # Arg checking
+    if feature not in df.columns:
+        err = f'{inspect.stack()[0][3]}(): TODO: feature not found. Cannot integrate into 100ms bins.'  # TODO
+        logger.error(err)
+        raise ValueError(err)
+    # Kwarg resolution
+    df = df.copy() if copy else df
+
+    # Do
+    # TODO  # raise NotImplementedError(f'{inspect.stack()[0][3]}(): needs to be implemented')
+
+    return df
 
 
 ########################################################################################################################
@@ -391,11 +424,7 @@ def original_feature_extraction_win_len_formula(fps: int):
     return win_len
 
 
-def extract_7_features_bsoid_tsne_py(list_of_arrays_data: List[np.ndarray],
-                                     bodyparts: dict = config.BODYPARTS_PY_LEGACY,
-                                     fps: int = config.VIDEO_FPS,
-                                     comp: int = config.COMPILE_CSVS_FOR_TRAINING, win_len: int = None
-                                     ) -> List[np.ndarray]:
+def extract_7_features_bsoid_tsne_py(list_of_arrays_data: List[np.ndarray], bodyparts: dict = config.BODYPARTS_PY_LEGACY, fps: int = config.VIDEO_FPS, win_len: int = None, **kwargs) -> List[np.ndarray]:
     """  * Legacy * (original implementation source: bsoid_py:bsoid_tsne()
 
     Trains t-SNE (unsupervised) given a set of features based on (x,y) positions
@@ -422,8 +451,7 @@ def extract_7_features_bsoid_tsne_py(list_of_arrays_data: List[np.ndarray],
     check_arg.ensure_type(list_of_arrays_data, list)
     check_arg.ensure_type(list_of_arrays_data[0], np.ndarray)
 
-    if not isinstance(fps, int):
-        raise TypeError(f'fps is not integer. value = {fps}, type={type(fps)}')
+    if not isinstance(fps, int): raise TypeError(f'fps is not integer. value = {fps}, type={type(fps)}')
 
     if win_len is None:
         win_len = original_feature_extraction_win_len_formula(fps)
@@ -533,29 +561,8 @@ def extract_7_features_bsoid_tsne_py(list_of_arrays_data: List[np.ndarray],
 
     return features
 
-def integrate_features_into_100ms_bins(df, features_list: List[str], fps=config.VIDEO_FPS) -> pd.DataFrame:
-    """
-    Use old algorithm to integrate features
-    :param df:
-    :param features_list:
-    :param fps:
-    :return:
-    """
-    # Arg checking
-    set_df_cols = set(df.columns)
-    for feature in features_list:
-        if feature not in set_df_cols:
-            err = f'{inspect.stack()[0][3]}(): TODO'  # TOOD: feature not found
-            logger.error(err)
-            raise ValueError(err)
-    # Do
 
-
-    return df
-
-
-def integrate_features_into_100ms_bins_LEGACY(data: List[np.ndarray], features: List[np.ndarray],
-                                              fps: int) -> List[np.ndarray]:
+def integrate_features_into_100ms_bins_LEGACY(data: List[np.ndarray], features: List[np.ndarray], fps: int) -> List[np.ndarray]:
     """ * Legacy *
     TODO
     :param data: (list of arrays) raw data? TODO
@@ -572,8 +579,7 @@ def integrate_features_into_100ms_bins_LEGACY(data: List[np.ndarray], features: 
             if k > fps_divide_10 - 1:
                 features_100ms_n = np.concatenate((
                     features_100ms_n.reshape(features_100ms_n.shape[0], features_100ms_n.shape[1]),
-                    np.hstack((np.mean(
-                        (features_n[0:4, range(k - fps_divide_10, k)]), axis=1),
+                    np.hstack((np.mean((features_n[0:4, range(k - fps_divide_10, k)]), axis=1),
                                np.sum((features_n[4:7, range(k - fps_divide_10, k)]), axis=1)))
                     .reshape(len(features[0]), 1)), axis=1)
             else:
@@ -583,5 +589,5 @@ def integrate_features_into_100ms_bins_LEGACY(data: List[np.ndarray], features: 
                 )).reshape(len(features[0]), 1)
 
         features_10fps.append(features_100ms_n)
-        logger.debug(f'{inspect.stack()[0][3]}(): Done integrating features into 100ms bins from CSV file #{n + 1}.')
+        logger.debug(f'{inspect.stack()[0][3]}(): Done integrating features into 100ms bins from CSV file #{n+1}.')
     return features_10fps
