@@ -31,6 +31,13 @@ from bsoid.util import likelihoodprocessing, statistics, videoprocessing, visual
 
 
 ########################################################################################################################
+app_model_data_filename = f'DEFAULTAPPMODEL_data.sav'  # Default init
+app_model_features_filename = f'DEFAULTAPPMODEL_features.sav'
+app_model_predictions_filename = f'DEFAULTAPPMODEL_predictions.sav'
+app_model_clusters_filename = f'DEFAULTAPPMODEL_clusters.sav'
+app_model_neuralnet_filename = f'DEFAULTAPPMODEL_neuralnet.sav'
+
+########################################################################################################################
 
 def run_streamlit_app():
     # Introduction
@@ -40,8 +47,10 @@ def run_streamlit_app():
                  'Note that keeping the checkboxes unchecked when not needed speeds up the processing.')
 
     demo_vids = {
-        "Open-field, unrestrained, wild-type (Yttri lab @ CMU)": f"{BSOID_BASE_PROJECT_PATH}{os.path.sep}demo{os.path.sep}ClusteredBehavior_aligned.mp4",
-        "Open-field, tethered, OCD model (Ahmari lab @ UPitt)": f"{BSOID_BASE_PROJECT_PATH}{os.path.sep}demo{os.path.sep}bsoid_grm_demo.mp4"
+        "Open-field, unrestrained, wild-type (Yttri lab @ CMU)":
+            f"{BSOID_BASE_PROJECT_PATH}{os.path.sep}demo{os.path.sep}ClusteredBehavior_aligned.mp4",
+        "Open-field, tethered, OCD model (Ahmari lab @ UPitt)":
+            f"{BSOID_BASE_PROJECT_PATH}{os.path.sep}demo{os.path.sep}bsoid_grm_demo.mp4"
     }
     vid = st.selectbox("Notable examples, please contribute!", list(demo_vids.keys()), 0)
     with open(demo_vids[vid], 'rb') as video_file:
@@ -62,12 +71,19 @@ def run_streamlit_app():
         MODEL_NAME = st.sidebar.text_input('Enter your prior run variable file prefix:')
         if MODEL_NAME:
             st.markdown(f'You have selected **{MODEL_NAME}_XXX.sav** as your prior variable files.')
+            
+            app_model_data_filename = f'{MODEL_NAME}_data.sav'
+            app_model_features_filename = f'{MODEL_NAME}_features.sav'
+            app_model_predictions_filename = f'{MODEL_NAME}_predictions.sav'
+            app_model_clusters_filename = f'{MODEL_NAME}_clusters.sav'
+            app_model_neuralnet_filename = f'{MODEL_NAME}_neuralnet.sav'
         else:
             st.error('Please enter a prefix name for prior run variable file.')
 
         last_run = True
     else:
         last_run = False
+
 
     if not last_run:
         # # Setting things up # #
@@ -128,8 +144,8 @@ def run_streamlit_app():
         # curr_df = pd.read_csv(csv_rep[0], low_memory=False)
         try:
             curr_df = pd.read_csv(csv_rep[0], low_memory=False)
-        except IndexError as e:
-            st.error('CSV file(s) was/were not found.')
+        except IndexError as e: st.error('CSV file(s) was/were not found.')
+
         currdf = np.array(curr_df)
         BP = st.multiselect('Body parts to include', [*currdf[0, 1:-1:3]], [*currdf[0, 1:-1:3]])
         BODYPARTS = []
@@ -152,14 +168,14 @@ def run_streamlit_app():
                     filenames_list.append(filename)
                     my_bar.progress(round((j + 1) / len(f) * 100))
             training_data = np.array(data_list)
-            with open(os.path.join(OUTPUT_PATH, f'{MODEL_NAME}_data.sav'), 'wb') as f:  # with open(os.path.join(OUTPUT_PATH, str.join('', (MODEL_NAME, '_data.sav'))), 'wb') as f:
+            with open(os.path.join(OUTPUT_PATH, app_model_data_filename), 'wb') as f:  # with open(os.path.join(OUTPUT_PATH, str.join('', (MODEL_NAME, '_data.sav'))), 'wb') as f:      f'{MODEL_NAME}_data.sav'
                 joblib.dump([BASE_PATH, FPS, BODYPARTS, filenames_list, rawdata_list, training_data, perc_rect_list], f)
 
-            st.info(
-                f'Processed a total of **{len(data_list)}** CSV files, and compiled into a **{training_data.shape}** data list.')
+            st.info(f'Processed a total of **{len(data_list)}** CSV files, '
+                    f'and compiled into a **{training_data.shape}** data list.')
             st.balloons()
         #
-        with open(os.path.join(OUTPUT_PATH, f'{MODEL_NAME}_data.sav'), 'rb') as fr:
+        with open(os.path.join(OUTPUT_PATH, app_model_data_filename), 'rb') as fr:  # f'{MODEL_NAME}_data.sav'
             BASE_PATH, FPS, BODYPARTS, filenames, rawdata_list, training_data, perc_rect_list = joblib.load(fr)
         if st.checkbox('Show % body part processed per file?', False):
             st.write('This line chart shows __% body part below file-based threshold__')
@@ -176,7 +192,7 @@ def run_streamlit_app():
         #         pass
 
     if last_run:
-        with open(os.path.join(OUTPUT_PATH, f'{MODEL_NAME}_data.sav'), 'rb') as fr:
+        with open(os.path.join(OUTPUT_PATH, app_model_data_filename), 'rb') as fr:
             BASE_PATH, FPS, BODYPARTS, filenames, rawdata_list, training_data, perc_rect_list = joblib.load(fr)
         if st.checkbox('Show % body part processed per file?', False):
             st.write('This line chart shows __% body part below file-based threshold__')
@@ -194,6 +210,8 @@ def run_streamlit_app():
             except:  # TODO: med: exception is too generalized. Add note or make more specific.
                 pass
 
+
+
     # Feature extraction + UMAP
     st.subheader('Perform __dimensionality reduction__ to improve clustering.')
     st.text_area('', '''
@@ -201,6 +219,8 @@ def run_streamlit_app():
     That is A LOT of dimensions, so reducing it is necessary.
     ''')
     if st.button("Start dimensionality reduction"):
+
+        # TODO ********************** THIS IS A TOTAL REPEAT OF ANOTHER FEATURE EXTRACTION FUNCTION ************************
         win_len = np.int(np.round(0.05 / (1 / FPS)) * 2 - 1)
         feats = []
         my_bar = st.progress(0)
@@ -285,16 +305,15 @@ def run_streamlit_app():
         umap_embeddings = trained_umap.embedding_
         st.info(f'Done non-linear transformation of **{feats_train.shape[0]}** instances '
                 f'from **{feats_train.shape[1]}** D into **{umap_embeddings.shape[1]}** D.')
-        with open(os.path.join(OUTPUT_PATH, str.join('', (MODEL_NAME, '_feats.sav'))), 'wb') as file:
+        with open(os.path.join(OUTPUT_PATH, app_model_features_filename), 'wb') as file:
             joblib.dump([f_10fps, f_10fps_sc, umap_embeddings], file)
         st.balloons()
 
     if last_run:
-        with open(os.path.join(OUTPUT_PATH, str.join('', (MODEL_NAME, '_feats.sav'))), 'rb') as fr:
+        with open(os.path.join(OUTPUT_PATH, app_model_features_filename), 'rb') as fr:
             f_10fps, f_10fps_sc, umap_embeddings = joblib.load(fr)
-        st.markdown('**_CHECK POINT_**: Done non-linear transformation of **{}** instances '
-                    'from **{}** D into **{}** D.'.format(f_10fps_sc.shape[1], f_10fps_sc.shape[0],
-                                                          umap_embeddings.shape[1]))
+        st.markdown(f'**_CHECK POINT_**: Done non-linear transformation of **{f_10fps_sc.shape[1]}** instances '
+                    f'from **{f_10fps_sc.shape[0]}** D into **{umap_embeddings.shape[1]}** D.')
 
     # HDBSCAN
     st.subheader('Perform density-based clustering.')
@@ -306,7 +325,7 @@ def run_streamlit_app():
     cluster_range = st.slider('Select range of minimum cluster size in %', 0.01, 5.0, (0.4, 1.2))
     st.markdown(f'Your minimum cluster size ranges between **{cluster_range[0]}%** and **{cluster_range[1]}%**.')
     if st.button("Start clustering"):
-        with open(os.path.join(OUTPUT_PATH, str.join('', (MODEL_NAME, '_feats.sav'))), 'rb') as fr:
+        with open(os.path.join(OUTPUT_PATH, app_model_features_filename), 'rb') as fr:
             f_10fps, f_10fps_sc, umap_embeddings = joblib.load(fr)
         highest_numulab = -np.infty
         numulab = []
@@ -324,21 +343,21 @@ def run_streamlit_app():
         soft_clusters = hdbscan.all_points_membership_vectors(best_clf)
         soft_assignments = np.argmax(soft_clusters, axis=1)
         st.info('Done assigning labels for **{}** instances in **{}** D space'.format(*umap_embeddings.shape))
-        with open(os.path.join(OUTPUT_PATH, str.join('', (MODEL_NAME, '_clusters.sav'))), 'wb') as f:
+        with open(os.path.join(OUTPUT_PATH, app_model_clusters_filename), 'wb') as f:
             joblib.dump([assignments, soft_clusters, soft_assignments], f)
         st.balloons()
 
     if last_run:
-        with open(os.path.join(OUTPUT_PATH, str.join('', (MODEL_NAME, '_clusters.sav'))), 'rb') as fr:
+        with open(os.path.join(OUTPUT_PATH, app_model_clusters_filename), 'rb') as fr:
             assignments, soft_clusters, soft_assignments = joblib.load(fr)
         st.markdown('**_CHECK POINT_**: Done assigning labels for '
                     '**{}** instances in **{}** D space'.format(*umap_embeddings.shape))
 
     if st.checkbox("Show UMAP enhanced clustering plot?", True):
         st.write('Below are two cluster plots.')
-        with open(os.path.join(OUTPUT_PATH, str.join('', (MODEL_NAME, '_feats.sav'))), 'rb') as fr:
+        with open(os.path.join(OUTPUT_PATH, app_model_features_filename), 'rb') as fr:  # str.join('', (MODEL_NAME, '_feats.sav'))
             f_10fps, f_10fps_sc, umap_embeddings = joblib.load(fr)
-        with open(os.path.join(OUTPUT_PATH, str.join('', (MODEL_NAME, '_clusters.sav'))), 'rb') as fr:
+        with open(os.path.join(OUTPUT_PATH, app_model_clusters_filename), 'rb') as fr:  # str.join('', (MODEL_NAME, '_clusters.sav'))
             assignments, soft_clusters, soft_assignments = joblib.load(fr)
         fig1, plt1 = visuals.plot_classes_bsoidapp(umap_embeddings[assignments >= 0], assignments[assignments >= 0])
         plt1.suptitle('HDBSCAN assignment')
@@ -356,15 +375,13 @@ def run_streamlit_app():
     This is for our vision in closed-loop experiments
                  ''')
     if st.button("Start training a behavioral neural network"):
-        with open(os.path.join(OUTPUT_PATH, f'{MODEL_NAME}_feats.sav'),
-                  'rb') as fr:  # with open(os.path.join(OUTPUT_PATH, str.join('', (MODEL_NAME, '_feats.sav'))), 'rb') as fr:
+        with open(os.path.join(OUTPUT_PATH, app_model_features_filename), 'rb') as fr:  # with open(os.path.join(OUTPUT_PATH, str.join('', (MODEL_NAME, '_feats.sav'))), 'rb') as fr:  f'{MODEL_NAME}_feats.sav'
             f_10fps, f_10fps_sc, umap_embeddings = joblib.load(fr)
-        with open(os.path.join(OUTPUT_PATH, f'{MODEL_NAME}_clusters.sav'),
-                  'rb') as fr:  # with open(os.path.join(OUTPUT_PATH, str.join('', (MODEL_NAME, '_clusters.sav'))), 'rb') as fr:
+        with open(os.path.join(OUTPUT_PATH, app_model_clusters_filename), 'rb') as fr:  # with open(os.path.join(OUTPUT_PATH, str.join('', (MODEL_NAME, '_clusters.sav'))), 'rb') as fr:  f'{MODEL_NAME}_clusters.sav'
             assignments, soft_clusters, soft_assignments = joblib.load(fr)
 
         feats_train, feats_test, labels_train, labels_test = train_test_split(
-            f_10fps.T, soft_assignments.T, test_size=HOLDOUT_PERCENT, random_state=23)
+            f_10fps.T, soft_assignments.T, test_size=HOLDOUT_PERCENT, random_state=config.RANDOM_STATE)
         st.info(
             f'Training feedforward neural network on randomly partitioned {(1 - HOLDOUT_PERCENT) * 100}% of training data...')
         classifier = MLPClassifier(**MLP_PARAMS)
@@ -375,18 +392,18 @@ def run_streamlit_app():
         st.info(f'Done training feedforward neural network '
                 f'mapping **{f_10fps.T.shape}** features to **{soft_assignments.T.shape}** assignments.')
         scores = cross_val_score(classifier, feats_test, labels_test, cv=CROSSVALIDATION_K, n_jobs=-1)
-        with open(os.path.join(OUTPUT_PATH, str.join('', (MODEL_NAME, '_neuralnet.sav'))), 'wb') as f:
+        with open(os.path.join(OUTPUT_PATH, app_model_neuralnet_filename), 'wb') as f:  # str.join('', (MODEL_NAME, '_neuralnet.sav'))
             joblib.dump([feats_test, labels_test, classifier, clf, scores, nn_assignments], f)
         st.balloons()
 
-    if last_run:
-        with open(os.path.join(OUTPUT_PATH, str.join('', (MODEL_NAME, '_neuralnet.sav'))), 'rb') as fr:
+    if last_run:  # app_model_neuralnet_filename
+        with open(os.path.join(OUTPUT_PATH, app_model_neuralnet_filename), 'rb') as fr:  # str.join('', (MODEL_NAME, '_neuralnet.sav'))
             feats_test, labels_test, classifier, clf, scores, nn_assignments = joblib.load(fr)
         st.markdown('**_CHECK POINT_**: Done training feedforward neural network '
                     'mapping **{}** features to **{}** assignments.'.format(f_10fps.T.shape, soft_assignments.T.shape))
 
     if st.checkbox("Show confusion matrix on {}% data?".format(HOLDOUT_PERCENT * 100), False):
-        with open(os.path.join(OUTPUT_PATH, f'{MODEL_NAME}_neuralnet.sav'), 'rb') as fr:
+        with open(os.path.join(OUTPUT_PATH, app_model_neuralnet_filename), 'rb') as fr:  # f'{MODEL_NAME}_neuralnet.sav'
             feats_test, labels_test, classifier, clf, scores, nn_assignments = joblib.load(fr)
         np.set_printoptions(precision=2)  # TODO: low: move precision setting to top?
         titles_options = [("Non-normalized confusion matrix", None),
@@ -408,7 +425,7 @@ def run_streamlit_app():
             False):
         st.write(
             'For **overall** machine learning accuracy, a part of the error could be _cleaning up_ clustering noise.')
-        with open(os.path.join(OUTPUT_PATH, str.join('', (MODEL_NAME, '_neuralnet.sav'))), 'rb') as fr:
+        with open(os.path.join(OUTPUT_PATH, app_model_neuralnet_filename), 'rb') as fr:
             feats_test, labels_test, classifier, clf, scores, nn_assignments = joblib.load(fr)
         fig, plt_acc = visuals.plot_accuracy_bsoidapp(scores)
         st.pyplot(fig)
@@ -424,11 +441,11 @@ def run_streamlit_app():
     ''')
     result1_options = st.multiselect('What type of results do you want to export',
                                      ['Input features', 'Feature corresponding labels',
-                                      'Soft assignment probabilities'],
-                                     ['Feature corresponding labels'])
+                                      'Soft assignment probabilities', ],
+                                     ['Feature corresponding labels', ], )
     if st.button('Export'):
         if any('Input features' in o for o in result1_options):
-            with open(os.path.join(OUTPUT_PATH, str.join('', (MODEL_NAME, '_feats.sav'))), 'rb') as fr:
+            with open(os.path.join(OUTPUT_PATH, app_model_features_filename), 'rb') as fr:  # str.join('', (MODEL_NAME, '_feats.sav'))
                 f_10fps, f_10fps_sc, umap_embeddings = joblib.load(fr)
             timestr = time.strftime("_%Y%m%d_%H%M")
             feat_range, feat_med, p_cts, edges = statistics.feat_dist(f_10fps)
@@ -443,11 +460,11 @@ def run_streamlit_app():
                 (os.path.join(OUTPUT_PATH, str.join('', ('feature_distribution_10Hz', timestr, '.csv')))),
                 index=True, chunksize=10000, encoding='utf-8')
         if any('Feature corresponding labels' in o for o in result1_options):
-            with open(os.path.join(OUTPUT_PATH, str.join('', (MODEL_NAME, '_feats.sav'))), 'rb') as fr:
+            with open(os.path.join(OUTPUT_PATH, app_model_features_filename), 'rb') as fr:
                 f_10fps, f_10fps_sc, umap_embeddings = joblib.load(fr)
-            with open(os.path.join(OUTPUT_PATH, str.join('', (MODEL_NAME, '_clusters.sav'))), 'rb') as fr:
+            with open(os.path.join(OUTPUT_PATH, app_model_clusters_filename), 'rb') as fr:
                 assignments, soft_clusters, soft_assignments = joblib.load(fr)
-            with open(os.path.join(OUTPUT_PATH, str.join('', (MODEL_NAME, '_neuralnet.sav'))), 'rb') as fr:
+            with open(os.path.join(OUTPUT_PATH, app_model_neuralnet_filename), 'rb') as fr:
                 feats_test, labels_test, classifier, clf, scores, nn_assignments = joblib.load(fr)
             timestr = time.strftime("_%Y%m%d_%H%M")
             length_nm, angle_nm, disp_nm = [], [], []
@@ -462,20 +479,21 @@ def run_streamlit_app():
             umaphdb_data = np.concatenate([umap_embeddings, assignments.reshape(len(assignments), 1),
                                            soft_assignments.reshape(len(soft_assignments), 1),
                                            nn_assignments.reshape(len(nn_assignments), 1)], axis=1)
-            multi_index_columns = pd.MultiIndex.from_tuples([('UMAP embeddings', 'Dimension 1'),
-                                                             ('', 'Dimension 2'),
-                                                             ('', 'Dimension 3'),
-                                                             ('HDBSCAN', 'Assignment No.'),
-                                                             ('HDBSCAN*SOFT', 'Assignment No.'),
-                                                             ('Neural Net', 'Assignment No.')],
-                                                            names=['Type', 'Frame@10Hz'])
+            multi_index_columns = pd.MultiIndex.from_tuples([
+                ('UMAP embeddings', 'Dimension 1'),
+                ('', 'Dimension 2'),
+                ('', 'Dimension 3'),
+                ('HDBSCAN', 'Assignment No.'),
+                ('HDBSCAN*SOFT', 'Assignment No.'),
+                ('Neural Net', 'Assignment No.')],
+                names=['Type', 'Frame@10Hz'], )
             umaphdb_df = pd.DataFrame(umaphdb_data, columns=multi_index_columns)
             training_data = pd.concat((feat_nm_df, umaphdb_df), axis=1)
             soft_clust_prob = pd.DataFrame(soft_clusters)
             training_data.to_csv((os.path.join(OUTPUT_PATH, str.join('', ('features_labels_10Hz', timestr, '.csv')))),
                                  index=True, chunksize=10000, encoding='utf-8')
         if any('Soft assignment probabilities' in o for o in result1_options):
-            with open(os.path.join(OUTPUT_PATH, f'{MODEL_NAME}_clusters.sav'), 'rb') as fr:
+            with open(os.path.join(OUTPUT_PATH, app_model_clusters_filename), 'rb') as fr:
                 assignments, soft_clusters, soft_assignments = joblib.load(fr)
             timestr = time.strftime("_%Y%m%d_%H%M")
             soft_clust_prob = pd.DataFrame(soft_clusters)
@@ -484,11 +502,10 @@ def run_streamlit_app():
         st.balloons()
 
     if st.sidebar.checkbox('Behavioral structure visual analysis?', False):
-        with open(os.path.join(OUTPUT_PATH, str.join('', (MODEL_NAME, '_clusters.sav'))),
+        with open(os.path.join(OUTPUT_PATH, app_model_clusters_filename),
                   'rb') as fr:  # TODO: low: refactor `str.join(...)`
             assignments, soft_clusters, soft_assignments = joblib.load(fr)
-        with open(os.path.join(OUTPUT_PATH, str.join('', (MODEL_NAME, '_predictions.sav'))),
-                  'rb') as fr:  # TODO: low: refactor `str.join(...)`
+        with open(os.path.join(OUTPUT_PATH, app_model_predictions_filename), 'rb') as fr:  # str.join('', (MODEL_NAME, '_predictions.sav'))),
             flders, folders_list, filenames, data_new, fs_labels = joblib.load(fr)
         selected_flder = st.sidebar.selectbox('select folder', [*flders])
         try:
@@ -504,8 +521,7 @@ def run_streamlit_app():
             diag = [tm_c_ave[i][i] for i in range(len(tm_c_ave))]
             diag_p = np.array(diag) / np.array(diag).max()
             node_sizes = [50 * i for i in diag_p]
-            A = np.matrix(
-                tm_p_ave)  # TODO: med: numpy error: the matrix subclass is not the recommended way to represent matrices or deal with linear algebra (see https://docs.scipy.org/doc/numpy/user/numpy-for-matlab-users.html). Please adjust your code to use regular ndarray.
+            A = np.matrix(tm_p_ave)  # TODO: med: numpy error: the matrix subclass is not the recommended way to represent matrices or deal with linear algebra (see https://docs.scipy.org/doc/numpy/user/numpy-for-matlab-users.html). Please adjust your code to use regular ndarray.
             np.fill_diagonal(A, 0)
             A_norm = A / A.sum(axis=1)
             where_are_NaNs = np.isnan(A_norm)
@@ -516,8 +532,7 @@ def run_streamlit_app():
             edge_colors = [G[u][v][0].get('weight') for u, v in G.edges()]
             nodes = nx.draw_networkx_nodes(G, pos, node_size=node_sizes, node_color='blue', with_label=True)
             edges = nx.draw_networkx_edges(G, pos, node_size=node_sizes, arrowstyle='->',
-                                           arrowsize=8, edge_color=edge_colors,
-                                           edge_cmap=plt.cm.Blues, width=1.5)
+                                           arrowsize=8, edge_color=edge_colors, edge_cmap=plt.cm.Blues, width=1.5)
             lab_pos = [pos[i] + 0.005 for i in range(len(pos))]
             nx.draw_networkx_labels(G, lab_pos, font_size=10)
             pc = mpl.collections.PatchCollection(edges, cmap=plt.cm.Blues)
@@ -608,7 +623,7 @@ def run_streamlit_app():
             st.markdown(f'Your have selected to view these examples at **{out_fps} FPS**, which is '
                         f'equivalent to **{playback_speed}X speed**.')
             if st.button("Predict labels and create example videos"):
-                with open(os.path.join(OUTPUT_PATH, MODEL_NAME + '_neuralnet.sav'), 'rb') as fr:
+                with open(os.path.join(OUTPUT_PATH, app_model_neuralnet_filename), 'rb') as fr:
                     feats_test, labels_test, classifier, clf, scores, nn_assignments = joblib.load(fr)
                 curr_df = pd.read_csv(os.path.join(str.join('', (DLC_PROJECT_PATH, csv_dir, '/', csv_file))),
                                       low_memory=False)  # TODO: low: rework this pathing...
@@ -678,7 +693,7 @@ def run_streamlit_app():
             if st.button("Begin bulk csv processing, potentially a long computation"):
                 st.write('These B-SOiD csv files will be saved in the original pose estimation csv containing '
                          'folders, under sub-directory BSOID.')
-                with open(os.path.join(OUTPUT_PATH, MODEL_NAME + '_neuralnet.sav'), 'rb') as fr:
+                with open(os.path.join(OUTPUT_PATH, app_model_neuralnet_filename), 'rb') as fr:
                     feats_test, labels_test, classifier, clf, scores, nn_assignments = joblib.load(fr)
                 flders, filenames, data_new, perc_rect = likelihoodprocessing.import_folders_app(DLC_PROJECT_PATH, TEST_FOLDERS, BODYPARTS)
                 labels_fs, labels_fs2, fs_labels = [], [], []  # TODO: HIGH: RE-EVALUATE VARIABLE NAMES --> `labels_fs` and `fs_labels` <-------
@@ -752,7 +767,7 @@ def run_streamlit_app():
                             str.join('', (DLC_PROJECT_PATH, folders_list[i], '/BSOID')),
                             str.join('', ('transitions_mat_', str(FPS), 'Hz', timestr, csv_filename, '.csv'))),
                             index=True, chunksize=10000, encoding='utf-8')
-                with open(os.path.join(OUTPUT_PATH, MODEL_NAME + '_predictions.sav'), 'wb') as f:
+                with open(os.path.join(OUTPUT_PATH, app_model_predictions_filename), 'wb') as f:
                     joblib.dump([flders, folders_list, filenames, data_new, fs_labels], f)
                 st.balloons()
 
