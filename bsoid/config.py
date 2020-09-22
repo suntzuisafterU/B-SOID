@@ -71,6 +71,7 @@ FRAMES_OUTPUT_PATH = os.path.join(OUTPUT_PATH, 'frames')
 SHORT_VIDEOS_OUTPUT_PATH = os.path.join(OUTPUT_PATH, 'short_videos')
 # Resolve runtime application settings
 MODEL_NAME = configuration.get('APP', 'OUTPUT_MODEL_NAME')  # Machine learning model name
+MODEL_FILENAME = f'bsoid_model__{MODEL_NAME}.sav'
 RANDOM_STATE: int = configuration.getint('MODEL', 'RANDOM_STATE', fallback=random.randint(1, 100_000_000))
 HOLDOUT_PERCENT: float = configuration.getfloat('MODEL', 'HOLDOUT_TEST_PCT')
 CROSSVALIDATION_K: int = configuration.getint('MODEL', 'CROSS_VALIDATION_K')  # Number of iterations for cross-validation to show it's not over-fitting.
@@ -98,17 +99,12 @@ SHORTVID_DIR = short_video_output_directory  # LEGACY. To be deprecated.
 # Assertions to ensure that, before runtime, the config variables are valid.
 assert os.path.isfile(DEFAULT_TEST_FILE), f'Test file was not found: {DEFAULT_TEST_FILE}'
 assert COMPILE_CSVS_FOR_TRAINING in {0, 1}, f'Invalid COMP value detected: {COMPILE_CSVS_FOR_TRAINING}.'
-
 assert os.path.isdir(short_video_output_directory),\
     f'`short_video_output_directory` dir. (value={short_video_output_directory}) must exist for runtime but does not.'
-
-
 assert os.path.isdir(DLC_PROJECT_PATH), f'DLC_PROJECT_PATH DOES NOT EXIST: {DLC_PROJECT_PATH}'
 assert os.path.isfile(VIDEO_TO_LABEL_PATH) or not VIDEO_TO_LABEL_PATH, \
     f'Video does not exist: {VIDEO_TO_LABEL_PATH}. Check pathing in config.ini file.'
-
-# TODO: create OUTPUT PATH files in case user does not use default output path in BSOID project
-assert os.path.isdir(OUTPUT_PATH), f'OUTPUT PATH DOES NOT EXIST: {OUTPUT_PATH}'
+assert os.path.isdir(OUTPUT_PATH), f'OUTPUT PATH INVALID/DOES NOT EXIST: {OUTPUT_PATH}'
 
 
 ########################################################################################################################
@@ -187,6 +183,7 @@ initialize_logger: callable = bsoid_logging.preload_logger_with_config_vars(
 ##### MODEL PARAMETERS #####
 
 UMAP_PARAMS = {
+    'n_neighbors': configuration.getint('UMAP', 'n_neighbors'),
     'n_components': configuration.getint('UMAP', 'n_components'),
     'min_dist': configuration.getfloat('UMAP', 'min_dist'),
     'random_state': configuration.getint('MODEL', 'RANDOM_STATE', fallback=RANDOM_STATE),
