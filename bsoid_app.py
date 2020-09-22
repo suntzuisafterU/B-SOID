@@ -71,7 +71,7 @@ def run_streamlit_app():
         MODEL_NAME = st.sidebar.text_input('Enter your prior run variable file prefix:')
         if MODEL_NAME:
             st.markdown(f'You have selected **{MODEL_NAME}_XXX.sav** as your prior variable files.')
-            
+
             app_model_data_filename = f'{MODEL_NAME}_data.sav'
             app_model_features_filename = f'{MODEL_NAME}_features.sav'
             app_model_predictions_filename = f'{MODEL_NAME}_predictions.sav'
@@ -101,14 +101,14 @@ def run_streamlit_app():
                  'Currently supporting _2D_ and _single_ animal.')
         TRAIN_FOLDERS = []  # TODO: HIGH: TRAIN_FOLDERS is instantiated here but lower down TRAIN_FOLDERS[0] is ref'd. Error ***
         num_project_path_sub_directories = int(st.number_input('How many BASE_PATH/SUB-DIRECTORIES for training?', value=3))
-        st.markdown('Your will be training on **{}** csv containing sub-directories.'.format(num_project_path_sub_directories))
+        st.markdown(f'Your will be training on **{num_project_path_sub_directories}** csv containing sub-directories.')
         for i in range(num_project_path_sub_directories):
             training_dir = st.text_input(f'Enter path to training directory NUMBER {i+1} within base path:')
             try:
                 os.listdir(f'{BASE_PATH}{training_dir}')
             except FileNotFoundError:
                 st.error('No such directory')
-            if not training_dir in TRAIN_FOLDERS:
+            if training_dir not in TRAIN_FOLDERS:
                 TRAIN_FOLDERS.append(training_dir)
         st.markdown(f'You have selected **sub-directory(ies)** *{TRAIN_FOLDERS}*.')
         st.write('Average __frame-rate__ for these processed .csv files. '
