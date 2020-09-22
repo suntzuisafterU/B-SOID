@@ -346,7 +346,7 @@ def adaptive_filter_LEGACY(df_input_data: pd.DataFrame) -> Tuple[np.ndarray, Lis
     """
     Deprecation warning. Do not alter this function so that we can confirm new function output matches old function.
     """
-    logger.warn(f'{inspect.stack()[0][3]}(): will be deprecated in future. '
+    logger.warning(f'{inspect.stack()[0][3]}(): will be deprecated in future. '
                 f'Instead, try using: {process_raw_data_and_filter_adaptively.__qualname__}')
     # Type checking args
     if not isinstance(df_input_data, pd.DataFrame):
