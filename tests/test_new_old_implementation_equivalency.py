@@ -18,22 +18,22 @@ test_file_name = bsoid.config.DEFAULT_TEST_FILE
 
 class TestNewFunctionEquivalencyToLegacy(TestCase):
 
-    def test__old_vs_new_feature_extraction__bsoid_py(self):
+    def test__old_vs_new_feature_extraction__bsoid_py(self):  # TODO: not passing. Delete this when fixed.
         """
         # TODO
         """
         # Arrange
         # # 1/2: Tee up functions to be compared
-        bsoid_py_extract_function__as_is: callable = bsoid.classify.bsoid_extract_features_py_without_assuming_100ms_bin_integration
+        bsoid_py_extract_function__as_is: callable = \
+            bsoid.classify.bsoid_extract_features_py_without_assuming_100ms_bin_integration
         new_feature_extraction_function: callable = bsoid.feature_engineering.extract_7_features_bsoid_tsne_py
         # # 2/2: Set up data for function use
-        body_parts, fps = bsoid.config.BODYPARTS_PY_LEGACY, bsoid.config.VIDEO_FPS
         df_input_data = pd.read_csv(test_file_name, nrows=bsoid.config.max_rows_to_read_in_from_csv)
-        data_as_array, _ = bsoid.util.likelihoodprocessing.process_raw_data_and_filter_adaptively(df_input_data)
+        array_data, _ = bsoid.util.likelihoodprocessing.process_raw_data_and_filter_adaptively(df_input_data)
 
         # Act
-        features_output_original: np.ndarray = bsoid_py_extract_function__as_is([data_as_array], body_parts, fps)[0]
-        features_output_new: np.ndarray = new_feature_extraction_function([data_as_array], body_parts, fps)[0]
+        features_output_original: np.ndarray = bsoid_py_extract_function__as_is([array_data, ])[0].T
+        features_output_new: np.ndarray = new_feature_extraction_function([array_data, ])[0].T
 
         # Assert (Note: usually multiple asserts in a single test is bad form, but we can refactor this test later)
         # # 1/1: Assert outcomes are equal second
@@ -57,7 +57,7 @@ diff:
 """
         self.assertTrue(is_features_data_output_equal, msg=arrays_not_equal_err)
 
-    def test__legacy_bsoid_extract_has_same_output_as_functionally_segregated_equivalent(self):
+    def test__legacy_bsoid_extract_has_same_output_as_functionally_segregated_equivalent(self):  # TODO: not passing. Delete this when fixed.
         """
         The original implementation for bsoid_extract (_py submodule) assumed that the user wants features
         further filtered to 100ms bins. In response, the original function was separated into 2 new functions and

@@ -158,11 +158,12 @@ def bsoid_extract_umap(data, fps=config.VIDEO_FPS) -> List:
         f_10fps.append(features_n)
     return f_10fps
 def integrate_features_into_100ms_bins(data: List[np.ndarray], features: List[np.ndarray], fps) -> List[np.ndarray]:
+    fps_divide_10: int = round(fps / 10)
     f_10fps = []
     for n in range(len(features)):
         feats1 = np.zeros(len(data[n]))
-        for k in range(round(fps / 10) - 1, len(features[n][0]), round(fps / 10)):
-            if k > round(fps / 10) - 1:
+        for k in range(fps_divide_10 - 1, len(features[n][0]), fps_divide_10):
+            if k > fps_divide_10 - 1:
                 feats1 = np.concatenate((
                     feats1.reshape(feats1.shape[0], feats1.shape[1]),
                     np.hstack((np.mean((features[n][0:4, range(k - round(fps / 10), k)]), axis=1), np.sum((features[n][4:7, range(k - round(fps / 10), k)]),axis=1))).reshape(len(features[0]), 1)
@@ -193,7 +194,7 @@ def bsoid_extract_features_py_without_assuming_100ms_bin_integration(data, bodyp
         data_range = len(data_array)
 
         fpd = data_array[:, 2 * bodyparts['Forepaw/Shoulder1']:2 * bodyparts['Forepaw/Shoulder1'] + 2] - data_array[:, 2 * bodyparts['Forepaw/Shoulder2']:2 * bodyparts['Forepaw/Shoulder2'] + 2] # fpd
-        cfp = np.vstack(((data_array[:, 2 * bodyparts['Forepaw/Shoulder1']] + data_array[:, 2 * bodyparts['Forepaw/Shoulder2']]) / 2, (data_array[:, 2 * bodyparts['Forepaw/Shoulder1'] + 1] + data_array[:, 2 * bodyparts['Forepaw/Shoulder1'] + 1]) / 2)).T  # cfp
+        cfp = np.vstack(((data_array[:, 2 * bodyparts['Forepaw/Shoulder1']] + data_array[:, 2 * bodyparts['Forepaw/Shoulder2']]) / 2, (data_array[:, 2 * bodyparts['Forepaw/Shoulder1'] + 1] + data_array[:, 2 * bodyparts['Forepaw/Shoulder2'] + 1]) / 2)).T  # cfp
         cfp_pt = np.vstack(([cfp[:, 0] - data_array[:, 2 * bodyparts['Tailbase']], cfp[:, 1] - data_array[:, 2 * bodyparts['Tailbase'] + 1]])).T  # cfp_pt
         chp = np.vstack((((data_array[:, 2 * bodyparts['Hindpaw/Hip1']] + data_array[:, 2 * bodyparts['Hindpaw/Hip2']]) / 2), ((data_array[:, 2 * bodyparts['Hindpaw/Hip1'] + 1] + data_array[:, 2 * bodyparts['Hindpaw/Hip2'] + 1]) / 2))).T  # chp
         chp_pt = np.vstack(([chp[:, 0] - data_array[:, 2 * bodyparts['Tailbase']], chp[:, 1] - data_array[:, 2 * bodyparts['Tailbase'] + 1]])).T  # chp_pt
@@ -625,7 +626,7 @@ def bsoid_extract_py(data, bodyparts: dict = config.BODYPARTS_PY_LEGACY, fps: in
         cfp = np.vstack(((data_array[:, 2 * bodyparts['Forepaw/Shoulder1']] +
                           data_array[:, 2 * bodyparts.get('Forepaw/Shoulder2')]) / 2,
                          (data_array[:, 2 * bodyparts.get('Forepaw/Shoulder1') + 1] +
-                          data_array[:, 2 * bodyparts.get('Forepaw/Shoulder1') + 1]) / 2)).T
+                          data_array[:, 2 * bodyparts.get('Forepaw/Shoulder2') + 1]) / 2)).T
         cfp_pt = np.vstack(([cfp[:, 0] - data_array[:, 2 * bodyparts.get('Tailbase')],
                              cfp[:, 1] - data_array[:, 2 * bodyparts.get('Tailbase') + 1]])).T
         chp = np.vstack((((data_array[:, 2 * bodyparts.get('Hindpaw/Hip1')] +
@@ -668,7 +669,8 @@ def bsoid_extract_py(data, bodyparts: dict = config.BODYPARTS_PY_LEGACY, fps: in
                                    sn_pt_norm_smth[1:], sn_pt_ang_smth[:], sn_disp_smth[:], pt_disp_smth[:])))
     logger.info(f'{inspect.stack()[0][3]}(): Done extracting features from a total of {len(data)} training CSV files.')
 
-    f_10fps = []
+    # Integrating into 100ms bins
+    features_10fps = []
     for n in range(len(features)):  # TODO: low: address range starts at 0
         feats1 = np.zeros(len(data[n]))
         for k in range(round(fps / 10) - 1, len(features[n][0]), round(fps / 10)):
@@ -682,5 +684,5 @@ def bsoid_extract_py(data, bodyparts: dict = config.BODYPARTS_PY_LEGACY, fps: in
                                     np.sum((features[n][4:7, range(k - round(fps / 10), k)]), axis=1))).reshape(
                     len(features[0]), 1)
         logger.info(f'{inspect.stack()[0][3]}(): Done integrating features into 100ms bins from CSV file {n + 1}.')
-        f_10fps.append(feats1)
-    return f_10fps
+        features_10fps.append(feats1)
+    return features_10fps
