@@ -153,7 +153,7 @@ def run_py(predict_folders):  # TODO: HIGH: break up this function and rename. T
         frames = [df2, all_dfs_list[0]]
         df_xy_frameshift = pd.concat(frames, axis=1)
         csvname = os.path.basename(filenames[i]).rpartition('.')[0]
-        df_xy_frameshift.to_csv((os.path.join(OUTPUT_PATH, f'BSOiD__labels__{VIDEO_FPS}Hz{time_str}__{csvname}.csv')), index=True, chunksize=10000, encoding='utf-8')
+        df_xy_frameshift.to_csv((os.path.join(OUTPUT_PATH, f'BSOiD__labels__{VIDEO_FPS}Hz_{time_str}__{csvname}.csv')), index=True, chunksize=10000, encoding='utf-8')
 
         #
         df2_runlengths, df2_duration_statistics, df2_transition_matrix = util.statistics.get_runlengths_statistics_transition_matrix_from_labels(labels_fs_high[i])
@@ -202,7 +202,7 @@ def build_umap(train_folders) -> Tuple[Any, Any, Any, Any, Any, Any, Any, Any, A
     f_edge_df.columns = pd.MultiIndex.from_product([f_edge_df.columns, ['edge']])
     f_dist_data = pd.concat((f_range_df, f_med_df, f_pcts_df, f_edge_df), axis=1)
     # Write data to csv
-    f_dist_data.to_csv((os.path.join(OUTPUT_PATH, f'bsoid_featdist_10Hz{time_str}.csv')), index=True, chunksize=10000, encoding='utf-8')
+    f_dist_data.to_csv((os.path.join(OUTPUT_PATH, f'bsoid_featdist_10Hz_{time_str}.csv')), index=True, chunksize=10000, encoding='utf-8')
     #
     length_nm, angle_nm, disp_nm = [], [], []
     for m, n in itertools.combinations(range(0, int(np.sqrt(features_10fps.shape[0]))), 2):
@@ -228,8 +228,8 @@ def build_umap(train_folders) -> Tuple[Any, Any, Any, Any, Any, Any, Any, Any, A
     df_soft_clust_probability = pd.DataFrame(soft_clusters)
 
     # Save DataFrames to CSV
-    df_training_data.to_csv((os.path.join(OUTPUT_PATH, f'bsoid__trainlabels__10Hz{time_str}.csv')), index=True, chunksize=10000, encoding='utf-8')
-    df_soft_clust_probability.to_csv((os.path.join(OUTPUT_PATH, f'bsoid__labelprob__10Hz{time_str}.csv')), index=True, chunksize=10000, encoding='utf-8')
+    df_training_data.to_csv((os.path.join(OUTPUT_PATH, f'bsoid__trainlabels__10Hz_{time_str}.csv')), index=True, chunksize=10000, encoding='utf-8')
+    df_soft_clust_probability.to_csv((os.path.join(OUTPUT_PATH, f'bsoid__labelprob__10Hz_{time_str}.csv')), index=True, chunksize=10000, encoding='utf-8')
 
     with open(os.path.join(OUTPUT_PATH, f'bsoid_{config.MODEL_NAME}.sav'), 'wb') as f:
         joblib.dump([features_10fps, features_10fps_scaled, umap_embeddings, hdb_assignments, soft_assignments, soft_clusters, nn_classifier, scores, nn_assignments], f)
@@ -268,7 +268,7 @@ def build_voc(train_folders) -> Tuple[Any, Any, Any, Any, List]:
     time_str = time.strftime("_%Y%m%d_%H%M")
 
     # Save DataFrames to CSV
-    df_training_data.to_csv((os.path.join(OUTPUT_PATH, f'bsoid_trainlabels_10Hz{time_str}.csv')), index=True, chunksize=10000, encoding='utf-8')
+    df_training_data.to_csv((os.path.join(OUTPUT_PATH, f'bsoid_trainlabels_10Hz_{time_str}.csv')), index=True, chunksize=10000, encoding='utf-8')
 
     with open(os.path.join(OUTPUT_PATH, f'bsoid_{config.MODEL_NAME}.sav'), 'wb') as f:
         joblib.dump(classifier, f)
@@ -314,20 +314,20 @@ def run_umap(predict_folders) -> Tuple[Any, Any]:
         df2.loc[0] = ''
         frames = [df2, all_dfs_list[0]]
         xyfs_df = pd.concat(frames, axis=1)
-        xyfs_df.to_csv((os.path.join(OUTPUT_PATH, f'bsoid_labels_{VIDEO_FPS}Hz{time_str}{csv_name}.csv')), index=True, chunksize=10000, encoding='utf-8')
+        xyfs_df.to_csv((os.path.join(OUTPUT_PATH, f'bsoid_labels_{VIDEO_FPS}Hz_{time_str}{csv_name}.csv')), index=True, chunksize=10000, encoding='utf-8')
 
         runlen_df, dur_stats, df_tm = util.statistics.get_runlengths_statistics_transition_matrix_from_labels(fs_labels[i])
 
-        runlen_df.to_csv((os.path.join(OUTPUT_PATH, f'bsoid_runlen_{VIDEO_FPS}Hz{time_str}{csv_name}.csv')), index=True, chunksize=10000, encoding='utf-8')
-        dur_stats.to_csv((os.path.join(OUTPUT_PATH, f'bsoid_stats_{VIDEO_FPS}Hz{time_str}{csv_name}.csv')), index=True, chunksize=10000, encoding='utf-8')
-        df_tm.to_csv((os.path.join(OUTPUT_PATH, f'bsoid_transitions_{VIDEO_FPS}Hz{time_str}{csv_name}.csv')), index=True, chunksize=10000, encoding='utf-8')
+        runlen_df.to_csv((os.path.join(OUTPUT_PATH, f'bsoid_runlen_{VIDEO_FPS}Hz_{time_str}{csv_name}.csv')), index=True, chunksize=10000, encoding='utf-8')
+        dur_stats.to_csv((os.path.join(OUTPUT_PATH, f'bsoid_stats_{VIDEO_FPS}Hz_{time_str}{csv_name}.csv')), index=True, chunksize=10000, encoding='utf-8')
+        df_tm.to_csv((os.path.join(OUTPUT_PATH, f'bsoid_transitions_{VIDEO_FPS}Hz_{time_str}{csv_name}.csv')), index=True, chunksize=10000, encoding='utf-8')
         if config.PLOT_GRAPHS:
             my_file = 'transition_matrix'
             # transition_matrix: np.ndarray, fps: int, save_fig_to_file=True, fig_file_prefix='transition_matrix'
             fig = util.visuals.plot_tmat(df_tm, VIDEO_FPS, save_fig_to_file=config.SAVE_GRAPHS_TO_FILE, fig_file_prefix=my_file)
             # fig.savefig(os.path.join(OUTPUT_PATH, str.join('', (my_file, str(fps_video), 'Hz', time_str, csv_name, '.svg'))))
-            file_name = f'{my_file}{VIDEO_FPS}Hz{time_str}{csv_name}'
-            util.visuals.save_graph_to_file(fig, file_name) # fig.savefig(os.path.join(OUTPUT_PATH, f'{my_file}{VIDEO_FPS}Hz{time_str}{csv_name}.svg'))  # fig.savefig(os.path.join(OUTPUT_PATH, f'{my_file}{VIDEO_FPS}Hz{time_str}{csv_name}.svg'))
+            file_name = f'{my_file}{VIDEO_FPS}Hz_{time_str}{csv_name}'
+            util.visuals.save_graph_to_file(fig, file_name) # fig.savefig(os.path.join(OUTPUT_PATH, f'{my_file}{VIDEO_FPS}Hz_{time_str}{csv_name}.svg'))  # fig.savefig(os.path.join(OUTPUT_PATH, f'{my_file}{VIDEO_FPS}Hz_{time_str}{csv_name}.svg'))
 
     with open(os.path.join(OUTPUT_PATH, f'bsoid_predictions{time_str}.sav'), 'wb') as files_to_dump:
         joblib.dump([data_new, fs_labels], files_to_dump)
@@ -343,10 +343,9 @@ def run_voc(predict_folders) -> Tuple[Any, Any, Any, Any]:
     1. original features (number of training data points by 7 dimensions, columns 1-7)
     2. Neural net predicted labels (number of training data points by 1, columns 8)
     """
-    model_filename = f'bsoid_{config.MODEL_NAME}.sav'
-    model_filename = config.MODEL_FILENAME
+    model_filename = config.MODEL_FILENAME  # model_filename = f'bsoid_{config.MODEL_NAME}.sav'
     with open(os.path.join(OUTPUT_PATH, model_filename), 'rb') as fr:
-        behv_model = joblib.load(fr)
+        behv_model = joblib.load(fr)  # TODO: isn't this function loading up a 2-tuple?
 
     data_new, feats_new, labels_fslow, labels_fshigh = classify.main_voc(predict_folders, VIDEO_FPS, behv_model)
     filenames = []
@@ -374,15 +373,15 @@ def run_voc(predict_folders) -> Tuple[Any, Any, Any, Any]:
         df_predictions = pd.DataFrame(all_data, columns=multi_index_columns)
         time_str = time.strftime("_%Y%m%d_%H%M")
         csv_file_name = os.path.basename(filenames[i]).rpartition('.')[0]
-        df_predictions.to_csv((os.path.join(OUTPUT_PATH, f'bsoid_labels_10Hz{time_str}{csv_file_name}.csv')), index=True, chunksize=10000, encoding='utf-8')
+        df_predictions.to_csv((os.path.join(OUTPUT_PATH, f'bsoid_labels_10Hz_{time_str}{csv_file_name}.csv')), index=True, chunksize=10000, encoding='utf-8')
 
         df_runlengths_i, df_duration_stats_i, df_transition_matrix_i = util.statistics.get_runlengths_statistics_transition_matrix_from_labels(labels_fslow[i])  # runlen_df1, dur_stats1, df_tm1 = util.statistics.main(labels_fslow[i]) # # runlen_df1, dur_stats1, df_tm1 = bsoid_voc.utils.statistics.main(labels_fslow[i])
 
         if config.PLOT_GRAPHS:
             util.visuals.plot_transition_matrix(df_transition_matrix_i, VIDEO_FPS, save_fig_to_file=config.SAVE_GRAPHS_TO_FILE, fig_file_prefix='transition_matrix')
-        df_runlengths_i.to_csv((os.path.join(OUTPUT_PATH, f'bsoid_runlen_10Hz{time_str}{csv_file_name}.csv')), index=True, chunksize=10000, encoding='utf-8')
-        df_duration_stats_i.to_csv((os.path.join(OUTPUT_PATH, f'bsoid_stats_10Hz{time_str}{csv_file_name}.csv')), index=True, chunksize=10000, encoding='utf-8')
-        df_transition_matrix_i.to_csv((os.path.join(OUTPUT_PATH, f'bsoid_transitions_10Hz{time_str}{csv_file_name}.csv')), index=True, chunksize=10000, encoding='utf-8')
+        df_runlengths_i.to_csv((os.path.join(OUTPUT_PATH, f'bsoid_runlen_10Hz_{time_str}{csv_file_name}.csv')), index=True, chunksize=10000, encoding='utf-8')
+        df_duration_stats_i.to_csv((os.path.join(OUTPUT_PATH, f'bsoid_stats_10Hz_{time_str}{csv_file_name}.csv')), index=True, chunksize=10000, encoding='utf-8')
+        df_transition_matrix_i.to_csv((os.path.join(OUTPUT_PATH, f'bsoid_transitions_10Hz_{time_str}{csv_file_name}.csv')), index=True, chunksize=10000, encoding='utf-8')
 
         labels_fs_high_pad = np.pad(labels_fshigh[i], (6, 0), 'edge')
         df2 = pd.DataFrame(labels_fs_high_pad, columns={'B-SOiD labels'})
@@ -395,13 +394,13 @@ def run_voc(predict_folders) -> Tuple[Any, Any, Any, Any]:
         frames = [df2, all_df[0]]
         xyfs_df = pd.concat(frames, axis=1)
         csv_file_name = os.path.basename(filenames[i]).rpartition('.')[0]
-        xyfs_df.to_csv((os.path.join(OUTPUT_PATH, f'bsoid_labels_{VIDEO_FPS}Hz{time_str}{csv_file_name}.csv')), index=True, chunksize=10000, encoding='utf-8')
+        xyfs_df.to_csv((os.path.join(OUTPUT_PATH, f'bsoid_labels_{VIDEO_FPS}Hz_{time_str}{csv_file_name}.csv')), index=True, chunksize=10000, encoding='utf-8')
         runlen_df2, dur_stats2, df_transitionmatrix_2 = util.statistics.main(labels_fshigh[i])
 
         # runlen_df2.to_csv((os.path.join(OUTPUT_PATH, str.join('', ('bsoid_runlen_', str(fps_video), 'Hz', timestr, csvname, '.csv')))), index=True, chunksize=10000, encoding='utf-8')
-        runlen_df2.to_csv(os.path.join(OUTPUT_PATH, f'bsoid_runlen_{VIDEO_FPS}Hz{time_str}{csv_file_name}.csv'), index=True, chunksize=10000, encoding='utf-8')
-        dur_stats2.to_csv(os.path.join(OUTPUT_PATH, f'bsoid_stats_{VIDEO_FPS}Hz{time_str}{csv_file_name}.csv'), index=True, chunksize=10000, encoding='utf-8')
-        df_transitionmatrix_2.to_csv(os.path.join(OUTPUT_PATH, f'bsoid_transitions_{VIDEO_FPS}Hz{time_str}{csv_file_name}.csv'), index=True, chunksize=10000, encoding='utf-8')
+        runlen_df2.to_csv(os.path.join(OUTPUT_PATH, f'bsoid_runlen_{VIDEO_FPS}Hz_{time_str}{csv_file_name}.csv'), index=True, chunksize=10000, encoding='utf-8')
+        dur_stats2.to_csv(os.path.join(OUTPUT_PATH, f'bsoid_stats_{VIDEO_FPS}Hz_{time_str}{csv_file_name}.csv'), index=True, chunksize=10000, encoding='utf-8')
+        df_transitionmatrix_2.to_csv(os.path.join(OUTPUT_PATH, f'bsoid_transitions_{VIDEO_FPS}Hz_{time_str}{csv_file_name}.csv'), index=True, chunksize=10000, encoding='utf-8')
     logger.info('All saved.')
     return data_new, feats_new, labels_fslow, labels_fshigh
 
