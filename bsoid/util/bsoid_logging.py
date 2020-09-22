@@ -41,9 +41,7 @@ def log_function_decorator(decorator_arg=None):
     """An example of a decorator that takes an optional arg"""
     def decorator(func):
         def function_wrapper(*args, **kwargs):
-            # logger.debug('args: {} / kwargs: {}'.format(args, kwargs))
             result = create_generic_logger(*args, **kwargs)
-            # logger.debug('result: {}'.format(result))
             return result
         return function_wrapper
     return decorator
