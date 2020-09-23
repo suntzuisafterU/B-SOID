@@ -18,8 +18,13 @@ from bsoid.util.bsoid_logging import get_current_function  # for debugging purpo
 
 
 ###
+class Pipeline(object):
 
-class TestPipeline(object):
+    def __init__(self):
+        pass
+
+
+class TestPipeline(Pipeline):
 
     train_data: List[pd.DataFrame] = []
     test_data: List[pd.DataFrame] = []
@@ -29,6 +34,7 @@ class TestPipeline(object):
     clf_em_gmm = None
 
     def __init__(self):
+        super(TestPipeline, self).__init__()
         pass
 
     def read_in_all_test_data(self):
