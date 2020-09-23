@@ -99,7 +99,7 @@ def hard_coded_feature_extraction(data, bodyparts: dict, win_len: int) -> List:
     return features
 
 
-def bsoid_tsne(data: list, bodyparts=BODYPARTS, fps=FPS) -> Tuple[List, List, Any, object]:
+def bsoid_tsne(data: list, bodyparts=BODYPARTS, fps=FPS) -> Tuple[List, List, TSNE_bht, object]:
     """
     Trains t-SNE (unsupervised) given a set of features based on (x,y) positions
     :param data: list of 3D array
@@ -116,7 +116,7 @@ def bsoid_tsne(data: list, bodyparts=BODYPARTS, fps=FPS) -> Tuple[List, List, An
     # Extract features
     features = hard_coded_feature_extraction(data, bodyparts, win_len)
 
-    features_10fps, features_10fps_scaled, trained_tsne_list = [], [], []
+    features_10fps, features_10fps_scaled, trained_tsne = [], [], []
     # Loop over the number of features (as found from the hard-coded extraction)
     for i in range(len(features)):
         features_i = np.zeros(len(data[i]))
@@ -156,9 +156,11 @@ def bsoid_tsne(data: list, bodyparts=BODYPARTS, fps=FPS) -> Tuple[List, List, An
     features_10fps_scaled = scaler.transform(features_10fps.T).T
     logging.info(f'Training t-SNE to embed {features_10fps_scaled.shape[1]} instances '
                  f'from {features_10fps_scaled.shape[0]} D into 3 D from a total of {len(data)} CSV files...')
-    trained_tsne_list = TSNE_bht(features_10fps_scaled.T, dimensions=3, perplexity=np.sqrt(features_10fps_scaled.shape[1]), theta=0.5, rand_seed=23)  # TODO: low: move "rand_seed" to a config file instead of hiding here as magic variable
+    trained_tsne = TSNE_bht(features_10fps_scaled.T,
+                            dimensions=3, perplexity=np.sqrt(features_10fps_scaled.shape[1]),
+                            theta=0.5, rand_seed=23)  # TODO: low: move "rand_seed" to a config file instead of hiding here as magic variable
     logging.info('Done embedding into 3 D.')
-    return features_10fps, features_10fps_scaled, trained_tsne_list, scaler
+    return features_10fps, features_10fps_scaled, trained_tsne, scaler
 
 
 def bsoid_gmm(trained_tsne, comp=COMP, emgmm_params=EMGMM_PARAMS) -> np.ndarray:
