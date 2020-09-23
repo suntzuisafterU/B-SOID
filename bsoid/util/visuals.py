@@ -1,10 +1,6 @@
 """
-Visualization functions and saving plots.
+Functionality for visualizing plots and saving those plots.
 """
-# TODO: med: Currently, the file naming pattern that uses `timestr` does not take into account when time pases, so
-#   `timestr` will only have the time recorded at program start but not the running time during runtime.
-#   Whether or not we need to ensure that the output of file timestamps needs to be exactly current should be discussed.
-
 from matplotlib.axes._axes import _log as matplotlib_axes_logger
 from mpl_toolkits.mplot3d import Axes3D  # Despite being "unused", this import MUST stay for 3d plotting to work. PLO!
 from typing import List, Tuple, Union
@@ -20,12 +16,15 @@ from bsoid.util import likelihoodprocessing
 logger = config.initialize_logger(__name__)
 matplotlib_axes_logger.setLevel('ERROR')
 
-TM = NotImplementedError('TODO: HIGH: The source of TM has not been determined. Find and fix as such.')  # TODO: HIGH
+TM = NotImplementedError('TODO: HIGH: The source of TM has not been determined. Find and fix as such.')  # TODO: low
 
 
 #######################################################################################################################
+
 @config.deco__log_entry_exit(logger)
-def plot_tsne_in_3d(data, **kwargs):  # TODO: HIGH: consider reducing the total data when plotting because, if TONS of data is plotted in 3d, it can be very laggy when viewing and especially rotating
+def plot_tsne_in_3d(data, **kwargs):
+    # TODO: HIGH: consider reducing the total data when plotting because, if TONS of data is
+    #  plotted in 3d, it can be very laggy when viewing and when especially rotating
     """
     Plot trained tsne
     :param data: trained_tsne TODO: expand desc. and include type
@@ -50,7 +49,8 @@ def plot_tsne_in_3d(data, **kwargs):  # TODO: HIGH: consider reducing the total 
     ax.view_init(70, 135)
     plt.title('Embedding of the training set by t-SNE')
     plt.show()
-#######################################################################################################################
+
+
 def plot_duration_histogram(lengths, grp, save_fig_to_file: bool = config.SAVE_GRAPHS_TO_FILE, fig_file_prefix='duration_histogram_100ms_bins') -> object:
     """
     TODO: low: purpose
@@ -72,6 +72,8 @@ def plot_duration_histogram(lengths, grp, save_fig_to_file: bool = config.SAVE_G
         fig_file_name = f'{fig_file_prefix}_{config.runtime_timestr}'
         save_graph_to_file(fig, fig_file_name)
     return fig
+
+
 def plot_transition_matrix(transition_matrix: np.ndarray, fps, save_fig_to_file, fig_file_prefix) -> object:
     """
     New interface for original function named plot_tmat()
@@ -82,7 +84,9 @@ def plot_transition_matrix(transition_matrix: np.ndarray, fps, save_fig_to_file,
     :param fig_file_prefix: str,
     :return (matplotlib.figure.Figure)
     """
-    # # TODO: HIGH: Important: type checking was implemented; however, sometimes DataFrames are input into this function so type checking disabled for now
+    # TODO: HIGH: Important: type checking was implemented; however, sometimes
+    #   DataFrames are input into this function so type checking disabled for now.
+
     # if not isinstance(transition_matrix, np.ndarray):
     #     err = f'Expected transition matrix to be of type numpy.ndarray but '\
     #           f'instead found: {type(transition_matrix)}.'
@@ -99,6 +103,9 @@ def plot_transition_matrix(transition_matrix: np.ndarray, fps, save_fig_to_file,
         fig_file_name = f'{fig_file_prefix}_{fps}FPS'
         save_graph_to_file(fig, fig_file_name)
     return fig
+
+
+### PLOT CLASSES ######################################################################################################
 def plot_classes_bsoidumap(data, assignments, **kwargs) -> object:
     """ Plot umap_embeddings for HDBSCAN assignments
     Function copied from the original bsoid_umapimplementation
@@ -111,7 +118,8 @@ def plot_classes_bsoidumap(data, assignments, **kwargs) -> object:
     marker = kwargs.get('marker', 'o')
     alpha = kwargs.get('alpha', 0.8)
     title = kwargs.get('title', 'UMAP enhanced clustering')
-    #
+
+    # Prepare graph
     uk = list(np.unique(assignments))
     R = np.linspace(0, 1, len(uk))
     colormap = plt.cm.get_cmap("Spectral")(R)
@@ -128,6 +136,8 @@ def plot_classes_bsoidumap(data, assignments, **kwargs) -> object:
     plt.legend(ncol=3)
     plt.show()
     return fig
+
+
 @config.deco__log_entry_exit(logger)
 def plot_classes_EMGMM_assignments(data: np.ndarray, assignments, save_fig_to_file: bool, fig_file_prefix='train_assignments', **kwargs):
     """
@@ -193,7 +203,7 @@ def plot_classes_bsoidapp(data, assignments) -> Tuple:
     return fig, plt
 
 
-#######################################################################################################################
+### PLOT ACCURACY ######################################################################################################
 @config.deco__log_entry_exit(logger)
 def plot_accuracy_MLP(scores, show_plot=config.PLOT_GRAPHS, save_fig_to_file=config.SAVE_GRAPHS_TO_FILE, fig_file_prefix='classifier_accuracy_score', **kwargs) -> Tuple:
     """
@@ -275,7 +285,95 @@ def plot_accuracy_SVM(scores, save_fig_to_file=config.SAVE_GRAPHS_TO_FILE,
         save_graph_to_file(fig, fig_file_name)  # fig.savefig(os.path.join(config.OUTPUT_PATH, f'{fig_file_prefix}_{timestr}.svg'))
 
 
-#######################################################################################################################
+### PLOT FEATS ########################################################################################################
+
+@config.deco__log_entry_exit(logger)
+def plot_feats_bsoidpy(features, labels) -> None:
+    """ *Legacy*
+    :param features: list, features for multiple sessions
+    :param labels: list, labels for multiple sessions
+    """
+    # NOTE: the order of the below feature labels is arbitrary and conserved from the original
+    #   implementation where the ordering was hard-coded into feature-engineering process.
+    feature_labels = ("Relative snout to forepaws placement",
+                      "Relative snout to hind paws placement",
+                      "Inter-forepaw distance",
+                      "Body length",
+                      "Body angle",
+                      "Snout displacement",
+                      "Tail-base displacement", )
+    time_str = config.runtime_timestr  # time_str = time.strftime("%Y%m%d_%H%M")
+    if isinstance(labels, list):
+        for k in range(len(features)):
+            labels_k = np.array(labels[k])
+            feats_k = np.array(features[k])
+            R = np.linspace(0, 1, len(np.unique(labels_k)))
+            colormap = plt.cm.get_cmap("Spectral")(R)
+            for j in range(feats_k.shape[0]):
+                fig = plt.figure(facecolor='w', edgecolor='k')
+                for i in range(len(np.unique(labels_k))):
+                    plt.subplot(len(np.unique(labels_k)), 1, i + 1)
+                    if j == 2 or j == 3 or j == 5 or j == 6:  # TODO: Q: KS: what is this equality trying to do?
+                        plt.hist(feats_k[j, labels_k == i],
+                                 bins=np.linspace(0, np.mean(feats_k[j, :]) + 3 * np.std(feats_k[j, :]), num=50),
+                                 range=(0, np.mean(feats_k[j, :]) + 3 * np.std(feats_k[j, :])),
+                                 color=colormap[i],
+                                 density=True)
+                        fig.suptitle(f"{feature_labels[j]} pixels")
+                        plt.xlim(0, np.mean(feats_k[j, :]) + 3 * np.std(feats_k[j, :]))
+                        if i < len(np.unique(labels_k)) - 1:
+                            plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
+                    else:
+                        plt.hist(feats_k[j, labels_k == i],
+                                 bins=np.linspace(np.mean(feats_k[j, :]) - 3 * np.std(feats_k[j, :]),
+                                                  np.mean(feats_k[j, :]) + 3 * np.std(feats_k[j, :]), num=50),
+                                 range=(np.mean(feats_k[j, :]) - 3 * np.std(feats_k[j, :]),
+                                        np.mean(feats_k[j, :]) + 3 * np.std(feats_k[j, :])),
+                                 color=colormap[i],
+                                 density=True)
+                        plt.xlim(np.mean(feats_k[j, :]) - 3 * np.std(feats_k[j, :]),
+                                 np.mean(feats_k[j, :]) + 3 * np.std(feats_k[j, :]))
+                        fig.suptitle(f"{feature_labels[j]} pixels")
+                        if i < len(np.unique(labels_k)) - 1:
+                            plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
+                if config.SAVE_GRAPHS_TO_FILE:
+                    file_name = f'session_{k+1}__feature_{j+1}__histogram__{time_str}'  # = my_file+'_'+time_str  # TODO: HIGH: clarify on what a "session" is/means to the user.
+                    save_graph_to_file(fig, file_name)  # fig.savefig(os.path.join(config.OUTPUT_PATH, my_file+'_'+time_str+'.svg'))
+            plt.show()
+    elif isinstance(labels, np.ndarray):
+        R = np.linspace(0, 1, len(np.unique(labels)))
+        colormap = plt.cm.get_cmap("Spectral")(R)
+        for j in range(features.shape[0]):
+            fig = plt.figure(facecolor='w', edgecolor='k')
+            for i in range(len(np.unique(labels))):
+                plt.subplot(len(np.unique(labels)), 1, i + 1)
+                if j == 2 or j == 3 or j == 5 or j == 6:
+                    plt.hist(features[j, labels == i],
+                             bins=np.linspace(0, np.mean(features[j, :]) + 3 * np.std(features[j, :]), num=50),
+                             range=(0, np.mean(features[j, :]) + 3 * np.std(features[j, :])),
+                             color=colormap[i], density=True)
+                    fig.suptitle(f"{feature_labels[j]} pixels")
+                    plt.xlim(0, np.mean(features[j, :]) + 3 * np.std(features[j, :]))
+                    if i < len(np.unique(labels)) - 1:
+                        plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
+                else:
+                    plt.hist(features[j, labels == i],
+                             bins=np.linspace(np.mean(features[j, :]) - 3 * np.std(features[j, :]),
+                                              np.mean(features[j, :]) + 3 * np.std(features[j, :]), num=50),
+                             range=(np.mean(features[j, :]) - 3 * np.std(features[j, :]),
+                                    np.mean(features[j, :]) + 3 * np.std(features[j, :])),
+                             color=colormap[i], density=True)
+                    plt.xlim(np.mean(features[j, :]) - 3 * np.std(features[j, :]),
+                             np.mean(features[j, :]) + 3 * np.std(features[j, :]))
+                    fig.suptitle(f"{feature_labels[j]} pixels")
+                    if i < len(np.unique(labels)) - 1:
+                        plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
+            if config.SAVE_GRAPHS_TO_FILE:
+                file_name = f'feature_{j + 1}__histogram__{time_str}'  # my_file = f'feat{j + 1}_hist' ;fig.savefig(os.path.join(config.OUTPUT_PATH, f'{my_file}_{time_str}.svg'))
+                save_graph_to_file(fig, file_name)
+        plt.show()
+    else: raise TypeError(f'invalid type detected for labels: {type(labels)}')
+
 @config.deco__log_entry_exit(logger)
 def plot_feats_bsoidUMAPAPP(features, labels: list) -> None:
     """
@@ -372,93 +470,6 @@ def plot_feats_bsoidUMAPAPP(features, labels: list) -> None:
         type_err = f''
         logger.error(type_err)
         raise TypeError(type_err)
-
-@config.deco__log_entry_exit(logger)
-def plot_feats_bsoidpy(features, labels) -> None:
-    """ *Legacy*
-    :param features: list, features for multiple sessions
-    :param labels: list, labels for multiple sessions
-    """
-    # NOTE: the order of the below feature labels is arbitrary and conserved from the original
-    #   implementation where the ordering was hard-coded into feature-engineering process.
-    feature_labels = ("Relative snout to forepaws placement",
-                      "Relative snout to hind paws placement",
-                      "Inter-forepaw distance",
-                      "Body length",
-                      "Body angle",
-                      "Snout displacement",
-                      "Tail-base displacement", )
-    time_str = config.runtime_timestr  # time_str = time.strftime("%Y%m%d_%H%M")
-    if isinstance(labels, list):
-        for k in range(len(features)):
-            labels_k = np.array(labels[k])
-            feats_k = np.array(features[k])
-            R = np.linspace(0, 1, len(np.unique(labels_k)))
-            colormap = plt.cm.get_cmap("Spectral")(R)
-            for j in range(feats_k.shape[0]):
-                fig = plt.figure(facecolor='w', edgecolor='k')
-                for i in range(len(np.unique(labels_k))):
-                    plt.subplot(len(np.unique(labels_k)), 1, i + 1)
-                    if j == 2 or j == 3 or j == 5 or j == 6:  # TODO: Q: KS: what is this equality trying to do?
-                        plt.hist(feats_k[j, labels_k == i],
-                                 bins=np.linspace(0, np.mean(feats_k[j, :]) + 3 * np.std(feats_k[j, :]), num=50),
-                                 range=(0, np.mean(feats_k[j, :]) + 3 * np.std(feats_k[j, :])),
-                                 color=colormap[i],
-                                 density=True)
-                        fig.suptitle(f"{feature_labels[j]} pixels")
-                        plt.xlim(0, np.mean(feats_k[j, :]) + 3 * np.std(feats_k[j, :]))
-                        if i < len(np.unique(labels_k)) - 1:
-                            plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
-                    else:
-                        plt.hist(feats_k[j, labels_k == i],
-                                 bins=np.linspace(np.mean(feats_k[j, :]) - 3 * np.std(feats_k[j, :]),
-                                                  np.mean(feats_k[j, :]) + 3 * np.std(feats_k[j, :]), num=50),
-                                 range=(np.mean(feats_k[j, :]) - 3 * np.std(feats_k[j, :]),
-                                        np.mean(feats_k[j, :]) + 3 * np.std(feats_k[j, :])),
-                                 color=colormap[i],
-                                 density=True)
-                        plt.xlim(np.mean(feats_k[j, :]) - 3 * np.std(feats_k[j, :]),
-                                 np.mean(feats_k[j, :]) + 3 * np.std(feats_k[j, :]))
-                        fig.suptitle(f"{feature_labels[j]} pixels")
-                        if i < len(np.unique(labels_k)) - 1:
-                            plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
-                if config.SAVE_GRAPHS_TO_FILE:
-                    file_name = f'session_{k+1}__feature_{j+1}__histogram__{time_str}'  # = my_file+'_'+time_str  # TODO: HIGH: clarify on what a "session" is/means to the user.
-                    save_graph_to_file(fig, file_name)  # fig.savefig(os.path.join(config.OUTPUT_PATH, my_file+'_'+time_str+'.svg'))
-            plt.show()
-    elif isinstance(labels, np.ndarray):
-        R = np.linspace(0, 1, len(np.unique(labels)))
-        colormap = plt.cm.get_cmap("Spectral")(R)
-        for j in range(features.shape[0]):
-            fig = plt.figure(facecolor='w', edgecolor='k')
-            for i in range(len(np.unique(labels))):
-                plt.subplot(len(np.unique(labels)), 1, i + 1)
-                if j == 2 or j == 3 or j == 5 or j == 6:
-                    plt.hist(features[j, labels == i],
-                             bins=np.linspace(0, np.mean(features[j, :]) + 3 * np.std(features[j, :]), num=50),
-                             range=(0, np.mean(features[j, :]) + 3 * np.std(features[j, :])),
-                             color=colormap[i], density=True)
-                    fig.suptitle(f"{feature_labels[j]} pixels")
-                    plt.xlim(0, np.mean(features[j, :]) + 3 * np.std(features[j, :]))
-                    if i < len(np.unique(labels)) - 1:
-                        plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
-                else:
-                    plt.hist(features[j, labels == i],
-                             bins=np.linspace(np.mean(features[j, :]) - 3 * np.std(features[j, :]),
-                                              np.mean(features[j, :]) + 3 * np.std(features[j, :]), num=50),
-                             range=(np.mean(features[j, :]) - 3 * np.std(features[j, :]),
-                                    np.mean(features[j, :]) + 3 * np.std(features[j, :])),
-                             color=colormap[i], density=True)
-                    plt.xlim(np.mean(features[j, :]) - 3 * np.std(features[j, :]),
-                             np.mean(features[j, :]) + 3 * np.std(features[j, :]))
-                    fig.suptitle(f"{feature_labels[j]} pixels")
-                    if i < len(np.unique(labels)) - 1:
-                        plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
-            if config.SAVE_GRAPHS_TO_FILE:
-                file_name = f'feature_{j + 1}__histogram__{time_str}'  # my_file = f'feat{j + 1}_hist' ;fig.savefig(os.path.join(config.OUTPUT_PATH, f'{my_file}_{time_str}.svg'))
-                save_graph_to_file(fig, file_name)
-        plt.show()
-    else: raise TypeError(f'invalid type detected for labels: {type(labels)}')
 
 @config.deco__log_entry_exit(logger)
 def plot_feats_bsoidvoc(features, labels: list) -> None:
