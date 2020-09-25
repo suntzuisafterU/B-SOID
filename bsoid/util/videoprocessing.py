@@ -140,7 +140,7 @@ def write_annotated_frames_to_disk_from_video(path_to_video: str, labels, fps: i
 
 
 def import_vidfolders(folders: List[str], output_path: List[str]):
-    """
+    """ * legacy *
     Previously called `import_vidfolders()`
     Import multiple folders containing .mp4 files and extract frames from them
     :param folders: list of folder paths
@@ -152,7 +152,7 @@ def import_vidfolders(folders: List[str], output_path: List[str]):
         videos_list_from_current_folder: List[str] = get_mp4_videos_from_folder_in_BASEPATH(folder)
         # Loop through videos
         for idx_video, video in enumerate(videos_list_from_current_folder):
-            logger.debug(f'{inspect.stack()[0][3]}:Extracting frames from {video} and appending labels to these images...')
+            logger.debug(f'{inspect.stack()[0][3]}():Extracting frames from {video} and appending labels to these images...')
             # Write (something) to disk TODO
             write_annotated_frames_to_disk_from_video(video, output_path)  # TODO: HIGH: missing param `FPS` *** runtime error imminent ********************************************************
             logger.debug(f'Done extracting images and writing labels, from MP4 file {idx_video+1}')
