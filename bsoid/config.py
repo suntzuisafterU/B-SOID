@@ -87,7 +87,7 @@ DEFAULT_SAVED_GRAPH_FILE_FORMAT: str = configuration.get('APP', 'DEFAULT_SAVED_G
 GENERATE_VIDEOS: bool = configuration.getboolean('APP', 'GENERATE_VIDEOS')
 PERCENT_FRAMES_TO_LABEL: float = configuration.getfloat('APP', 'PERCENT_FRAMES_TO_LABEL')
 DEFAULT_TEST_FILE: str = os.path.join(BSOID_BASE_PROJECT_PATH, 'tests', 'test_data', configuration.get('TESTING', 'DEFAULT_TEST_FILE'))
-
+OUTPUT_VIDEO_FPS = configuration.getint('APP', 'OUTPUT_VIDEO_FPS')
 # IDENTIFICATION_ORDER: TODO: DEPRECATE!
 IDENTIFICATION_ORDER: int = configuration.getint('APP', 'FILE_IDENTIFICATION_ORDER_LEGACY')  # TODO: low: assess whether we can remove this from module altogether.
 
@@ -110,6 +110,25 @@ assert os.path.isfile(VIDEO_TO_LABEL_PATH) or not VIDEO_TO_LABEL_PATH, \
     f'Video does not exist: {VIDEO_TO_LABEL_PATH}. Check pathing in config.ini file.'
 assert os.path.isdir(OUTPUT_PATH), f'OUTPUT PATH INVALID/DOES NOT EXIST: {OUTPUT_PATH}'
 
+# def get_config_str() -> str:
+#     """ Debugging function """
+#     config_string = ''
+#     for section in configuration.sections():
+#         config_string += f'SECTION: {section} // OPTIONS: {configuration.options(section)}\n'
+#     return config_string.strip()
+
+#
+# def __getattr__(name):
+#     print('NAME = ', name)
+#     for section in configuration.sections():
+#         print('section:', section)
+#         print('options:', configuration.options(section))
+#         try:
+#             if name.lower() in configuration.options(section):
+#                 return configuration.get(section, name)
+#         except KeyError:
+#             pass
+#     raise ValueError(f'{name} not found in configuration')
 
 ########################################################################################################################
 
@@ -129,7 +148,7 @@ PREDICT_DATA_FOLDER_PATH = configuration.get('PATH', 'PREDICT_DATA_FOLDER_PATH')
 assert os.path.isabs(TRAIN_DATA_FOLDER_PATH), f'TODO, NOT AN ABS PATH 456'
 
 
-TRAIN_FOLDERS = [  # TODO: DEPREC WARNING
+TRAIN_FOLDERS_IN_DLC_PROJECT = [  # TODO: DEPREC WARNING
     'sample_train_data_folder',
 ]
 PREDICT_FOLDERS: List[str] = [  # TODO: DEPREC WARNING
@@ -138,20 +157,20 @@ PREDICT_FOLDERS: List[str] = [  # TODO: DEPREC WARNING
 
 # TRAIN FOLDERS: TRAIN_FOLDERS are expected to exist in the DLC Project path
 
-TRAIN_FOLDERS_PATHS = [os.path.join(DLC_PROJECT_PATH, folder) for folder in TRAIN_FOLDERS if not os.path.isdir(folder)]
+TRAIN_FOLDERS_PATHS = [os.path.join(DLC_PROJECT_PATH, folder) for folder in TRAIN_FOLDERS_IN_DLC_PROJECT if not os.path.isdir(folder)]
 
 # PREDICT FOLDERS:
 
 PREDICT_FOLDERS_PATHS = [os.path.join(DLC_PROJECT_PATH, folder) for folder in PREDICT_FOLDERS]
 
-# # Asserts
-# for folder_path in TRAIN_FOLDERS_PATHS:
-#     assert os.path.isdir(folder_path), f'Training folder does not exist: {folder_path}'
-#     assert os.path.isabs(folder_path), f'Predict folder PATH is not absolute and should be: {folder_path}'
-#
-# for folder_path in PREDICT_FOLDERS_PATHS:
-#     assert os.path.isdir(folder_path), f'Prediction folder does not exist: {folder_path}'
-#     assert os.path.isabs(folder_path), f'Predict folder PATH is not absolute and should be: {folder_path}'
+# Asserts
+for folder_path in TRAIN_FOLDERS_PATHS:
+    assert os.path.isdir(folder_path), f'Training folder does not exist: {folder_path}'
+    assert os.path.isabs(folder_path), f'Predict folder PATH is not absolute and should be: {folder_path}'
+
+for folder_path in PREDICT_FOLDERS_PATHS:
+    assert os.path.isdir(folder_path), f'Prediction folder does not exist: {folder_path}'
+    assert os.path.isabs(folder_path), f'Predict folder PATH is not absolute and should be: {folder_path}'
 
 
 # Create a folder to store extracted images.
@@ -162,7 +181,6 @@ FRAMES_OUTPUT_PATH = config_value_alternate_output_path_for_annotated_frames = \
     configuration.get('PATH', 'ALTERNATE_OUTPUT_PATH_FOR_ANNOTATED_FRAMES') \
     if configuration.get('PATH', 'ALTERNATE_OUTPUT_PATH_FOR_ANNOTATED_FRAMES') \
     else FRAMES_OUTPUT_PATH  # '/home/aaron/Documents/OST-with-DLC/B-SOID/OUTPUT/frames'
-
 
 
 assert os.path.isdir(config_value_alternate_output_path_for_annotated_frames), \
@@ -269,7 +287,7 @@ TSNE_VERBOSE = configuration.getint('TSNE', 'verbose')
 # except ValueError:  # In the case that the value is empty (since it is optional), assign max possible size to read in
 #     max_rows_to_read_in_from_csv = sys.maxsize
 max_rows_to_read_in_from_csv: int = configuration.getint('TESTING', 'max_rows_to_read_in_from_csv') \
-    if configuration.get('TESTING', 'max_rows_to_read_in_from_csv') else sys.maxsize
+    if configuration.get('TESTING', 'max_rows_to_read_in_from_csv') else sys.maxsize  # TODO: potentially remove this variable. When comparing pd.read_csv and bsoid.read_csv, they dont match
 
 
 ########################################################################################################################
@@ -328,6 +346,7 @@ def get_config_str() -> str:
 
 # Below dict created according to BSOID/segmented_behaviours/README.md
 map_group_to_behaviour = {
+    0: 'UNKNOWN',
     1: 'orient right',
     2: 'body lick',
     3: 'rearing',
