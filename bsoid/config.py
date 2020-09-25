@@ -70,15 +70,17 @@ GRAPH_OUTPUT_PATH = os.path.join(OUTPUT_PATH, 'graphs')
 FRAMES_OUTPUT_PATH = os.path.join(OUTPUT_PATH, 'frames')
 SHORT_VIDEOS_OUTPUT_PATH = os.path.join(OUTPUT_PATH, 'short_videos')
 # Resolve runtime application settings
-MODEL_NAME = configuration.get('APP', 'OUTPUT_MODEL_NAME')  # Machine learning model name
+MODEL_NAME = configuration.get('APP', 'OUTPUT_MODEL_NAME')  # Machine learning model name?
 MODEL_FILENAME = f'bsoid_model__{MODEL_NAME}.sav'
+PIPELINE_NAME = configuration.get('APP', 'PIPELINE_NAME')
+PIPELINE_FILENAME = f'bsoid_pipeline__{PIPELINE_NAME}.sav'
 RANDOM_STATE: int = configuration.getint('MODEL', 'RANDOM_STATE', fallback=random.randint(1, 100_000_000))
 HOLDOUT_PERCENT: float = configuration.getfloat('MODEL', 'HOLDOUT_TEST_PCT')
 CROSSVALIDATION_K: int = configuration.getint('MODEL', 'CROSS_VALIDATION_K')  # Number of iterations for cross-validation to show it's not over-fitting.
 CROSSVALIDATION_N_JOBS: int = configuration.getint('MODEL', 'CROSS_VALIDATION_N_JOBS')
 VIDEO_FPS: int = configuration.getint('APP', 'VIDEO_FRAME_RATE')
 COMPILE_CSVS_FOR_TRAINING: int = configuration.getint('APP', 'COMPILE_CSVS_FOR_TRAINING')  # COMP = 1: Train one classifier for all CSV files; COMP = 0: Classifier/CSV file.
-IDENTIFICATION_ORDER: int = configuration.getint('APP', 'FILE_IDENTIFICATION_ORDER_LEGACY')  # TODO: low: assess whether we can remove this from module altogether.
+
 PLOT_GRAPHS: bool = configuration.getboolean('APP', 'PLOT_GRAPHS')
 SAVE_GRAPHS_TO_FILE: bool = configuration.getboolean('APP', 'SAVE_GRAPHS_TO_FILE')
 DEFAULT_SAVED_GRAPH_FILE_FORMAT: str = configuration.get('APP', 'DEFAULT_SAVED_GRAPH_FILE_FORMAT')
@@ -86,6 +88,8 @@ GENERATE_VIDEOS: bool = configuration.getboolean('APP', 'GENERATE_VIDEOS')
 PERCENT_FRAMES_TO_LABEL: float = configuration.getfloat('APP', 'PERCENT_FRAMES_TO_LABEL')
 DEFAULT_TEST_FILE: str = os.path.join(BSOID_BASE_PROJECT_PATH, 'tests', 'test_data', configuration.get('TESTING', 'DEFAULT_TEST_FILE'))
 
+# IDENTIFICATION_ORDER: TODO: DEPRECATE!
+IDENTIFICATION_ORDER: int = configuration.getint('APP', 'FILE_IDENTIFICATION_ORDER_LEGACY')  # TODO: low: assess whether we can remove this from module altogether.
 
 
 # Now, pick an example video that corresponds to one of the csv files from the PREDICT_FOLDERS  # TODO: ************* This note from the original author implies that VID_NAME must be a video that corresponds to a csv from PREDICT_FOLDERS
@@ -118,25 +122,37 @@ assert os.path.isdir(OUTPUT_PATH), f'OUTPUT PATH INVALID/DOES NOT EXIST: {OUTPUT
 ##### TRAIN_FOLDERS, PREDICT_FOLDERS
 # TRAIN_FOLDERS & PREDICT_FOLDERS are lists of folders that are implicitly understood to exist within BASE_PATH
 
-# TRAIN FOLDERS: TRAIN_FOLDERS are expected to exist in the DLC Project path
-TRAIN_FOLDERS = [
+TRAIN_DATA_FOLDER_PATH = os.path.abspath(configuration.get('PATH', 'TRAIN_DATA_FOLDER_PATH'))
+
+PREDICT_DATA_FOLDER_PATH = configuration.get('PATH', 'PREDICT_DATA_FOLDER_PATH')
+
+assert os.path.isabs(TRAIN_DATA_FOLDER_PATH), f'TODO, NOT AN ABS PATH 456'
+
+
+TRAIN_FOLDERS = [  # TODO: DEPREC WARNING
     'sample_train_data_folder',
 ]
+PREDICT_FOLDERS: List[str] = [  # TODO: DEPREC WARNING
+    'sample_predic_data_folder',
+]
+
+# TRAIN FOLDERS: TRAIN_FOLDERS are expected to exist in the DLC Project path
+
 TRAIN_FOLDERS_PATHS = [os.path.join(DLC_PROJECT_PATH, folder) for folder in TRAIN_FOLDERS if not os.path.isdir(folder)]
 
 # PREDICT FOLDERS:
-PREDICT_FOLDERS: List[str] = [
-    'sample_predic_data_folder',
-]
+
 PREDICT_FOLDERS_PATHS = [os.path.join(DLC_PROJECT_PATH, folder) for folder in PREDICT_FOLDERS]
 
-for folder_path in TRAIN_FOLDERS_PATHS:
-    assert os.path.isdir(folder_path), f'Training folder does not exist: {folder_path}'
-    assert os.path.isabs(folder_path), f'Predict folder PATH is not absolute and should be: {folder_path}'
+# # Asserts
+# for folder_path in TRAIN_FOLDERS_PATHS:
+#     assert os.path.isdir(folder_path), f'Training folder does not exist: {folder_path}'
+#     assert os.path.isabs(folder_path), f'Predict folder PATH is not absolute and should be: {folder_path}'
+#
+# for folder_path in PREDICT_FOLDERS_PATHS:
+#     assert os.path.isdir(folder_path), f'Prediction folder does not exist: {folder_path}'
+#     assert os.path.isabs(folder_path), f'Predict folder PATH is not absolute and should be: {folder_path}'
 
-for folder_path in PREDICT_FOLDERS_PATHS:
-    assert os.path.isdir(folder_path), f'Prediction folder does not exist: {folder_path}'
-    assert os.path.isabs(folder_path), f'Predict folder PATH is not absolute and should be: {folder_path}'
 
 # Create a folder to store extracted images.
 config_value_alternate_output_path_for_annotated_frames = configuration.get(  # TODO:low:address.deleteable?duplicate?
@@ -146,24 +162,20 @@ FRAMES_OUTPUT_PATH = config_value_alternate_output_path_for_annotated_frames = \
     configuration.get('PATH', 'ALTERNATE_OUTPUT_PATH_FOR_ANNOTATED_FRAMES') \
     if configuration.get('PATH', 'ALTERNATE_OUTPUT_PATH_FOR_ANNOTATED_FRAMES') \
     else FRAMES_OUTPUT_PATH  # '/home/aaron/Documents/OST-with-DLC/B-SOID/OUTPUT/frames'
+
+
+
 assert os.path.isdir(config_value_alternate_output_path_for_annotated_frames), \
     f'config_value_alternate_output_path_for_annotated_frames does not exist. ' \
     f'config_value_alternate_output_path_for_annotated_frames = ' \
     f'\'{config_value_alternate_output_path_for_annotated_frames}\'. Check config.ini pathing.'
 
-########################################################################################################################
-##### LOGGER INSTANTIATION #####
+### LOGGER INSTANTIATION ###############################################################################################
 
-# logging.info(f"configuration.get('LOGGING', 'LOG_FILE_NAME'):::{configuration.get('LOGGING', 'LOG_FILE_NAME')}")
-# if debug == 2: print('OST PATH:::', configuration.get('PATH', 'OSTPATH', fallback=None))
-
-# Resolve logger variables
 config_file_log_folder_path = configuration.get('LOGGING', 'LOG_FILE_FOLDER_PATH')
 config_file_log_folder_path = config_file_log_folder_path if config_file_log_folder_path else default_log_folder_path
-# if debug >= 2: print('config_file_log_folder_path:::', config_file_log_folder_path)
 
 config_file_name = configuration.get('LOGGING', 'LOG_FILE_NAME', fallback=default_log_file_name)
-#  debug >= 2: print('config_file_name:::', config_file_name)
 
 # Get logger variables
 logger_name = configuration.get('LOGGING', 'DEFAULT_LOGGER_NAME')
@@ -172,12 +184,12 @@ stdout_log_level = configuration.get('LOGGING', 'STREAM_LOG_LEVEL', fallback=Non
 file_log_level = configuration.get('LOGGING', 'FILE_LOG_LEVEL', fallback=None)
 log_file_file_path = str(Path(config_file_log_folder_path, config_file_name).absolute())
 
-assert os.path.isdir(config_file_log_folder_path), f'Path does not exist: {config_file_log_folder_path}'
 
 # Instantiate logger decorator capable for
 initialize_logger: callable = bsoid_logging.preload_logger_with_config_vars(
     logger_name, log_format, stdout_log_level, file_log_level, log_file_file_path)
 
+assert os.path.isdir(config_file_log_folder_path), f'Path does not exist: {config_file_log_folder_path}'
 
 ########################################################################################################################
 ##### MODEL PARAMETERS #####
@@ -239,7 +251,13 @@ TSNE_PARAMS = {
     'n_jobs': configuration.getint('TSNE', 'n_jobs'),
     'verbose': configuration.getint('TSNE', 'verbose'),
     'random_state': configuration.getint('MODEL', 'RANDOM_STATE'),
+    'n_iter': configuration.getint('TSNE', 'n_iter'),
 }
+TSNE_VERBOSE = configuration.getint('TSNE', 'verbose')
+
+# BHTSNE_PARAMS = {
+#     'verbose': configuration.getint('TSNE', 'verbose'),
+# }
 
 # TODO: HIGH: after all config parsing done, write checks that will run ON IMPORT to ensure folders exist :)
 
@@ -250,14 +268,15 @@ TSNE_PARAMS = {
 #     max_rows_to_read_in_from_csv = configuration.getint('TESTING', 'MAX_ROWS_TO_READ_IN_FROM_CSV')
 # except ValueError:  # In the case that the value is empty (since it is optional), assign max possible size to read in
 #     max_rows_to_read_in_from_csv = sys.maxsize
-max_rows_to_read_in_from_csv: int = configuration.getint('TESTING', 'max_rows_to_read_in_from_csv') if configuration.get('TESTING', 'max_rows_to_read_in_from_csv') else sys.maxsize
+max_rows_to_read_in_from_csv: int = configuration.getint('TESTING', 'max_rows_to_read_in_from_csv') \
+    if configuration.get('TESTING', 'max_rows_to_read_in_from_csv') else sys.maxsize
 
 
 ########################################################################################################################
 ##### LEGACY VARIABLES #####
 # This version requires the six body parts Snout/Head, Forepaws/Shoulders, Hindpaws/Hips, Tailbase.
 #   It appears as though the names correlate to the expected index of the feature when in Numpy array form.
-#   __
+#   (The body parts are numbered in their respective orders)
 BODYPARTS_PY_LEGACY = {
     'Snout/Head': 0,
     'Neck': None,
@@ -283,14 +302,16 @@ BODYPARTS_VOC_LEGACY = {
     'Point8': 7,
 }
 
-## *NOTE*: BASE_PATH: is likely to be deprecated in the future
-# BASE_PATH = 'C:\\Users\\killian\\projects\\OST-with-DLC\\GUI_projects\\' \
-#             'OST-DLC-projects\\pwd-may11-2020-john-howland-2020-05-11'  # TODO: low: delete later. Deprecated.
-# BASE_PATH = '/home/aaron/Documents/OST-with-DLC/GUI_projects/OST-DLC-projects/pwd-may11-2020-john-howland-2020-05-11'
 
-
-def get_part(part):
+def get_part(part) -> str:
+    """
+    For some DLC projects, there are different naming conventions for body parts and their associated
+    column names in the DLC output. This function resolves that name aliasing by actively
+    checking the configuration file to find the true name that is expected for the given bodypart.
+    Get the actual body part name
+    """
     return configuration['DLC_FEATURES'][part]
+
 
 bodyparts = {key: configuration['DLC_FEATURES'][key] for key in configuration['DLC_FEATURES']}
 
@@ -298,6 +319,7 @@ bodyparts = {key: configuration['DLC_FEATURES'][key] for key in configuration['D
 
 
 def get_config_str() -> str:
+    """ Debugging function """
     config_string = ''
     for section in configuration.sections():
         config_string += f'SECTION: {section} // OPTIONS: {configuration.options(section)}\n'

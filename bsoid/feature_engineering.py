@@ -51,7 +51,7 @@ logger = config.initialize_logger(__name__)
 
 ########################################################################################################################
 
-def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.DataFrame, List]:  # TODO: implement new adaptive-filter_data for new data pipelineing
+def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.DataFrame, List[float]]:  # TODO: implement new adaptive-filter_data for new data pipelineing
     """ *NEW* --> Successor function to old method in likelikhood processing. Uses new DF format.
     Takes in a ____ TODO...
 
@@ -122,9 +122,8 @@ def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.Da
         elif column_suffix == "y":
             y_index.append(idx_col)
         elif column_suffix == 'coords':  # todo: delte this elif. Coords should be dropped with the io.read_csv implementation?
-            # Record and ignore for now. Later, we delete this column since all it has no data.
+            # Record and check later...likely shouldn't exist anymore since its just a numbered col with no data.
             coords_cols_names.append(col)
-            pass
         elif col == 'scorer': pass  # Ignore and keep 'scorer' column. It tracks the data source.
         else:
             err = f'An inappropriate column header was found: ' \
@@ -153,11 +152,12 @@ def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.Da
     array_data_filtered = np.zeros((data_x.shape[0], (data_x.shape[1]) * 2))  # Initialized as zeroes to be populated later  # currdf_filt: np.ndarray = np.zeros((data_x.shape[0]-1, (data_x.shape[1]) * 2))
 
     logger.debug(f'{inspect.stack()[0][3]}(): Computing data threshold to forward fill any sub-threshold (x,y)...')
-    percent_filterd_per_bodypart__perc_rect: List = [0 for _ in range(data_likelihood.shape[1])]  # for _ in range(data_lh.shape[1]): perc_rect.append(0)
+    percent_filterd_per_bodypart__perc_rect: List = [0. for _ in range(data_likelihood.shape[1])]  # for _ in range(data_lh.shape[1]): perc_rect.append(0)
 
     # Loop over data and do adaptive filtering.
     # logger.debug(f'{inspect.stack()[0][3]}: Loop over data and do adaptive filtering.')
-    for idx_col_i in tqdm(range(data_likelihood.shape[1]), desc=f'{inspect.stack()[0][3]}(): Adaptively filtering data...'):
+    idx_col = 0
+    for idx_col_i in tqdm(range(data_likelihood.shape[1]), desc='{inspect.stack()[0][3]}(): Adaptively filtering DLC feature %d...' % idx_col):
         # Get histogram of likelihood data in col_i (ignoring first row since its just labels (e.g.: [x  x  x  x ...]))
         histogram, bin_edges = np.histogram(data_likelihood[:, idx_col_i].astype(np.float))
         # Determine "rise".
@@ -203,11 +203,14 @@ def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.Da
     return df_adaptively_filtered_data, percent_filterd_per_bodypart__perc_rect
 
 
-def engineer_7_features_dataframe(df: pd.DataFrame, map_names: dict = None, copy: bool = False, win_len: int = None) -> pd.DataFrame:
+def engineer_7_features_dataframe(df: pd.DataFrame, features_names_7: List[str] = ['DistFrontPawsTailbaseRelativeBodyLength','DistBackPawsBaseTailRelativeBodyLength','InterforepawDistance','BodyLength','SnoutToTailbaseChangeInAngle','SnoutSpeed','TailbaseSpeed', ], map_names: dict = None, copy: bool = False, win_len: int = None) -> pd.DataFrame:
+    # TODO: high: keep scorer col?  <----------------------------------------------------------------------------------------------------------------****
     # TODO: review https://stackoverflow.com/questions/35215161/most-efficient-way-to-map-function-over-numpy-array
+    #   Computationally intensive.
     """ *NEW*
 
     Note: you'll end up with 1 less row than you started with on input
+    :param features_names_7:  TODO?
     :param win_len: TODO
     :param df: (DataFrame)
     :param map_names (dict)
@@ -224,7 +227,7 @@ def engineer_7_features_dataframe(df: pd.DataFrame, map_names: dict = None, copy
 
     # Check for required columns
     set_df_columns = set(df.columns)
-    required_dlc_features = [
+    required_config_features = [
         'SNOUT/HEAD',
         'LEFT_SHOULDER/FOREPAW',
         'RIGHT_SHOULDER/FOREPAW',
@@ -232,7 +235,7 @@ def engineer_7_features_dataframe(df: pd.DataFrame, map_names: dict = None, copy
         'RIGHT_HIP/HINDPAW',
         'TAILBASE',
     ]
-    for feature in required_dlc_features:
+    for feature in required_config_features:
         feature_x, feature_y = f'{config.get_part(feature)}_x', f'{config.get_part(feature)}_y'
         if feature_x not in set_df_columns:
             err_feature_x_missing = f'`{feature_x}` is required for this feature ' \
@@ -247,17 +250,19 @@ def engineer_7_features_dataframe(df: pd.DataFrame, map_names: dict = None, copy
     if 'scorer' in df.columns:
         unique_scorers = np.unique(df['scorer'].values)
         if len(unique_scorers) != 1:
-            err = f''
+            err = f'More than one scorer value found. Expected only 1. Scorer values: {unique_scorers}'
             logger.error(err)
             raise ValueError(err)
-    
+        scorer = unique_scorers[0]
+    else:
+        scorer = None
+
     # Solve kwargs
 
     # Do
 
-
     num_data_rows: int = len(df)
-    left_shoulder_x = f'{config.get_part("left_shoulder/forepaw")}_x'
+    left_shoulder_x = f'{config.get_part("LEFT_SHOULDER/FOREPAW")}_x'
     left_shoulder_y = f'{config.get_part("left_shoulder/forepaw")}_y'
     right_shoulder_x = f'{config.get_part("RIGHT_SHOULDER/FOREPAW")}_x'
     right_shoulder_y = f'{config.get_part("Right_shoulder/forepaw")}_y'
@@ -380,13 +385,7 @@ def engineer_7_features_dataframe(df: pd.DataFrame, map_names: dict = None, copy
     # Create DataFrame for features. Flip the features so that the records run along the rows and the
     #   features are in the columns.
     features_for_dataframe = features.T
-    results_cols = ['DistFrontPawsTailbaseRelativeBodyLength',
-                    'DistBackPawsBaseTailRelativeBodyLength',
-                    'InterforepawDistance',
-                    'BodyLength',
-                    'SnoutToTailbaseChangeInAngle',
-                    'SnoutSpeed',
-                    'TailbaseSpeed', ]
+    results_cols = features_names_7
 
     df_engineered_features = pd.DataFrame(features_for_dataframe, columns=results_cols)
 
@@ -397,7 +396,7 @@ def integrate_df_feature_into_100ms_bins_NEW(df, feature: str, copy: bool = Fals
     """
     Use old algorithm to integrate features
     :param df:
-    :param features_list:
+    :param feature:
     :param copy: (bool)
     :param fps:
     :return:
@@ -416,6 +415,10 @@ def integrate_df_feature_into_100ms_bins_NEW(df, feature: str, copy: bool = Fals
     return df
 
 
+def train_TSNE_sklearn(df, params) -> pd.DataFrame:
+
+
+    return
 ########################################################################################################################
 
 def original_feature_extraction_win_len_formula(fps: int):
@@ -557,12 +560,12 @@ def extract_7_features_bsoid_tsne_py(list_of_arrays_data: List[np.ndarray], body
         # End loop // Loop to next data_array
     # Exit
     logger.debug(f'{inspect.stack()[0][3]}(): Done extracting features from a '
-                f'total of {len(list_of_arrays_data)} training CSV files.')
+                 f'total of {len(list_of_arrays_data)} training CSV files.')
 
     return features
 
 
-def integrate_features_into_100ms_bins_LEGACY(data: List[np.ndarray], features: List[np.ndarray], fps: int) -> List[np.ndarray]:
+def integrate_features_into_100ms_bins_LEGACY(data: List[np.ndarray], features: List[np.ndarray], fps: int = config.VIDEO_FPS) -> List[np.ndarray]:
     """ * Legacy *
     TODO
     :param data: (list of arrays) raw data? TODO

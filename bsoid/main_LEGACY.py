@@ -72,6 +72,7 @@ def build_py(train_folders) -> Tuple[Any, Any, Any, Any, Any, Any]:
     logger.error(f'{inspect.stack()[0][3]}(): Saved model to file. Form: [classifier, scaler_object]')  # TODO: see msg
     return features_10fps, trained_tsne, scaler_object, gmm_assignments, classifier, scores
 
+
 @config.deco__log_entry_exit(logger)
 def run_py(predict_folders):  # TODO: HIGH: break up this function and rename. TOo many things happening.
     """
@@ -85,7 +86,7 @@ def run_py(predict_folders):  # TODO: HIGH: break up this function and rename. T
     """
 
     # Read in existing model name
-    model_file_to_read = config.MODEL_FILENAME  # model_file_to_read = f'bsoid_{config.MODEL_NAME}.sav'
+    model_file_to_read = config.MODEL_FILENAME
     path_to_model_file = os.path.join(OUTPUT_PATH, model_file_to_read)
     try:
         with open(path_to_model_file, 'rb') as fr:
