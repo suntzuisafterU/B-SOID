@@ -151,7 +151,7 @@ assert os.path.isabs(TRAIN_DATA_FOLDER_PATH), f'TODO, NOT AN ABS PATH 456'
 TRAIN_FOLDERS_IN_DLC_PROJECT = [  # TODO: DEPREC WARNING
     'sample_train_data_folder',
 ]
-PREDICT_FOLDERS: List[str] = [  # TODO: DEPREC WARNING
+PREDICT_FOLDERS_IN_DLC_PROJECT: List[str] = [  # TODO: DEPREC WARNING
     'sample_predic_data_folder',
 ]
 
@@ -161,7 +161,7 @@ TRAIN_FOLDERS_PATHS = [os.path.join(DLC_PROJECT_PATH, folder) for folder in TRAI
 
 # PREDICT FOLDERS:
 
-PREDICT_FOLDERS_PATHS = [os.path.join(DLC_PROJECT_PATH, folder) for folder in PREDICT_FOLDERS]
+PREDICT_FOLDERS_PATHS = [os.path.join(DLC_PROJECT_PATH, folder) for folder in PREDICT_FOLDERS_IN_DLC_PROJECT]
 
 # Asserts
 for folder_path in TRAIN_FOLDERS_PATHS:
@@ -264,15 +264,17 @@ SVM_PARAMS = {
 ##### BSOID VOC #####
 # TSNE parameters, can tweak if you are getting undersplit/oversplit behaviors
 # the missing perplexity is scaled with data size (1% of data for nearest neighbors)
-TSNE_PARAMS = {
+TSNE_SKLEARN_PARAMS = {
     'n_components': configuration.getint('TSNE', 'n_components'),
     'n_jobs': configuration.getint('TSNE', 'n_jobs'),
     'verbose': configuration.getint('TSNE', 'verbose'),
     'random_state': configuration.getint('MODEL', 'RANDOM_STATE'),
     'n_iter': configuration.getint('TSNE', 'n_iter'),
+    'early_exaggeration': configuration.getfloat('TSNE', 'early_exaggeration'),
 }
+TSNE_THETA = configuration.getfloat('TSNE', 'theta')
 TSNE_VERBOSE = configuration.getint('TSNE', 'verbose')
-
+TSNE_N_ITER = configuration.getint('TSNE', 'n_iter')
 # BHTSNE_PARAMS = {
 #     'verbose': configuration.getint('TSNE', 'verbose'),
 # }
