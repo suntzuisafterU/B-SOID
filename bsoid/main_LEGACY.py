@@ -13,7 +13,7 @@ import os
 import pandas as pd
 import time
 
-from bsoid import classify, config, train, util
+from bsoid import classify, config, train, train_LEGACY, util
 from bsoid.config import VIDEO_FPS, OUTPUT_PATH as OUTPUT_PATH
 
 logger = config.initialize_logger(__name__)
@@ -34,7 +34,8 @@ def build_py(train_folders) -> Tuple[Any, Any, Any, Any, Any, Any]:
     """
 
     # Do everything
-    features_10fps, trained_tsne, scaler_object, gmm_assignments, classifier, scores = train.get_data_train_TSNE_then_GMM_then_SVM_then_return_EVERYTHING__py(train_folders)
+    features_10fps, trained_tsne, scaler_object, gmm_assignments, classifier, scores = \
+        train.get_data_train_TSNE_then_GMM_then_SVM_then_return_EVERYTHING__py(train_folders)
 
     # Save it all
     all_data = np.concatenate([
@@ -70,6 +71,7 @@ def build_py(train_folders) -> Tuple[Any, Any, Any, Any, Any, Any]:
         joblib.dump([classifier, scaler_object], model_file)
 
     logger.error(f'{inspect.stack()[0][3]}(): Saved model to file. Form: [classifier, scaler_object]')  # TODO: see msg
+    assert os.path.isfile(config.VIDEO_TO_LABEL_PATH), f'Video path got messed up before run(). path={config.VIDEO_TO_LABEL_PATH}'  # TODO: debugging effort
     return features_10fps, trained_tsne, scaler_object, gmm_assignments, classifier, scores
 
 
@@ -98,6 +100,8 @@ def run_py(predict_folders):  # TODO: HIGH: break up this function and rename. T
 
     #
     data_new, features_new, labels_fs_low, labels_fs_high = classify.main_py(predict_folders, scaler, VIDEO_FPS, behavioural_model)
+
+    #
     filenames: List[str] = []
     all_dfs_list: List[pd.DataFrame] = []
     for i, folder in enumerate(predict_folders):  # Loop through folders
@@ -113,6 +117,7 @@ def run_py(predict_folders):  # TODO: HIGH: break up this function and rename. T
             feature_new_i.T,
             labels_fs_low[i].reshape(len(labels_fs_low[i]), 1),
         ], axis=1)
+
         multi_index_columns = pd.MultiIndex.from_tuples([
             ('Features',        'Relative snout to forepaws placement'),
             ('',                'Relative snout to hind paws placement'),
@@ -124,7 +129,7 @@ def run_py(predict_folders):  # TODO: HIGH: break up this function and rename. T
             ('SVM classifier',  'B-SOiD labels')],
             names=['Type', 'Frame@10Hz'])
         df_predictions = pd.DataFrame(all_data, columns=multi_index_columns)
-        # time_str = time.strftime("_%Y%m%d_%H%M")
+
         time_str = config.runtime_timestr
         csvname = os.path.basename(filenames[i]).rpartition('.')[0]
         df_predictions.to_csv((os.path.join(OUTPUT_PATH, f'BSOiD__labels__10Hz__{config.runtime_timestr}__{csvname}.csv')), index=True, chunksize=10000, encoding='utf-8')
@@ -134,17 +139,19 @@ def run_py(predict_folders):  # TODO: HIGH: break up this function and rename. T
         if config.PLOT_GRAPHS:
             fig_filename = f'{inspect.stack()[0][3]}_df1_transition_matrix'
             # TODO: resolve typing below
-            util.visuals.plot_transition_matrix(df1_transition_matrix, config.VIDEO_FPS,
-                                                save_fig_to_file=config.SAVE_GRAPHS_TO_FILE, fig_file_prefix=fig_filename)
+            util.visuals.plot_transition_matrix(
+                df1_transition_matrix, config.VIDEO_FPS,
+                save_fig_to_file=config.SAVE_GRAPHS_TO_FILE, fig_file_prefix=fig_filename)
 
         # Save (stuff?) to CSV
-        df1_runlengths.to_csv((os.path.join(OUTPUT_PATH, f'BSOiD__runlengths__10Hz__{time_str}__{csvname}.csv')), index=True, chunksize=10000, encoding='utf-8')
-        df1_duration_statistics.to_csv((os.path.join(OUTPUT_PATH, f'BSOiD__statistics__10Hz__{time_str}__{csvname}.csv')), index=True, chunksize=10000, encoding='utf-8')
-        df1_transition_matrix.to_csv((os.path.join(OUTPUT_PATH, f'BSOiD__transitions__10Hz__{time_str}__{csvname}.csv')), index=True, chunksize=10000, encoding='utf-8')
+        df1_runlengths.to_csv((os.path.join(OUTPUT_PATH, f'BSOiD__runlengths1__10Hz__{time_str}__{csvname}.csv')), index=True, chunksize=10000, encoding='utf-8')
+        df1_duration_statistics.to_csv((os.path.join(OUTPUT_PATH, f'BSOiD__statistics1__10Hz__{time_str}__{csvname}.csv')), index=True, chunksize=10000, encoding='utf-8')
+        df1_transition_matrix.to_csv((os.path.join(OUTPUT_PATH, f'BSOiD__transitions1__10Hz__{time_str}__{csvname}.csv')),
+                                     index=True, chunksize=10000, encoding='utf-8')
 
         #
-        labels_frameshiftHigh_pad = np.pad(labels_fs_high[i], (6, 0), 'edge')
-        df2 = pd.DataFrame(labels_frameshiftHigh_pad, columns={'B-SOiD labels'})
+        labels_frameshift_high_padded = np.pad(labels_fs_high[i], (6, 0), 'edge')
+        df2 = pd.DataFrame(labels_frameshift_high_padded, columns={'B-SOiD labels'})
         df2.loc[len(df2)] = ''  # TODO: low: address duplicate line here and below
         df2.loc[len(df2)] = ''
         df2 = df2.shift()
@@ -154,14 +161,15 @@ def run_py(predict_folders):  # TODO: HIGH: break up this function and rename. T
         frames = [df2, all_dfs_list[0]]
         df_xy_frameshift = pd.concat(frames, axis=1)
         csvname = os.path.basename(filenames[i]).rpartition('.')[0]
-        df_xy_frameshift.to_csv((os.path.join(OUTPUT_PATH, f'BSOiD__labels__{VIDEO_FPS}Hz_{time_str}__{csvname}.csv')), index=True, chunksize=10000, encoding='utf-8')
+        df_xy_frameshift.to_csv((os.path.join(OUTPUT_PATH, f'BSOiD__labels__{VIDEO_FPS}Hz_{time_str}__{csvname}.csv')),
+                                index=True, chunksize=10000, encoding='utf-8')
 
         #
         df2_runlengths, df2_duration_statistics, df2_transition_matrix = util.statistics.get_runlengths_statistics_transition_matrix_from_labels(labels_fs_high[i])
 
-        df2_runlengths.to_csv((os.path.join(OUTPUT_PATH, f'BSOiD__NeedsAName__{VIDEO_FPS}Hz__{time_str}__{csvname}.csv')), index=True, chunksize=10000, encoding='utf-8')
-        df2_duration_statistics.to_csv((os.path.join(OUTPUT_PATH, f'BSOiD__statistics__{VIDEO_FPS}Hz__{time_str}__{csvname}.csv')), index=True, chunksize=10000, encoding='utf-8')
-        df2_transition_matrix.to_csv((os.path.join(OUTPUT_PATH, f'BSOiD__transitions__{VIDEO_FPS}Hz__{time_str}__{csvname}.csv')), index=True, chunksize=10000, encoding='utf-8')
+        df2_runlengths.to_csv((os.path.join(OUTPUT_PATH, f'BSOiD__runlengths2__{VIDEO_FPS}Hz__{time_str}__{csvname}.csv')), index=True, chunksize=10000, encoding='utf-8')
+        df2_duration_statistics.to_csv((os.path.join(OUTPUT_PATH, f'BSOiD__statistics2__{VIDEO_FPS}Hz__{time_str}__{csvname}.csv')), index=True, chunksize=10000, encoding='utf-8')
+        df2_transition_matrix.to_csv((os.path.join(OUTPUT_PATH, f'BSOiD__transitions2__{VIDEO_FPS}Hz__{time_str}__{csvname}.csv')), index=True, chunksize=10000, encoding='utf-8')
 
     # Save _____ TODO
     with open(os.path.join(OUTPUT_PATH, 'bsoid_predictions.sav'), 'wb') as f:
@@ -174,10 +182,10 @@ def run_py(predict_folders):  # TODO: HIGH: break up this function and rename. T
 @config.deco__log_entry_exit(logger)
 def test_function_to_build_then_run_py():
     logger.debug(f'STARTING _PY TRAIN SERIES')
-    build_py(config.TRAIN_FOLDERS)
+    build_py(config.TRAIN_FOLDERS_IN_DLC_PROJECT)
     logger.debug(f'ENDED _PY TRAIN SERIES SUCCESSFULLY')
     logger.debug(f'STARTING _PY RUN SERIES')
-    run_py(config.PREDICT_FOLDERS)
+    run_py(config.PREDICT_FOLDERS_IN_DLC_PROJECT)
     logger.debug(f'ENDING _PY RUN SERIES. SUCCESS!')
     logger.debug(f'End of test.')
 
@@ -192,7 +200,7 @@ def build_umap(train_folders) -> Tuple[Any, Any, Any, Any, Any, Any, Any, Any, A
     Automatically saves single CSV file containing training outputs.
     Automatically saves classifier in OUTPUTPATH with MODELNAME in LOCAL_CONFIG
     """
-    features_10fps, features_10fps_scaled, umap_embeddings, hdb_assignments, soft_assignments, soft_clusters, nn_classifier, scores, nn_assignments = train.main_umap(train_folders)
+    features_10fps, features_10fps_scaled, umap_embeddings, hdb_assignments, soft_assignments, soft_clusters, nn_classifier, scores, nn_assignments = train_LEGACY.main_umap(train_folders)
     time_str = time.strftime("_%Y%m%d_%H%M")
     feat_range, feat_med, p_cts, edges = util.statistics.feat_dist(features_10fps)  # feat_range, feat_med, p_cts, edges = feat_dist(f_10fps)
     f_range_df = pd.DataFrame(feat_range, columns=['5%tile', '95%tile'])
@@ -250,7 +258,7 @@ def build_voc(train_folders) -> Tuple[Any, Any, Any, Any, List]:
     :returns f_10fps, trained_tsne, gmm_assignments, classifier, scores: see bsoid_voc.train
     """
     # import bsoid_voc.train
-    f_10fps, trained_tsne, gmm_assignments, classifier, scores = train.train__import_data_and_process__train_tsne__train_gmm__train_clf__voc(train_folders)
+    f_10fps, trained_tsne, gmm_assignments, classifier, scores = train_LEGACY.train__import_data_and_process__train_tsne__train_gmm__train_clf__voc(train_folders)
     all_data_as_array = np.concatenate([f_10fps.T, trained_tsne, gmm_assignments.reshape(len(gmm_assignments), 1)], axis=1)
 
     multi_index_columns = pd.MultiIndex.from_tuples([
@@ -477,24 +485,24 @@ def main_umap(train_folders, predict_folders):
 @config.deco__log_entry_exit(logger)
 def test_function_to_build_then_run_umap():
     logger.debug(f'STARTING _UMAP TRAIN SERIES')
-    build_umap(config.TRAIN_FOLDERS)
+    build_umap(config.TRAIN_FOLDERS_IN_DLC_PROJECT)
     logger.debug(f'ENDED _UMAP TRAIN SERIES SUCCESSFULLY')
     logger.debug(f'STARTING _UMAP RUN SERIES')
-    run_umap(config.PREDICT_FOLDERS)
+    run_umap(config.PREDICT_FOLDERS_IN_DLC_PROJECT)
     logger.debug(f'ENDING _UMAP RUN SERIES. SUCCESS!')
     logger.debug(f'End of test.')
 @config.deco__log_entry_exit(logger)
 def test_function_to_build_then_run_voc():
     logger.debug(f'STARTING _VOC TRAIN SERIES')
-    build_voc(config.TRAIN_FOLDERS)
+    build_voc(config.TRAIN_FOLDERS_IN_DLC_PROJECT)
     logger.debug(f'ENDED _VOC TRAIN SERIES SUCCESSFULLY')
     logger.debug(f'STARTING _VOC RUN SERIES')
-    run_voc(config.PREDICT_FOLDERS)
+    run_voc(config.PREDICT_FOLDERS_IN_DLC_PROJECT)
     logger.debug(f'ENDING _VOC RUN SERIES. SUCCESS!')
     logger.debug(f'End of test.')
 @config.deco__log_entry_exit(logger)
 def test_build_py():
-    build_py(config.TRAIN_FOLDERS)
+    build_py(config.TRAIN_FOLDERS_IN_DLC_PROJECT)
 
 # if __name__ == "__main__":  # umap
 #     f_10fps, f_10fps_sc, umap_embeddings, hdb_assignments, soft_assignments, soft_clusters, nn_classifier, \
