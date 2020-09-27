@@ -120,7 +120,7 @@ def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.Da
     df = in_df.copy() if copy else in_df
 
     x_index, y_index, l_index, percent_filterd_per_bodypart__perc_rect = [], [], [], []
-    
+
     # Loop over columns, aggregate which indices in the data fall under which category.
     #   x, y, and likelihood are the three main types of columns output from DLC.
     map_back_index_to_col_name = {}
@@ -140,7 +140,7 @@ def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.Da
             # Record and check later...likely shouldn't exist anymore since its just a numbered col with no data.
             coords_cols_names.append(col)
         elif col == 'scorer': pass  # Ignore and keep 'scorer' column. It tracks the data source.
-        elif col == 'file_name':
+        elif col == 'source':
             pass
         else:
             err = f'{inspect.stack()[0][3]}(): An inappropriate column header was found: ' \
