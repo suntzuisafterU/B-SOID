@@ -392,31 +392,12 @@ def engineer_7_features_dataframe(df: pd.DataFrame, features_names_7: List[str] 
     return df_engineered_features
 
 
-def integrate_df_feature_into_bins(df, feature: str, method: str, n_frames = 1, copy: bool = False, fps=config.VIDEO_FPS) -> pd.DataFrame:
-    """ *NEW*
-    Use old algorithm to integrate features
-    :param df:
-    :param feature:
-    :param copy: (bool)
-    :param fps:
-    :return:
-    """
-    # Arg checking
-    valid_methods: set = {'avg', 'sum', }
-    check_arg.ensure_type(method, str)
-    if method not in valid_methods:
-        err = f'Input method ({method}) was not a valid method to apply to a feature. Valid methods: {valid_methods}'
-        logger.error(err)
-        raise ValueError(err)
-    if feature not in df.columns:
-        err = f'{inspect.stack()[0][3]}(): TODO: feature not found. Cannot integrate into 100ms bins.'  # TODO
-        logger.error(err)
-        raise ValueError(err)
-    # Kwarg resolution
-    df = df.copy() if copy else df
-    # Do
+def get_mean(arr):
 
-    return df
+    return
+
+
+
 
 
 ########################################################################################################################
@@ -637,3 +618,89 @@ def integrate_into_bins(list_of_arrays_data: pd.DataFrame, features, fps=config.
         features_10fps = features1 if features_10fps is None else np.concatenate((features_10fps, features1), axis=1)
 
     return features_10fps
+
+
+###
+
+def integrate_df_feature_into_bins(df, feature: str, method: str, n_frames: int, copy: bool = False) -> pd.DataFrame:
+    """ *NEW*
+    Use old algorithm to integrate features
+    :param df:
+    :param feature:
+    :param method:
+    :param n_frames:
+    :param copy: (bool)
+    :param fps:
+    :return:
+    """
+    # Arg checking
+    valid_methods: set = {'avg', 'sum', }
+    check_arg.ensure_type(method, str)
+    if method not in valid_methods:
+        err = f'Input method ({method}) was not a valid method- to apply to a feature. Valid methods: {valid_methods}'
+        logger.error(err)
+        raise ValueError(err)
+    if feature not in df.columns:
+        err = f'{inspect.stack()[0][3]}(): TODO: feature not found. Cannot integrate into 100ms bins.'  # TODO
+        logger.error(err)
+        raise ValueError(err)
+    # Kwarg resolution
+    df = df.copy() if copy else df
+    arr_result = np.zeros(math.ceil(len(df)/n_frames))
+    # Do
+    data_of_interest = df[feature].values
+    for i in range(0, len(df), n_frames):
+
+        pass
+
+
+    return df
+
+
+def average_values_over_moving_window(data, method, n_frames: int) -> np.ndarray:
+    # Arg checking
+    valid_methods: set = {'avg', 'sum', }
+    check_arg.ensure_type(method, str)
+    if method not in valid_methods:
+        err = f'Input method ({method}) was not a valid method- to apply to a feature. Valid methods: {valid_methods}'
+        logger.error(err)
+        raise ValueError(err)
+    if not isinstance(n_frames, int):
+        type_err = f'Invalid type found for n_Frames TODO elaborate. FOund type: {type(n_frames)}'
+        logger.error(type_err)
+        raise TypeError(type_err)
+    # Arg resolution
+    if method == 'avg':
+        averaging_function = likelihoodprocessing.mean
+    elif method == 'sum':
+        averaging_function = likelihoodprocessing.sum
+    if isinstance(data, pd.Series):
+        data = data.values
+
+    #
+    iterators = itertools.tee(data, n_frames)
+    for i in range(len(iterators)):
+        for _ in range(i):
+            next(iterators[i], None)
+
+    # TODO: rename asdf
+    asdf = [averaging_function(*iters_tuple) for iters_tuple in itertools.zip_longest(*iterators, fillvalue=float('nan'))]
+
+    logger.debug(f'asdf: {asdf}')
+
+    return_array = np.array(asdf)
+
+    return return_array
+
+
+if __name__ == '__main__':
+    d = [[1, 10, 100], [2, 0, 100], [3, 3, 3]]
+    data = np.array(d)
+    cols = ['x', 'y', 'z']
+    df = pd.DataFrame(data, columns=cols)
+    print(df.to_string())
+    print('---')
+    # print(integrate_df_feature_into_bins(df, 'x', 'avg', 3))
+    print(average_values_over_moving_window(df['x'], 'sum', 2))
+
+    pass
