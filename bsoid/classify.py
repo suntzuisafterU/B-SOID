@@ -12,6 +12,7 @@ import itertools
 # import logger
 import math
 import numpy as np
+import os
 
 # # # B-SOiD imports # # #
 from bsoid import config, feature_engineering
@@ -498,45 +499,55 @@ def main_py(predict_folders: List[str], scaler, fps, svm_classifier__behavioural
         labels_fshigh, 1D array, label/frame
     """
     # Import preprocessed data
-    filenames, data_new, perc_rect = likelihoodprocessing.import_csvs_data_from_folders_in_PROJECTPATH_and_process_data(predict_folders)
-    # Extract features
-    features_new = bsoid_extract_py(data_new)
+    filenames, data_new, _perc_rect = likelihoodprocessing.\
+        import_csvs_data_from_folders_in_PROJECTPATH_and_process_data(predict_folders)
+    # Extract features (without 100ms bin integration)
+    # features_new = bsoid_extract_py(data_new)  # Implied 100ms bin integration
+    features: List[np.ndarray] = feature_engineering.extract_7_features_bsoid_tsne_py(data_new)
     # Predict labels
-    labels_frameshift_low: List = bsoid_predict_py(features_new, scaler, svm_classifier__behavioural_model)
+    labels_frameshift_low: List[np.ndarray] = bsoid_predict_py(features, scaler, svm_classifier__behavioural_model)
     # Create
-    labels_frameshift_high: List = bsoid_frameshift_py(data_new, scaler, fps, svm_classifier__behavioural_model)
+    labels_frameshift_high: List[np.ndarray] = bsoid_frameshift_py(data_new, scaler, fps, svm_classifier__behavioural_model)
 
     if config.PLOT_GRAPHS:
-        visuals.plot_feats_bsoidpy(features_new, labels_frameshift_low)
+        visuals.plot_feats_bsoidpy(features, labels_frameshift_low)
 
     # TODO: HIGH: Ensure that the labels predicted on predict_folders matches to the video that will be labeled hereafter
     if config.GENERATE_VIDEOS:
         if len(labels_frameshift_low) > 0:
+            assert os.path.isfile(config.VIDEO_TO_LABEL_PATH), \
+                f'Video path is not resolving. Path is now: {config.VIDEO_TO_LABEL_PATH}'
             # 1/2 write frames to disk
-            videoprocessing.write_annotated_frames_to_disk_from_video(
+            # videoprocessing.write_annotated_frames_to_disk_from_video(
+            #     config.VIDEO_TO_LABEL_PATH,
+            #     labels_frameshift_low[config.IDENTIFICATION_ORDER],
+            # )
+            videoprocessing.write_annotated_frames_to_disk_from_video_NEW_multiproc(
                 config.VIDEO_TO_LABEL_PATH,
-                labels_frameshift_low[config.IDENTIFICATION_ORDER]
-            )
-            # 2/2 created labeled video
-            videoprocessing.create_labeled_vid(
                 labels_frameshift_low[config.IDENTIFICATION_ORDER],
-                critical_behaviour_minimum_duration=3,
-                num_randomly_generated_examples=5,
-                frame_dir=config.FRAMES_OUTPUT_PATH,
-                output_path=config.SHORT_VIDEOS_OUTPUT_PATH
             )
-            # videoprocessing.get_frames_from_video_then_create_labeled_video(
-            #     path_to_video=config.VIDEO_TO_LABEL_PATH,
-            #     labels=labels_frameshift_low[config.IDENTIFICATION_ORDER],
-            #     fps=fps,
-            #     output_path=config.FRAMES_OUTPUT_PATH)
+
+            ##################################################################################
+            # # 2/2 created labeled video
+            # videoprocessing.create_labeled_vid(
+            #     labels_frameshift_low[config.IDENTIFICATION_ORDER],
+            #     critical_behaviour_minimum_duration=3,
+            #     num_randomly_generated_examples=5,
+            #     frame_dir=config.FRAMES_OUTPUT_PATH,
+            #     output_path=config.SHORT_VIDEOS_OUTPUT_PATH
+            # )
+            videoprocessing.create_labeled_vid_NEW_ATTEMPT(
+                labels=labels_frameshift_low[config.IDENTIFICATION_ORDER]
+            )
         else:
             logger.error(f'{inspect.stack()[0][3]}(): config.GENERATE_VIDEOS = {config.GENERATE_VIDEOS}; '
                          f'however, the generation of '
                          f'a video could NOT occur because labels_fs_low is a list of length zero and '
                          f'config.ID is attempting to index an empty list.')
 
-    return data_new, features_new, labels_frameshift_low, labels_frameshift_high
+    return data_new, features, labels_frameshift_low, labels_frameshift_high
+
+
 def main_umap(predict_folders: List[str], fps, clf) -> Tuple[List[np.ndarray], List]:
     """
     :param predict_folders: list, data folders
