@@ -125,6 +125,8 @@ def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.Da
             # Record and check later...likely shouldn't exist anymore since its just a numbered col with no data.
             coords_cols_names.append(col)
         elif col == 'scorer': pass  # Ignore and keep 'scorer' column. It tracks the data source.
+        elif col == 'file_name':
+            pass
         else:
             err = f'An inappropriate column header was found: ' \
                   f'{column_suffix}. Column = "{col}". ' \
@@ -658,7 +660,7 @@ def integrate_df_feature_into_bins(df, feature: str, method: str, n_frames: int,
 
 def average_values_over_moving_window(data, method, n_frames: int) -> np.ndarray:
     # Arg checking
-    valid_methods: set = {'avg', 'sum', }
+    valid_methods: set = {'avg', 'sum', 'mean'}
     check_arg.ensure_type(method, str)
     if method not in valid_methods:
         err = f'Input method ({method}) was not a valid method- to apply to a feature. Valid methods: {valid_methods}'
@@ -669,14 +671,14 @@ def average_values_over_moving_window(data, method, n_frames: int) -> np.ndarray
         logger.error(type_err)
         raise TypeError(type_err)
     # Arg resolution
-    if method == 'avg':
+    if method in {'avg', 'mean'}:
         averaging_function = likelihoodprocessing.mean
     elif method == 'sum':
         averaging_function = likelihoodprocessing.sum
+    #
     if isinstance(data, pd.Series):
         data = data.values
-
-    #
+    # Do
     iterators = itertools.tee(data, n_frames)
     for i in range(len(iterators)):
         for _ in range(i):
