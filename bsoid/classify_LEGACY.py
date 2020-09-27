@@ -15,7 +15,7 @@ import numpy as np
 import os
 
 # # # B-SOiD imports # # #
-from bsoid import config, feature_engineering
+from bsoid import classify_LEGACY, config, feature_engineering
 from bsoid.util import check_arg, likelihoodprocessing, videoprocessing, visuals
 
 logger = config.initialize_logger(__name__)
@@ -356,37 +356,7 @@ def bsoid_predict_umapvoc(features, clf_MLP) -> List:
     logger.info(f'Done predicting a total of {len(features)} files.')
     return labels_frameshifted_low
 
-def bsoid_frameshift_app(data_new, video_fps: int, clf_MLP) -> List:
-    """
-    Frame-shift paradigm to output behavior/frame
-    :param data_new: list, new data from predict_folders
-    :param video_fps: scalar, argument specifying camera frame-rate
-    :param clf_MLP: Obj, MLP classifier
-    :return fs_labels, 1D array, label/frame
-    """
-    labels_frameshifted, labels_frameshifted_high = [], []
-    for i, data_array_i in enumerate(data_new):  # for i in range(len(data_new)):
-        data_offset = []
-        for j in range(math.floor(video_fps / 10)):
-            data_offset.append(data_array_i[j:, :])
-        features_new = bsoid_extract_app(data_offset, video_fps)
-        labels = bsoid_predict_app(features_new, clf_MLP)
-        for m in range(len(labels)):
-            labels[m] = labels[m][::-1]
-        labels_pad = -1 * np.ones([len(labels), len(max(labels, key=lambda x: len(x)))])
-        for n, label in enumerate(labels):
-            labels_pad[n][0:len(label)] = label
-            labels_pad[n] = labels_pad[n][::-1]
-            if n > 0:
-                labels_pad[n][0:n] = labels_pad[n - 1][0:n]
-        labels_frameshifted.append(labels_pad.astype(int))
-    for k in range(len(labels_frameshifted)):
-        labels_fs2 = []
-        for l in range(math.floor(video_fps / 10)):
-            labels_fs2.append(labels_frameshifted[k][l])
-        labels_frameshifted_high.append(np.array(labels_fs2).flatten('F'))
-    logger.info(f'Done frameshift-predicting a total of {len(data_new)} files.')
-    return labels_frameshifted_high
+
 def bsoid_frameshift_py(data_new, scaler, fps: int, clf_SVM) -> List[np.ndarray]:
     """
     Frame-shift paradigm to output behavior/frame
@@ -572,6 +542,8 @@ def main_umap(predict_folders: List[str], fps, clf) -> Tuple[List[np.ndarray], L
             output_path=config.FRAMES_OUTPUT_PATH)
 
     return data_new, labels_frameshift
+
+
 def main_voc(predict_folders: List[str], fps, behv_model) -> Tuple[List[np.ndarray], Any, Any, Any]:
     """
     :param predict_folders: list, data folders
