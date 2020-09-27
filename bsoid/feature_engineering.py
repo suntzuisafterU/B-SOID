@@ -157,7 +157,7 @@ def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.Da
     # Loop over data and do adaptive filtering.
     # logger.debug(f'{inspect.stack()[0][3]}: Loop over data and do adaptive filtering.')
     idx_col = 0
-    for idx_col_i in tqdm(range(data_likelihood.shape[1]), desc='{inspect.stack()[0][3]}(): Adaptively filtering DLC feature %d...' % idx_col):
+    for idx_col_i in tqdm(range(data_likelihood.shape[1]), desc=f'{inspect.stack()[0][3]}(): Adaptively filtering DLC feature %d...' % idx_col):
         # Get histogram of likelihood data in col_i (ignoring first row since its just labels (e.g.: [x  x  x  x ...]))
         histogram, bin_edges = np.histogram(data_likelihood[:, idx_col_i].astype(np.float))
         # Determine "rise".
@@ -392,8 +392,8 @@ def engineer_7_features_dataframe(df: pd.DataFrame, features_names_7: List[str] 
     return df_engineered_features
 
 
-def integrate_df_feature_into_bins(df, feature: str, method: str, copy: bool = False, fps=config.VIDEO_FPS) -> pd.DataFrame:
-    """
+def integrate_df_feature_into_bins(df, feature: str, method: str, n_frames = 1, copy: bool = False, fps=config.VIDEO_FPS) -> pd.DataFrame:
+    """ *NEW*
     Use old algorithm to integrate features
     :param df:
     :param feature:
@@ -402,7 +402,6 @@ def integrate_df_feature_into_bins(df, feature: str, method: str, copy: bool = F
     :return:
     """
     # Arg checking
-
     valid_methods: set = {'avg', 'sum', }
     check_arg.ensure_type(method, str)
     if method not in valid_methods:
@@ -417,63 +416,7 @@ def integrate_df_feature_into_bins(df, feature: str, method: str, copy: bool = F
     df = df.copy() if copy else df
     # Do
 
-
-
     return df
-
-
-def average_values_over_n_rows(data: np.ndarray, n_rows: int) -> np.ndarray:
-
-
-    return data
-
-
-def integrate_into_bins(list_of_arrays_data: pd.DataFrame, features, fps=config.VIDEO_FPS, bins_ms: int = 100):
-    """
-    Taking apart the legacy implementation in order to inform the new DF implementation. This function likely wont go into any production of any kind
-    :param list_of_arrays_data:
-    :param features:
-    :param fps:
-    :param bins_ms:
-    :return:
-    """
-    if bins_ms < 1 / fps:
-        err = f'TODO: cant segment into bins finer than the original video'  # TODO:
-        logger.error(err)
-        raise ValueError(err)
-
-    #
-    fps_div_10 = round(fps/10)
-    features_10fps = None
-
-    for n, feature_n in enumerate(features):
-        features1 = np.zeros(len(list_of_arrays_data[n]))
-        for k in range(fps_div_10 - 1, len(feature_n[0]), fps_div_10):
-            if k > fps_div_10 - 1:
-                features1 = np.concatenate((
-                    features1.reshape(features1.shape[0], features1.shape[1]),
-                    np.hstack((
-                        np.mean((feature_n[0:4, range(k - fps_div_10, k)]), axis=1),
-                        np.sum((feature_n[4:7, range(k - fps_div_10, k)]), axis=1),
-                    )).reshape(len(features[0]), 1)
-                ), axis=1)
-            else:
-                features1 = np.hstack((
-                    np.mean((feature_n[0:4, range(k - fps_div_10, k)]), axis=1),
-                    np.sum((feature_n[4:7, range(k - fps_div_10, k)]), axis=1)),
-                ).reshape(len(features[0]), 1)
-
-        logger.info(f'{inspect.stack()[0][3]}(): Done integrating features into 100ms bins from CSV file {n+1}.')
-
-        features_10fps = features1 if features_10fps is None else np.concatenate((features_10fps, features1), axis=1)
-
-    return features_10fps
-
-
-def train_TSNE_sklearn(df, params) -> pd.DataFrame:
-
-
-    return
 
 
 ########################################################################################################################
@@ -626,7 +569,7 @@ def integrate_features_into_100ms_bins_LEGACY(data: List[np.ndarray], features: 
     """ * Legacy *
     TODO
     :param data: (list of arrays) raw data? TODO
-    :param features: (list of arrays) extracted features? TODO
+    :param features: (list of 2-d arrays) extracted features? TODO
     :param fps:
     :return:
     """
@@ -635,7 +578,8 @@ def integrate_features_into_100ms_bins_LEGACY(data: List[np.ndarray], features: 
 
     for n, features_n in enumerate(features):
         features_100ms_n = np.zeros(len(data[n]))
-        for k in range(fps_divide_10 - 1, len(features_n[0]), fps_divide_10):
+        num_columns = len(features_n[0])
+        for k in range(fps_divide_10 - 1, num_columns, fps_divide_10):
             if k > fps_divide_10 - 1:
                 features_100ms_n = np.concatenate((
                     features_100ms_n.reshape(features_100ms_n.shape[0], features_100ms_n.shape[1]),
@@ -650,4 +594,46 @@ def integrate_features_into_100ms_bins_LEGACY(data: List[np.ndarray], features: 
 
         features_10fps.append(features_100ms_n)
         logger.debug(f'{inspect.stack()[0][3]}(): Done integrating features into 100ms bins from CSV file #{n+1}.')
+    return features_10fps
+
+
+def integrate_into_bins(list_of_arrays_data: pd.DataFrame, features, fps=config.VIDEO_FPS, bins_ms: int = 100):
+    """
+    Taking apart the legacy implementation in order to inform the new DF implementation. This function likely wont go into any production of any kind
+    :param list_of_arrays_data:
+    :param features:
+    :param fps:
+    :param bins_ms:
+    :return:
+    """
+    if bins_ms < 1 / fps:
+        err = f'TODO: cant segment into bins finer than the original video'  # TODO:
+        logger.error(err)
+        raise ValueError(err)
+
+    #
+    fps_div_10 = round(fps/10)
+    features_10fps = None
+
+    for n, feature_n in enumerate(features):
+        features1 = np.zeros(len(list_of_arrays_data[n]))
+        for k in range(fps_div_10 - 1, len(feature_n[0]), fps_div_10):
+            if k > fps_div_10 - 1:
+                features1 = np.concatenate((
+                    features1.reshape(features1.shape[0], features1.shape[1]),
+                    np.hstack((
+                        np.mean((feature_n[0:4, range(k - fps_div_10, k)]), axis=1),
+                        np.sum((feature_n[4:7, range(k - fps_div_10, k)]), axis=1),
+                    )).reshape(len(features[0]), 1)
+                ), axis=1)
+            else:
+                features1 = np.hstack((
+                    np.mean((feature_n[0:4, range(k - fps_div_10, k)]), axis=1),
+                    np.sum((feature_n[4:7, range(k - fps_div_10, k)]), axis=1)),
+                ).reshape(len(features[0]), 1)
+
+        logger.info(f'{inspect.stack()[0][3]}(): Done integrating features into 100ms bins from CSV file {n+1}.')
+
+        features_10fps = features1 if features_10fps is None else np.concatenate((features_10fps, features1), axis=1)
+
     return features_10fps
