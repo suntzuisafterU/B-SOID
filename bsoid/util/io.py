@@ -55,7 +55,8 @@ def read_csv(csv_file_path: str, **kwargs) -> pd.DataFrame:
         raise ValueError(err)
     # Read in kwargs
     nrows = kwargs.get('nrows', sys.maxsize)
-
+    filename = os.path.split(csv_file_path)[-1]
+    file_without_suffix = filename[:filename.rfind('.')]
     # # # # # # #
     # Read in CSV
     df = pd.read_csv(csv_file_path, header=None, nrows=nrows)
@@ -92,10 +93,12 @@ def read_csv(csv_file_path: str, **kwargs) -> pd.DataFrame:
     df = df.drop('bodyparts_coords', axis=1)
     # Convert all values to float in case they are parsed as string
     df = df.astype(np.float)
-    # Instantiate 'scorer' column so we can track the model if needed later
-    df['scorer'] = dlc_scorer
     # Reset index (good practice) after chopping off top 3 columns so index starts at 0 again
     df = df.reset_index(drop=True)
+    # Instantiate 'scorer' column so we can track the model if needed later
+    df['scorer'] = dlc_scorer
+    # Save source for future use
+    df['source'] = filename
 
     return df
 

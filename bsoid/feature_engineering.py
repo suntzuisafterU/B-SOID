@@ -64,18 +64,27 @@ def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.Da
         reading in using bsoid.read_csv().
 
         EXAMPLE `df_input_data` input:  # TODO: remove bodyparts_coords col? Check bsoid.io.read_csv() return format.
-              bodyparts_coords        Snout/Head_x       Snout/Head_y Snout/Head_likelihood Forepaw/Shoulder1_x Forepaw/Shoulder1_y Forepaw/Shoulder1_likelihood  ...                                          scorer
-            0                0     1013.7373046875   661.953857421875                   1.0  1020.1138305664062   621.7146606445312           0.9999985694885254  ...  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000
-            1                1  1012.7627563476562  660.2426147460938                   1.0  1020.0912475585938   622.9310913085938           0.9999995231628418  ...  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000
-            2                2  1012.5982666015625   660.308349609375                   1.0  1020.1837768554688   623.5087280273438           0.9999994039535522  ...  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000
-            3                3  1013.2752685546875  661.3504028320312                   1.0     1020.6982421875   624.2875366210938           0.9999998807907104  ...  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000
-            4                4  1013.4093017578125  661.3643188476562                   1.0  1020.6074829101562     624.48486328125           0.9999998807907104  ...  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000
+              bodyparts_coords        Snout/Head_x       Snout/Head_y Snout/Head_likelihood Forepaw/Shoulder1_x Forepaw/Shoulder1_y Forepaw/Shoulder1_likelihood  ...                                          scorer          source
+            0                0     1013.7373046875   661.953857421875                   1.0  1020.1138305664062   621.7146606445312           0.9999985694885254  ...  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000  Video1_DLC.csv
+            1                1  1012.7627563476562  660.2426147460938                   1.0  1020.0912475585938   622.9310913085938           0.9999995231628418  ...  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000  Video1_DLC.csv
+            2                2  1012.5982666015625   660.308349609375                   1.0  1020.1837768554688   623.5087280273438           0.9999994039535522  ...  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000  Video1_DLC.csv
+            3                3  1013.2752685546875  661.3504028320312                   1.0     1020.6982421875   624.2875366210938           0.9999998807907104  ...  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000  Video1_DLC.csv
+            4                4  1013.4093017578125  661.3643188476562                   1.0  1020.6074829101562     624.48486328125           0.9999998807907104  ...  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000  Video1_DLC.csv
     :param copy: (bool) Indicates whether to create an entirely new DataFrame object as a result so that
         the original input DataFrame is not changed afterwards.
 
     :return
         : DataFrame of filtered data
+            Example:
+                    EXAMPLE `df_input_data` input:  # TODO: remove bodyparts_coords col? Check bsoid.io.read_csv() return format.
+              bodyparts_coords        Snout/Head_x       Snout/Head_y Forepaw/Shoulder1_x Forepaw/Shoulder1_y  ...                                          scorer          source
+            0                0     1013.7373046875   661.953857421875  1020.1138305664062   621.7146606445312  ...  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000  Video1_DLC.csv
+            1                1  1012.7627563476562  660.2426147460938  1020.0912475585938   622.9310913085938  ...  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000  Video1_DLC.csv
+            2                2  1012.5982666015625   660.308349609375  1020.1837768554688   623.5087280273438  ...  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000  Video1_DLC.csv
+            3                3  1013.2752685546875  661.3504028320312     1020.6982421875   624.2875366210938  ...  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000  Video1_DLC.csv
+            4                4  1013.4093017578125  661.3643188476562  1020.6074829101562     624.48486328125  ...  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000  Video1_DLC.csv
         : 1D array, percent filtered per BODYPART
+
     """
     # Checking args
     if not isinstance(in_df, pd.DataFrame):
@@ -85,19 +94,34 @@ def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.Da
 
     # Continue
     if 'scorer' not in in_df.columns:
-        col_not_found_err = f'TODO: "scorer" col not found but should exist // All columns: {in_df.columns}'
+        col_not_found_err = f'TODO: "scorer" col not found but should exist (as a result from bsoid.read_csv()) // ' \
+                            f'All columns: {in_df.columns}'
         logger.error(col_not_found_err)
         raise ValueError(col_not_found_err)
 
     scorer_values = np.unique(in_df['scorer'])
     if len(scorer_values) != 1:
-        err = f'TODO: there should be 1 unique scorer value. If there are more than 1, too many values. If '
+        err = f'TODO: there should be 1 unique scorer value. If there are more than 1, too many values. TODO '
         logger.error(err)
         raise ValueError(err)
+
+    source_filenames_values = np.unique(in_df['source'])
+    if len(scorer_values) != 1:
+        err = f'TODO: there should be 1 unique source value. If there are more than 1, too many values, ' \
+              f'makes no sense to adaptively filter over different datasets.'
+        logger.error(err)
+        raise ValueError(err)
+
+
+
 
     # Resolve kwargs
     df = in_df.copy() if copy else in_df
     scorer_value: str = scorer_values[0]
+    if 'source' in in_df.columns:
+        source = in_df['source'].values[0]
+    else:
+        source = None
 
     x_index, y_index, l_index, percent_filterd_per_bodypart__perc_rect = [], [], [], []
 
@@ -128,9 +152,9 @@ def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.Da
         elif col == 'file_name':
             pass
         else:
-            err = f'An inappropriate column header was found: ' \
+            err = f'{inspect.stack()[0][3]}(): An inappropriate column header was found: ' \
                   f'{column_suffix}. Column = "{col}". ' \
-                  f'Check on CSV to see if has an unexpected output format.'
+                  f'Check on CSV to see if has an unexpected output format from DLC.'
             logger.error(err)
             raise ValueError(err)
     if len(coords_cols_names) > 1:
@@ -201,6 +225,9 @@ def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.Da
     # Create frame, replace 'scorer' column. Return.
     df_adaptively_filtered_data = pd.DataFrame(array_filtered_data_without_first_row, columns=columns_ordered)
     df_adaptively_filtered_data['scorer'] = scorer_value
+    # Re-add source
+    if source is not None:
+        df_adaptively_filtered_data['source'] = source
 
     return df_adaptively_filtered_data, percent_filterd_per_bodypart__perc_rect
 
