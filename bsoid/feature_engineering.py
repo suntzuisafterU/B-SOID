@@ -23,7 +23,7 @@ Author also specifies that: the features are also smoothed over, or averaged acr
     a sliding window of size equivalent to 60ms (30ms prior to and after the frame of interest).
 """
 from bhtsne import tsne as TSNE_bhtsne
-from sklearn import mixture
+from sklearn.mixture import GaussianMixture
 from sklearn.manifold import TSNE as TSNE_sklearn
 from sklearn.metrics import plot_confusion_matrix
 from sklearn.model_selection import train_test_split, cross_val_score
@@ -388,11 +388,11 @@ def engineer_7_features_dataframe(df: pd.DataFrame, features_names_7: List[str] 
     results_cols = features_names_7
 
     df_engineered_features = pd.DataFrame(features_for_dataframe, columns=results_cols)
-
+    df_engineered_features['scorer'] = scorer
     return df_engineered_features
 
 
-def integrate_df_feature_into_100ms_bins_NEW(df, feature: str, copy: bool = False, fps=config.VIDEO_FPS) -> pd.DataFrame:
+def integrate_df_feature_into_bins(df, feature: str, method: str, copy: bool = False, fps=config.VIDEO_FPS) -> pd.DataFrame:
     """
     Use old algorithm to integrate features
     :param df:
@@ -402,23 +402,80 @@ def integrate_df_feature_into_100ms_bins_NEW(df, feature: str, copy: bool = Fals
     :return:
     """
     # Arg checking
+
+    valid_methods: set = {'avg', 'sum', }
+    check_arg.ensure_type(method, str)
+    if method not in valid_methods:
+        err = f'Input method ({method}) was not a valid method to apply to a feature. Valid methods: {valid_methods}'
+        logger.error(err)
+        raise ValueError(err)
     if feature not in df.columns:
         err = f'{inspect.stack()[0][3]}(): TODO: feature not found. Cannot integrate into 100ms bins.'  # TODO
         logger.error(err)
         raise ValueError(err)
     # Kwarg resolution
     df = df.copy() if copy else df
-
     # Do
-    # TODO  # raise NotImplementedError(f'{inspect.stack()[0][3]}(): needs to be implemented')
+
+
 
     return df
+
+
+def average_values_over_n_rows(data: np.ndarray, n_rows: int) -> np.ndarray:
+
+
+    return data
+
+
+def integrate_into_bins(list_of_arrays_data: pd.DataFrame, features, fps=config.VIDEO_FPS, bins_ms: int = 100):
+    """
+    Taking apart the legacy implementation in order to inform the new DF implementation. This function likely wont go into any production of any kind
+    :param list_of_arrays_data:
+    :param features:
+    :param fps:
+    :param bins_ms:
+    :return:
+    """
+    if bins_ms < 1 / fps:
+        err = f'TODO: cant segment into bins finer than the original video'  # TODO:
+        logger.error(err)
+        raise ValueError(err)
+
+    #
+    fps_div_10 = round(fps/10)
+    features_10fps = None
+
+    for n, feature_n in enumerate(features):
+        features1 = np.zeros(len(list_of_arrays_data[n]))
+        for k in range(fps_div_10 - 1, len(feature_n[0]), fps_div_10):
+            if k > fps_div_10 - 1:
+                features1 = np.concatenate((
+                    features1.reshape(features1.shape[0], features1.shape[1]),
+                    np.hstack((
+                        np.mean((feature_n[0:4, range(k - fps_div_10, k)]), axis=1),
+                        np.sum((feature_n[4:7, range(k - fps_div_10, k)]), axis=1),
+                    )).reshape(len(features[0]), 1)
+                ), axis=1)
+            else:
+                features1 = np.hstack((
+                    np.mean((feature_n[0:4, range(k - fps_div_10, k)]), axis=1),
+                    np.sum((feature_n[4:7, range(k - fps_div_10, k)]), axis=1)),
+                ).reshape(len(features[0]), 1)
+
+        logger.info(f'{inspect.stack()[0][3]}(): Done integrating features into 100ms bins from CSV file {n+1}.')
+
+        features_10fps = features1 if features_10fps is None else np.concatenate((features_10fps, features1), axis=1)
+
+    return features_10fps
 
 
 def train_TSNE_sklearn(df, params) -> pd.DataFrame:
 
 
     return
+
+
 ########################################################################################################################
 
 def original_feature_extraction_win_len_formula(fps: int):
