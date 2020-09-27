@@ -13,9 +13,8 @@ import pandas as pd
 import time
 
 
-from bsoid import classify, config, feature_engineering, train, util
+from bsoid import classify, classify_LEGACY, config, feature_engineering, train, train_LEGACY, util
 from bsoid.config import OUTPUT_PATH, VIDEO_FPS
-# from bsoid.util import io, likelihoodprocessing, statistics, videoprocessing, visuals
 from bsoid.util.bsoid_logging import get_current_function  # for debugging purposes
 
 
@@ -100,11 +99,10 @@ def build_classifier_new_pipeline(train_folders: List[str] = config.TRAIN_DATA_F
     df_features_10fps, df_features_10fps_scaled, trained_tsne, scaler = train.train_TSNE_NEW(df_all_features, features_of_interest)
 
     # Train GMM
-    df['assignments'] = train.train_emgmm_with_learned_tsne_space_NEW(df[features])  # gmm_assignments = bsoid_gmm_pyvoc(trained_tsne)  # replaced with below
+    df['assignments'] = train_LEGACY.train_emgmm_with_learned_tsne_space_NEW(df[features])  # gmm_assignments = bsoid_gmm_pyvoc(trained_tsne)  # replaced with below
 
     # Train SVM
     classifier: object = train.train_SVM__bsoid_svm_py(df_features_10fps_scaled, features_of_interest, label)
-
 
 
     # Plot to view progress if necessary
@@ -117,7 +115,6 @@ def build_classifier_new_pipeline(train_folders: List[str] = config.TRAIN_DATA_F
         util.visuals.plot_accuracy_SVM(scores)
         util.visuals.plot_feats_bsoidpy(df_features_10fps, gmm_assignments)
         logger.debug(f'Exiting GRAPH PLOTTING section of {inspect.stack()[0][3]}')
-
 
 
     file_names_list, list_of_arrays_of_training_data, _perc_rect = likelihoodprocessing.import_csvs_data_from_folders_in_PROJECTPATH_and_process_data(train_folders)
@@ -186,7 +183,7 @@ def run_classifier_new_pipeline():
     # Predict labels
     labels_frameshift_low: List = classify.bsoid_predict_py(features_new, train_scaler_obj, behavioural_model)
     # Create
-    labels_frameshift_high: List = classify.bsoid_frameshift_py(data_new, train_scaler_obj, config.VIDEO_FPS, behavioural_model)
+    labels_frameshift_high: List = classify_LEGACY.bsoid_frameshift_py(data_new, train_scaler_obj, config.VIDEO_FPS, behavioural_model)
 
     if config.PLOT_GRAPHS:
         util.visuals.plot_feats_bsoidpy(features_new, labels_frameshift_low)

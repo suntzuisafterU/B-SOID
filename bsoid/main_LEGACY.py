@@ -13,7 +13,7 @@ import os
 import pandas as pd
 import time
 
-from bsoid import classify, config, train, train_LEGACY, util
+from bsoid import classify, classify_LEGACY, config, train, train_LEGACY, util
 from bsoid.config import VIDEO_FPS, OUTPUT_PATH as OUTPUT_PATH
 
 logger = config.initialize_logger(__name__)
@@ -299,7 +299,7 @@ def run_umap(predict_folders) -> Tuple[Any, Any]:
     with open(os.path.join(OUTPUT_PATH, config.MODEL_FILENAME), 'rb') as fr:
         f_10fps, f_10fps_sc, umap_embeddings, hdb_assignments, soft_assignments, soft_clusters, nn_classifier, scores, nn_assignments = joblib.load(fr)
 
-    data_new, fs_labels = classify.main_umap(predict_folders, VIDEO_FPS, nn_classifier)
+    data_new, fs_labels = classify_LEGACY.main_umap(predict_folders, VIDEO_FPS, nn_classifier)
 
     filenames_list = []
     all_dfs_list: List[pd.DataFrame] = []
@@ -356,7 +356,7 @@ def run_voc(predict_folders) -> Tuple[Any, Any, Any, Any]:
     with open(os.path.join(OUTPUT_PATH, model_filename), 'rb') as fr:
         behv_model = joblib.load(fr)  # TODO: isn't this function loading up a 2-tuple?
 
-    data_new, feats_new, labels_fslow, labels_fshigh = classify.main_voc(predict_folders, VIDEO_FPS, behv_model)
+    data_new, feats_new, labels_fslow, labels_fshigh = classify_LEGACY.main_voc(predict_folders, VIDEO_FPS, behv_model)
     filenames = []
     all_df = []
     for idx_folder, folder in enumerate(predict_folders):  # Loop through folders

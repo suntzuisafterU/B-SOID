@@ -87,11 +87,10 @@ SAVE_GRAPHS_TO_FILE: bool = configuration.getboolean('APP', 'SAVE_GRAPHS_TO_FILE
 DEFAULT_SAVED_GRAPH_FILE_FORMAT: str = configuration.get('APP', 'DEFAULT_SAVED_GRAPH_FILE_FORMAT')
 GENERATE_VIDEOS: bool = configuration.getboolean('APP', 'GENERATE_VIDEOS')
 PERCENT_FRAMES_TO_LABEL: float = configuration.getfloat('APP', 'PERCENT_FRAMES_TO_LABEL')
+# TODO: HIGH: add asserts below for PERCENT_FRAMES_TO_LABEL so that a valid number between 0. and 1. is ensured.
 DEFAULT_TEST_FILE: str = os.path.join(BSOID_BASE_PROJECT_PATH, 'tests', 'test_data', configuration.get('TESTING', 'DEFAULT_TEST_FILE'))
 OUTPUT_VIDEO_FPS = configuration.getint('APP', 'OUTPUT_VIDEO_FPS')
-# IDENTIFICATION_ORDER: TODO: DEPRECATE!
-IDENTIFICATION_ORDER: int = configuration.getint('APP', 'FILE_IDENTIFICATION_ORDER_LEGACY')  # TODO: low: assess whether we can remove this from module altogether.
-
+IDENTIFICATION_ORDER: int = configuration.getint('APP', 'FILE_IDENTIFICATION_ORDER_LEGACY')  # TODO: low: deprecate
 
 # Now, pick an example video that corresponds to one of the csv files from the PREDICT_FOLDERS  # TODO: ************* This note from the original author implies that VID_NAME must be a video that corresponds to a csv from PREDICT_FOLDERS
 # VID_NAME = os.path.join(OST_BASE_PROJECT_PATH, 'GUI_projects', 'labelled_videos', '002_ratA_inc2_above.mp4')  # '/home/aaron/Documents/OST-with-DLC/GUI_projects/labelled_videos/002_ratA_inc2_above.mp4'
@@ -270,7 +269,7 @@ TSNE_SKLEARN_PARAMS = {
     'n_components': configuration.getint('TSNE', 'n_components'),
     'n_jobs': configuration.getint('TSNE', 'n_jobs'),
     'verbose': configuration.getint('TSNE', 'verbose'),
-    'random_state': configuration.getint('MODEL', 'RANDOM_STATE'),
+    'random_state': RANDOM_STATE,
     'n_iter': configuration.getint('TSNE', 'n_iter'),
     'early_exaggeration': configuration.getfloat('TSNE', 'early_exaggeration'),
 }
