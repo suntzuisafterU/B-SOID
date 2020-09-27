@@ -14,6 +14,7 @@ from . import (
     app,
     config,
     classify,
+    classify_LEGACY,
     feature_engineering,
     main_LEGACY,  # TODO: low: remove this after rewiring legacy code
     pipeline,
