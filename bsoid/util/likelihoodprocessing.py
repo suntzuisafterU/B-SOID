@@ -434,14 +434,14 @@ def adaptive_filter_LEGACY(df_input_data: pd.DataFrame) -> Tuple[np.ndarray, Lis
 def mean(*args):
     args = [arg for arg in args if arg == arg]
     divide_by = len(args)
-    print(args)
+    # print(args)
     return functools.reduce(lambda x, y: x + y, args, 0) / divide_by
 
 
 def sum(*args):
     args = [arg for arg in args if arg == arg]
-    print(args)
-    return functools.reduce(lambda x , y: x + y, args, 0)
+    # print(args)
+    return functools.reduce(lambda x, y: x + y, args, 0)
 
 
 ########################################################################################################################
