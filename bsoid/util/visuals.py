@@ -3,7 +3,7 @@ Functionality for visualizing plots and saving those plots.
 """
 from matplotlib.axes._axes import _log as matplotlib_axes_logger
 from mpl_toolkits.mplot3d import Axes3D  # Despite being "unused", this import MUST stay for 3d plotting to work. PLO!
-from typing import List, Tuple, Union
+from typing import List, Tuple
 import inspect
 import os
 import matplotlib.pyplot as plt
@@ -105,6 +105,92 @@ def plot_transition_matrix(transition_matrix: np.ndarray, fps, save_fig_to_file,
     return fig
 
 
+@config.deco__log_entry_exit(logger)
+def plot_feats_bsoidpy_NEW(features, labels) -> None:
+    """ *  *
+    :param features: list, features for multiple sessions
+    :param labels: list, labels for multiple sessions
+    """
+    # NOTE: the order of the below feature labels is arbitrary and conserved from the original
+    #   implementation where the ordering was hard-coded into feature-engineering process.
+    feature_labels = ("Relative snout to forepaws placement",
+                      "Relative snout to hind paws placement",
+                      "Inter-forepaw distance",
+                      "Body length",
+                      "Body angle",
+                      "Snout displacement",
+                      "Tail-base displacement", )
+    time_str = config.runtime_timestr
+    if isinstance(labels, list):
+        for idx_feature_k in range(len(features)):
+            labels_k = np.array(labels[idx_feature_k])
+            feats_k = np.array(features[idx_feature_k])
+            R = np.linspace(0, 1, len(np.unique(labels_k)))
+            colormap = plt.cm.get_cmap("Spectral")(R)
+            for i in range(feats_k.shape[0]):
+                fig = plt.figure(facecolor='w', edgecolor='k')
+                for k in range(len(np.unique(labels_k))):
+                    plt.subplot(len(np.unique(labels_k)), 1, k + 1)
+                    if i == 2 or i == 3 or i == 5 or i == 6:  # TODO: Q: KS: what is this equality trying to do?
+                        plt.hist(feats_k[i, labels_k == k],
+                                 bins=np.linspace(0, np.mean(feats_k[i, :]) + 3 * np.std(feats_k[i, :]), num=50),
+                                 range=(0, np.mean(feats_k[i, :]) + 3 * np.std(feats_k[i, :])),
+                                 color=colormap[k],
+                                 density=True)
+                        fig.suptitle(f"{feature_labels[i]} pixels")
+                        plt.xlim(0, np.mean(feats_k[i, :]) + 3 * np.std(feats_k[i, :]))
+                        if k < len(np.unique(labels_k)) - 1:
+                            plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
+                    else:
+                        plt.hist(feats_k[i, labels_k == k],
+                                 bins=np.linspace(np.mean(feats_k[i, :]) - 3 * np.std(feats_k[i, :]),
+                                                  np.mean(feats_k[i, :]) + 3 * np.std(feats_k[i, :]), num=50),
+                                 range=(np.mean(feats_k[i, :]) - 3 * np.std(feats_k[i, :]),
+                                        np.mean(feats_k[i, :]) + 3 * np.std(feats_k[i, :])),
+                                 color=colormap[k],
+                                 density=True)
+                        plt.xlim(np.mean(feats_k[i, :]) - 3 * np.std(feats_k[i, :]),
+                                 np.mean(feats_k[i, :]) + 3 * np.std(feats_k[i, :]))
+                        fig.suptitle(f"{feature_labels[i]} pixels")
+                        if k < len(np.unique(labels_k)) - 1:
+                            plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
+                if config.SAVE_GRAPHS_TO_FILE:
+                    file_name = f'session_{idx_feature_k+1}__feature_{i+1}__histogram__{time_str}'  # = my_file+'_'+time_str  # TODO: HIGH: clarify on what a "session" is/means to the user.
+                    save_graph_to_file(fig, file_name)
+            plt.show()
+    elif isinstance(labels, np.ndarray):
+        R = np.linspace(0, 1, len(np.unique(labels)))
+        colormap = plt.cm.get_cmap("Spectral")(R)
+        for i in range(features.shape[0]):
+            fig = plt.figure(facecolor='w', edgecolor='k')
+            for k in range(len(np.unique(labels))):
+                plt.subplot(len(np.unique(labels)), 1, k + 1)
+                if i == 2 or i == 3 or i == 5 or i == 6:
+                    plt.hist(features[i, labels == k],
+                             bins=np.linspace(0, np.mean(features[i, :]) + 3 * np.std(features[i, :]), num=50),
+                             range=(0, np.mean(features[i, :]) + 3 * np.std(features[i, :])),
+                             color=colormap[k], density=True)
+                    fig.suptitle(f"{feature_labels[i]} pixels")
+                    plt.xlim(0, np.mean(features[i, :]) + 3 * np.std(features[i, :]))
+                    if k < len(np.unique(labels)) - 1:
+                        plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
+                else:
+                    plt.hist(features[i, labels == k],
+                             bins=np.linspace(np.mean(features[i, :]) - 3 * np.std(features[i, :]),
+                                              np.mean(features[i, :]) + 3 * np.std(features[i, :]), num=50),
+                             range=(np.mean(features[i, :]) - 3 * np.std(features[i, :]),
+                                    np.mean(features[i, :]) + 3 * np.std(features[i, :])),
+                             color=colormap[k], density=True)
+                    plt.xlim(np.mean(features[i, :]) - 3 * np.std(features[i, :]),
+                             np.mean(features[i, :]) + 3 * np.std(features[i, :]))
+                    fig.suptitle(f"{feature_labels[i]} pixels")
+                    if k < len(np.unique(labels)) - 1:
+                        plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
+            if config.SAVE_GRAPHS_TO_FILE:
+                file_name = f'feature_{i + 1}__histogram__{time_str}'  # my_file = f'feat{j + 1}_hist' ;fig.savefig(os.path.join(config.OUTPUT_PATH, f'{my_file}_{time_str}.svg'))
+                save_graph_to_file(fig, file_name)
+        plt.show()
+    else: raise TypeError(f'invalid type detected for labels: {type(labels)}')
 ### PLOT CLASSES ######################################################################################################
 def plot_classes_bsoidumap(data, assignments, **kwargs) -> object:
     """ Plot umap_embeddings for HDBSCAN assignments
@@ -142,7 +228,7 @@ def plot_classes_bsoidumap(data, assignments, **kwargs) -> object:
 def plot_classes_EMGMM_assignments(data: np.ndarray, assignments, save_fig_to_file: bool, fig_file_prefix='train_assignments', **kwargs):
     """
     Plot trained TSNE for EM-GMM assignments
-    :param data: 2D array, trained_tsne
+    :param data: 2D array, trained_tsne array (3 columns)
     :param assignments: 1D array, EM-GMM assignments
     """
     if not isinstance(data, np.ndarray):

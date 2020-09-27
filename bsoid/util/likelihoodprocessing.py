@@ -3,7 +3,7 @@ likelihood processing utilities
 Forward fill low likelihood (x,y)
 """
 
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Union
 from tqdm import tqdm
 import glob
 import inspect
@@ -59,6 +59,38 @@ def sort_list_nicely_in_place(list_input: list) -> None:
         raise TypeError(f'argument `l` expected to be of type list but '
                         f'instead found: {type(list_input)} (value: {list_input}).')
     list_input.sort(key=alphanum_key)
+
+
+@config.deco__log_entry_exit(logger)
+def augmented_runlength_encoding(labels: Union[List, np.ndarray]) -> Tuple[List[Any], List[int], List[int]]:  # TODO: low: rename function for clarity
+    """
+    TODO: med: purpose // purpose unclear
+    :param labels: (list or np.ndarray) predicted labels
+    :return
+        label_list: (list) the label number
+        idx: (list) label start index
+        lengths: (list) how long each bout lasted for
+    """
+    label_list, idx_list, lengths_list = [], [], []
+    i = 0
+    while i < len(labels) - 1:
+        # 1/3: Record current index
+        idx_list.append(i)
+        # 2/3: Record current label
+        current_label = labels[i]
+        label_list.append(current_label)
+        # Iterate over i while current label and next label are same
+        start_index = i
+        while i < len(labels)-1 and labels[i] == labels[i + 1]:
+            i += 1
+        end_index = i
+        # 3/3: Calculate length of repetitions, then record lengths to list
+        length = end_index - start_index
+        lengths_list.append(length)
+        # Increment and continue
+        i += 1
+
+    return label_list, idx_list, lengths_list
 
 
 ########################################################################################################################
@@ -141,16 +173,6 @@ def import_folders_app(ost_project_path, input_folders_list: list, BODYPARTS: di
     logger.info(f'{get_current_function()}(): Processed a total of {len(data_list)} CSV '
                 f'files and compiled into a {data_array.shape} data list.')
     return fldrs, all_file_names_list, data_array, perc_rect_list
-
-
-def remove_top_n_rows_of_dataframe(in_df, n_rows: int = 1, copy=False):
-    df = in_df.copy() if copy else in_df
-    if n_rows < 0:
-        err = f'Cannot remove negative rows from top of DataFrame. n_rows = {n_rows}'
-        logger.error(err)
-        raise ValueError(err)
-    df = df[1:]  # Remove top n rows
-    return df
 
 
 @config.deco__log_entry_exit(logger)
@@ -310,8 +332,7 @@ def adaptive_filter_data_app(input_df: pd.DataFrame, BODYPARTS: dict):  # TODO: 
     return currdf_filt, perc_rect
 
 
-########################################################################################################################
-### Legacy functions
+### Legacy functions ###################################################################################################
 
 def main(folders: List[str]) -> None:
     """
@@ -321,13 +342,15 @@ def main(folders: List[str]) -> None:
     :retrun perc_rect: 1D array, percent filtered per BODYPART
     """
     replacement_func = import_csvs_data_from_folders_in_PROJECTPATH_and_process_data
-    err = f'This function, bsoid.util.likelihoodprocessing.main(), will be '\
+    err = f'This function, {inspect.stack()[0][3]}(), will be '\
           f'deprecated in future. Directly use {replacement_func.__qualname__} instead. '\
           f'Caller = {inspect.stack()[1][3]}'
     logger.error(err)
     raise Exception(err)
     # filenames, data, perc_rect = replacement_func(folders)
     # return filenames, data, perc_rect
+
+
 def get_filenames(folder: str):
     """
     Gets a list of CSV filenames within a folder (assuming it exists within BASE_PATH)
@@ -407,6 +430,17 @@ def adaptive_filter_LEGACY(df_input_data: pd.DataFrame) -> Tuple[np.ndarray, Lis
     return currdf_filt, percent_filterd_per_bodypart__perc_rect
 
 
+def remove_top_n_rows_of_dataframe(in_df, n_rows: int = 1, copy=False):
+    raise Exception(f'{inspect.stack()[0][3]}(): DEPRECATED')
+    df = in_df.copy() if copy else in_df
+    if n_rows < 0:
+        err = f'Cannot remove negative rows from top of DataFrame. n_rows = {n_rows}'
+        logger.error(err)
+        raise ValueError(err)
+    df = df[1:]  # Remove top n rows
+    return df
+
+
 ########################################################################################################################
 
 if __name__ == '__main__':
@@ -414,5 +448,4 @@ if __name__ == '__main__':
     # df_current_file = pd.read_csv(filename, low_memory=False)
     # curr_df_filt, perc_rect = adaptive_filter_data(df_current_file)
     # x = import_csvs_data_from_folders_in_PROJECTPATH_and_process_data
-
     pass
