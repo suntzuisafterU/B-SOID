@@ -173,9 +173,11 @@ def train_emgmm_with_learned_tsne_space_NEW(df_trained_tsne: pd.DataFrame, emgmm
 def train_SVM__bsoid_svm_py(df, features_list: List[str], label: str, features: np.ndarray, labels: np.ndarray, comp: int = config.COMPILE_CSVS_FOR_TRAINING, holdout_pct: float = config.HOLDOUT_PERCENT, cv_it: int = config.CROSSVALIDATION_K, svm_params: dict = config.SVM_PARAMS) -> SVC:
     """
     Train SVM classifier
-    :param comp:
+    :param df:
+    :param label: (str)
     :param features: 2D array, original feature space, standardized
-    :param labels: 1D array, GMM output assignments
+    :param labels:
+    :param comp:
     :param holdout_pct: (float) Test partition ratio for validating SVM performance in GLOBAL_CONFIG
     :param cv_it: (int) iterations for cross-validation in GLOBAL_CONFIG
     :param svm_params: dict, SVM parameters in GLOBAL_CONFIG
@@ -209,7 +211,7 @@ def train_SVM__bsoid_svm_py(df, features_list: List[str], label: str, features: 
     # TODO: extract the plotting of graphs from in this function
     if config.PLOT_GRAPHS:
         # Plot SVM accuracy
-
+        # TODO: ? crossval?
         # Plot confusion matrix
         # np.set_printoptions(precision=2)  # TODO: low: address this line later
         titles_options = [('Non-normalized confusion matrix', None, 'counts'),
@@ -510,7 +512,9 @@ def get_data_train_TSNE_then_GMM_then_SVM_then_return_EVERYTHING__py(train_folde
 
     ##########
     # Get data
-    file_names_list, list_of_arrays_of_training_data, _perc_rect = likelihoodprocessing.import_csvs_data_from_folders_in_PROJECTPATH_and_process_data(train_folders)
+    file_names_list, list_of_arrays_of_training_data, _perc_rect = \
+        likelihoodprocessing.import_csvs_data_from_folders_in_PROJECTPATH_and_process_data(train_folders)
+
     # Check that outputs are fine for runtime
     if len(file_names_list) == 0:
         zero_folders_error = f'{inspect.stack()[0][3]}: Zero training folders were specified. Check ' \
@@ -522,7 +526,7 @@ def get_data_train_TSNE_then_GMM_then_SVM_then_return_EVERYTHING__py(train_folde
         logger.error(zero_filenames_error)
         raise ValueError(zero_filenames_error)
 
-    # Train TSNE
+    # Extract features and train TSNE
     features_10fps, features_10fps_scaled, trained_tsne_list, scaler = train_LEGACY.extract_features_and_train_TSNE(list_of_arrays_of_training_data)  # features_10fps, features_10fps_scaled, trained_tsne_list, scaler = bsoid_tsne_py(list_of_arrays_of_training_data)  # replace with: extract_features_and_train_TSNE
 
     # Train GMM
