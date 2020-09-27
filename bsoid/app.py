@@ -3,16 +3,19 @@
 
 Every function in this file is an entire runtime sequence encapsulated.
 """
+from sklearn.model_selection import train_test_split, cross_val_score
 from typing import Any, List, Tuple
 import inspect
-import pandas as pd
+import joblib
+import numpy as np
 import os
+import pandas as pd
 import time
 
 
-from bsoid import config, feature_engineering
+from bsoid import classify, config, feature_engineering, train, util
 from bsoid.config import OUTPUT_PATH, VIDEO_FPS
-from bsoid.util import io, likelihoodprocessing, statistics, videoprocessing, visuals
+# from bsoid.util import io, likelihoodprocessing, statistics, videoprocessing, visuals
 from bsoid.util.bsoid_logging import get_current_function  # for debugging purposes
 
 
@@ -21,18 +24,7 @@ logger = config.initialize_logger(__name__)
 
 ###
 
-def TEST_readcsv():
-    # A test function to see if breakpoints work on read_csv
-    path = f'C:\\Users\\killian\\projects\\OST-with-DLC\\GUI_projects\\EPM-DLC-projects\\' \
-           f'sample_train_data_folder\\Video1DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000.csv'
-    io.read_csv(path)
-def build_and_run_new_pipeline():
-    build_classifier_new_pipeline()
-    run_classifier_new_pipeline()
-    return
-
-
-def build_classifier_new_pipeline(train_folders: List[str] = config.TRAIN_FOLDERS_PATHS) -> None:
+def build_classifier_new_pipeline(train_folders: List[str] = config.TRAIN_DATA_FOLDER_PATH) -> None:
     """
     new build_py implementation for new pipeline -- TEST
     1) retrieve data
@@ -46,7 +38,7 @@ def build_classifier_new_pipeline(train_folders: List[str] = config.TRAIN_FOLDER
     if len(train_folders) == 0:
         warn_empty_train_folders_paths = f'Empty train folders list. No train folders specified.' \
                                          f'train_folders = {train_folders} / ' \
-                                         f'config.train_folders_paths = {config.TRAIN_FOLDERS_PATHS}'
+                                         f'config.train_folders_paths = {config.TRAIN_DATA_FOLDER_PATH}'
         logger.exception(warn_empty_train_folders_paths)
         raise RuntimeError(warn_empty_train_folders_paths)
 
@@ -56,24 +48,24 @@ def build_classifier_new_pipeline(train_folders: List[str] = config.TRAIN_FOLDER
     # Loop over train folders to fetch data
     for train_path in config.TRAIN_FOLDERS_PATHS:
         logger.debug(f'train_path = {train_path}')
-        csv_files_paths: List[str] = io.check_folder_contents_for_csv_files(train_path, check_recursively=True)
+        csv_files_paths: List[str] = util.io.check_folder_contents_for_csv_files(train_path, check_recursively=True)
         logger.debug(f'csvs = {csv_files_paths}')
         for file_csv in csv_files_paths:
-            df_csv_i: pd.DataFrame = io.read_csv(file_csv)
+            df_csv_i: pd.DataFrame = util.io.read_csv(file_csv)
             logger.debug(f'CSV read in: {file_csv}')
             dfs_unfiltered_list.append(df_csv_i)
-            break  # Debugging effort
-        break  # Debugging effort
+            break  # Debugging effort. Remove this line later. todo
+        break  # Debugging effort. Remove this line later. todo*
     logger.debug(f'len(dfsList) = {len(dfs_unfiltered_list)}')
 
     if len(dfs_unfiltered_list) == 0:
-        warn_zero_csvs = f'{get_current_function()}(): In the course of pulling CSVs to process in pipeline, ' \
+        err_zero_csvs = f'{get_current_function()}(): In the course of pulling CSVs to process in pipeline, ' \
                          f'zero CSVs were read-in. Check that TRAIN_FOLDERS_PATHS ({config.TRAIN_FOLDERS_PATHS}) ' \
                          f'are valid spots to check for DLC csvs. '
-        logger.error(warn_zero_csvs)
+        logger.error(err_zero_csvs)
         # For now, raise Exception just so that we can catch the bug in pathing more obviously during development.
         # Later, we can see if we want to fail silently and just rely on the logger logging the warning.
-        raise RuntimeError(warn_zero_csvs)
+        raise RuntimeError(err_zero_csvs)
 
     # # # 2) Adaptively filter
     dfs_list_filtered: List[Tuple[pd.DataFrame, List[float]]] = [feature_engineering.adaptively_filter_dlc_output(df)
@@ -81,44 +73,58 @@ def build_classifier_new_pipeline(train_folders: List[str] = config.TRAIN_FOLDER
 
     # # # 3) Engineer features
     # Loop over DataFrames, engineer features!
-    dfs_engineered_features: List[Tuple[pd.DataFrame, List[float]]] = [
-        (feature_engineering.engineer_7_features_dataframe(df), i) for df, i in dfs_list_filtered]
-    # Engineer into 100ms bins
-    dfs_features_100ms_bins = [(func(df), i) for df, i in dfs_engineered_features]
+    dfs_engineered_features: List[List[pd.DataFrame, List[float]]] = [
+        [feature_engineering.engineer_7_features_dataframe(df), i] for df, i in dfs_list_filtered]
+
+    # Engineer features into 100ms bins
+    for i, df_rect_tuple in enumerate(dfs_engineered_features):
+        df_i, rect_i = df_rect_tuple
+        for column in df_i.columns:
+            if 'scorer' not in column:
+                dfs_engineered_features[i][0][column] = \
+                    feature_engineering.integrate_df_feature_into_bins(df_i, column)
+
+    df_all_features: pd.DataFrame = pd.concat([df for df, _ in dfs_engineered_features])
+
+    raise Exception(f'Done for now')
+
+    #####
+
+    features_of_interest = [
+
+    ]
+    label = 'TBD FIX ME LATER'  # ?
 
     # Train TSNE
 
+    df_features_10fps, df_features_10fps_scaled, trained_tsne, scaler = train.train_TSNE_NEW(df_all_features, features_of_interest)
+
     # Train GMM
+    df['assignments'] = train.train_emgmm_with_learned_tsne_space_NEW(df[features])  # gmm_assignments = bsoid_gmm_pyvoc(trained_tsne)  # replaced with below
 
     # Train SVM
+    classifier: object = train.train_SVM__bsoid_svm_py(df_features_10fps_scaled, features_of_interest, label)
 
 
-    raise Exception(f'Done for now')
+
+    # Plot to view progress if necessary
+    if config.PLOT_GRAPHS:
+        feats_train, feats_test, labels_train, labels_test = train_test_split(df[features_of_interest], df[label])
+        scores = cross_val_score(classifier, feats_test, labels_test,
+                                 cv=config.CROSSVALIDATION_K, n_jobs=config.CROSSVALIDATION_N_JOBS)
+        logger.debug(f'Enter GRAPH PLOTTING section of {inspect.stack()[0][3]}')
+        util.visuals.plot_classes_EMGMM_assignments(trained_tsne, df['assignments'], config.SAVE_GRAPHS_TO_FILE)
+        util.visuals.plot_accuracy_SVM(scores)
+        util.visuals.plot_feats_bsoidpy(df_features_10fps, gmm_assignments)
+        logger.debug(f'Exiting GRAPH PLOTTING section of {inspect.stack()[0][3]}')
+
 
 
     file_names_list, list_of_arrays_of_training_data, _perc_rect = likelihoodprocessing.import_csvs_data_from_folders_in_PROJECTPATH_and_process_data(train_folders)
 
 
-    # Train TSNE
-    features_10fps, features_10fps_scaled, trained_tsne_list, scaler = extract_features_and_train_TSNE(list_of_arrays_of_training_data)  # features_10fps, features_10fps_scaled, trained_tsne_list, scaler = bsoid_tsne_py(list_of_arrays_of_training_data)  # replace with: extract_features_and_train_TSNE
-
-    # Train GMM
-    gmm_assignments = train_emgmm_with_learned_tsne_space(trained_tsne_list)  # gmm_assignments = bsoid_gmm_pyvoc(trained_tsne)  # replaced with below
-
-    # Train SVM
-    classifier, scores = bsoid_svm_py(features_10fps_scaled, gmm_assignments)
-
-    # Plot to view progress if necessary
-    if config.PLOT_GRAPHS:
-        logger.debug(f'Enter GRAPH PLOTTING section of {inspect.stack()[0][3]}')
-        visuals.plot_classes_EMGMM_assignments(trained_tsne_list, gmm_assignments, config.SAVE_GRAPHS_TO_FILE)
-        visuals.plot_accuracy_SVM(scores)
-        visuals.plot_feats_bsoidpy(features_10fps, gmm_assignments)
-        logger.debug(f'Exiting GRAPH PLOTTING section of {inspect.stack()[0][3]}')
-
-
     all_data = np.concatenate([
-        features_10fps.T,
+        df_features_10fps.T,
         trained_tsne,
         gmm_assignments.reshape(len(gmm_assignments), 1)
     ], axis=1)
@@ -148,38 +154,53 @@ def build_classifier_new_pipeline(train_folders: List[str] = config.TRAIN_FOLDER
     with open(os.path.join(OUTPUT_PATH, config.MODEL_FILENAME), 'wb') as model_file:
         joblib.dump([classifier, scaler_object], model_file)
 
-    logger.error(f'{inspect.stack()[0][3]}: Saved model to file. Form: [classifier, scaler_object]')  # TODO: see msg
+    logger.error(f'{inspect.stack()[0][3]}: Saved model to file in the form of: [classifier, scaler_object]')  # TODO: see msg
 
     # END BUILD_PY
+    return
+
 
 def run_classifier_new_pipeline():
-    ####################################################################################################################
-    # START RUN_PY
-    predict_folders = config.PREDICT_FOLDERS
-    # Import preprocessed data
-    filenames, data_new, perc_rect = likelihoodprocessing.import_csvs_data_from_folders_in_PROJECTPATH_and_process_data(
-        predict_folders)
+    """
 
-    # Extract features
-    features_new = bsoid_extract_py(data_new)
+    """
+    path_to_model_file = os.path.join(OUTPUT_PATH, config.MODEL_FILENAME)
+    try:
+        with open(path_to_model_file, 'rb') as fr:
+            behavioural_model, train_scaler_obj = joblib.load(fr)
+    except FileNotFoundError as fnfe:
+        file_not_found_err = f'Model not found: {path_to_model_file}.'  # TODO: HIGH: expand on err
+        logger.error(file_not_found_err)
+        raise FileNotFoundError(f'{file_not_found_err} // original EXCEPTION: {repr(fnfe)}.')
+
+    # TODO: below import data BREAKS because predict folder not necessarily in DLC0
+    filenames, data_new, perc_rect = util.likelihoodprocessing.import_csvs_data_from_folders_in_PROJECTPATH_and_process_data(config.PREDICT_FOLDERS_IN_DLC_PROJECT)
+    ### Extract features
+    # features_new = classify.bsoid_extract_py(data_new)
+    intermediate_features = feature_engineering.extract_7_features_bsoid_tsne_py(data_new)  # REPLACEMENT FOR ABOVE
+    features_new = feature_engineering.integrate_features_into_100ms_bins_LEGACY(data=data_new, features=intermediate_features, fps=config.VIDEO_FPS)
+
+    df_features: pd.DataFrame = feature_engineering.engineer_7_features_dataframe()
+    feature_engineering.integrate_df_feature_into_bins()
+
     # Predict labels
-    labels_frameshift_low: List = bsoid_predict_py(features_new, scaler, svm_classifier__behavioural_model)
+    labels_frameshift_low: List = classify.bsoid_predict_py(features_new, train_scaler_obj, behavioural_model)
     # Create
-    labels_frameshift_high: List = bsoid_frameshift_py(data_new, scaler, fps, svm_classifier__behavioural_model)
+    labels_frameshift_high: List = classify.bsoid_frameshift_py(data_new, train_scaler_obj, config.VIDEO_FPS, behavioural_model)
 
     if config.PLOT_GRAPHS:
-        visuals.plot_feats_bsoidpy(features_new, labels_frameshift_low)
+        util.visuals.plot_feats_bsoidpy(features_new, labels_frameshift_low)
 
     # TODO: HIGH: Ensure that the labels predicted on predict_folders matches to the video that will be labeled hereafter
     if config.GENERATE_VIDEOS:
         if len(labels_frameshift_low) > 0:
             # 1/2 write frames to disk
-            videoprocessing.write_annotated_frames_to_disk_from_video(
+            util.videoprocessing.write_annotated_frames_to_disk_from_video(
                 config.VIDEO_TO_LABEL_PATH,
                 labels_frameshift_low[config.IDENTIFICATION_ORDER]
             )
             # 2/2 created labeled video
-            videoprocessing.create_labeled_vid(
+            util.videoprocessing.create_labeled_vid(
                 labels_frameshift_low[config.IDENTIFICATION_ORDER],
                 critical_behaviour_minimum_duration=3,
                 num_randomly_generated_examples=5,
@@ -192,7 +213,11 @@ def run_classifier_new_pipeline():
                          f'a video could NOT occur because labels_fs_low is a list of length zero and '
                          f'config.ID is attempting to index an empty list.')
 
-    # return features_10fps, trained_tsne, scaler_object, gmm_assignments, classifier, scores
+    return data_new, features_new, labels_frameshift_low, labels_frameshift_high
+
+    data_new, features_new, labels_fs_low, labels_fs_high = classify.main_py(predict_folders, train_scaler_obj, VIDEO_FPS, behavioural_model)
+
+
     filenames: List[str] = []
     all_dfs_list: List[pd.DataFrame] = []
     for i, folder in enumerate(predict_folders):  # Loop through folders
@@ -220,8 +245,7 @@ def run_classifier_new_pipeline():
             ('SVM classifier', 'B-SOiD labels')],
             names=['Type', 'Frame@10Hz'])
         df_predictions = pd.DataFrame(all_data, columns=multi_index_columns)
-        # time_str = time.strftime("_%Y%m%d_%H%M")
-        time_str = config.runtime_timestr
+
         csvname = os.path.basename(filenames[i]).rpartition('.')[0]
         df_predictions.to_csv(
             (os.path.join(OUTPUT_PATH, f'BSOiD__labels__10Hz__{config.runtime_timestr}__{csvname}.csv')), index=True,
@@ -235,11 +259,11 @@ def run_classifier_new_pipeline():
 
         # Save (stuff?) to CSV
 
-        runlen_df1.to_csv((os.path.join(OUTPUT_PATH, f'BSOiD__runlengths__10Hz__{time_str}__{csvname}.csv')),
+        runlen_df1.to_csv((os.path.join(OUTPUT_PATH, f'BSOiD__runlengths__10Hz__{config.runtime_timestr}__{csvname}.csv')),
                           index=True, chunksize=10000, encoding='utf-8')
-        dur_stats1.to_csv((os.path.join(OUTPUT_PATH, f'BSOiD__statistics__10Hz__{time_str}__{csvname}.csv')),
+        dur_stats1.to_csv((os.path.join(OUTPUT_PATH, f'BSOiD__statistics__10Hz__{config.runtime_timestr}__{csvname}.csv')),
                           index=True, chunksize=10000, encoding='utf-8')
-        df_tm1.to_csv((os.path.join(OUTPUT_PATH, f'BSOiD__transitions__10Hz__{time_str}__{csvname}.csv')), index=True,
+        df_tm1.to_csv((os.path.join(OUTPUT_PATH, f'BSOiD__transitions__10Hz__{config.runtime_timestr}__{csvname}.csv')), index=True,
                       chunksize=10000, encoding='utf-8')
 
         #
@@ -277,6 +301,7 @@ def run_classifier_new_pipeline():
     logger.info('All saved. Expand on this info message later.')
     return data_new, features_new, labels_fs_low, labels_fs_high
 
+
 def clear_output_folders() -> None:
     """
     For each folder specified below (magic variables be damned),
@@ -285,7 +310,6 @@ def clear_output_folders() -> None:
     # Choose folders to clear (currently set as magic variables in function below)
     folders_to_clear: List[str] = [config.OUTPUT_PATH, config.GRAPH_OUTPUT_PATH,
                                    config.SHORT_VIDEOS_OUTPUT_PATH, config.FRAMES_OUTPUT_PATH]
-
     # Loop over all folders to empty
     for folder_path in folders_to_clear:
         # Parse all files in current folder_path, but exclusive placeholders, folders
@@ -300,7 +324,7 @@ def clear_output_folders() -> None:
                 logger.debug(f'{inspect.stack()[0][3]}(): Deleted file: {file_to_delete_full_path}')
             except PermissionError as pe:
                 logger.warning(f'{inspect.stack()[0][3]}(): Could not delete file: {file_to_delete_full_path} / '
-                             f'{repr(pe)}')
+                               f'{repr(pe)}')
 
     return None
 
@@ -325,6 +349,19 @@ def clear_logs() -> None:
     return
 
 
+def TEST_readcsv():
+    # A test function to see if breakpoints work on read_csv
+    path = f'C:\\Users\\killian\\projects\\OST-with-DLC\\GUI_projects\\EPM-DLC-projects\\' \
+           f'sample_train_data_folder\\Video1DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000.csv'
+    util.io.read_csv(path)
+
+
+def build_and_run_new_pipeline():
+    build_classifier_new_pipeline()
+    run_classifier_new_pipeline()
+    return
+
+
 ########################################################################################################################
 
 def sample_runtime_function(*args, **kwargs):
@@ -332,70 +369,7 @@ def sample_runtime_function(*args, **kwargs):
     return
 
 
-# def build_classifier_and_save_to_file__legacy_py():
-#     """
-#     Mimics the original implementation of bsoid_py/main.py:build()
-#
-#         Automatically saves single CSV file containing training outputs (in 10Hz, 100ms per row):
-#         1. original features (number of training data points by 7 dimensions, columns 1-7)
-#         2. embedded features (number of training data points by 3 dimensions, columns 8-10)
-#         3. em-gmm assignments (number of training data points by 1, columns 11)
-#     Automatically saves classifier in OUTPUT_PATH with MODEL_NAME in LOCAL_CONFIG
-#     :param train_folders: list, folders to build behavioral model on
-#     :returns f_10fps, trained_tsne, gmm_assignments, classifier, scores: see bsoid_py.train
-#     """
-#
-#     # Get data
-#
-#     # Extract features
-#
-#     # Train TSNE
-#
-#     # Train GMM
-#
-#     # Train SVM
-#
-#
-#     # Plot as necessary
-#     if config.PLOT_GRAPHS:
-#         logger.debug(f'Enter GRAPH PLOTTING section of {inspect.stack()[0][3]}')
-#         visuals.plot_classes_EMGMM_assignments(trained_tsne_list, gmm_assignments, config.SAVE_GRAPHS_TO_FILE)
-#         visuals.plot_accuracy_SVM(scores)
-#         visuals.plot_feats_bsoidpy(features_10fps, gmm_assignments)
-#         logger.debug(f'Exiting GRAPH PLOTTING section of {inspect.stack()[0][3]}')
-#     # ?
-#     all_data = np.concatenate([
-#         features_10fps.T,
-#         trained_tsne,
-#         gmm_assignments.reshape(len(gmm_assignments), 1)
-#     ], axis=1)
-#
-#     multi_index_columns = pd.MultiIndex.from_tuples([
-#         ('Features',        'Relative snout to forepaws placement'),
-#         ('',                'Relative snout to hind paws placement'),
-#         ('',                'Inter-forepaw distance'),
-#         ('',                'Body length'),
-#         ('',                'Body angle'),
-#         ('',                'Snout displacement'),
-#         ('',                'Tail-base displacement'),
-#         ('Embedded t-SNE',  'Dimension 1'),
-#         ('',                'Dimension 2'),
-#         ('',                'Dimension 3'),
-#         ('EM-GMM',          'Assignment No.')],
-#         names=['Type', 'Frame@10Hz'])
-#     df_training_data = pd.DataFrame(all_data, columns=multi_index_columns)
-#
-#     # Write training data to csv
-#     df_training_data.to_csv(os.path.join(config.OUTPUT_PATH, f'bsoid_trainlabels_10Hz{config.runtime_timestr}.csv'),
-#                             index=True, chunksize=10000, encoding='utf-8')
-#
-#     # Save model data to file
-#     with open(os.path.join(config.OUTPUT_PATH, f'bsoid_{config.MODEL_NAME}.sav'), 'wb') as model_file:
-#         joblib.dump([classifier, scaler_object], model_file)
-#
-#     logger.error(f'{inspect.stack()[0][3]}: Saved stuff...elaborate on this message later.')  # TODO: elaborate on log message
-#     return features_10fps, trained_tsne, scaler_object, gmm_assignments, classifier, scores
-
+########################################################################################################################
 
 if __name__ == '__main__':
     # Run this file for ebugging purposes
