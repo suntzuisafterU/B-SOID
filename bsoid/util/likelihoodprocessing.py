@@ -432,15 +432,12 @@ def adaptive_filter_LEGACY(df_input_data: pd.DataFrame) -> Tuple[np.ndarray, Lis
 
 
 def mean(*args):
-    args = [arg for arg in args if arg == arg]
-    divide_by = len(args)
-    # print(args)
-    return functools.reduce(lambda x, y: x + y, args, 0) / divide_by
+    args = [arg for arg in args if arg == arg]  # Remove any 'nan' values
+    return functools.reduce(lambda x, y: x + y, args, 0) / len(args)
 
 
 def sum(*args):
-    args = [arg for arg in args if arg == arg]
-    # print(args)
+    args = [arg for arg in args if arg == arg]  # Remove any 'nan' values
     return functools.reduce(lambda x, y: x + y, args, 0)
 
 
