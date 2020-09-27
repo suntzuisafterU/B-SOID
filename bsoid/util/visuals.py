@@ -250,6 +250,7 @@ def plot_classes_EMGMM_assignments(data: np.ndarray, assignments, save_fig_to_fi
     ax = fig.add_subplot(111, projection='3d')
     for g in np.unique(assignments):
         idx = np.where(np.array(assignments) == g)
+        # TODO: below error: "IndexError: index 13 is out of bounds for axis 0 with size 13"
         ax.scatter(tsne_x[idx], tsne_y[idx], tsne_z[idx], c=colormap[g], label=g, s=s, marker=marker, alpha=alpha)
     ax.set_xlabel('Dim. 1')
     ax.set_ylabel('Dim. 2')

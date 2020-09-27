@@ -650,9 +650,8 @@ def integrate_df_feature_into_bins(df, feature: str, method: str, n_frames: int,
     # Do
     data_of_interest = df[feature].values
     for i in range(0, len(df), n_frames):
-
+        # TODO
         pass
-
 
     return df
 
@@ -683,10 +682,8 @@ def average_values_over_moving_window(data, method, n_frames: int) -> np.ndarray
         for _ in range(i):
             next(iterators[i], None)
 
-    # TODO: rename asdf
+    # TODO: rename `asdf`
     asdf = [averaging_function(*iters_tuple) for iters_tuple in itertools.zip_longest(*iterators, fillvalue=float('nan'))]
-
-    logger.debug(f'asdf: {asdf}')
 
     return_array = np.array(asdf)
 

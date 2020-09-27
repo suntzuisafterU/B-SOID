@@ -80,9 +80,7 @@ def get_videos_from_folder_in_BASEPATH(folder_name: str, video_extension: str = 
     return video_names
 
 
-
-
-def write_frame_to_file(is_frame_retrieved:bool, frame: object, label, frame_idx, frames_to_skip_after_each_write, output_path=config.FRAMES_OUTPUT_PATH):
+def write_frame_to_file(is_frame_retrieved: bool, frame: object, label, frame_idx, frames_to_skip_after_each_write, output_path=config.FRAMES_OUTPUT_PATH):
     font_scale, font = 1, cv2.FONT_HERSHEY_COMPLEX
     rectangle_bgr = (0, 0, 0)
     if is_frame_retrieved:
@@ -176,23 +174,22 @@ def write_annotated_frames_to_disk_from_video_NEW_multiproc(path_to_video: str, 
             break
     #
     with multiprocessing.Pool(config.N_JOBS) as pool:
+        # Set up function to be executed async
         results = [pool.apply_async(
             write_frame_to_file,
             (is_frame_retrieved, frame, label, i, frames_to_skip_after_each_write),
-            # kwds=kwargs,
-            # callback=update_progress_bar
         )
             for is_frame_retrieved, frame, label, i in frames_queue]
+        # Execute
         results = [res.get() for res in results]
 
     cv2_video_object.release()
     # progress_bar.close()
     return
+
+
 @config.deco__log_entry_exit(logger)
-def write_annotated_frames_to_disk_from_video(path_to_video: str, labels,
-                                              fps: int = config.VIDEO_FPS,
-                                              output_path: str = config.FRAMES_OUTPUT_PATH,
-                                              pct_frames_to_label: float = config.PERCENT_FRAMES_TO_LABEL):
+def write_annotated_frames_to_disk_from_video(path_to_video: str, labels, fps: int = config.VIDEO_FPS, output_path: str = config.FRAMES_OUTPUT_PATH, pct_frames_to_label: float = config.PERCENT_FRAMES_TO_LABEL):
     """
     This function serves to supersede the old 'vid2frame()' function for future clarity.
 
@@ -212,9 +209,6 @@ def write_annotated_frames_to_disk_from_video(path_to_video: str, labels,
         err = f'{__name__}:{inspect.stack()[0][3]}Path to video was not found. Path = {path_to_video}'
         logger.error(err)
         raise ValueError(err)
-
-    if pct_frames_to_label <= 0.: return
-    elif pct_frames_to_label > 1.: pct_frames_to_label = 1.
 
     #
     frames_to_skip_after_each_write = round(1 / pct_frames_to_label)  # frames_to_skip_after_each_write = round(fps * (1 / pct_frames_to_label))  # TODO: implement properly
@@ -393,7 +387,7 @@ def import_vidfolders(folders: List[str], output_path: List[str]):
     return
 
 
-@config.deco__log_entry_exit(logger)
+# @config.deco__log_entry_exit(logger)
 def create_labeled_vid(labels, critical_behaviour_minimum_duration=3, num_randomly_generated_examples=5, frame_dir=config.FRAMES_OUTPUT_PATH, output_path=config.SHORT_VIDEOS_OUTPUT_PATH) -> None:
     """
     (Generalized create_labeled_video() function that works between _py, _umap, and _voc submodules)
@@ -471,6 +465,7 @@ def create_labeled_vid(labels, critical_behaviour_minimum_duration=3, num_random
                     # Release video writer and continue
 
                     video_writer.release()
+
                 cv2.destroyAllWindows()
 
         except Exception as e:  # TODO: low: exception is very general. Address?
