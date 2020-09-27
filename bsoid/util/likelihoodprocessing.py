@@ -5,6 +5,7 @@ Forward fill low likelihood (x,y)
 
 from typing import Any, Dict, List, Tuple, Union
 from tqdm import tqdm
+import functools
 import glob
 import inspect
 import numpy as np
@@ -430,15 +431,17 @@ def adaptive_filter_LEGACY(df_input_data: pd.DataFrame) -> Tuple[np.ndarray, Lis
     return currdf_filt, percent_filterd_per_bodypart__perc_rect
 
 
-def remove_top_n_rows_of_dataframe(in_df, n_rows: int = 1, copy=False):
-    raise Exception(f'{inspect.stack()[0][3]}(): DEPRECATED')
-    df = in_df.copy() if copy else in_df
-    if n_rows < 0:
-        err = f'Cannot remove negative rows from top of DataFrame. n_rows = {n_rows}'
-        logger.error(err)
-        raise ValueError(err)
-    df = df[1:]  # Remove top n rows
-    return df
+def mean(*args):
+    args = [arg for arg in args if arg == arg]
+    divide_by = len(args)
+    print(args)
+    return functools.reduce(lambda x, y: x + y, args, 0) / divide_by
+
+
+def sum(*args):
+    args = [arg for arg in args if arg == arg]
+    print(args)
+    return functools.reduce(lambda x , y: x + y, args, 0)
 
 
 ########################################################################################################################
