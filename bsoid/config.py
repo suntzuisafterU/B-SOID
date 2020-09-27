@@ -64,8 +64,9 @@ configuration.read(os.path.join(BSOID_BASE_PROJECT_PATH, config_file_name))
 
 DLC_PROJECT_PATH = configuration.get('PATH', 'DLC_PROJECT_PATH')
 
-config_output_path = configuration.get('PATH', 'OUTPUT_PATH')
-OUTPUT_PATH = config_output_path if config_output_path else default_output_path
+OUTPUT_PATH = config_output_path = configuration.get('PATH', 'OUTPUT_PATH') \
+    if configuration.get('PATH', 'OUTPUT_PATH').strip() else default_output_path
+# OUTPUT_PATH = config_output_path if config_output_path else default_output_path
 GRAPH_OUTPUT_PATH = os.path.join(OUTPUT_PATH, 'graphs')
 FRAMES_OUTPUT_PATH = os.path.join(OUTPUT_PATH, 'frames')
 SHORT_VIDEOS_OUTPUT_PATH = os.path.join(OUTPUT_PATH, 'short_videos')
@@ -80,7 +81,7 @@ CROSSVALIDATION_K: int = configuration.getint('MODEL', 'CROSS_VALIDATION_K')  # 
 CROSSVALIDATION_N_JOBS: int = configuration.getint('MODEL', 'CROSS_VALIDATION_N_JOBS')
 VIDEO_FPS: int = configuration.getint('APP', 'VIDEO_FRAME_RATE')
 COMPILE_CSVS_FOR_TRAINING: int = configuration.getint('APP', 'COMPILE_CSVS_FOR_TRAINING')  # COMP = 1: Train one classifier for all CSV files; COMP = 0: Classifier/CSV file.
-
+N_JOBS = configuration.getint('APP', 'N_JOBS')
 PLOT_GRAPHS: bool = configuration.getboolean('APP', 'PLOT_GRAPHS')
 SAVE_GRAPHS_TO_FILE: bool = configuration.getboolean('APP', 'SAVE_GRAPHS_TO_FILE')
 DEFAULT_SAVED_GRAPH_FILE_FORMAT: str = configuration.get('APP', 'DEFAULT_SAVED_GRAPH_FILE_FORMAT')
@@ -101,14 +102,15 @@ SHORTVID_DIR = short_video_output_directory  # LEGACY. To be deprecated.
 # ID = identification_order  # TODO: DEPRECATE. ID WAS A MISTAKE, BUT NOT SURE WHY/WHAT IT DOES
 
 # Assertions to ensure that, before runtime, the config variables are valid.
+assert os.path.isdir(DLC_PROJECT_PATH), f'DLC_PROJECT_PATH DOES NOT EXIST: {DLC_PROJECT_PATH}'
+assert os.path.isdir(OUTPUT_PATH), f'OUTPUT PATH INVALID/DOES NOT EXIST: {OUTPUT_PATH}'
+
 assert os.path.isfile(DEFAULT_TEST_FILE), f'Test file was not found: {DEFAULT_TEST_FILE}'
 assert COMPILE_CSVS_FOR_TRAINING in {0, 1}, f'Invalid COMP value detected: {COMPILE_CSVS_FOR_TRAINING}.'
 assert os.path.isdir(short_video_output_directory),\
     f'`short_video_output_directory` dir. (value={short_video_output_directory}) must exist for runtime but does not.'
-assert os.path.isdir(DLC_PROJECT_PATH), f'DLC_PROJECT_PATH DOES NOT EXIST: {DLC_PROJECT_PATH}'
 assert os.path.isfile(VIDEO_TO_LABEL_PATH) or not VIDEO_TO_LABEL_PATH, \
     f'Video does not exist: {VIDEO_TO_LABEL_PATH}. Check pathing in config.ini file.'
-assert os.path.isdir(OUTPUT_PATH), f'OUTPUT PATH INVALID/DOES NOT EXIST: {OUTPUT_PATH}'
 
 # def get_config_str() -> str:
 #     """ Debugging function """
@@ -405,3 +407,5 @@ if __name__ == '__main__':
     print(f'runtime_timestr = {runtime_timestr}')
     print(f'config_file_log_folder_path = {config_file_log_folder_path}')
     pass
+    print(type(RANDOM_STATE))
+    print(VIDEO_TO_LABEL_PATH)
