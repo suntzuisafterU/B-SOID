@@ -93,43 +93,34 @@ def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.Da
         raise TypeError(type_err)
 
     # Continue
+    # # Scorer
     if 'scorer' not in in_df.columns:
         col_not_found_err = f'TODO: "scorer" col not found but should exist (as a result from bsoid.read_csv()) // ' \
                             f'All columns: {in_df.columns}'
         logger.error(col_not_found_err)
         raise ValueError(col_not_found_err)
-
     scorer_values = np.unique(in_df['scorer'])
     if len(scorer_values) != 1:
         err = f'TODO: there should be 1 unique scorer value. If there are more than 1, too many values. TODO '
         logger.error(err)
         raise ValueError(err)
-
-    source_filenames_values = np.unique(in_df['source'])
-    if len(scorer_values) != 1:
-        err = f'TODO: there should be 1 unique source value. If there are more than 1, too many values, ' \
-              f'makes no sense to adaptively filter over different datasets.'
-        logger.error(err)
-        raise ValueError(err)
-
-
-
-
-    # Resolve kwargs
-    df = in_df.copy() if copy else in_df
     scorer_value: str = scorer_values[0]
+    # # Source
     if 'source' in in_df.columns:
+        source_filenames_values = np.unique(in_df['source'])
+        if len(scorer_values) != 1:
+            err = f'TODO: there should be 1 unique source value. If there are more than 1, too many values, ' \
+                  f'makes no sense to adaptively filter over different datasets.'
+            logger.error(err)
+            raise ValueError(err)
         source = in_df['source'].values[0]
     else:
         source = None
+    # Resolve kwargs
+    df = in_df.copy() if copy else in_df
 
     x_index, y_index, l_index, percent_filterd_per_bodypart__perc_rect = [], [], [], []
-
-    # # Remove top row. The top row only contained project name headers
-    # df_input_data_with_projectname_header_removed: pd.DataFrame = df_input_data[1:]
-    # # Convert data to raw array
-    # array_input_data_with_projectname_header_removed = np.array(df_input_data_with_projectname_header_removed)
-
+    
     # Loop over columns, aggregate which indices in the data fall under which category.
     #   x, y, and likelihood are the three main types of columns output from DLC.
     map_back_index_to_col_name = {}
