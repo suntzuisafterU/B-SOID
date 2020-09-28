@@ -55,7 +55,7 @@ def read_csv(csv_file_path: str, **kwargs) -> pd.DataFrame:
         raise ValueError(err)
     # Read in kwargs
     nrows = kwargs.get('nrows', sys.maxsize)
-    filename = os.path.split(csv_file_path)[-1]
+    filename = csv_file_path  # os.path.split(csv_file_path)[-1]
     file_without_suffix = filename[:filename.rfind('.')]
     # # # # # # #
     # Read in CSV
@@ -99,6 +99,8 @@ def read_csv(csv_file_path: str, **kwargs) -> pd.DataFrame:
     df['scorer'] = dlc_scorer
     # Save source for future use
     df['source'] = filename
+    # Number the frames
+    df['frame'] = range(1, len(df)+1)
 
     return df
 
