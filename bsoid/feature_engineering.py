@@ -209,7 +209,7 @@ def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.Da
     # Re-add source
     if source is not None:
         df_adaptively_filtered_data['source'] = source
-    df_adaptively_filtered_data['frame'] = range(1, len(df_adaptively_filtered_data)+1)
+    df_adaptively_filtered_data['frame'] = range(len(df_adaptively_filtered_data))
     if len(in_df) != len(df_adaptively_filtered_data):
         missing_rows_err = f'Input df has {len(df)} rows but output df ' \
                            f'has {len(df_adaptively_filtered_data)}. Should be same number.'

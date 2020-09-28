@@ -100,10 +100,12 @@ def read_csv(csv_file_path: str, **kwargs) -> pd.DataFrame:
     # Save source for future use
     df['source'] = filename
     # Number the frames
-    df['frame'] = range(1, len(df)+1)
+    df['frame'] = range(len(df))
 
     return df
 
+
+########################################################################################################################
 
 def check_for_csv_files_in_path(folder_path: str, check_recursively=False) -> List[str]:
     """
