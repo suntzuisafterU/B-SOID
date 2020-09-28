@@ -26,7 +26,7 @@ import time
 import umap
 
 from bsoid import classify, config
-from bsoid.config import BSOID_BASE_PROJECT_PATH, CROSSVALIDATION_K, DLC_PROJECT_PATH, HDBSCAN_PARAMS, HOLDOUT_PERCENT, MLP_PARAMS, OUTPUT_PATH, TRAIN_FOLDERS, UMAP_PARAMS
+from bsoid.config import BSOID_BASE_PROJECT_PATH, CROSSVALIDATION_K, DLC_PROJECT_PATH, HDBSCAN_PARAMS, HOLDOUT_PERCENT, MLP_PARAMS, OUTPUT_PATH, TRAIN_FOLDERS_IN_DLC_PROJECT_toBeDeprecated, UMAP_PARAMS
 from bsoid.util import likelihoodprocessing, statistics, videoprocessing, visuals
 
 logger = config.initialize_logger(__name__)

@@ -6,6 +6,7 @@ did not adhere to DRY standards and creates a single source of statistics utilit
 """
 
 from typing import List, Tuple
+import functools
 import inspect
 import numpy as np
 import pandas as pd
@@ -14,6 +15,16 @@ from bsoid import config
 
 
 logger = config.initialize_logger(__name__)
+
+
+def mean(*args):
+    args = [arg for arg in args if arg == arg]  # Remove any 'nan' values
+    return functools.reduce(lambda x, y: x + y, args, 0) / len(args)
+
+
+def sum_args(*args):
+    args = [arg for arg in args if arg == arg]  # Remove any 'nan' values
+    return functools.reduce(lambda x, y: x + y, args, 0)
 
 
 def get_feature_distribution(features: np.ndarray):
@@ -74,7 +85,7 @@ def transition_matrix(labels) -> pd.DataFrame:  # source: bsoid_py, bsoid_umap, 
     for i, j in zip(labels, labels[1:]):
         transition_matrix[i][j] += 1
     for row in transition_matrix:
-        s = sum(row)
+        s = sum_args(row)
         if s > 0:
             row[:] = [f / s for f in row]
     df_transition_matrix = pd.DataFrame(transition_matrix)
@@ -83,7 +94,7 @@ def transition_matrix(labels) -> pd.DataFrame:  # source: bsoid_py, bsoid_umap, 
 
 def rle(in_array) -> Tuple:  # TODO: rename function for clarity?
     """
-    Run length encoding. Partial credit to R rle function. Multi datatype arrays catered-for including non-Numpy.
+    Run length encoding. Partial credit to R's rle() function. Multi datatype arrays catered-for including non-Numpy.
 
     {
         - R Documentation excerpt -
@@ -121,7 +132,7 @@ def rle(in_array) -> Tuple:  # TODO: rename function for clarity?
     return None, None, None
 
 
-def behv_time(labels: np.ndarray):  # TODO: rename function for clarity?
+def behv_time(labels: np.ndarray) -> List:  # TODO: rename function for clarity
     """
     TODO: med: purpose
     :param labels: 1D array, predicted labels
@@ -131,7 +142,7 @@ def behv_time(labels: np.ndarray):  # TODO: rename function for clarity?
     if not isinstance(labels, np.ndarray):
         raise TypeError(f'Argument `labels` was expected to be of type np.ndarray but '
                         f'instead found {type(labels)} (value: {labels}).')
-    # TODO: rename variables for clarity?
+    # TODO: rename variables for clarity
     beh_t = []
     for i in range(len(np.unique(labels))):
         t = np.sum(labels == i) / labels.shape[0]
@@ -194,20 +205,7 @@ def behv_dur(labels) -> Tuple[pd.DataFrame, pd.DataFrame]:
     return df_runlengths, df_dur_statistics
 
 
-# TODO: rename main()? Should only be called "main" if this module is called at runtime as standalone file?
-def main(labels) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    """
-    (Original function implementation across _py, _umap, and _voc submodules. Kept, for now, for
-        backwards compatibility reasons.)
-    """
-    replacement_func = get_runlengths_statistics_transition_matrix_from_labels
-    logger.error(f'This function, bsoid.util.statistics.main(), will be deprecated in future. Check back for a '
-                 f'renamed/refactored version later. '
-                 f'Current replacement: {get_runlengths_statistics_transition_matrix_from_labels.__qualname__}.'
-                 f'CALLER = {inspect.stack()[0][3]}.')
-    return replacement_func(labels)
-
-# @config.deco__log_entry_exit(logger)
+@config.deco__log_entry_exit(logger)
 def get_runlengths_statistics_transition_matrix_from_labels(labels) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """ TODO: rename function for concision when purpose made clearer
     TODO: med: purpose
@@ -222,8 +220,6 @@ def get_runlengths_statistics_transition_matrix_from_labels(labels) -> Tuple[pd.
     return df_runlengths, df_dur_statistics, tm
 
 
-### LEGACY FUNCTIONS ###################################################################################################
-
 def feat_dist(features: np.ndarray) -> Tuple[List, List, List, List]:
     """   *** DEPRECATION WARNING ***   """
     replacement_func = get_feature_distribution
@@ -231,6 +227,22 @@ def feat_dist(features: np.ndarray) -> Tuple[List, List, List, List]:
           f'{replacement_func.__qualname__} (potential caller of this function = {inspect.stack()[1][3]}).'
     logger.warning(err)
     return replacement_func(features)
+
+
+# TODO: rename main()? Should only be called "main" if this module is called at runtime as standalone file?
+def main(labels) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """
+    (Original function implementation across _py, _umap, and _voc submodules. Kept, for now, for
+        backwards compatibility reasons.)
+    """
+    replacement_func = get_runlengths_statistics_transition_matrix_from_labels
+    logger.error(f'This function, bsoid.util.statistics.main(), will be deprecated in future. Check back for a '
+                 f'renamed/refactored version later. '
+                 f'Current replacement: {get_runlengths_statistics_transition_matrix_from_labels.__qualname__}.'
+                 f'CALLER = {inspect.stack()[0][3]}.')
+    return replacement_func(labels)
+
+
 def main_app(labels, n):
     """
     TODO: why is the _app version different?

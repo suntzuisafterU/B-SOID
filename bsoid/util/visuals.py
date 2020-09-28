@@ -191,7 +191,10 @@ def plot_feats_bsoidpy_NEW(features, labels) -> None:
                 save_graph_to_file(fig, file_name)
         plt.show()
     else: raise TypeError(f'invalid type detected for labels: {type(labels)}')
+
+
 ### PLOT CLASSES ######################################################################################################
+
 def plot_classes_bsoidumap(data, assignments, **kwargs) -> object:
     """ Plot umap_embeddings for HDBSCAN assignments
     Function copied from the original bsoid_umapimplementation
@@ -225,11 +228,14 @@ def plot_classes_bsoidumap(data, assignments, **kwargs) -> object:
 
 
 @config.deco__log_entry_exit(logger)
-def plot_classes_EMGMM_assignments(data: np.ndarray, assignments, save_fig_to_file: bool, fig_file_prefix='train_assignments', **kwargs):
+def plot_GM_assignments_in_3d(data: np.ndarray, assignments, save_fig_to_file: bool, fig_file_prefix='train_assignments', show_later=False, **kwargs):
     """
     Plot trained TSNE for EM-GMM assignments
     :param data: 2D array, trained_tsne array (3 columns)
     :param assignments: 1D array, EM-GMM assignments
+    :param save_fig_to_file:
+    :param fig_file_prefix:
+    :param show_later: use draw() instead of show()
     """
     if not isinstance(data, np.ndarray):
         err = f'Expected `data` to be of type numpy.ndarray but instead found: {type(data)} (value = {data}).'
@@ -248,21 +254,25 @@ def plot_classes_EMGMM_assignments(data: np.ndarray, assignments, save_fig_to_fi
     tsne_x, tsne_y, tsne_z = data[:, 0], data[:, 1], data[:, 2]
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-    for g in np.unique(assignments):
+    for i, g in enumerate(np.unique(assignments)):
         idx = np.where(np.array(assignments) == g)
         # TODO: below error: "IndexError: index 13 is out of bounds for axis 0 with size 13"
-        ax.scatter(tsne_x[idx], tsne_y[idx], tsne_z[idx], c=colormap[g], label=g, s=s, marker=marker, alpha=alpha)
+        ax.scatter(tsne_x[idx], tsne_y[idx], tsne_z[idx], c=colormap[i], label=g, s=s, marker=marker, alpha=alpha)
     ax.set_xlabel('Dim. 1')
     ax.set_ylabel('Dim. 2')
     ax.set_zlabel('Dim. 3')
     ax.view_init(70, 135)
     plt.title(title)
     plt.legend(ncol=3)
-    plt.show()
+    if show_later:
+        plt.draw()
+    else:
+        plt.show()
     # my_file = 'train_assignments'
     if save_fig_to_file:
         file_name = f'{fig_file_prefix}_{time_str}'  # fig.savefig(os.path.join(config.OUTPUT_PATH, f'{fig_file_prefix}_{time_str}.svg'))
         save_graph_to_file(fig, file_name)
+
 
 # TODO: central difference b/w APP and UMAP is what is returned -- Tuple or solely a Fig
 def plot_classes_bsoidapp(data, assignments) -> Tuple:
@@ -291,6 +301,7 @@ def plot_classes_bsoidapp(data, assignments) -> Tuple:
 
 
 ### PLOT ACCURACY ######################################################################################################
+
 @config.deco__log_entry_exit(logger)
 def plot_accuracy_MLP(scores, show_plot=config.PLOT_GRAPHS, save_fig_to_file=config.SAVE_GRAPHS_TO_FILE, fig_file_prefix='classifier_accuracy_score', **kwargs) -> Tuple:
     """
@@ -327,6 +338,8 @@ def plot_accuracy_MLP(scores, show_plot=config.PLOT_GRAPHS, save_fig_to_file=con
         fig_file_name = f'{fig_file_prefix}_{time_str}'
         save_graph_to_file(fig, fig_file_name)
     return fig, plt
+
+
 @config.deco__log_entry_exit(logger)
 def plot_accuracy_SVM(scores, save_fig_to_file=config.SAVE_GRAPHS_TO_FILE,
                       fig_file_prefix='classifier_accuracy_score', **kwargs):
@@ -461,6 +474,7 @@ def plot_feats_bsoidpy(features, labels) -> None:
         plt.show()
     else: raise TypeError(f'invalid type detected for labels: {type(labels)}')
 
+
 @config.deco__log_entry_exit(logger)
 def plot_feats_bsoidUMAPAPP(features, labels: list) -> None:
     """
@@ -557,6 +571,7 @@ def plot_feats_bsoidUMAPAPP(features, labels: list) -> None:
         type_err = f''
         logger.error(type_err)
         raise TypeError(type_err)
+
 
 @config.deco__log_entry_exit(logger)
 def plot_feats_bsoidvoc(features, labels: list) -> None:
@@ -677,7 +692,7 @@ def plot_tmat(transition_matrix: np.ndarray, fps: int, save_fig_to_file=True, fi
     return replacement_func(transition_matrix, fps, save_fig_to_file, fig_file_prefix)
 
 def plot_classes_bsoidvoc(data, assignments, save_fig_to_file=config.SAVE_GRAPHS_TO_FILE) -> None:
-    replacement_func = plot_classes_EMGMM_assignments
+    replacement_func = plot_GM_assignments_in_3d
     warning = f'This function, {inspect.stack()[0][3]}, will be deprecated and instead replaced with: ' \
               f'{replacement_func.__qualname__}. Find caller, {inspect.stack()[1][3]}, and replace use.'
     logger.warning(warning)

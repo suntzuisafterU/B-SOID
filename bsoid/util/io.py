@@ -2,9 +2,9 @@
 Functions related to opening/saving files should go here
 """
 
-from typing import List
+from typing import Any, List, Tuple
 import glob
-# import inspect
+import inspect
 import numpy as np
 import os
 import pandas as pd
@@ -12,7 +12,7 @@ import re
 import sys
 
 
-from bsoid import config
+from bsoid import config, feature_engineering
 from bsoid.util import likelihoodprocessing
 from bsoid.util.bsoid_logging import get_current_function
 
@@ -130,22 +130,7 @@ def check_for_csv_files_in_path(folder_path: str, check_recursively=False) -> Li
     return filenames
 
 
-def read_in_training_folders_dlc_output_csvs(folders_paths: List[str]) -> List[pd.DataFrame]:
-    """ (Mimics old implementation)
-    For each folder specified in [input param],
-    """
-    raise NotImplementedError(f'Not yet implemented. Still needs logic worked out. Not yet used anyways.')
-    dfs_list = []
-    # TODO: low:
-    for train_folder_path in folders_paths:
-        # Get all CSVs recursively in path
-        csv_paths = check_folder_contents_for_csv_files(train_folder_path)
-        logger.debug(f'{get_current_function()}: csv paths = {csv_paths}')
-
-    return dfs_list
-
-
-def read_csvs(source) -> List[pd.DataFrame]:
+def read_csvs(*sources) -> List[pd.DataFrame]:
     """
     Give a source/sources of .csv file, return a list of Pandas DataFrames
     :param source: (valid types: str, List[str], or Tuple[str]) sources of .csv files to read in. These
@@ -186,13 +171,92 @@ def check_folder_contents_for_csv_files(absolute_folder_path: str, check_recursi
         logger.error(value_err)
         raise ValueError(value_err)
     # Continue if values valid
-
     path_to_check_for_csvs = f'{absolute_folder_path}{os.path.sep}**{os.path.sep}*.csv'
     logger.debug(f'{get_current_function()}: Path that is being checked using glob selection: {path_to_check_for_csvs}')
     filenames = glob.glob(path_to_check_for_csvs, recursive=check_recursively)
     likelihoodprocessing.sort_list_nicely_in_place(filenames)
     logger.info(f'{get_current_function()}: Total files found: {len(filenames)}. List of files found: {filenames}.')
     return filenames
+
+
+### Legacy funcs kept for continuity
+
+def get_videos_from_folder_in_BASEPATH(folder_name: str, video_extension: str = 'mp4') -> List[str]:
+    """ * Legacy *
+    Previously named `get_video_names()`
+    Gets a list of video files within a folder
+    :param folder_name: str, folder path. Must reside in BASE_PATH.
+    :param video_extension:
+    :return: (List[str]) video file names all of which have a .mp4 extension
+    """
+    if not isinstance(folder_name, str):
+        err = f'`{inspect.stack()[0][3]}(): folder_name was expected to be of ' \
+              f'type str but instead found {type(folder_name)}.'
+        logger.error(err)
+        raise TypeError(err)
+    path_to_folder = os.path.join(config.DLC_PROJECT_PATH, folder_name)
+
+    path_to_folder_with_glob = f'{path_to_folder}/*.{video_extension}'
+    logger.debug(f'{inspect.stack()[0][3]}(): Path to check for videos: {path_to_folder_with_glob}.')
+    video_names = glob.glob(path_to_folder_with_glob)
+    likelihoodprocessing.sort_list_nicely_in_place(video_names)
+    return video_names
+
+
+def get_filenames_csvs_from_folders_recursively_in_dlc_project_path(folder: str) -> List:
+    """
+    Get_filenames() makes the assumption that the folder is in PROJECT Path; however, it is an obfuscated assumption
+    and bad. A new function that DOES NOT RESOLVE PATH IMPLICITLY WITHIN should be created and used.
+    :param folder:
+    :return:
+    """
+    path_to_check_for_csvs = f'{config.DLC_PROJECT_PATH}{os.path.sep}{folder}{os.path.sep}**{os.path.sep}*.csv'
+    logger.debug(f'{get_current_function()}():Path that is being checked using glob selection:{path_to_check_for_csvs}')
+    filenames = glob.glob(path_to_check_for_csvs, recursive=True)
+    likelihoodprocessing.sort_list_nicely_in_place(filenames)
+    logger.info(f'{get_current_function()}(): Total files found: {len(filenames)}. List of files found: {filenames}.')
+    return filenames
+
+
+def import_csvs_data_from_folders_in_PROJECTPATH_and_process_data(folders_in_project_path: list) -> Tuple[List[List[str]], List[np.ndarray], List]:
+    """
+    Import multiple folders containing .csv files and process them
+    :param folders_in_project_path: List[str]: Data folders
+    :return filenames: list, data filenames
+    :return data: List of arrays, filtered csv data
+    :return perc_rect_li: list, percent filtered
+    """
+    # TODO: what does `raw_data_list` do? It looks like a variable without a purpose. It appends but does not return.
+
+    if len(folders_in_project_path) == 0:
+        empty_folders_list_err = f'{inspect.stack()[0][3]}: argument `folders` list is empty. No folders to check.'
+        logger.error(empty_folders_list_err)
+        raise ValueError(empty_folders_list_err)
+
+    file_names_list, raw_data_list, list_of_arrays_of_data, perc_rect_list = [], [], [], []
+    # Iterate over folders
+    for idx_folder, folder in enumerate(folders_in_project_path):  # Loop through folders
+        filenames_found_in_current_folder: List[str] = get_filenames_csvs_from_folders_recursively_in_dlc_project_path(folder)
+        for idx_filename, filename in enumerate(filenames_found_in_current_folder):
+            logger.debug(f'{get_current_function()}(): Importing CSV file #{idx_filename+1}, {filename}, from folder #{idx_folder+1}')
+            df_current_file_data = pd.read_csv(filename, low_memory=False)
+            array_current_file_data_adaptively_filtered, perc_rect = feature_engineering.process_raw_data_and_filter_adaptively(df_current_file_data)
+            logger.debug(f'{get_current_function()}(): Done preprocessing (x,y) from file #{idx_filename+1}, folder #{idx_folder+1}.')
+            raw_data_list.append(df_current_file_data)
+            perc_rect_list.append(perc_rect)
+            list_of_arrays_of_data.append(array_current_file_data_adaptively_filtered)
+        file_names_list.append(filenames_found_in_current_folder)
+        logger.debug(f'{get_current_function()}(): Processed {len(filenames_found_in_current_folder)} CSV files from folder: {folder}')
+    # array_of_arrays_of_data: np.ndarray = np.array(data_list)
+    logger.info(f'{get_current_function()}(): Processed a total of {len(list_of_arrays_of_data)} CSV files')  # and compiled into a {array_of_arrays_of_data.shape} data list/array.')
+    return file_names_list, list_of_arrays_of_data, perc_rect_list
+
+
+def import_folders_app(ost_project_path, input_folders_list: list, BODYPARTS: dict) -> Tuple[List, List, np.ndarray, List]:
+    """ the _app version of import folders """
+    warning = f'Change usage from lilkelihoodprocessing to io. Caller = {inspect.stack()[1][3]}'
+    logger.warning(warning)
+    return import_folders_app(ost_project_path, input_folders_list, BODYPARTS)
 
 
 if __name__ == '__main__':
