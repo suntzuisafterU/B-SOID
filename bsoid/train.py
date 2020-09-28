@@ -538,7 +538,7 @@ def get_data_train_TSNE_then_GMM_then_SVM_then_return_EVERYTHING__py(train_folde
     # Plot to view progress if necessary
     if config.PLOT_GRAPHS:
         logger.debug(f'Enter GRAPH PLOTTING section of {inspect.stack()[0][3]}')
-        visuals.plot_classes_EMGMM_assignments(trained_tsne_list, gmm_assignments, config.SAVE_GRAPHS_TO_FILE)
+        visuals.plot_GM_assignments_in_3d(trained_tsne_list, gmm_assignments, config.SAVE_GRAPHS_TO_FILE)
         visuals.plot_accuracy_SVM(
             scores, fig_file_prefix='TODO__replaceThisFigFilePrefixToSayIfItsKFOLDAccuracyOrTestAccuracy')
         visuals.plot_feats_bsoidpy(features_10fps, gmm_assignments)
@@ -550,5 +550,5 @@ def get_data_train_TSNE_then_GMM_then_SVM_then_return_EVERYTHING__py(train_folde
 ########################################################################################################################
 
 if __name__ == '__main__':
-    get_data_train_TSNE_then_GMM_then_SVM_then_return_EVERYTHING__py(config.TRAIN_FOLDERS_IN_DLC_PROJECT)  # originally: main()
+    get_data_train_TSNE_then_GMM_then_SVM_then_return_EVERYTHING__py(config.TRAIN_FOLDERS_IN_DLC_PROJECT_toBeDeprecated)  # originally: main()
     pass

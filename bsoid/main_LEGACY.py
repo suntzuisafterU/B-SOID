@@ -182,10 +182,10 @@ def run_py(predict_folders):  # TODO: HIGH: break up this function and rename. T
 @config.deco__log_entry_exit(logger)
 def test_function_to_build_then_run_py():
     logger.debug(f'STARTING _PY TRAIN SERIES')
-    build_py(config.TRAIN_FOLDERS_IN_DLC_PROJECT)
+    build_py(config.TRAIN_FOLDERS_IN_DLC_PROJECT_toBeDeprecated)
     logger.debug(f'ENDED _PY TRAIN SERIES SUCCESSFULLY')
     logger.debug(f'STARTING _PY RUN SERIES')
-    run_py(config.PREDICT_FOLDERS_IN_DLC_PROJECT)
+    run_py(config.PREDICT_FOLDERS_IN_DLC_PROJECT_toBeDeprecated)
     logger.debug(f'ENDING _PY RUN SERIES. SUCCESS!')
     logger.debug(f'End of test.')
 
@@ -449,35 +449,35 @@ def main_umap(train_folders, predict_folders):
            scores, nn_assignments, data_new, fs_labels
 
 
-## TODO: Q: retrain() was commented-out by authors...not sure if keep or delete
-# def retrain_umap(train_folders):
-#     """
-#     :param train_folders: list, folders to build behavioral model on
-#     :returns f_10fps, umap_embeddings, nn_classifier, scores, nn_assignments: see bsoid_umap.train
-#     Automatically saves single CSV file containing training outputs.
-#     Automatically saves classifier in OUTPUTPATH with MODELNAME in LOCAL_CONFIG
-#     """
-#     with open(os.path.join(OUTPUT_PATH, str.join('', ('bsoid_', config.MODEL_NAME, '.sav'))), 'rb') as fr:
-#         f_10fps, umap_embeddings, hdb_assignments, soft_assignments, soft_clusters, nn_classifier, scores, \
-#         nn_assignments = joblib.load(fr)
-#     from bsoid_umap.util.videoprocessing import vid2frame
-#     vid2frame(VID_NAME, f_10fps[ID], fps_video, FRAME_DIR)
-#     labels_df = pd.read_csv('/Users/ahsu/Sign2Speech/Notebook/labels.csv', low_memory=False)
-#
-#     import bsoid_umap.retrain
-#     f_10fps, umap_embeddings, nn_classifier, scores, nn_assignments = bsoid_umap.train.main(train_folders)
-#     alldata = np.concatenate([umap_embeddings, nn_assignments.reshape(len(nn_assignments), 1)], axis=1)
-#     micolumns = pd.MultiIndex.from_tuples([('UMAP embeddings', 'Dimension 1'), ('', 'Dimension 2'),
-#                                            ('', 'Dimension 3'), ('Neural Net', 'Assignment No.')],
-#                                           names=['Type', 'Frame@10Hz'])
-#     training_data = pd.DataFrame(alldata, columns=micolumns)
-#     timestr = time.strftime("_%Y%m%d_%H%M")
-#     training_data.to_csv((os.path.join(OUTPUT_PATH, str.join('', ('bsoid_trainlabels_10Hz', timestr, '.csv')))),
-#                          index=True, chunksize=10000, encoding='utf-8')
-#     with open(os.path.join(OUTPUT_PATH, str.join('', ('bsoid_', config.MODEL_NAME, '.sav'))), 'wb') as f:
-#         joblib.dump([f_10fps, umap_embeddings, nn_classifier, scores, nn_assignments], f)
-#     logger.info('Saved.')
-#     return f_10fps, umap_embeddings, nn_classifier, scores, nn_assignments
+def retrain_umap(train_folders):
+    """
+    :param train_folders: list, folders to build behavioral model on
+    :returns f_10fps, umap_embeddings, nn_classifier, scores, nn_assignments: see bsoid_umap.train
+    Automatically saves single CSV file containing training outputs.
+    Automatically saves classifier in OUTPUTPATH with MODELNAME in LOCAL_CONFIG
+    """
+    with open(os.path.join(OUTPUT_PATH, str.join('', ('bsoid_', config.MODEL_NAME, '.sav'))), 'rb') as fr:
+        f_10fps, umap_embeddings, hdb_assignments, soft_assignments, soft_clusters, nn_classifier, scores, \
+        nn_assignments = joblib.load(fr)
+    util.videoprocessing.write_annotated_frames_to_disk_from_video(
+        config.VIDEO_TO_LABEL_PATH, f_10fps[config.IDENTIFICATION_ORDER], config.VIDEO_FPS, config.FRAMES_OUTPUT_PATH)
+    labels_df = pd.read_csv('/Users/ahsu/Sign2Speech/Notebook/labels.csv', low_memory=False)
+
+    import bsoid_umap.train
+    f_10fps, umap_embeddings, nn_classifier, scores, nn_assignments = \
+        train.get_data_train_TSNE_then_GMM_then_SVM_then_return_EVERYTHING__py(train_folders)
+    alldata = np.concatenate([umap_embeddings, nn_assignments.reshape(len(nn_assignments), 1)], axis=1)
+    micolumns = pd.MultiIndex.from_tuples([('UMAP embeddings', 'Dimension 1'), ('', 'Dimension 2'),
+                                           ('', 'Dimension 3'), ('Neural Net', 'Assignment No.')],
+                                          names=['Type', 'Frame@10Hz'])
+    training_data = pd.DataFrame(alldata, columns=micolumns)
+    timestr = time.strftime("_%Y%m%d_%H%M")
+    training_data.to_csv((os.path.join(OUTPUT_PATH, str.join('', ('bsoid_trainlabels_10Hz', timestr, '.csv')))),
+                         index=True, chunksize=10000, encoding='utf-8')
+    with open(os.path.join(OUTPUT_PATH, str.join('', ('bsoid_', config.MODEL_NAME, '.sav'))), 'wb') as f:
+        joblib.dump([f_10fps, umap_embeddings, nn_classifier, scores, nn_assignments], f)
+    logger.info('Saved.')
+    return f_10fps, umap_embeddings, nn_classifier, scores, nn_assignments
 
 
 ########################################################################################################################
@@ -485,24 +485,24 @@ def main_umap(train_folders, predict_folders):
 @config.deco__log_entry_exit(logger)
 def test_function_to_build_then_run_umap():
     logger.debug(f'STARTING _UMAP TRAIN SERIES')
-    build_umap(config.TRAIN_FOLDERS_IN_DLC_PROJECT)
+    build_umap(config.TRAIN_FOLDERS_IN_DLC_PROJECT_toBeDeprecated)
     logger.debug(f'ENDED _UMAP TRAIN SERIES SUCCESSFULLY')
     logger.debug(f'STARTING _UMAP RUN SERIES')
-    run_umap(config.PREDICT_FOLDERS_IN_DLC_PROJECT)
+    run_umap(config.PREDICT_FOLDERS_IN_DLC_PROJECT_toBeDeprecated)
     logger.debug(f'ENDING _UMAP RUN SERIES. SUCCESS!')
     logger.debug(f'End of test.')
 @config.deco__log_entry_exit(logger)
 def test_function_to_build_then_run_voc():
     logger.debug(f'STARTING _VOC TRAIN SERIES')
-    build_voc(config.TRAIN_FOLDERS_IN_DLC_PROJECT)
+    build_voc(config.TRAIN_FOLDERS_IN_DLC_PROJECT_toBeDeprecated)
     logger.debug(f'ENDED _VOC TRAIN SERIES SUCCESSFULLY')
     logger.debug(f'STARTING _VOC RUN SERIES')
-    run_voc(config.PREDICT_FOLDERS_IN_DLC_PROJECT)
+    run_voc(config.PREDICT_FOLDERS_IN_DLC_PROJECT_toBeDeprecated)
     logger.debug(f'ENDING _VOC RUN SERIES. SUCCESS!')
     logger.debug(f'End of test.')
 @config.deco__log_entry_exit(logger)
 def test_build_py():
-    build_py(config.TRAIN_FOLDERS_IN_DLC_PROJECT)
+    build_py(config.TRAIN_FOLDERS_IN_DLC_PROJECT_toBeDeprecated)
 
 # if __name__ == "__main__":  # umap
 #     f_10fps, f_10fps_sc, umap_embeddings, hdb_assignments, soft_assignments, soft_clusters, nn_classifier, \

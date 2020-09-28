@@ -146,30 +146,28 @@ TRAIN_DATA_FOLDER_PATH = os.path.abspath(configuration.get('PATH', 'TRAIN_DATA_F
 
 PREDICT_DATA_FOLDER_PATH = configuration.get('PATH', 'PREDICT_DATA_FOLDER_PATH')
 
-assert os.path.isabs(TRAIN_DATA_FOLDER_PATH), f'TODO, NOT AN ABS PATH 456'
+assert os.path.isabs(TRAIN_DATA_FOLDER_PATH), f'TODO, NOT AN ABS PATH review me! {__file__}'
 
 
-TRAIN_FOLDERS_IN_DLC_PROJECT = [  # TODO: DEPREC WARNING
+TRAIN_FOLDERS_IN_DLC_PROJECT_toBeDeprecated = [  # TODO: DEPREC WARNING
     'sample_train_data_folder',
 ]
-PREDICT_FOLDERS_IN_DLC_PROJECT: List[str] = [  # TODO: DEPREC WARNING
+PREDICT_FOLDERS_IN_DLC_PROJECT_toBeDeprecated: List[str] = [  # TODO: DEPREC WARNING
     'sample_predic_data_folder',
 ]
 
-# TRAIN FOLDERS: TRAIN_FOLDERS are expected to exist in the DLC Project path
+TRAIN_FOLDERS_PATHS_toBeDeprecated = [os.path.join(DLC_PROJECT_PATH, folder)
+                                      for folder in TRAIN_FOLDERS_IN_DLC_PROJECT_toBeDeprecated if not os.path.isdir(folder)]
 
-TRAIN_FOLDERS_PATHS = [os.path.join(DLC_PROJECT_PATH, folder) for folder in TRAIN_FOLDERS_IN_DLC_PROJECT if not os.path.isdir(folder)]
-
-# PREDICT FOLDERS:
-
-PREDICT_FOLDERS_PATHS = [os.path.join(DLC_PROJECT_PATH, folder) for folder in PREDICT_FOLDERS_IN_DLC_PROJECT]
+PREDICT_FOLDERS_PATHS_toBeDeprecated = [os.path.join(DLC_PROJECT_PATH, folder)
+                                        for folder in PREDICT_FOLDERS_IN_DLC_PROJECT_toBeDeprecated]
 
 # Asserts
-for folder_path in TRAIN_FOLDERS_PATHS:
+for folder_path in TRAIN_FOLDERS_PATHS_toBeDeprecated:
     assert os.path.isdir(folder_path), f'Training folder does not exist: {folder_path}'
     assert os.path.isabs(folder_path), f'Predict folder PATH is not absolute and should be: {folder_path}'
 
-for folder_path in PREDICT_FOLDERS_PATHS:
+for folder_path in PREDICT_FOLDERS_PATHS_toBeDeprecated:
     assert os.path.isdir(folder_path), f'Prediction folder does not exist: {folder_path}'
     assert os.path.isabs(folder_path), f'Predict folder PATH is not absolute and should be: {folder_path}'
 

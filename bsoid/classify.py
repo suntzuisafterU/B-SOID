@@ -93,6 +93,26 @@ def bsoid_extract_app(data, fps) -> List:
     return features_10fps
 
 
+def integrate_features_into_100ms_bins(data: List[np.ndarray], features: List[np.ndarray], fps) -> List[np.ndarray]:
+    fps_divide_10: int = round(fps / 10)
+    f_10fps = []
+    for n in range(len(features)):
+        feats1 = np.zeros(len(data[n]))
+        for k in range(fps_divide_10 - 1, len(features[n][0]), fps_divide_10):
+            if k > fps_divide_10 - 1:
+                feats1 = np.concatenate((
+                    feats1.reshape(feats1.shape[0], feats1.shape[1]),
+                    np.hstack((np.mean((features[n][0:4, range(k - round(fps / 10), k)]), axis=1), np.sum((features[n][4:7, range(k - round(fps / 10), k)]),axis=1))).reshape(len(features[0]), 1)
+                ), axis=1)
+            else:
+                feats1 = np.hstack((np.mean((features[n][0:4, range(k - round(fps / 10), k)]), axis=1),
+                                    np.sum((features[n][4:7, range(k - round(fps / 10), k)]), axis=1))).reshape(
+                    len(features[0]), 1)
+        logger.info(f'Done integrating features into 100ms bins from CSV file {n+1}.')
+        f_10fps.append(feats1)
+    return f_10fps
+
+
 def bsoid_predict_py(features, trained_scaler, clf_SVM) -> List:
     """
     :param features: list, multiple feats (original feature space)
@@ -122,7 +142,7 @@ def bsoid_predict_app(features, clf_MLP) -> List:
     labels_fs_low = []
     for i in range(len(features)):
         labels = clf_MLP.predict(features[i].T)
-        logger.info(f'Done predicting file {i+1} with {features[i].shape[1]} instances '
+        logger.info(f'Done predicting file {i+1} with {features[i].shape[1]} instances/entries '
                     f'in {features[i].shape[0]} D space.')
         labels_fs_low.append(labels)
     logger.info(f'Done predicting a total of {len(features)} files.')

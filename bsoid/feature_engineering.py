@@ -22,43 +22,33 @@ DELETE THIS STRING
 Author also specifies that: the features are also smoothed over, or averaged across,
     a sliding window of size equivalent to 60ms (30ms prior to and after the frame of interest).
 """
-from bhtsne import tsne as TSNE_bhtsne
-from sklearn.mixture import GaussianMixture
-from sklearn.manifold import TSNE as TSNE_sklearn
-from sklearn.metrics import plot_confusion_matrix
-from sklearn.model_selection import train_test_split, cross_val_score
-from sklearn.neural_network import MLPClassifier
-from sklearn.preprocessing import StandardScaler
-from sklearn.svm import SVC
 from tqdm import tqdm
 from typing import Any, Dict, List, Tuple
-import hdbscan
 import inspect
 import itertools
 import math
-import matplotlib.pyplot as plt
 import numpy as np
 import os
 import pandas as pd
-import time
 import umap
 
 from bsoid import config
-from bsoid.util import check_arg, likelihoodprocessing, visuals
+from bsoid.util import check_arg, likelihoodprocessing, visuals, statistics
 
 logger = config.initialize_logger(__name__)
 
 
-########################################################################################################################
+#### NEW ###############################################################################################################
 
 def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.DataFrame, List[float]]:  # TODO: implement new adaptive-filter_data for new data pipelineing
     """ *NEW* --> Successor function to old method in likelikhood processing. Uses new DF format.
     Takes in a ____ TODO...
+    Usually this function is completed directly after reading in dlc data
 
     (Described as adaptive high-pass filter by original author)
     Follows same form as legacy only for continuity reasons. Can be refactored for performance later.
 
-    Note: you'll end up with 1 less row as a result than you started with.
+    Note: the top row ends up as ZERO according to original algorithm implementation
     :param in_df:
     :param df_input_data: (DataFrame) expected: raw DataFrame of DLC results right after
         reading in using bsoid.read_csv().
@@ -91,7 +81,6 @@ def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.Da
         type_err = f'Input data was expected to be of type pandas.DataFrame but instead found: {type(in_df)}.'
         logger.error(type_err)
         raise TypeError(type_err)
-
     # Continue
     # # Scorer
     if 'scorer' not in in_df.columns:
@@ -119,10 +108,10 @@ def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.Da
     # Resolve kwargs
     df = in_df.copy() if copy else in_df
 
-    x_index, y_index, l_index, percent_filterd_per_bodypart__perc_rect = [], [], [], []
 
     # Loop over columns, aggregate which indices in the data fall under which category.
     #   x, y, and likelihood are the three main types of columns output from DLC.
+    x_index, y_index, l_index, percent_filterd_per_bodypart__perc_rect = [], [], [], []
     map_back_index_to_col_name = {}
     coords_cols_names = []
     for idx_col, col in enumerate(df.columns):
@@ -139,9 +128,9 @@ def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.Da
         elif column_suffix == 'coords':  # todo: delte this elif. Coords should be dropped with the io.read_csv implementation?
             # Record and check later...likely shouldn't exist anymore since its just a numbered col with no data.
             coords_cols_names.append(col)
-        elif col == 'scorer': pass  # Ignore and keep 'scorer' column. It tracks the data source.
-        elif col == 'source':
-            pass
+        elif col == 'scorer': pass  # Ignore 'scorer' column. It tracks the DLC data source.
+        elif col == 'source': pass  # Keeps track of CSV/h5 source
+        elif col == 'frame': pass  # Keeps track of frame numbers
         else:
             err = f'{inspect.stack()[0][3]}(): An inappropriate column header was found: ' \
                   f'{column_suffix}. Column = "{col}". ' \
@@ -204,9 +193,10 @@ def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.Da
                 array_data_filtered[i + 1, (2 * idx_col_i):(2 * idx_col_i + 2)] = \
                     np.hstack([data_x[i, idx_col_i], data_y[i, idx_col_i]])
 
-    ### Adaptive filtering is all done. Clean up and return.
-    # Remove first row in data array (values are all zeroes)
-    array_filtered_data_without_first_row = np.array(array_data_filtered[1:]).astype(np.float)
+    # ### Adaptive filtering is all done. Clean up and return.
+    # # Remove first row in data array (values are all zeroes)
+    # array_filtered_data_without_first_row = np.array(array_data_filtered[1:]).astype(np.float)
+    array_filtered_data_without_first_row = np.array(array_data_filtered[:]).astype(np.float)
 
     # Create DataFrame with columns by looping over x/y indices.
     columns_ordered: List[str] = []
@@ -219,14 +209,19 @@ def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.Da
     # Re-add source
     if source is not None:
         df_adaptively_filtered_data['source'] = source
-
+    df_adaptively_filtered_data['frame'] = range(1, len(df_adaptively_filtered_data)+1)
+    if len(in_df) != len(df_adaptively_filtered_data):
+        missing_rows_err = f'Input df has {len(df)} rows but output df ' \
+                           f'has {len(df_adaptively_filtered_data)}. Should be same number.'
+        logger.error(missing_rows_err)
+        raise ValueError(missing_rows_err)
     return df_adaptively_filtered_data, percent_filterd_per_bodypart__perc_rect
 
 
-def engineer_7_features_dataframe(df: pd.DataFrame, features_names_7: List[str] = ['DistFrontPawsTailbaseRelativeBodyLength','DistBackPawsBaseTailRelativeBodyLength','InterforepawDistance','BodyLength','SnoutToTailbaseChangeInAngle','SnoutSpeed','TailbaseSpeed', ], map_names: dict = None, copy: bool = False, win_len: int = None) -> pd.DataFrame:
+def engineer_7_features_dataframe(df: pd.DataFrame, features_names_7: List[str] = ['DistFrontPawsTailbaseRelativeBodyLength', 'DistBackPawsBaseTailRelativeBodyLength', 'InterforepawDistance', 'BodyLength', 'SnoutToTailbaseChangeInAngle', 'SnoutSpeed', 'TailbaseSpeed', ], map_names: dict = None, copy: bool = False, win_len: int = None) -> pd.DataFrame:
     # TODO: high: keep scorer col?  <----------------------------------------------------------------------------------------------------------------****
     # TODO: review https://stackoverflow.com/questions/35215161/most-efficient-way-to-map-function-over-numpy-array
-    #   Computationally intensive.
+    #   Computationally intensive! Work on performance later.
     """ *NEW*
 
     Note: you'll end up with 1 less row than you started with on input
@@ -276,11 +271,19 @@ def engineer_7_features_dataframe(df: pd.DataFrame, features_names_7: List[str] 
         scorer = unique_scorers[0]
     else:
         scorer = None
-
+    if 'source' in df.columns:
+        unique_sources = np.unique(df['scorer'].values)
+        if len(unique_sources) != 1:
+            err = f'More than one scorer value found. Expected only 1. Scorer values: {unique_sources}'
+            logger.error(err)
+            raise ValueError(err)
+        source = unique_sources[0]
+    else:
+        source = None
     # Solve kwargs
 
     # Do
-
+    # Enumerate necessary variables for specifying data
     num_data_rows: int = len(df)
     left_shoulder_x = f'{config.get_part("LEFT_SHOULDER/FOREPAW")}_x'
     left_shoulder_y = f'{config.get_part("left_shoulder/forepaw")}_y'
@@ -404,23 +407,293 @@ def engineer_7_features_dataframe(df: pd.DataFrame, features_names_7: List[str] 
     ))
     # Create DataFrame for features. Flip the features so that the records run along the rows and the
     #   features are in the columns.
-    features_for_dataframe = features.T
-    results_cols = features_names_7
+    features_for_dataframe: np.ndarray = features.T
+    results_cols: List[str] = features_names_7
 
     df_engineered_features = pd.DataFrame(features_for_dataframe, columns=results_cols)
-    df_engineered_features['scorer'] = scorer
+    if 'scorer' in set_df_columns:
+        df_engineered_features['scorer'] = scorer
+    if 'source' in set_df_columns:
+        df_engineered_features['source'] = source
+
     return df_engineered_features
 
 
-def get_mean(arr):
+def engineer_7_features_dataframe_NOMISSINGDATA(df: pd.DataFrame, features_names_7: List[str] = ['DistFrontPawsTailbaseRelativeBodyLength', 'DistBackPawsBaseTailRelativeBodyLength', 'InterforepawDistance', 'BodyLength', 'SnoutToTailbaseChangeInAngle', 'SnoutSpeed', 'TailbaseSpeed', ], map_names: dict = None, copy: bool = False, win_len: int = None) -> pd.DataFrame:
+    # TODO: high: ensure ALL columns in input DataFrame also come out of the output
+    # TODO: review https://stackoverflow.com/questions/35215161/most-efficient-way-to-map-function-over-numpy-array
+    #   Computationally intensive! Work on performance later.
+    """ *NEW*
+    A copy of the similarly-named feature engineering function; however, the top array element is NOT chopped off,
+    ensuring that the number of sample that enter is the same number that exits.
 
-    return
+    Note: you'll end up with 1 less row than you started with on input
+    :param features_names_7:  TODO?
+    :param win_len: TODO
+    :param df: (DataFrame)
+    :param map_names (dict)
+    :param copy:
+    :return: (DataFrame)
+    """
+    if win_len is None:
+        win_len = original_feature_extraction_win_len_formula(config.VIDEO_FPS)
+
+    ###
+
+    # Args checks
+    check_arg.ensure_type(df, pd.DataFrame)
+
+    # Check for required columns
+    set_df_columns = set(df.columns)
+    required_config_features = [
+        'SNOUT/HEAD',
+        'LEFT_SHOULDER/FOREPAW',
+        'RIGHT_SHOULDER/FOREPAW',
+        'LEFT_HIP/HINDPAW',
+        'RIGHT_HIP/HINDPAW',
+        'TAILBASE',
+    ]
+    for feature in required_config_features:
+        feature_x, feature_y = f'{config.get_part(feature)}_x', f'{config.get_part(feature)}_y'
+        if feature_x not in set_df_columns:
+            err_feature_x_missing = f'`{feature_x}` is required for this feature ' \
+                                    f'engineering but was not found. All submitted columns are: {df.columns}'
+            logger.error(err_feature_x_missing)
+            raise ValueError(err_feature_x_missing)
+        if feature_y not in set_df_columns:
+            err_feature_y_missing = f'`{feature_y}` is required for this feature ' \
+                                    f'engineering but was not found. All submitted columns are: {df.columns}'
+            logger.error(err_feature_y_missing)
+            raise ValueError(err_feature_y_missing)
+    if 'scorer' in df.columns:
+        unique_scorers = np.unique(df['scorer'].values)
+        if len(unique_scorers) != 1:
+            err = f'More than one scorer value found. Expected only 1. Scorer values: {unique_scorers}'
+            logger.error(err)
+            raise ValueError(err)
+        scorer = unique_scorers[0]
+    else:
+        scorer = None
+    if 'source' in df.columns:
+        unique_sources = np.unique(df['source'].values)
+        if len(unique_sources) != 1:
+            err = f'More than one source value found. Expected only 1. source values: {unique_sources}'
+            logger.error(err)
+            raise ValueError(err)
+        source = unique_sources[0]
+    else:
+        source = None
+    # Solve kwargs
+
+    # Do
+    # Enumerate necessary variables for specifying data
+    num_data_rows: int = len(df)
+    left_shoulder_x = f'{config.get_part("LEFT_SHOULDER/FOREPAW")}_x'
+    left_shoulder_y = f'{config.get_part("left_shoulder/forepaw")}_y'
+    right_shoulder_x = f'{config.get_part("RIGHT_SHOULDER/FOREPAW")}_x'
+    right_shoulder_y = f'{config.get_part("Right_shoulder/forepaw")}_y'
+    left_hip_x = f'{config.get_part("LEFT_HIP/HINDPAW")}_x'
+    left_hip_y = f'{config.get_part("LEFT_HIP/HINDPAW")}_y'
+    right_hip_x = f'{config.get_part("RIGHT_HIP/HINDPAW")}_x'
+    right_hip_y = f'{config.get_part("RIGHT_HIP/HINDPAW")}_y'
+    tailbase_x = f'{config.get_part("Tailbase")}_x'
+    tailbase_y = f'{config.get_part("Tailbase")}_y'
+    head_x = f'{config.get_part("SNOUT/HEAD")}_x'
+    head_y = f'{config.get_part("SNOUT/HEAD")}_y'
+
+    ####################################################################################################################
+    # Create intermediate variables to solve for final features.
+
+    # fpd
+    inter_forepaw_distance = df[[left_shoulder_x, left_shoulder_y]].values - df[[right_shoulder_x, right_shoulder_y]].values  # Previously: 'fpd'
+
+    # cfp
+    cfp__center_between_forepaws = np.vstack((
+        (df[left_shoulder_x].values + df[right_shoulder_x].values) / 2,
+        (df[left_shoulder_y].values + df[right_shoulder_y].values) / 2,
+    )).T  # Previously: cfp
+
+    # chp
+    chp__center_between_hindpaws = np.vstack((
+        (df[left_hip_x].values + df[right_hip_x].values) / 2,
+        (df[left_hip_y].values + df[right_hip_y].values) / 2,
+    )).T
+    # cfp_pt
+    dFT__cfp_pt__center_between_forepaws__minus__proximal_tail = np.vstack(([
+        cfp__center_between_forepaws[:, 0] - df[tailbase_x].values,
+        cfp__center_between_forepaws[:, 1] - df[tailbase_y].values,
+    ])).T
+
+    # chp_pt
+    chp__center_between_hindpaws__minus__proximal_tail = np.vstack(([
+        chp__center_between_hindpaws[:, 0] - df[tailbase_x].values,
+        chp__center_between_hindpaws[:, 1] - df[tailbase_y].values,
+    ])).T  # chp_pt
+
+    # sn_pt
+    snout__proximal_tail__distance__aka_BODYLENGTH = np.vstack(([
+        df[head_x].values - df[tailbase_x].values,
+        df[head_y].values - df[tailbase_y].values,
+    ])).T  # previously: sn_pt
+
+    ### Create the 4 static measurement features
+    inter_forepaw_distance__normalized = np.zeros(num_data_rows)  # originally: fpd_norm
+    cfp_pt__center_between_forepaws__minus__proximal_tail__normalized = np.zeros(num_data_rows)  # originally: cfp_pt_norm
+    chp__proximal_tail__normalized = np.zeros(num_data_rows)  # originally: chp_pt_norm
+    snout__proximal_tail__distance__aka_BODYLENGTH__normalized = np.zeros(num_data_rows)  # originally: sn_pt_norm
+
+    for j in range(1, num_data_rows):
+        # Each of these steps below produces a single-valued-array (shape: (1,1)) and inserted it into the noramlized
+        inter_forepaw_distance__normalized[j] = np.array(np.linalg.norm(inter_forepaw_distance[j, :]))
+        cfp_pt__center_between_forepaws__minus__proximal_tail__normalized[j] = np.linalg.norm(dFT__cfp_pt__center_between_forepaws__minus__proximal_tail[j, :])
+        chp__proximal_tail__normalized[j] = np.linalg.norm(chp__center_between_hindpaws__minus__proximal_tail[j, :])
+        snout__proximal_tail__distance__aka_BODYLENGTH__normalized[j] = np.linalg.norm(snout__proximal_tail__distance__aka_BODYLENGTH[j, :])
+    ## "Smooth" features for final use
+    # Body length (1)
+    snout__proximal_tail__distance__aka_BODYLENGTH__normalized_smoothed = likelihoodprocessing.boxcar_center(
+        snout__proximal_tail__distance__aka_BODYLENGTH__normalized, win_len)  # sn_pt_norm_smth
+    # Inter-forepaw distance (4)
+    inter_forepaw_distance__normalized__smoothed = likelihoodprocessing.boxcar_center(
+        inter_forepaw_distance__normalized, win_len)  # fpd_norm_smth
+    # (2)
+    snout__center_forepaws__normalized__smoothed = likelihoodprocessing.boxcar_center(
+        snout__proximal_tail__distance__aka_BODYLENGTH__normalized -
+        cfp_pt__center_between_forepaws__minus__proximal_tail__normalized,
+        win_len)  # sn_cfp_norm_smth
+    # (3)
+    snout__center_hindpaws__normalized__smoothed = likelihoodprocessing.boxcar_center(
+        snout__proximal_tail__distance__aka_BODYLENGTH__normalized -
+        chp__proximal_tail__normalized,
+        win_len)  # sn_chp_norm_smth
+
+    ### Create the 3 time-varying features (out of a total of 7 final features)
+    snout__proximal_tail__angle = np.zeros(num_data_rows - 1)  # originally: sn_pt_ang
+    snout_speed__aka_snout__displacement = np.zeros(num_data_rows - 1)  # originally: sn_disp
+    tail_speed__aka_proximal_tail__displacement = np.zeros(num_data_rows - 1)  # originally: pt_disp
+    for k in range(num_data_rows - 1):
+        a_3d = np.hstack([snout__proximal_tail__distance__aka_BODYLENGTH[k, :], 0])
+        b_3d = np.hstack([snout__proximal_tail__distance__aka_BODYLENGTH[k + 1, :], 0])
+        c = np.cross(b_3d, a_3d)
+        snout__proximal_tail__angle[k] = np.dot(
+            np.dot(np.sign(c[2]), 180) / np.pi, math.atan2(np.linalg.norm(c), np.dot(
+                snout__proximal_tail__distance__aka_BODYLENGTH[k, :],
+                snout__proximal_tail__distance__aka_BODYLENGTH[k + 1, :])))
+
+        snout_speed__aka_snout__displacement[k] = np.linalg.norm(
+            # df[[head_x, head_y]].iloc[k + 1].values -  # TODO: IMPORTANT ******************* While this snout speed implementation matches the legacy implementation, is it really generating snout speed at all? ....
+            # df[[head_x, head_y]].iloc[k].values)
+            df[[head_x, ]].iloc[k + 1].values -  # TODO: IMPORTANT ******************* While this snout speed implementation matches the legacy implementation, is it really generating snout speed at all? ....
+            df[[head_x, ]].iloc[k].values)
+
+        tail_speed__aka_proximal_tail__displacement[k] = np.linalg.norm(
+            # df[[tailbase_x, tailbase_y]].iloc[k+1, :].values -
+            # df[[tailbase_x, tailbase_y]].iloc[k, :].values)
+            df[[tailbase_x, ]].iloc[k + 1, :].values -
+            df[[tailbase_x, ]].iloc[k, :].values)  # TODO: why only the x?
+
+    snout__proximal_tail__angle__smoothed = likelihoodprocessing.boxcar_center(snout__proximal_tail__angle, win_len)  # sn_pt_ang_smth =>
+    snout_speed__aka_snout_displacement_smoothed = likelihoodprocessing.boxcar_center(snout_speed__aka_snout__displacement, win_len)  # sn_disp_smth =>
+    tail_speed__aka_proximal_tail__displacement__smoothed = likelihoodprocessing.boxcar_center(tail_speed__aka_proximal_tail__displacement, win_len)  # originally: pt_disp_smth
+
+    # Aggregate/organize features according to original implementation
+    # Note that the below features array is organized in shape: (number of features, number of records) which
+    #   is typically backwards from how DataFrames are composed.
+    value_to_prepend_to_time_variant_features = 0.
+    features = np.vstack((
+        snout__center_forepaws__normalized__smoothed[:],  # 2
+        snout__center_hindpaws__normalized__smoothed[:],  # 3
+        inter_forepaw_distance__normalized__smoothed[:],  # 4
+        snout__proximal_tail__distance__aka_BODYLENGTH__normalized_smoothed[:],  # 1
+        # time-varying features
+        np.insert(snout__proximal_tail__angle__smoothed[:], 0, snout__proximal_tail__angle__smoothed[0]),  # 7
+        np.insert(snout_speed__aka_snout_displacement_smoothed[:], 0, snout_speed__aka_snout_displacement_smoothed[0]),  # 5
+        np.insert(tail_speed__aka_proximal_tail__displacement__smoothed[:], 0, tail_speed__aka_proximal_tail__displacement__smoothed[0]),  # 6
+    ))
+    # Create DataFrame for features. Flip the features so that the records run along the rows and the
+    #   features are in the columns.
+    features_for_dataframe: np.ndarray = features.T
+    results_cols: List[str] = features_names_7
+
+    df_engineered_features = pd.DataFrame(features_for_dataframe, columns=results_cols)
+    if 'scorer' in set_df_columns:
+        df_engineered_features['scorer'] = scorer
+    if 'source' in set_df_columns:
+        df_engineered_features['source'] = source
+    if 'frame' in set_df_columns:
+        df_engineered_features['frame'] = df['frame'].values
+
+    return df_engineered_features
 
 
+def integrate_df_feature_into_bins(df, feature: str, method: str, n_frames: int, copy: bool = False) -> pd.DataFrame:
+    """ *NEW*
+    Use old algorithm to integrate features
+    :param df:
+    :param feature:
+    :param method:
+    :param n_frames:
+    :param copy: (bool)
+    :param fps:
+    :return:
+    """
+    # Arg checking
+    valid_methods: set = {'avg', 'sum', }
+    check_arg.ensure_type(method, str)
+    if method not in valid_methods:
+        err = f'Input method ({method}) was not a valid method- to apply to a feature. Valid methods: {valid_methods}'
+        logger.error(err)
+        raise ValueError(err)
+    if feature not in df.columns:
+        err = f'{inspect.stack()[0][3]}(): TODO: feature not found. Cannot integrate into 100ms bins.'  # TODO
+        logger.error(err)
+        raise ValueError(err)
+    # Kwarg resolution
+    df = df.copy() if copy else df
+    arr_result = np.zeros(math.ceil(len(df)/n_frames))
+    # Do
+    data_of_interest = df[feature].values
+    for i in range(0, len(df), n_frames):
+        # TODO
+        pass
+
+    return df
 
 
+def average_values_over_moving_window(data, method, n_frames: int) -> np.ndarray:
+    # Arg checking
+    valid_methods: set = {'avg', 'sum', 'mean'}
+    check_arg.ensure_type(method, str)
+    if method not in valid_methods:
+        err = f'Input method ({method}) was not a valid method- to apply to a feature. Valid methods: {valid_methods}'
+        logger.error(err)
+        raise ValueError(err)
+    if not isinstance(n_frames, int):
+        type_err = f'Invalid type found for n_Frames TODO elaborate. FOund type: {type(n_frames)}'
+        logger.error(type_err)
+        raise TypeError(type_err)
+    # Arg resolution
+    if method in {'avg', 'mean', }:
+        averaging_function = statistics.mean
+    elif method == 'sum':
+        averaging_function = statistics.sum_args
+    #
+    if isinstance(data, pd.Series):
+        data = data.values
+    # Do
+    iterators = itertools.tee(data, n_frames)
+    for i in range(len(iterators)):
+        for _ in range(i):
+            next(iterators[i], None)
 
-########################################################################################################################
+    # TODO: rename `asdf`
+    asdf = [averaging_function(*iters_tuple) for iters_tuple in itertools.zip_longest(*iterators, fillvalue=float('nan'))]
+
+    return_array = np.array(asdf)
+
+    return return_array
+
+
+### OLD ################################################################################################################
 
 def original_feature_extraction_win_len_formula(fps: int):
     """"""
@@ -600,7 +873,8 @@ def integrate_features_into_100ms_bins_LEGACY(data: List[np.ndarray], features: 
 
 def integrate_into_bins(list_of_arrays_data: pd.DataFrame, features, fps=config.VIDEO_FPS, bins_ms: int = 100):
     """
-    Taking apart the legacy implementation in order to inform the new DF implementation. This function likely wont go into any production of any kind
+    Debugging effort. Taking apart the legacy implementation in order to inform the new DF implementation.
+    This function likely wont go into any production of any kind
     :param list_of_arrays_data:
     :param features:
     :param fps:
@@ -640,74 +914,162 @@ def integrate_into_bins(list_of_arrays_data: pd.DataFrame, features, fps=config.
     return features_10fps
 
 
-###
+@config.deco__log_entry_exit(logger)
+def process_raw_data_and_filter_adaptively(df_input_data: pd.DataFrame) -> Tuple[np.ndarray, List]:
+    """ Legacy implementation.
 
-def integrate_df_feature_into_bins(df, feature: str, method: str, n_frames: int, copy: bool = False) -> pd.DataFrame:
-    """ *NEW*
-    Use old algorithm to integrate features
-    :param df:
-    :param feature:
-    :param method:
-    :param n_frames:
-    :param copy: (bool)
-    :param fps:
-    :return:
+
+    :param df_input_data: (DataFrame) expected: raw DataFrame of DLC results right after reading in using pandas.read_csv().
+    EXAMPLE `df_input_data` input:
+           scorer DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000.1  DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000.2   ...
+        1  coords                                              x                                                 y                                        likelihood   ...
+        2       0                               1017.80322265625                                 673.5625610351562                                               1.0   ...
+        3       1                             1018.4616088867188                                 663.2183837890625                                0.9999999403953552   ...
+        4       2                             1018.5991821289062                                 663.4205322265625                                               1.0   ...
+        5       3                             1013.0330810546875                                 651.7833251953125                                 0.999998927116394   ...
+
+    :return
+        : 2D array, filtered data
+        : 1D array, percent filtered per BODYPART
     """
-    # Arg checking
-    valid_methods: set = {'avg', 'sum', }
-    check_arg.ensure_type(method, str)
-    if method not in valid_methods:
-        err = f'Input method ({method}) was not a valid method- to apply to a feature. Valid methods: {valid_methods}'
-        logger.error(err)
-        raise ValueError(err)
-    if feature not in df.columns:
-        err = f'{inspect.stack()[0][3]}(): TODO: feature not found. Cannot integrate into 100ms bins.'  # TODO
-        logger.error(err)
-        raise ValueError(err)
-    # Kwarg resolution
-    df = df.copy() if copy else df
-    arr_result = np.zeros(math.ceil(len(df)/n_frames))
-    # Do
-    data_of_interest = df[feature].values
-    for i in range(0, len(df), n_frames):
-        # TODO
-        pass
+    # Type checking args
+    if not isinstance(df_input_data, pd.DataFrame):
+        raise TypeError(f'Input data was expected to be of type pandas.DataFrame but '
+                        f'instead found: {type(df_input_data)}.')
 
-    return df
+    # Continue if args valid
+    l_index, x_index, y_index, percent_filterd_per_bodypart__perc_rect = [], [], [], []
+
+    # Remove top row. The top row only contained project name headers (e.g.: [scorer, DLCModel, DLCModel, DLCModel, ...]
+    df_input_data_with_projectname_header_removed: pd.DataFrame = df_input_data[1:]
+
+    # Convert data to raw array
+    array_input_data_with_projectname_header_removed: np.ndarray = np.array(df_input_data_with_projectname_header_removed)
+
+    # Loop over columns, aggregate which indices in the data fall under which category.
+    #   x, y, and likelihood are the three main types of columns output from DLC.
+    number_of_cols = len(array_input_data_with_projectname_header_removed[0])  # number_of_cols = len(array_input_data_with_top_row_removed[0])
+    for header_idx in range(number_of_cols):  # range(len(currdf[0])):
+        current_column_header = array_input_data_with_projectname_header_removed[0][header_idx]
+        if current_column_header == "likelihood":
+            l_index.append(header_idx)
+        elif current_column_header == "x":
+            x_index.append(header_idx)
+        elif current_column_header == "y":
+            y_index.append(header_idx)
+        elif current_column_header == 'coords':
+            pass  # Ignore. Usually this is the index column and is only seen once. No data in this column.
+        else:  # Case: unexpected column suffice detected
+            err = f'An inappropriate column header was found: ' \
+                  f'{array_input_data_with_projectname_header_removed[0][header_idx]}.' \
+                  f'Check on CSV to see if has an unexpected output format.'
+            logger.error(err)
+            raise ValueError(err)
+
+    # Remove the first column (called "coords", the index which counts rows but has no useful data)
+    array_input_data_without_coords = array_input_data_with_projectname_header_removed[:, 1:]
+
+    # Slice data into separate arrays based on column names (derived earlier from the respective index)
+    data_x = array_input_data_without_coords[:, np.array(x_index) - 1]
+    data_y = array_input_data_without_coords[:, np.array(y_index) - 1]
+    data_likelihood = array_input_data_without_coords[:, np.array(l_index) - 1]
+
+    array_data_filtered = np.zeros((data_x.shape[0]-1, (data_x.shape[1]) * 2))  # Initialized as zeroes with  # currdf_filt: np.ndarray = np.zeros((data_x.shape[0]-1, (data_x.shape[1]) * 2))
+
+    logger.debug(f'{inspect.stack()[0][3]}(): Computing data threshold to forward fill any sub-threshold (x,y)...')
+
+    percent_filterd_per_bodypart__perc_rect = [0 for _ in range(data_likelihood.shape[1])]  # for _ in range(data_lh.shape[1]): perc_rect.append(0)
+
+    # Loop over data and do adaptive filtering
+    # logger.debug(f'{get_current_function()}(): Loop over data and do adaptive filtering.')
+
+    for col_j in tqdm(range(data_likelihood.shape[1]), desc=f'Adaptively filtering data...'):
+        # Get histogram. Number of bins defaults to 10.
+        histogram, bin_edges = np.histogram(data_likelihood[1:, col_j].astype(np.float))
+
+        rise_arr = np.where(np.diff(histogram) >= 0)
+
+        # Sometimes np.where returns a tuple depending on input dims, but
+        #   based on our usage here, it should be length of 1 anyways. Select first elem to get the array.
+        if isinstance(rise_arr, tuple): rise_arr = rise_arr[0]
+
+        # Get likelihood value based on value of first rise element.
+        rise_0, rise_1 = rise_arr[0], rise_arr[1]
+        if rise_0 > 1:
+            likelihood: float = (bin_edges[rise_0] + bin_edges[rise_0 - 1]) / 2
+        else:
+            likelihood: float = (bin_edges[rise_1] + bin_edges[rise_1 - 1]) / 2
+
+        # Strip off the labels at the top row
+        data_likelihood_asfloat = data_likelihood[1:, col_j].astype(np.float)
+
+        percent_filterd_per_bodypart__perc_rect[col_j] = np.sum(data_likelihood_asfloat < likelihood) / data_likelihood.shape[0]
+
+        for row_i in range(1, data_likelihood.shape[0] - 1):
+            if data_likelihood_asfloat[row_i] < likelihood:
+                array_data_filtered[row_i, (2 * col_j):(2 * col_j + 2)] = array_data_filtered[row_i - 1, (2 * col_j):(2 * col_j + 2)]
+            else:
+                array_data_filtered[row_i, (2 * col_j):(2 * col_j + 2)] = np.hstack([data_x[row_i, col_j], data_y[row_i, col_j]])
+
+    # Remove first row in data array (values are all zeroes)
+    array_filtered_data_without_first_row = np.array(array_data_filtered[1:])
+
+    # Convert all data to np.float
+    final__array_filtered_data = array_filtered_data_without_first_row.astype(np.float)  # TODO: remove this line? np.float is just an alias for Python's built-in float
+
+    return final__array_filtered_data, percent_filterd_per_bodypart__perc_rect
 
 
-def average_values_over_moving_window(data, method, n_frames: int) -> np.ndarray:
-    # Arg checking
-    valid_methods: set = {'avg', 'sum', 'mean'}
-    check_arg.ensure_type(method, str)
-    if method not in valid_methods:
-        err = f'Input method ({method}) was not a valid method- to apply to a feature. Valid methods: {valid_methods}'
-        logger.error(err)
-        raise ValueError(err)
-    if not isinstance(n_frames, int):
-        type_err = f'Invalid type found for n_Frames TODO elaborate. FOund type: {type(n_frames)}'
-        logger.error(type_err)
-        raise TypeError(type_err)
-    # Arg resolution
-    if method in {'avg', 'mean'}:
-        averaging_function = likelihoodprocessing.mean
-    elif method == 'sum':
-        averaging_function = likelihoodprocessing.sum
-    #
-    if isinstance(data, pd.Series):
-        data = data.values
-    # Do
-    iterators = itertools.tee(data, n_frames)
-    for i in range(len(iterators)):
-        for _ in range(i):
-            next(iterators[i], None)
+@config.deco__log_entry_exit(logger)
+def adaptive_filter_data_app(input_df: pd.DataFrame, BODYPARTS: dict):  # TODO: rename function for clarity?
+    """
+    TODO: purpose
+    :param input_df: object, csv data frame
+    :param BODYPARTS:
 
-    # TODO: rename `asdf`
-    asdf = [averaging_function(*iters_tuple) for iters_tuple in itertools.zip_longest(*iterators, fillvalue=float('nan'))]
+    :return currdf_filt: 2D array, filtered data
+    :return perc_rect: 1D array, percent filtered per BODYPART
+    """
+    l_index, x_index, y_index = [], [], []
+    currdf = np.array(input_df[1:])  # Removes first row (why?)
+    for body_part_key in BODYPARTS:  # TODO: indexing off of BODYPARTS keys should cause an error?
+        if currdf[0][body_part_key + 1] == "likelihood":
+            l_index.append(body_part_key)
+        elif currdf[0][body_part_key + 1] == "x":
+            x_index.append(body_part_key)
+        elif currdf[0][body_part_key + 1] == "y":
+            y_index.append(body_part_key)
 
-    return_array = np.array(asdf)
+    logger.debug('Extracting likelihood value...')
+    curr_df1 = currdf[:, 1:]
+    data_x = curr_df1[1:, np.array(x_index)]
+    data_y = curr_df1[1:, np.array(y_index)]
+    data_lh = curr_df1[1:, np.array(l_index)]
+    currdf_filt = np.zeros((data_x.shape[0] - 1, (data_x.shape[1]) * 2))
+    perc_rect = []
 
-    return return_array
+    logger.debug('Computing data threshold to forward fill any sub-threshold (x,y)...')
+    for i in range(data_lh.shape[1]):
+        perc_rect.append(0)
+    for x in tqdm(range(data_lh.shape[1])):
+        a, b = np.histogram(data_lh[1:, x].astype(np.float))
+        rise_a = np.where(np.diff(a) >= 0)
+        if rise_a[0][0] > 1:
+            llh = b[rise_a[0][0]]
+        else:
+            llh = b[rise_a[0][1]]
+        data_lh_float = data_lh[1:, x].astype(np.float)
+        perc_rect[x] = np.sum(data_lh_float < llh) / data_lh.shape[0]
+        currdf_filt[0, (2 * x):(2 * x + 2)] = np.hstack([data_x[0, x], data_y[0, x]])
+        for i in range(1, data_lh.shape[0] - 1):
+            if data_lh_float[i] < llh:
+                currdf_filt[i, (2 * x):(2 * x + 2)] = currdf_filt[i - 1, (2 * x):(2 * x + 2)]
+            else:
+                currdf_filt[i, (2 * x):(2 * x + 2)] = np.hstack([data_x[i, x], data_y[i, x]])
+    currdf_filt = np.array(currdf_filt)
+    currdf_filt = currdf_filt.astype(np.float)
+    return currdf_filt, perc_rect
+
 
 
 if __name__ == '__main__':

@@ -15,7 +15,7 @@ import numpy as np
 import os
 
 # # # B-SOiD imports # # #
-from bsoid import classify_LEGACY, config, feature_engineering
+from bsoid import config, feature_engineering
 from bsoid.util import check_arg, likelihoodprocessing, videoprocessing, visuals
 
 logger = config.initialize_logger(__name__)
@@ -158,24 +158,7 @@ def bsoid_extract_umap(data, fps=config.VIDEO_FPS) -> List:
         logger.info(f'Done integrating features into 100ms bins from CSV file {n+1}.')
         f_10fps.append(features_n)
     return f_10fps
-def integrate_features_into_100ms_bins(data: List[np.ndarray], features: List[np.ndarray], fps) -> List[np.ndarray]:
-    fps_divide_10: int = round(fps / 10)
-    f_10fps = []
-    for n in range(len(features)):
-        feats1 = np.zeros(len(data[n]))
-        for k in range(fps_divide_10 - 1, len(features[n][0]), fps_divide_10):
-            if k > fps_divide_10 - 1:
-                feats1 = np.concatenate((
-                    feats1.reshape(feats1.shape[0], feats1.shape[1]),
-                    np.hstack((np.mean((features[n][0:4, range(k - round(fps / 10), k)]), axis=1), np.sum((features[n][4:7, range(k - round(fps / 10), k)]),axis=1))).reshape(len(features[0]), 1)
-                ), axis=1)
-            else:
-                feats1 = np.hstack((np.mean((features[n][0:4, range(k - round(fps / 10), k)]), axis=1),
-                                    np.sum((features[n][4:7, range(k - round(fps / 10), k)]), axis=1))).reshape(
-                    len(features[0]), 1)
-        logger.info(f'Done integrating features into 100ms bins from CSV file {n+1}.')
-        f_10fps.append(feats1)
-    return f_10fps
+
 def bsoid_extract_features_py_without_assuming_100ms_bin_integration(data, bodyparts: dict = config.BODYPARTS_PY_LEGACY, fps: int = config.VIDEO_FPS) -> List:
     """
     Originally copied from `bsoid_py/bsoid_extract()`, this function removed the 100ms bin extraction from the end and

@@ -45,7 +45,7 @@ def build_classifier_new_pipeline(train_folders: List[str] = config.TRAIN_DATA_F
     dfs_unfiltered_list: List[pd.DataFrame] = []
 
     # Loop over train folders to fetch data
-    for train_path in config.TRAIN_FOLDERS_PATHS:
+    for train_path in config.TRAIN_FOLDERS_PATHS_toBeDeprecated:
         logger.debug(f'train_path = {train_path}')
         csv_files_paths: List[str] = util.io.check_folder_contents_for_csv_files(train_path, check_recursively=True)
         logger.debug(f'csvs = {csv_files_paths}')
@@ -59,7 +59,7 @@ def build_classifier_new_pipeline(train_folders: List[str] = config.TRAIN_DATA_F
 
     if len(dfs_unfiltered_list) == 0:
         err_zero_csvs = f'{get_current_function()}(): In the course of pulling CSVs to process in pipeline, ' \
-                         f'zero CSVs were read-in. Check that TRAIN_FOLDERS_PATHS ({config.TRAIN_FOLDERS_PATHS}) ' \
+                         f'zero CSVs were read-in. Check that TRAIN_FOLDERS_PATHS ({config.TRAIN_FOLDERS_PATHS_toBeDeprecated}) ' \
                          f'are valid spots to check for DLC csvs. '
         logger.error(err_zero_csvs)
         # For now, raise Exception just so that we can catch the bug in pathing more obviously during development.
@@ -111,7 +111,7 @@ def build_classifier_new_pipeline(train_folders: List[str] = config.TRAIN_DATA_F
         scores = cross_val_score(classifier, feats_test, labels_test,
                                  cv=config.CROSSVALIDATION_K, n_jobs=config.CROSSVALIDATION_N_JOBS)
         logger.debug(f'Enter GRAPH PLOTTING section of {inspect.stack()[0][3]}')
-        util.visuals.plot_classes_EMGMM_assignments(trained_tsne, df['assignments'], config.SAVE_GRAPHS_TO_FILE)
+        util.visuals.plot_GM_assignments_in_3d(trained_tsne, df['assignments'], config.SAVE_GRAPHS_TO_FILE)
         util.visuals.plot_accuracy_SVM(scores)
         util.visuals.plot_feats_bsoidpy(df_features_10fps, gmm_assignments)
         logger.debug(f'Exiting GRAPH PLOTTING section of {inspect.stack()[0][3]}')
@@ -171,7 +171,7 @@ def run_classifier_new_pipeline():
         raise FileNotFoundError(f'{file_not_found_err} // original EXCEPTION: {repr(fnfe)}.')
 
     # TODO: below import data BREAKS because predict folder not necessarily in DLC0
-    filenames, data_new, perc_rect = util.likelihoodprocessing.import_csvs_data_from_folders_in_PROJECTPATH_and_process_data(config.PREDICT_FOLDERS_IN_DLC_PROJECT)
+    filenames, data_new, perc_rect = util.likelihoodprocessing.import_csvs_data_from_folders_in_PROJECTPATH_and_process_data(config.PREDICT_FOLDERS_IN_DLC_PROJECT_toBeDeprecated)
     ### Extract features
     # features_new = classify.bsoid_extract_py(data_new)
     intermediate_features = feature_engineering.extract_7_features_bsoid_tsne_py(data_new)  # REPLACEMENT FOR ABOVE
@@ -219,7 +219,7 @@ def run_classifier_new_pipeline():
     all_dfs_list: List[pd.DataFrame] = []
     for i, folder in enumerate(predict_folders):  # Loop through folders
         file_names_csvs: List[
-            str] = util.likelihoodprocessing.get_filenames_csvs_from_folders_recursively_in_dlc_project_path(folder)
+            str] = io.get_filenames_csvs_from_folders_recursively_in_dlc_project_path(folder)
         for j, csv_filename in enumerate(file_names_csvs):
             logger.info(f'{inspect.stack()[0][3]}(): Importing CSV file {j + 1} from folder {i + 1}.')
             curr_df = pd.read_csv(csv_filename, low_memory=False)
