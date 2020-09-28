@@ -64,7 +64,7 @@ def sort_list_nicely_in_place(list_input: list) -> None:
 
 
 @config.deco__log_entry_exit(logger)
-def augmented_runlength_encoding(labels: Union[List, np.ndarray]) -> Tuple[List[Any], List[int], List[int]]:  # TODO: low: rename function for clarity
+def augmented_runlength_encoding(labels: Union[List, np.ndarray]) -> Tuple[List[Any], List[int], List[int]]:
     """
     TODO: med: purpose // purpose unclear
     :param labels: (list or np.ndarray) predicted labels
