@@ -22,4 +22,5 @@ from . import (
     train_LEGACY,  # TODO: potentially remove after rewiring code
 )
 from .util import check_arg, io, likelihoodprocessing, bsoid_logging, statistics, videoprocessing, visuals
+from .streamlit import home
 

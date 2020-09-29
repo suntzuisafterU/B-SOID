@@ -12,7 +12,8 @@ import os
 import pandas as pd
 import time
 
-
+# TODO: low: clean up imports
+import bsoid
 from bsoid import classify, classify_LEGACY, config, feature_engineering, train, train_LEGACY, util
 from bsoid.config import OUTPUT_PATH, VIDEO_FPS
 from bsoid.util.bsoid_logging import get_current_function  # for debugging purposes
@@ -192,7 +193,7 @@ def run_classifier_new_pipeline():
     if config.GENERATE_VIDEOS:
         if len(labels_frameshift_low) > 0:
             # 1/2 write frames to disk
-            util.videoprocessing.write_annotated_frames_to_disk_from_video(
+            util.videoprocessing.write_annotated_frames_to_disk_from_video_LEGACY(
                 config.VIDEO_TO_LABEL_PATH,
                 labels_frameshift_low[config.IDENTIFICATION_ORDER]
             )
@@ -202,7 +203,7 @@ def run_classifier_new_pipeline():
                 critical_behaviour_minimum_duration=3,
                 num_randomly_generated_examples=5,
                 frame_dir=config.FRAMES_OUTPUT_PATH,
-                output_path=config.SHORT_VIDEOS_OUTPUT_PATH
+                output_path=config.VIDEO_OUTPUT_FOLDER_PATH
             )
         else:
             logger.error(f'{inspect.stack()[0][3]}(): config.GENERATE_VIDEOS = {config.GENERATE_VIDEOS}; '
@@ -305,8 +306,10 @@ def clear_output_folders() -> None:
         delete everything in that folder except for the .placeholder file and any sub-folders there-in.
     """
     # Choose folders to clear (currently set as magic variables in function below)
-    folders_to_clear: List[str] = [config.OUTPUT_PATH, config.GRAPH_OUTPUT_PATH,
-                                   config.SHORT_VIDEOS_OUTPUT_PATH, config.FRAMES_OUTPUT_PATH]
+    folders_to_clear: List[str] = [config.OUTPUT_PATH,
+                                   config.GRAPH_OUTPUT_PATH,
+                                   config.VIDEO_OUTPUT_FOLDER_PATH,
+                                   config.FRAMES_OUTPUT_PATH, ]
     # Loop over all folders to empty
     for folder_path in folders_to_clear:
         # Parse all files in current folder_path, but exclusive placeholders, folders
@@ -358,6 +361,9 @@ def build_and_run_new_pipeline():
     run_classifier_new_pipeline()
     return
 
+
+def streamlit():
+    bsoid.streamlit.home()
 
 ########################################################################################################################
 

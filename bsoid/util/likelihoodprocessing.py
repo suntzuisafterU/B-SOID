@@ -21,6 +21,7 @@ logger = config.initialize_logger(__name__)
 
 
 ########################################################################################################################
+
 def get_current_function() -> str:
     """"""
     return inspect.stack()[1][3]
