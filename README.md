@@ -19,6 +19,8 @@ Setup instructions go here
 
 Usage instructions go here
 
+To run the streamlit app, run: `streamlit run main.py streamlit`
+
 ---
 
 ## Developer TODOs
