@@ -12,6 +12,7 @@ import multiprocessing
 import numpy as np
 import os
 import random
+import time
 
 from . import io, likelihoodprocessing
 from bsoid import config
@@ -19,31 +20,145 @@ from bsoid import config
 logger = config.initialize_logger(__name__)
 
 
-### New ################################################################################################################
+#####
+
+def generate_frame_filename(frame_idx: int, ext=config.FRAMES_OUTPUT_FORMAT) -> str:
+    """ Create a standardized way of naming frames from read-in videos """
+    total_num_length = 6
+    leading_zeroes = max(total_num_length - len(str(frame_idx)), 0)
+    name = f'frame_{"0"*leading_zeroes}{frame_idx}.{ext}'
+    return name
+
+
+def write_video_with_existing_frames(video_path, frames_dir_path, output_vid_name, output_fps=config.OUTPUT_VIDEO_FPS):  # TODO: <---------------------------------- Used just fine --------------------------------------
+    """
+
+    :param video_path:
+    :param frames_dir_path:
+    :param output_vid_name:
+    :param output_fps:
+    :return:
+    """
+    # TODO: add option to change output format (something other than mp4
+    # Get (all) existing frames to be written
+    frames = [x for x in os.listdir(config.FRAMES_OUTPUT_PATH) if x.endswith(f'.{config.FRAMES_OUTPUT_FORMAT}')]
+
+    # Extract first image in images list. Set dimensions.
+    four_character_code = cv2.VideoWriter_fourcc(*'mp4v')  # TODO: ensure fourcc can be change-able
+    first_image = cv2.imread(os.path.join(frames_dir_path, frames[0]))
+    height, width, _layers = first_image.shape
+
+    # Loop over the range generated from the total unique labels available
+
+    # Get video object, prep variables
+    cv2_video_object: cv2.VideoCapture = cv2.VideoCapture(video_path)
+    total_frames = int(cv2_video_object.get(cv2.CAP_PROP_FRAME_COUNT))
+    logger.debug(f'Total frames: {total_frames}')
+
+    # Open video writer object
+    video_writer = cv2.VideoWriter(
+        os.path.join(config.VIDEO_OUTPUT_FOLDER_PATH, f'{output_vid_name}.mp4'),  # filename
+        four_character_code,  # fourcc
+        output_fps,  # fps
+        (width, height)  # frameSize
+    )
+
+    # Loop over all images and write to file with video writer
+    log_every, i = 0, 250
+    for image in tqdm(frames, desc='Writing video...'):  # TODO: low: add progress bar
+        video_writer.write(cv2.imread(os.path.join(frames_dir_path, image)))
+        # if i % log_every == 0:
+        #     logger.debug(f'Working on iter: {i}')
+        # i += 1
+    video_writer.release()
+    cv2.destroyAllWindows()
+    return
+
 
 @config.deco__log_entry_exit(logger)
-def augmented_runlength_encoding(labels: Union[List, np.ndarray]) -> Tuple[List[Any], List[int], List[int]]:  # TODO: low: rename function for clarity
-    """
-    TODO: med: purpose // purpose unclear
-    :param labels: (list or np.ndarray) predicted labels
-    :return
-        label_list: (list) the label number
-        idx: (list) label start index
-        lengths: (list) how long each bout lasted for
-    """
-    warning = f'The version for RLE has moved from video processing. Caller = {inspect.stack()[1][3]}().' \
-              f'Ensure that the caller changes from videoprocessing version to likelihood'
-    logger.warning(warning)
-    return likelihoodprocessing.augmented_runlength_encoding(labels)
+def write_annotated_frames_to_disk_from_video_NEW(path_to_video: str, labels, fps: int = config.VIDEO_FPS, output_path: str = config.FRAMES_OUTPUT_PATH, pct_frames_to_label: float = config.PERCENT_FRAMES_TO_LABEL):
+    """ * LEGACY *
+    This function serves to supersede the old 'vid2frame()' function for future clarity.
 
+    Extracts frames every 100ms to match the labels for visualizations  # TODO: Q: are we sure it pulls frames every 100ms when the FPS is variable?
 
-def write_frame_to_file(is_frame_retrieved: bool, frame: object, label, frame_idx, frames_to_skip_after_each_write, output_path=config.FRAMES_OUTPUT_PATH):
+    Assumptions:
+        -
+
+    :param path_to_video: string, path to video
+    :param labels: 1D array, labels from training
+    :param fps: scalar, frame-rate of original camera
+    :param output_path: string, path to output
+    :param pct_frames_to_label:
+    # TODO: med: analyze use of magic variables in func.
+    """
+    if not os.path.isfile(path_to_video):  # Check if path to video exists.
+        err = f'{__name__}:{inspect.stack()[0][3]}Path to video was not found. Path = {path_to_video}'
+        logger.error(err)
+        raise ValueError(err)
+
+    #
+    frames_to_skip_after_each_write = round(1 / pct_frames_to_label)
+    cv2_video_object = cv2.VideoCapture(path_to_video)
+    progress_bar = tqdm(total=int(cv2_video_object.get(cv2.CAP_PROP_FRAME_COUNT)), desc='Writing images to file...')
+    # labels = np.hstack((labels[0], labels))  # fill the first frame  # TODO: why need to fill first frame?
+    frame_count = 0
+    i = 0
     font_scale, font = 1, cv2.FONT_HERSHEY_COMPLEX
     rectangle_bgr = (0, 0, 0)
+    while cv2_video_object.isOpened():
+        is_frame_retrieved, frame = cv2_video_object.read()
+        if is_frame_retrieved:
+            # Prepare writing info onto image
+            text_width, text_height = cv2.getTextSize(labels[i], font, fontScale=font_scale, thickness=1)[0]
+            # TODO: evaluate magic variables RE: text offsetting on images
+            text_offset_x, text_offset_y = 50, 50
+            box_coordinates = (
+                (text_offset_x - 12, text_offset_y + 12),  # pt1, or top left point
+                (text_offset_x + text_width + 12, text_offset_y - text_height - 8),  # pt2, or bottom right point
+            )
+            cv2.rectangle(frame, box_coordinates[0], box_coordinates[1], rectangle_bgr, cv2.FILLED)
+            cv2.putText(img=frame, text=labels[i], org=(text_offset_x, text_offset_y),
+                        fontFace=font, fontScale=font_scale, color=(255, 255, 255), thickness=1)
+            # Write to image
+            image_name = generate_frame_filename(frame_count)
+            cv2.imwrite(os.path.join(output_path, image_name), frame)
+
+            # End of loop steps. Save & set metrics, prepare for next frame, and update progress bar.
+            frame_count += frames_to_skip_after_each_write
+            cv2_video_object.set(1, frame_count)  # first arg: 'propID' (like property ID), second arg is 'value'
+            progress_bar.update(frames_to_skip_after_each_write)
+            i += 1
+        else:  # No more frames left to retrieve. Release object and finish.
+            cv2_video_object.release()
+            break
+    progress_bar.close()
+    return
+
+
+### New ################################################################################################################
+
+### Frame writing
+
+
+def write_individual_frame_to_file(is_frame_retrieved: bool, frame: np.ndarray, label, frame_idx, output_path=config.FRAMES_OUTPUT_PATH):
+    """ * NEW *
+    (For use in multiprocessing frame-writing.
+    :param is_frame_retrieved:
+    :param frame:
+    :param label:
+    :param frame_idx:
+    :param output_path:
+    :return:
+    """
+    font_scale, font = 1, cv2.FONT_HERSHEY_COMPLEX
+    rectangle_bgr_black = (0, 0, 0)
+    color_white_bgr = (255, 255, 255)
     if is_frame_retrieved:
         # Prepare writing info onto image
         text_for_frame = f'Label__'
         # Try appending label
+        # TODO: OVERHAUL LABELEING
         try:
             label_word = config.map_group_to_behaviour[label]
             text_for_frame += label_word
@@ -58,95 +173,229 @@ def write_frame_to_file(is_frame_retrieved: bool, frame: object, label, frame_id
             logger.error(index_err)
             raise IndexError(index_err)
         else:
-            text_width, text_height = cv2.getTextSize(
-                text_for_frame, font, fontScale=font_scale, thickness=1)[0]
+            text_width, text_height = cv2.getTextSize(text_for_frame, font, fontScale=font_scale, thickness=1)[0]
             # TODO: evaluate magic variables RE: text offsetting on images
             text_offset_x, text_offset_y = 50, 50
-            box_coordinates = (
+            box_coordinates_topleft, box_coordinates_bottom_right = (
                 (text_offset_x - 12, text_offset_y + 12),  # pt1, or top left point
                 (text_offset_x + text_width + 12, text_offset_y - text_height - 8),  # pt2, or bottom right point
             )
-            cv2.rectangle(frame, box_coordinates[0], box_coordinates[1], rectangle_bgr, cv2.FILLED)
+            cv2.rectangle(frame, box_coordinates_topleft, box_coordinates_bottom_right, rectangle_bgr_black, cv2.FILLED)
             cv2.putText(img=frame, text=text_for_frame, org=(text_offset_x, text_offset_y),
-                        fontFace=font, fontScale=font_scale, color=(255, 255, 255), thickness=1)
+                        fontFace=font, fontScale=font_scale, color=color_white_bgr, thickness=1)
             # Write to image
-            image_name = f'frame_{frame_idx + 1}.png'
-            cv2.imwrite(os.path.join(output_path, image_name), frame)
 
-        # Save & set metrics, prepare for next frame, and update progress bar
-        # frame_count += frames_to_skip_after_each_write
-        # cv2_video_object.set(1, frame_count)  # first arg: 'propID' (like property ID), second arg is 'value'
-        # progress_bar.update(frames_to_skip_after_each_write)
-        # i += 1
-    else:  # No more frames left to retrieve. Release object and finish.
-        pass
-    # return progress_bar, frames_to_skip_after_each_write
+            image_name = generate_frame_filename(frame_idx)
+            cv2.imwrite(os.path.join(output_path, image_name), frame)
+    return 1
+
+
+def label_frame(frame, label):
+    """"""
+    font_scale, font = 1, cv2.FONT_HERSHEY_COMPLEX
+    rectangle_bgr_black = (0, 0, 0)
+    color_white_bgr = (255, 255, 255)
+
+    text_width, text_height = 10, 10#cv2.getTextSize(label, font, fontScale=font_scale, thickness=1)[0]
+    # TODO: evaluate magic variables RE: text offsetting on images
+    text_offset_x, text_offset_y = 50, 50
+    box_coordinates_topleft, box_coordinates_bottom_right = (
+        (text_offset_x - 12, text_offset_y + 12),  # pt1, or top left point
+        (text_offset_x + text_width + 12, text_offset_y - text_height - 8),  # pt2, or bottom right point
+    )
+    cv2.rectangle(frame, box_coordinates_topleft, box_coordinates_bottom_right, rectangle_bgr_black, cv2.FILLED)
+    cv2.putText(img=frame, text=label, org=(text_offset_x, text_offset_y),
+                fontFace=font, fontScale=font_scale, color=color_white_bgr, thickness=1)
+    return frame
+
+
+def get_frames_from_video(path_to_video, frames_to_skip_after_each_write=1, **kwargs) -> List[np.ndarray]:
+    """
+    Pull frames
+    """
+    frames = []
+    # TODO: resolve fails
+
+    # Arg checking
+    assert os.path.isfile(path_to_video), f'Video does not exist: {path_to_video}'
+    # Do
+    cv2_video_object = cv2.VideoCapture(path_to_video)
+    total_frames = int(cv2_video_object.get(cv2.CAP_PROP_FRAME_COUNT))
+    logger.debug(f'Total frames: {total_frames}')  # Debugging
+    i_frame, frame_count = 0, 0
+    frames_queue: List[Tuple[bool, Any, str, int]] = []
+    # queue up images to write
+    done = False
+    # Iterate over frames extracted from video. Generate a queue of frames to be labeled later.
+    while not done:
+        is_frame_retrieved, frame = cv2_video_object.read()
+        if is_frame_retrieved:
+            frames.append(frame)
+            # Save & set metrics, prepare for next frame, and update progress bar
+            frame_count += frames_to_skip_after_each_write
+            # Skip ahead to a specified frame?
+            cv2_video_object.set(1, frame_count)
+            # progress_bar.update(frames_to_skip_after_each_write)
+            i_frame += 1
+        else:  # No more frames left to retrieve. Release object and finish.
+            done = True
+            cv2_video_object.release()
+            break
+
+    cv2_video_object.release()
+    return frames
+
+
+def write_annotated_frames_to_disk_from_video_source_NEW_multiprocessed(path_to_video: str, labels, pct_frames_to_label: float = config.PERCENT_FRAMES_TO_LABEL) -> List:
+    """ * Legacy adjusted *
+    New implementation to leverage multiprocessing (optional) just because original implementation is so slow.
+    """
+    # TODO: resolve fails
+
+    # Arg checking
+    assert os.path.isfile(path_to_video), f'Video does not exist: {path_to_video}'
+    # Do
+    frames_to_skip_after_each_write = round(1 / pct_frames_to_label)
+    cv2_video_object = cv2.VideoCapture(path_to_video)
+    total_frames = int(cv2_video_object.get(cv2.CAP_PROP_FRAME_COUNT))
+    logger.debug(f'Total frames: {total_frames}')  # Debugging
+    logger.debug(f'Initial labels shape: {labels.shape}')  # Debugging
+
+    labels = np.hstack((labels[0], labels))  # fill the first frame  # TODO: why need to fill first frame?
+    logger.debug(f'Labels shape after padding: {labels.shape}')
+
+    i_frame, frame_count = 0, 0
+
+    frames_queue: List[Tuple[bool, Any, str, int]] = []
+    # queue up images to write
+    done = False
+    # Iterate over frames extracted from video. Generate a queue of frames to be labeled later.
+    while not done:
+        is_frame_retrieved, frame = cv2_video_object.read()
+        if is_frame_retrieved:
+            frames_queue.append((is_frame_retrieved, frame, labels[i_frame], frame_count))
+            # Save & set metrics, prepare for next frame, and update progress bar
+            frame_count += frames_to_skip_after_each_write
+            # Skip ahead to a specified frame?
+            cv2_video_object.set(1, frame_count)  # first arg: 'propID' (like property ID), second arg is 'value'
+            # progress_bar.update(frames_to_skip_after_each_write)
+            i_frame += 1
+        else:  # No more frames left to retrieve. Release object and finish.
+            done = True
+            cv2_video_object.release()
+            break
+
+    # Utilize multiprocessing to label those frames in the queue
+    with multiprocessing.Pool(config.N_JOBS) as pool:
+        # Set up function to be executed asynchronously
+        results = [pool.apply_async(
+            write_individual_frame_to_file,
+            (is_frame_retrieved, frame, label, i, frames_to_skip_after_each_write), )
+            for is_frame_retrieved, frame, label, i in frames_queue]
+        # Execute
+        results = [f.get() for f in results]
+
+    cv2_video_object.release()
+
+    return
+
+
+### Video creation
 
 
 @config.deco__log_entry_exit(logger)
-def write_annotated_frames_to_disk_from_video_NEW_multiproc(path_to_video: str, labels, fps: int = config.VIDEO_FPS, output_path: str = config.FRAMES_OUTPUT_PATH, pct_frames_to_label: float = config.PERCENT_FRAMES_TO_LABEL):
-    """ *new*
-    New implementation to leverage multiprocessing (optional) just because original implementation is so slow.
-    :param path_to_video:
+def create_labeled_video_NEW(video_path, labels, use_existing_frames=False, frame_dir=config.FRAMES_OUTPUT_PATH, output_path=config.VIDEO_OUTPUT_FOLDER_PATH, output_fps=5) -> None:
+    """  * NEW * NEWNEW
+
+    # TODO: magic variable for output_fps
+    :param video_path:
     :param labels:
-    :param fps:
+    :param use_existing_frames: (bool)
+    :param frame_dir:
     :param output_path:
-    :param pct_frames_to_label:
+    :param output_fps:
     :return:
     """
+    # Arg validation
+    assert os.path.isfile(video_path), f'Video does not exist: {video_path}'
 
-    assert os.path.isfile(path_to_video), f'Video does not exist: {path_to_video}'
+    # Prep frames if necessary
+    if not use_existing_frames:
+        write_annotated_frames_to_disk_from_video_source_NEW_multiprocessed(path_to_video=video_path, labels=labels)
 
-    frames_to_skip_after_each_write = round(1 / pct_frames_to_label)
+    # Create list of only .png images found in the frames directory
+    images: List[str] = [img for img in os.listdir(frame_dir) if img.endswith(f'.{config.FRAMES_OUTPUT_FORMAT}')]
+    if len(images) <= 0:
+        empty_list_err = f'{inspect.stack()[0][3]}(): Zero .{config.FRAMES_OUTPUT_FORMAT} frames ' \
+                         f'were found in {frame_dir}. Could not created labeled video. Exiting early.'  # TODO
+        logger.error(empty_list_err)
+        return  # Return early
+
+    # # # Do vid creation stuff
+    # Sort images alphanumerically
+    likelihoodprocessing.sort_list_nicely_in_place(images)
+
+    # Extract first image in images list. Set dimensions.
+    four_character_code = cv2.VideoWriter_fourcc(*'mp4v')  # TODO: ensure fourcc can be change-able
+    first_image = cv2.imread(os.path.join(frame_dir, images[0]))
+    height, width, _layers = first_image.shape
+
+    # Loop over the range generated from the total unique labels available
+
     set_unique_labels = set(np.unique(labels))
 
-    cv2_video_object = cv2.VideoCapture(path_to_video)
+    # Get video object, prep variables
+    cv2_video_object: cv2.VideoCapture = cv2.VideoCapture(video_path)
     total_frames = int(cv2_video_object.get(cv2.CAP_PROP_FRAME_COUNT))
     logger.debug(f'Total frames: {total_frames}')
     logger.debug(f'Initial labels shape: {labels.shape}')
     # progress_bar = tqdm(total=total_frames, desc='Writing images to file...')
     # width, height = cv2_video_object.get(3), cv2_video_object.get(4)  # TODO: low: address unused variables
-    labels = np.hstack((labels[0], labels))  # fill the first frame  # TODO: why need to fill first frame?
+
     logger.debug(f'Labels shape after padding: {labels.shape}')
-    frame_count = 0  # TODO: med: rename `count` -- what is it counting? Other variable `i` already tracks iterations over the while loop
-    i = 0
+    frame_idx = 0  # TODO: med: rename `count` -- what is it counting? Other variable `i` already tracks iterations over the while loop
     font_scale, font = 1, cv2.FONT_HERSHEY_COMPLEX
     rectangle_bgr = (0, 0, 0)
     frames_queue: List[Tuple[bool, Any, str, int]] = []
+    video_frame_idx = 0
     # queue up images to write
     done = False
-    # while cv2_video_object.isOpened():
     while not done:
         is_frame_retrieved, frame = cv2_video_object.read()
         if is_frame_retrieved:
-            frames_queue.append((is_frame_retrieved, frame, labels[i], frame_count))
+            # Do
+            # TODO:
             # Save & set metrics, prepare for next frame, and update progress bar
-            frame_count += frames_to_skip_after_each_write
-            cv2_video_object.set(1, frame_count)  # first arg: 'propID' (like property ID), second arg is 'value'
+            # frame_count += frames_to_skip_after_each_write
+
+            cv2_video_object.set(1, frame_idx)  # first arg: 'propID' (like property ID), second arg is 'value'
             # progress_bar.update(frames_to_skip_after_each_write)
-            i += 1
+            video_frame_idx += 1
         else:  # No more frames left to retrieve. Release object and finish.
             done = True
             cv2_video_object.release()
             break
-    #
-    with multiprocessing.Pool(config.N_JOBS) as pool:
-        # Set up function to be executed async
-        results = [pool.apply_async(
-            write_frame_to_file,
-            (is_frame_retrieved, frame, label, i, frames_to_skip_after_each_write),
-        )
-            for is_frame_retrieved, frame, label, i in frames_queue]
-        # Execute
-        results = [res.get() for res in results]
 
-    cv2_video_object.release()
-    # progress_bar.close()
+    video_name = f'group_{idx_label} / example_{idx_random_range}.mp4'
+    # Open video writer object
+    video_writer = cv2.VideoWriter(
+        os.path.join(output_path, video_name),  # filename
+        four_character_code,  # fourcc
+        output_fps,  # fps
+        (width, height)  # frameSize
+    )
+    # Loop over all images and write to file with video writer
+    for image in grp_images:
+        video_writer.write(cv2.imread(os.path.join(frame_dir, image)))
+    video_writer.release()
+    cv2.destroyAllWindows()
     return
 
 
+### Legacy #############################################################################################################
+
 @config.deco__log_entry_exit(logger)
-def write_annotated_frames_to_disk_from_video(path_to_video: str, labels, fps: int = config.VIDEO_FPS, output_path: str = config.FRAMES_OUTPUT_PATH, pct_frames_to_label: float = config.PERCENT_FRAMES_TO_LABEL):
+def write_annotated_frames_to_disk_from_video_LEGACY(path_to_video: str, labels, fps: int = config.VIDEO_FPS, output_path: str = config.FRAMES_OUTPUT_PATH, pct_frames_to_label: float = config.PERCENT_FRAMES_TO_LABEL):
     """ * LEGACY *
     This function serves to supersede the old 'vid2frame()' function for future clarity.
 
@@ -174,7 +423,7 @@ def write_annotated_frames_to_disk_from_video(path_to_video: str, labels, fps: i
     progress_bar = tqdm(total=int(cv2_video_object.get(cv2.CAP_PROP_FRAME_COUNT)), desc='Writing images to file...')
     # width, height = cv2_video_object.get(3), cv2_video_object.get(4)  # TODO: low: address unused variables
     labels = np.hstack((labels[0], labels))  # fill the first frame  # TODO: why need to fill first frame?
-    frame_count = 0  # TODO: med: rename `count` -- what is it counting? Other variable `i` already tracks iterations over the while loop
+    frame_count = 0
     i = 0
     font_scale, font = 1, cv2.FONT_HERSHEY_COMPLEX
     rectangle_bgr = (0, 0, 0)
@@ -184,6 +433,7 @@ def write_annotated_frames_to_disk_from_video(path_to_video: str, labels, fps: i
         if is_frame_retrieved:
             # Prepare writing info onto image
             text_for_frame = f'Label__'
+            # TODO: OVERHAUL LABELEING
             # Try appending label
             try:
                 label_word = config.map_group_to_behaviour[labels[i]]
@@ -226,33 +476,7 @@ def write_annotated_frames_to_disk_from_video(path_to_video: str, labels, fps: i
     return
 
 
-### Legacy #############################################################################################################
-
-def import_vidfolders(folders: List[str], output_path: List[str]):
-    """ * LEGACY *
-    Previously called `import_vidfolders()`
-    Import multiple folders containing .mp4 files and extract frames from them
-    :param folders: list of folder paths
-    :param output_path: list, directory to where you want to store extracted vid images in LOCAL_CONFIG
-    """
-    list_of_lists_of_videos: List[List[str]] = []  # TODO: Q: why does this variable exist? It tracks but does not contribute to anything
-    # Loop through folders
-    for idx_folder, folder in enumerate(folders):
-        videos_list_from_current_folder: List[str] = io.get_videos_from_folder_in_BASEPATH(folder)
-        # Loop through videos
-        for idx_video, video in enumerate(videos_list_from_current_folder):
-            logger.debug(f'{inspect.stack()[0][3]}():Extracting frames from {video} and appending labels to these images...')
-            # Write (something) to disk TODO
-            write_annotated_frames_to_disk_from_video(video, output_path)  # TODO: HIGH: missing param `FPS` *** runtime error imminent ********************************************************
-            logger.debug(f'Done extracting images and writing labels, from MP4 file {idx_video+1}')
-        # After looping through videos, append list of videos from current folder to list of lists because reasons
-        list_of_lists_of_videos.append(videos_list_from_current_folder)  # list_of_lists_of_videos.append(videos_list_from_current_folder)
-        logger.info(f'Processed {len(videos_list_from_current_folder)} mp4 files from folder: {folder}.')
-    return
-
-
-@config.deco__log_entry_exit(logger)
-def create_labeled_vid(labels, critical_behaviour_minimum_duration=3, num_randomly_generated_examples=5, frame_dir=config.FRAMES_OUTPUT_PATH, output_path=config.SHORT_VIDEOS_OUTPUT_PATH, output_fps=5) -> None:
+def create_labeled_example_videos_by_label(labels, critical_behaviour_minimum_duration=3, num_randomly_generated_examples=5, frame_dir=config.FRAMES_OUTPUT_PATH, output_path=config.VIDEO_OUTPUT_FOLDER_PATH, output_fps=5, fourcc_extension='mp4v') -> None:
     """ * LEGACY *
     (Generalized create_labeled_video() function that works between _py, _umap, and _voc submodules)
     TODO: Describe function
@@ -264,7 +488,7 @@ def create_labeled_vid(labels, critical_behaviour_minimum_duration=3, num_random
     :param output_fps:
     """
     # Create list of only .png images found in the frames directory
-    images: List[str] = [img for img in os.listdir(frame_dir) if img.endswith(".png")]
+    images: List[str] = [img for img in os.listdir(frame_dir) if img.endswith(f".{config.FRAMES_OUTPUT_FORMAT}")]
     if len(images) <= 0:
         empty_list_err = f'{inspect.stack()[0][3]}(): Zero .png frames were found in {frame_dir}. ' \
                          f'Could not created labeled video. Exiting early.'  # TODO:
@@ -274,12 +498,12 @@ def create_labeled_vid(labels, critical_behaviour_minimum_duration=3, num_random
     likelihoodprocessing.sort_list_nicely_in_place(images)
 
     # Extract first image in images list. Set dimensions.
-    four_character_code = cv2.VideoWriter_fourcc(*'mp4v')
+    four_character_code = cv2.VideoWriter_fourcc(*fourcc_extension)
     first_image = cv2.imread(os.path.join(frame_dir, images[0]))
     height, width, _layers = first_image.shape
 
     # ?  TODO
-    labels_list, idx_list, lengths_list = augmented_runlength_encoding(labels)
+    labels_list, idx_list, lengths_list = likelihoodprocessing.augmented_runlength_encoding(labels)
     ranges_list, idx2_list = [], []
 
     # Loop over lengths
@@ -342,59 +566,6 @@ def create_labeled_vid(labels, critical_behaviour_minimum_duration=3, num_random
     return
 
 
-@config.deco__log_entry_exit(logger)
-def create_labeled_vid_app(labels, crit, counts, output_fps, video_frames_directory, output_path) -> None:
-    """
-    *** LEGACY WARNING: this function is different from the non-annotated (_py/_umap/_voc)
-    implementation(s) ONLY with regards to the new parameter `output_fps`.
-    Since the two functions have not yet been reconciled, this function remains as
-    legacy. It is not used in the submodule bsoid_app codebase but is used 2 times in .ipynb files ***
-
-    :param labels: 1D array, labels from training or testing
-    :param crit: scalar, minimum duration for random selection of behaviors, default 300ms
-    :param counts: scalar, number of randomly generated examples, default 5
-    :param video_frames_directory: string, directory to where you extracted vid images in LOCAL_CONFIG
-    :param output_path: string, directory to where you want to store short video examples in LOCAL_CONFIG
-    """
-    images = [img for img in os.listdir(video_frames_directory) if img.endswith(".png")]
-    likelihoodprocessing.sort_list_nicely_in_place(images)
-    four_character_code = cv2.VideoWriter_fourcc(*'avc1')  # fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    frame = cv2.imread(os.path.join(video_frames_directory, images[0]))
-    height, width, _layers = frame.shape
-    ranges, idx2 = [], []
-    n, idx, lengths = augmented_runlength_encoding(labels)
-    for idx_length, length in enumerate(lengths):
-        if length >= crit:
-            ranges.append(range(idx[idx_length], idx[idx_length] + length))
-            idx2.append(idx_length)
-
-    # Loop over labels
-    for label in tqdm(np.unique(labels)):
-        # a = []
-        # for j in range(len(ranges)):
-        #     if n[idx2[j]] == label:
-        #         a.append(ranges[j])
-
-        a = [ranges[i] for i in range(len(ranges)) if n[idx2[i]] == label]
-        try:
-            random_ranges = random.sample(a, min(len(a), counts))
-            for k in range(len(random_ranges)):
-                # grp_images = []
-                # for random_range in random_ranges[k]:
-                #     grp_images.append(images[random_range])
-                grp_images = [images[random_range] for random_range in random_ranges[k]]
-                video_name = f'group_{label}_example_{k}.mp4'
-                video = cv2.VideoWriter(os.path.join(output_path, video_name),
-                                        four_character_code, output_fps, (width, height))
-                for image in grp_images:
-                    video.write(cv2.imread(os.path.join(video_frames_directory, image)))
-                cv2.destroyAllWindows()
-                video.release()
-        except:  # TODO: low: exception is very general. Address?
-            pass
-    return
-
-
 def get_frames_from_video_then_create_labeled_video(path_to_video, labels, fps, output_path) -> None:
     """ # TODO: rename function for concision/clarity
     TODO: Purpose
@@ -407,6 +578,30 @@ def get_frames_from_video_then_create_labeled_video(path_to_video, labels, fps, 
     warning = f'Current function: {inspect.stack()[0][3]}(). Instead of calling this, call the two functions ' \
               f'inside explicitly. '
     logger.warning(warning)
-    write_annotated_frames_to_disk_from_video(path_to_video, labels, fps, output_path)
-    create_labeled_vid(labels, critical_behaviour_minimum_duration=3, num_randomly_generated_examples=5,
-                       frame_dir=output_path, output_path=config.SHORTVID_DIR)
+    write_annotated_frames_to_disk_from_video_LEGACY(path_to_video, labels, fps, output_path)
+    create_labeled_example_videos_by_label(
+        labels, critical_behaviour_minimum_duration=3, num_randomly_generated_examples=5,
+        frame_dir=output_path, output_path=config.VIDEO_OUTPUT_FOLDER_PATH)
+
+
+# def import_vidfolders(folders: List[str], output_path: List[str]):
+#     """ * LEGACY *
+#     Previously called `import_vidfolders()`
+#     Import multiple folders containing .mp4 files and extract frames from them
+#     :param folders: list of folder paths
+#     :param output_path: list, directory to where you want to store extracted vid images in LOCAL_CONFIG
+#     """
+#     list_of_lists_of_videos: List[List[str]] = []  # TODO: Q: why does this variable exist? It tracks but does not contribute to anything
+#     # Loop through folders
+#     for idx_folder, folder in enumerate(folders):
+#         videos_list_from_current_folder: List[str] = io.get_videos_from_folder_in_BASEPATH(folder)
+#         # Loop through videos found
+#         for idx_video, video in enumerate(videos_list_from_current_folder):
+#             logger.debug(f'{inspect.stack()[0][3]}():Extracting frames from {video} and appending labels to these images...')
+#             # Write (something) to disk TODO
+#             write_annotated_frames_to_disk_from_video_LEGACY(video, output_path)  # TODO: HIGH: missing param `FPS` *** runtime error imminent ********************************************************
+#             logger.debug(f'Done extracting images and writing labels, from MP4 file {idx_video+1}')
+#         # After looping through videos, append list of videos from current folder to list of lists because reasons
+#         list_of_lists_of_videos.append(videos_list_from_current_folder)  # list_of_lists_of_videos.append(videos_list_from_current_folder)
+#         logger.info(f'Processed {len(videos_list_from_current_folder)} mp4 files from folder: {folder}.')
+#     return

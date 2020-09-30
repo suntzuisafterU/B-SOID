@@ -62,14 +62,16 @@ configuration.read(os.path.join(BSOID_BASE_PROJECT_PATH, config_file_name))
 ########################################################################################################################
 ##### READ CONFIG FOR RUNTIME VARIABLES #####
 
+# PATH
 DLC_PROJECT_PATH = configuration.get('PATH', 'DLC_PROJECT_PATH')
-
-OUTPUT_PATH = config_output_path = configuration.get('PATH', 'OUTPUT_PATH') \
+OUTPUT_PATH = config_output_path = configuration.get('PATH', 'OUTPUT_PATH').strip() \
     if configuration.get('PATH', 'OUTPUT_PATH').strip() else default_output_path
-# OUTPUT_PATH = config_output_path if config_output_path else default_output_path
+VIDEO_OUTPUT_FOLDER_PATH = configuration.get('PATH', 'VIDEOS_OUTPUT_PATH') \
+    if configuration.get('PATH', 'VIDEOS_OUTPUT_PATH') else os.path.join(OUTPUT_PATH, 'videos')
 GRAPH_OUTPUT_PATH = os.path.join(OUTPUT_PATH, 'graphs')
 FRAMES_OUTPUT_PATH = os.path.join(OUTPUT_PATH, 'frames')
-SHORT_VIDEOS_OUTPUT_PATH = os.path.join(OUTPUT_PATH, 'short_videos')
+
+# APP
 # Resolve runtime application settings
 MODEL_NAME = configuration.get('APP', 'OUTPUT_MODEL_NAME')  # Machine learning model name?
 MODEL_FILENAME = f'bsoid_model__{MODEL_NAME}.sav'
@@ -84,6 +86,7 @@ COMPILE_CSVS_FOR_TRAINING: int = configuration.getint('APP', 'COMPILE_CSVS_FOR_T
 N_JOBS = configuration.getint('APP', 'N_JOBS')
 PLOT_GRAPHS: bool = configuration.getboolean('APP', 'PLOT_GRAPHS')
 SAVE_GRAPHS_TO_FILE: bool = configuration.getboolean('APP', 'SAVE_GRAPHS_TO_FILE')
+FRAMES_OUTPUT_FORMAT: str = configuration.get('APP', 'FRAMES_OUTPUT_FORMAT')
 DEFAULT_SAVED_GRAPH_FILE_FORMAT: str = configuration.get('APP', 'DEFAULT_SAVED_GRAPH_FILE_FORMAT')
 GENERATE_VIDEOS: bool = configuration.getboolean('APP', 'GENERATE_VIDEOS')
 PERCENT_FRAMES_TO_LABEL: float = configuration.getfloat('APP', 'PERCENT_FRAMES_TO_LABEL')
@@ -95,21 +98,20 @@ IDENTIFICATION_ORDER: int = configuration.getint('APP', 'FILE_IDENTIFICATION_ORD
 # Now, pick an example video that corresponds to one of the csv files from the PREDICT_FOLDERS  # TODO: ************* This note from the original author implies that VID_NAME must be a video that corresponds to a csv from PREDICT_FOLDERS
 # VID_NAME = os.path.join(OST_BASE_PROJECT_PATH, 'GUI_projects', 'labelled_videos', '002_ratA_inc2_above.mp4')  # '/home/aaron/Documents/OST-with-DLC/GUI_projects/labelled_videos/002_ratA_inc2_above.mp4'
 VIDEO_TO_LABEL_PATH: str = configuration.get('APP', 'VIDEO_TO_LABEL_PATH')
-short_video_output_directory = os.path.join(OUTPUT_PATH, 'short_videos')
 
-SHORTVID_DIR = short_video_output_directory  # LEGACY. To be deprecated.
-# ID = identification_order  # TODO: DEPRECATE. ID WAS A MISTAKE, BUT NOT SURE WHY/WHAT IT DOES
 
 # Assertions to ensure that, before runtime, the config variables are valid.
+assert isinstance(IDENTIFICATION_ORDER, int) and IDENTIFICATION_ORDER in {0, 1}, \
+    f'check IDENTIFICATION_ORDER for type validity'
+
 assert os.path.isdir(DLC_PROJECT_PATH), f'DLC_PROJECT_PATH DOES NOT EXIST: {DLC_PROJECT_PATH}'
 assert os.path.isdir(OUTPUT_PATH), f'OUTPUT PATH INVALID/DOES NOT EXIST: {OUTPUT_PATH}'
 
 assert os.path.isfile(DEFAULT_TEST_FILE), f'Test file was not found: {DEFAULT_TEST_FILE}'
 assert COMPILE_CSVS_FOR_TRAINING in {0, 1}, f'Invalid COMP value detected: {COMPILE_CSVS_FOR_TRAINING}.'
-assert os.path.isdir(short_video_output_directory),\
-    f'`short_video_output_directory` dir. (value={short_video_output_directory}) must exist for runtime but does not.'
-assert os.path.isfile(VIDEO_TO_LABEL_PATH) or not VIDEO_TO_LABEL_PATH, \
-    f'Video does not exist: {VIDEO_TO_LABEL_PATH}. Check pathing in config.ini file.'
+assert os.path.isdir(VIDEO_OUTPUT_FOLDER_PATH),\
+    f'`short_video_output_directory` dir. (value={VIDEO_OUTPUT_FOLDER_PATH}) must exist for runtime but does not.'
+assert os.path.isfile(VIDEO_TO_LABEL_PATH) or not VIDEO_TO_LABEL_PATH, f'Video does not exist: {VIDEO_TO_LABEL_PATH}. Check pathing in config.ini file.'
 
 # def get_config_str() -> str:
 #     """ Debugging function """
@@ -118,27 +120,9 @@ assert os.path.isfile(VIDEO_TO_LABEL_PATH) or not VIDEO_TO_LABEL_PATH, \
 #         config_string += f'SECTION: {section} // OPTIONS: {configuration.options(section)}\n'
 #     return config_string.strip()
 
-#
-# def __getattr__(name):
-#     print('NAME = ', name)
-#     for section in configuration.sections():
-#         print('section:', section)
-#         print('options:', configuration.options(section))
-#         try:
-#             if name.lower() in configuration.options(section):
-#                 return configuration.get(section, name)
-#         except KeyError:
-#             pass
-#     raise ValueError(f'{name} not found in configuration')
 
 ########################################################################################################################
-
-### DLC PROJECT CONFIG VARS  # TODO: MED: IMPLEMENT
-# DLC_PROJECT_CONFIG_YAML = configparser.ConfigParser()
-# configuration.read(os.path.join(DLC_PROJECT_PATH, 'config.yaml'))
-
-########################################################################################################################
-
+# TODO: under construction
 ##### TRAIN_FOLDERS, PREDICT_FOLDERS
 # TRAIN_FOLDERS & PREDICT_FOLDERS are lists of folders that are implicitly understood to exist within BASE_PATH
 
@@ -157,7 +141,8 @@ PREDICT_FOLDERS_IN_DLC_PROJECT_toBeDeprecated: List[str] = [  # TODO: DEPREC WAR
 ]
 
 TRAIN_FOLDERS_PATHS_toBeDeprecated = [os.path.join(DLC_PROJECT_PATH, folder)
-                                      for folder in TRAIN_FOLDERS_IN_DLC_PROJECT_toBeDeprecated if not os.path.isdir(folder)]
+                                      for folder in TRAIN_FOLDERS_IN_DLC_PROJECT_toBeDeprecated
+                                      if not os.path.isdir(folder)]
 
 PREDICT_FOLDERS_PATHS_toBeDeprecated = [os.path.join(DLC_PROJECT_PATH, folder)
                                         for folder in PREDICT_FOLDERS_IN_DLC_PROJECT_toBeDeprecated]
@@ -172,7 +157,7 @@ for folder_path in PREDICT_FOLDERS_PATHS_toBeDeprecated:
     assert os.path.isabs(folder_path), f'Predict folder PATH is not absolute and should be: {folder_path}'
 
 
-# Create a folder to store extracted images.
+### Create a folder to store extracted images.
 config_value_alternate_output_path_for_annotated_frames = configuration.get(  # TODO:low:address.deleteable?duplicate?
     'PATH', 'ALTERNATE_OUTPUT_PATH_FOR_ANNOTATED_FRAMES')
 
@@ -274,11 +259,6 @@ TSNE_SKLEARN_PARAMS = {
 TSNE_THETA = configuration.getfloat('TSNE', 'theta')
 TSNE_VERBOSE = configuration.getint('TSNE', 'verbose')
 TSNE_N_ITER = configuration.getint('TSNE', 'n_iter')
-# BHTSNE_PARAMS = {
-#     'verbose': configuration.getint('TSNE', 'verbose'),
-# }
-
-# TODO: HIGH: after all config parsing done, write checks that will run ON IMPORT to ensure folders exist :)
 
 
 ########################################################################################################################
@@ -345,7 +325,7 @@ def get_config_str() -> str:
     return config_string.strip()
 
 
-# Below dict created according to BSOID/segmented_behaviours/README.md
+# Below dict created according to BSOID/segmented_behaviours/README_legacy.md
 map_group_to_behaviour = {
     0: 'UNKNOWN',
     1: 'orient right',
@@ -366,7 +346,7 @@ map_group_to_behaviour = {
     16: 'orient left',
 }
 
-"""BSOID/segmented_behaviours/README.md
+"""BSOID/segmented_behaviours/README_legacy.md
 ## Here are the example groups that we have extracted from multiple animals using B-SOiD
 
 ### Groups 1-4:
