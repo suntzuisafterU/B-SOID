@@ -10,7 +10,7 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 from tqdm import tqdm
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Collection, Dict, List, Optional, Tuple, Union
 import hdbscan
 import inspect
 import joblib
@@ -38,6 +38,8 @@ class Pipeline(object):
 
     """
     # TODO: organize housing variables
+    default_vid_name = 'DefaultVideoName'
+
 
     train_data: List[pd.DataFrame] = []
     test_data: List[pd.DataFrame] = []
@@ -55,17 +57,21 @@ class Pipeline(object):
 
     tsne_source: str = None
     tsne_dimensions = 3
-    valid_tsne_sources: set = {'bhtsne', 'sklearn', 'opentsne'}
+    valid_tsne_sources: set = {'bhtsne', 'sklearn', 'opentsne', }
     train_data_files_paths: List[str] = []
     predict_data_files_paths: List[str] = []
+    cross_val_scores: Collection = None
+
+
+
+    gmm_assignment_col_name = 'gmm_assignment'
+    svm_assignment_col_name = 'svm_assignment'
+    description: str = None
 
     features_which_average_by_mean = ['DistFrontPawsTailbaseRelativeBodyLength',
                                       'DistBackPawsBaseTailRelativeBodyLength', 'InterforepawDistance', 'BodyLength', ]
     features_which_average_by_sum = ['SnoutToTailbaseChangeInAngle', 'SnoutSpeed', 'TailbaseSpeed']
     features_names_7 = features_which_average_by_mean + features_which_average_by_sum
-    gmm_assignment_col_name = 'gmm_assignment'
-    svm_assignment_col_name = 'svm_assignment'
-    description: str = None
 
     def __init__(self,
                  existing: str = None,
@@ -147,6 +153,7 @@ class Pipeline(object):
             return self.clf_svm.predict(x_test)
         return
 
+    @config.deco__log_entry_exit(logger)
     def train_gmm_and_get_labels(self, df: pd.DataFrame) -> np.ndarray:
         """
         Train GMM. Get associated labels. Save GMM. TODO: elaborate
@@ -157,6 +164,7 @@ class Pipeline(object):
         assignments = self.clf_gmm.predict(df)
         return assignments
 
+    @config.deco__log_entry_exit(logger)
     def train_tsne_get_dimension_reduced_data(self, data: pd.DataFrame, **kwargs) -> np.ndarray:
         """
         TODO: elaborate
@@ -209,12 +217,39 @@ class Pipeline(object):
     def get_desc(self):
         return self.description
 
-    def make_video(self):
-        """
+    def write_video_frames_to_disk(self, video_to_be_labeled = config.VIDEO_TO_LABEL_PATH):
+        labels = list(self.df_post_tsne[self.gmm_assignment_col_name].values)
+        labels = [f'label_i={i} // label={l}' for i, l in enumerate(labels)]
+        # util.videoprocessing.write_annotated_frames_to_disk_from_video_LEGACY(
+        #     video_to_be_labeled,
+        #     labels,
+        # )
+        util.videoprocessing.write_annotated_frames_to_disk_from_video_NEW(
+            video_to_be_labeled,
+            labels,
+        )
+        return
 
-        :return:
-        """
-        # TODO
+    def make_video_from_written_frames(self, new_video_name=default_vid_name, video_to_be_labeled=config.VIDEO_TO_LABEL_PATH):
+        util.videoprocessing.write_video_with_existing_frames(
+            video_to_be_labeled,
+            config.FRAMES_OUTPUT_PATH,
+            new_video_name,
+        )
+        return
+
+    def make_video(self, video_to_be_labeled=config.VIDEO_TO_LABEL_PATH, output_fps=config.OUTPUT_VIDEO_FPS):
+        labels = list(self.df_post_tsne[self.gmm_assignment_col_name].values)
+        labels = [f'label={l}' for l in labels]
+        if not os.path.isfile(video_to_be_labeled):
+            not_a_video_err = f'The video to be labeled is not a valid file/path. ' \
+                              f'Submitted video path: {video_to_be_labeled}. '
+            logger.error(not_a_video_err)
+        else:
+
+            self.write_video_frames_to_disk()
+            # Write video
+            self.make_video_from_written_frames()
 
         return self
 
@@ -305,21 +340,26 @@ class TestPipeline1(Pipeline):
 
         # TSNE -- create new dimensionally reduced data
         arr_tsne_result = self.train_tsne_get_dimension_reduced_data(df_features_scaled)
-        df_post_tsne = pd.DataFrame(arr_tsne_result, columns=self.dims_cols_names)
+        self.df_post_tsne = pd.DataFrame(arr_tsne_result, columns=self.dims_cols_names)
 
         # Train GMM, get assignments
-        df_post_tsne[self.gmm_assignment_col_name] = self.train_gmm_and_get_labels(df_post_tsne)
+        self.df_post_tsne[self.gmm_assignment_col_name] = self.train_gmm_and_get_labels(self.df_post_tsne[self.dims_cols_names])
 
-        # # Train SVM
+        # Test-train split
         df_features_train, df_features_test, df_labels_train, df_labels_test = train_test_split(
-            df_post_tsne[self.dims_cols_names], df_post_tsne[self.gmm_assignment_col_name],
+            self.df_post_tsne[self.dims_cols_names], self.df_post_tsne[self.gmm_assignment_col_name],
             test_size=config.HOLDOUT_PERCENT, random_state=config.RANDOM_STATE)  # TODO: add shuffle kwarg?
-
+        self.df_features_train, self.df_features_test, self.df_labels_train, self.df_labels_test = df_features_train, df_features_test, df_labels_train, df_labels_test
+        # # Train SVM
         df_labels_train[self.svm_assignment_col_name] = self.train_SVM(df_features_train, df_labels_train, df_features_test)
+        self.df_labels_train = df_labels_train
 
-        self.cross_val_scores = cross_val_scores = cross_val_score(self.clf_svm, df_features_test, df_labels_train[self.svm_assignment_col_name])
+        # Get cross-val, accuracy scores
+        self.cross_val_scores = cross_val_scores = cross_val_score(
+            self.clf_svm, df_features_test, df_labels_train[self.svm_assignment_col_name])
 
-        self.acc_score = accuracy_score(y_pred=self.clf_svm.predict(df_features_test), y_true=df_labels_train[self.svm_assignment_col_name])
+        self.acc_score = accuracy_score(
+            y_pred=self.clf_svm.predict(df_features_test), y_true=df_labels_train[self.svm_assignment_col_name])
 
         # # Save model to file
         if save:
@@ -334,7 +374,7 @@ class TestPipeline1(Pipeline):
             # util.visuals.plot_accuracy_SVM(scores, fig_file_prefix='TODO__replaceThisFigFilePrefixToSayIfItsKFOLDAccuracyOrTestAccuracy')
 
             # TODO: fix below
-            util.visuals.plot_feats_bsoidpy(features_10fps, gmm_assignments)
+            # util.visuals.plot_feats_bsoidpy(features_10fps, gmm_assignments)
             logger.debug(f'Exiting GRAPH PLOTTING section of {inspect.stack()[0][3]}')
 
         logger.debug(f'All done with building classifiers!')
@@ -359,8 +399,10 @@ class TestPipeline1(Pipeline):
         data_files_paths: List[str] = self.read_in_predict_folder_data_filepaths()
         # Read in PREDICT data
         dfs_raw = [util.io.read_csv(csv_path) for csv_path in data_files_paths]
+
         # Engineer features accordingly (as above)
         df_features = self.engineer_features(dfs_raw)
+
         # Predict labels
             # How does frameshifting 2x fit in?
         # Generate videos

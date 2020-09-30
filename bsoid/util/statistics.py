@@ -5,7 +5,7 @@ Summary statistics
 did not adhere to DRY standards and creates a single source of statistics utility.
 """
 
-from typing import List, Tuple
+from typing import Any, Dict, List, Tuple, Union
 import functools
 import inspect
 import numpy as np
@@ -85,14 +85,14 @@ def transition_matrix(labels) -> pd.DataFrame:  # source: bsoid_py, bsoid_umap, 
     for i, j in zip(labels, labels[1:]):
         transition_matrix[i][j] += 1
     for row in transition_matrix:
-        s = sum_args(row)
+        s = sum(row)
         if s > 0:
             row[:] = [f / s for f in row]
     df_transition_matrix = pd.DataFrame(transition_matrix)
     return df_transition_matrix
 
 
-def rle(in_array) -> Tuple:  # TODO: rename function for clarity?
+def rle(in_array) -> Union[Tuple[None, None, None], Tuple[Any, Any, Any]]:
     """
     Run length encoding. Partial credit to R's rle() function. Multi datatype arrays catered-for including non-Numpy.
 
@@ -220,6 +220,20 @@ def get_runlengths_statistics_transition_matrix_from_labels(labels) -> Tuple[pd.
     return df_runlengths, df_dur_statistics, tm
 
 
+def main_app(labels, n):
+    """
+    TODO: why is the _app version different?
+    Pre-existing "main()" function from the bsoid_app legacy submodule.
+    :param labels: 1D array: predicted labels
+    :param output_path: string, output directory
+    :return dur_stats: object, behavioral duration statistics data frame
+    :return tm: object, transition matrix data frame
+    """
+    runlen_df, dur_stats = behv_dur(labels)
+    B, df_tm, B_norm = transition_matrix_app(labels, n)
+    return runlen_df, dur_stats, B, df_tm, B_norm
+
+
 def feat_dist(features: np.ndarray) -> Tuple[List, List, List, List]:
     """   *** DEPRECATION WARNING ***   """
     replacement_func = get_feature_distribution
@@ -241,17 +255,3 @@ def main(labels) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
                  f'Current replacement: {get_runlengths_statistics_transition_matrix_from_labels.__qualname__}.'
                  f'CALLER = {inspect.stack()[0][3]}.')
     return replacement_func(labels)
-
-
-def main_app(labels, n):
-    """
-    TODO: why is the _app version different?
-    Pre-existing "main()" function from the bsoid_app legacy submodule.
-    :param labels: 1D array: predicted labels
-    :param output_path: string, output directory
-    :return dur_stats: object, behavioral duration statistics data frame
-    :return tm: object, transition matrix data frame
-    """
-    runlen_df, dur_stats = behv_dur(labels)
-    B, df_tm, B_norm = transition_matrix_app(labels, n)
-    return runlen_df, dur_stats, B, df_tm, B_norm

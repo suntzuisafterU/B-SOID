@@ -66,10 +66,14 @@ def train_TSNE_NEW(list_of_arrays_data: pd.DataFrame, features, fps=config.VIDEO
         dimensions=dimensions,
         perplexity=np.sqrt(f_10fps_scaled.shape[1]),
         theta=0.5,
-        rand_seed=config.RANDOM_STATE)
+        rand_seed=config.RANDOM_STATE,
+        # TODO: high: add verbose options
+    )
 
     logger.debug(f'{inspect.stack()[0][3]}::Done embedding into 3 D.')
     return features_10fps, f_10fps_scaled, trained_tsne, scaler_obj
+
+
 def train_TSNE_LEGACY(list_of_arrays_data: List[np.ndarray], features: List[np.ndarray], fps=config.VIDEO_FPS, comp: int = config.COMPILE_CSVS_FOR_TRAINING) -> Tuple[Any, Any, Any, StandardScaler]:
     """
     Encapsulates legacy implementation of training TSNE
@@ -85,6 +89,7 @@ def train_TSNE_LEGACY(list_of_arrays_data: List[np.ndarray], features: List[np.n
         features_10fps = []
         f_10fps_scaled = []
         trained_tsne = []
+    # loop over data, put into 100ms bins
     for n, feature_n in enumerate(features):  # for n in range(len(features)):
         feats1 = np.zeros(len(list_of_arrays_data[n]))
         for k in range(round(fps / 10) - 1, len(feature_n[0]), round(fps / 10)):

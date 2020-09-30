@@ -105,7 +105,7 @@ def run_py(predict_folders):  # TODO: HIGH: break up this function and rename. T
     filenames: List[str] = []
     all_dfs_list: List[pd.DataFrame] = []
     for i, folder in enumerate(predict_folders):  # Loop through folders
-        file_names_csvs: List[str] = util.likelihoodprocessing.get_filenames_csvs_from_folders_recursively_in_dlc_project_path(folder)
+        file_names_csvs: List[str] = util.io.get_filenames_csvs_from_folders_recursively_in_dlc_project_path(folder)
         for j, csv_filename in enumerate(file_names_csvs):
             logger.info(f'{inspect.stack()[0][3]}(): Importing CSV file {j+1} from folder {i+1}.')
             curr_df = pd.read_csv(csv_filename, low_memory=False)
@@ -179,7 +179,7 @@ def run_py(predict_folders):  # TODO: HIGH: break up this function and rename. T
     return data_new, features_new, labels_fs_low, labels_fs_high
 
 
-@config.deco__log_entry_exit(logger)
+# @config.deco__log_entry_exit(logger)
 def test_function_to_build_then_run_py():
     logger.debug(f'STARTING _PY TRAIN SERIES')
     build_py(config.TRAIN_FOLDERS_IN_DLC_PROJECT_toBeDeprecated)
@@ -190,7 +190,7 @@ def test_function_to_build_then_run_py():
     logger.debug(f'End of test.')
 
 
-#####################################################################################################################################
+########################################################################################################################
 
 @config.deco__log_entry_exit(logger)
 def build_umap(train_folders) -> Tuple[Any, Any, Any, Any, Any, Any, Any, Any, Any]:
@@ -459,7 +459,7 @@ def retrain_umap(train_folders):
     with open(os.path.join(OUTPUT_PATH, str.join('', ('bsoid_', config.MODEL_NAME, '.sav'))), 'rb') as fr:
         f_10fps, umap_embeddings, hdb_assignments, soft_assignments, soft_clusters, nn_classifier, scores, \
         nn_assignments = joblib.load(fr)
-    util.videoprocessing.write_annotated_frames_to_disk_from_video(
+    util.videoprocessing.write_annotated_frames_to_disk_from_video_LEGACY(
         config.VIDEO_TO_LABEL_PATH, f_10fps[config.IDENTIFICATION_ORDER], config.VIDEO_FPS, config.FRAMES_OUTPUT_PATH)
     labels_df = pd.read_csv('/Users/ahsu/Sign2Speech/Notebook/labels.csv', low_memory=False)
 

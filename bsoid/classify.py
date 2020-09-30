@@ -16,7 +16,7 @@ import os
 
 # # # B-SOiD imports # # #
 from bsoid import classify_LEGACY, config, feature_engineering
-from bsoid.util import check_arg, likelihoodprocessing, videoprocessing, visuals
+from bsoid.util import likelihoodprocessing, videoprocessing, visuals
 
 logger = config.initialize_logger(__name__)
 
@@ -224,19 +224,17 @@ def main_py(predict_folders: List[str], scaler, fps, svm_classifier__behavioural
             #     config.VIDEO_TO_LABEL_PATH,
             #     labels_frameshift_low[config.IDENTIFICATION_ORDER],
             # )
-            videoprocessing.write_annotated_frames_to_disk_from_video_NEW_multiproc(
+            videoprocessing.write_annotated_frames_to_disk_from_video_LEGACY(
                 config.VIDEO_TO_LABEL_PATH,
                 labels_frameshift_low[config.IDENTIFICATION_ORDER],
             )
 
             ##################################################################################
             # # 2/2 created labeled video
-            videoprocessing.create_labeled_vid(
+            videoprocessing.create_labeled_example_videos_by_label(
                 labels_frameshift_low[config.IDENTIFICATION_ORDER],
-                critical_behaviour_minimum_duration=3,
-                num_randomly_generated_examples=5,
-                frame_dir=config.FRAMES_OUTPUT_PATH,
-                output_path=config.SHORT_VIDEOS_OUTPUT_PATH
+                3,
+                5,
             )
             # videoprocessing.create_labeled_vid_NEW_ATTEMPT(
             #     labels=labels_frameshift_low[config.IDENTIFICATION_ORDER]

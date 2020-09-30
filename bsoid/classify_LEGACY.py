@@ -476,14 +476,14 @@ def main_py(predict_folders: List[str], scaler, fps, svm_classifier__behavioural
             #     config.VIDEO_TO_LABEL_PATH,
             #     labels_frameshift_low[config.IDENTIFICATION_ORDER],
             # )
-            videoprocessing.write_annotated_frames_to_disk_from_video_NEW_multiproc(
+            videoprocessing.write_annotated_frames_to_disk_from_video_source_NEW_multiprocessed(
                 config.VIDEO_TO_LABEL_PATH,
                 labels_frameshift_low[config.IDENTIFICATION_ORDER],
             )
 
             ##################################################################################
             # # 2/2 created labeled video
-            videoprocessing.create_labeled_vid(
+            videoprocessing.create_labeled_example_videos_by_label(
                 labels_frameshift_low[config.IDENTIFICATION_ORDER],
                 critical_behaviour_minimum_duration=3,
                 num_randomly_generated_examples=5,
