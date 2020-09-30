@@ -18,9 +18,8 @@ from . import (
     feature_engineering,
     main_LEGACY,  # TODO: low: remove this after rewiring legacy code
     pipeline,
+    streamlit,
     train,
     train_LEGACY,  # TODO: potentially remove after rewiring code
 )
 from .util import check_arg, io, likelihoodprocessing, bsoid_logging, statistics, videoprocessing, visuals
-from .streamlit import home
-

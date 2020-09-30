@@ -28,10 +28,6 @@ To run the streamlit app, run: `streamlit run main.py streamlit`
 Things to refactor before extending functionality
 
 ### Build
+
 - Originally: calling `bsoid_SUBMODULE.main.build(trainfolders)`
-
-### Run your classifier on future datasets
-
-
-1. test
-2. test2
+- Now: (TODO)
