@@ -198,7 +198,7 @@ def run_classifier_new_pipeline():
                 labels_frameshift_low[config.IDENTIFICATION_ORDER]
             )
             # 2/2 created labeled video
-            util.videoprocessing.create_labeled_vid(
+            util.videoprocessing.create_labeled_example_videos_by_label(
                 labels_frameshift_low[config.IDENTIFICATION_ORDER],
                 critical_behaviour_minimum_duration=3,
                 num_randomly_generated_examples=5,
