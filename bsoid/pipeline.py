@@ -24,6 +24,7 @@ import pandas as pd
 import time
 import umap
 
+import bsoid
 from bsoid import classify, config, feature_engineering, train, util
 from bsoid.config import OUTPUT_PATH, VIDEO_FPS
 from bsoid.util.bsoid_logging import get_current_function  # for debugging purposes
@@ -38,8 +39,12 @@ class Pipeline(object):
 
     """
     # TODO: organize housing variables
-    default_vid_name = 'DefaultVideoName'
 
+    _name: str = 'DefaultPipelineName'
+    _description: str = ''
+    source = None  # Folder in which this pipeline resides
+
+    default_vid_name = 'DefaultVideoName'
 
     train_data: List[pd.DataFrame] = []
     test_data: List[pd.DataFrame] = []
@@ -62,23 +67,15 @@ class Pipeline(object):
     predict_data_files_paths: List[str] = []
     cross_val_scores: Collection = None
 
-
-
-    gmm_assignment_col_name = 'gmm_assignment'
-    svm_assignment_col_name = 'svm_assignment'
-    description: str = None
-
-    features_which_average_by_mean = ['DistFrontPawsTailbaseRelativeBodyLength',
-                                      'DistBackPawsBaseTailRelativeBodyLength', 'InterforepawDistance', 'BodyLength', ]
-    features_which_average_by_sum = ['SnoutToTailbaseChangeInAngle', 'SnoutSpeed', 'TailbaseSpeed']
-    features_names_7 = features_which_average_by_mean + features_which_average_by_sum
-
     def __init__(self,
-                 existing: str = None,
+                 name: str = None,
                  data_source: str = None,
                  tsne_source=None,
                  data_extension='csv',
                  **kwargs):
+        if not isinstance(name, str):
+            raise TypeError(f'name should be of type str but instead found type {type(name)}')
+        self.set_name(name)
         if data_source is not None:
             if not isinstance(data_source, str):
                 # TODO: finish err reporting
@@ -198,32 +195,50 @@ class Pipeline(object):
         else: raise RuntimeError(f'Invalid TSNE source type fell through the cracks: {self.tsne_source}')
         return arr_result
 
-    def save(self, alternate_output_path=None):  # TODO: alt pathing?
-        with open(os.path.join(OUTPUT_PATH, config.PIPELINE_FILENAME), 'wb') as model_file:
+    def save(self, output_path_dir):  # TODO: alt pathing?
+        """
+        :param output_path_dir: (str) an absolute path to a DIRECTORY where the pipeline will be saved.
+        """
+        if output_path_dir is None: output_path_dir = config.OUTPUT_PATH
+        # Check if valid directory
+        if not os.path.isdir(output_path_dir):
+            raise ValueError(f'Invalid output path dir specified: {output_path_dir}')
+        final_out_path = os.path.join(output_path_dir, generate_pipeline_filename(self._name))
+
+        # Check if valid final path to be saved
+        if not bsoid.io.is_pathname_valid(final_out_path):
+            invalid_path_err = f'Invalid output path save: {final_out_path}'
+            logger.error(invalid_path_err)
+            raise ValueError(invalid_path_err)
+        with open(final_out_path, 'wb') as model_file:
             joblib.dump(self, model_file)
+        logger.debug(f'Pipeline ({self.name}) saved to: {final_out_path}')
         return self
 
-    def build(self):
-        raise NotImplementedError(f'build() needs to be implemented for all child Pipeline classes.')
+    def has_been_previously_saved(self):
+        if not self.source: return False
+        if not os.path.isfile(os.path.join(self.source, generate_pipeline_filename(self.name))): return False
+        return True
 
-    def set_desc(self, description):
-        """ Set a description of the pipeline. Include any notes you want to keep regarding the process used. """
-        if not isinstance(description, str):
-            invalid_type_err = f'Invalid type submitted. found: {type(description)} TODO clean up this err message'
-            logger.error(invalid_type_err)
-            raise TypeError(invalid_type_err)
-        self.description = description
+    def build(self): raise NotImplementedError(f'build() needs to be implemented for all child Pipeline classes.')
 
-    def get_desc(self):
-        return self.description
+    def set_name(self, name):
+        if bsoid.io.has_invalid_chars_in_name_for_a_file(name):
+            invalid_name_err = f'Invalid chars detected for name: {name}.'
+            logger.error(invalid_name_err)
+            raise ValueError(invalid_name_err)
+        self._name = name
 
-    def write_video_frames_to_disk(self, video_to_be_labeled = config.VIDEO_TO_LABEL_PATH):
+        return self
+
+    def write_video_frames_to_disk(self, video_to_be_labeled=config.VIDEO_TO_LABEL_PATH):
         labels = list(self.df_post_tsne[self.gmm_assignment_col_name].values)
         labels = [f'label_i={i} // label={l}' for i, l in enumerate(labels)]
         # util.videoprocessing.write_annotated_frames_to_disk_from_video_LEGACY(
         #     video_to_be_labeled,
         #     labels,
         # )
+        # TODO: ensure new implementation works!!!!!
         util.videoprocessing.write_annotated_frames_to_disk_from_video_NEW(
             video_to_be_labeled,
             labels,
@@ -252,6 +267,41 @@ class Pipeline(object):
             self.make_video_from_written_frames()
 
         return self
+
+    def set_desc(self, description):
+        """ Set a description of the pipeline. Include any notes you want to keep regarding the process used. """
+        if not isinstance(description, str):
+            invalid_type_err = f'Invalid type submitted. found: {type(description)} TODO clean up this err message'
+            logger.error(invalid_type_err)
+            raise TypeError(invalid_type_err)
+        self._description = description
+        return self
+
+    def get_desc(self):
+        return self._description
+
+    # Properties
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def description(self):
+        return self._description
+
+    @property
+    def file_path(self):
+        if not self.source:
+            return None
+        return os.path.join(self.source, generate_pipeline_filename(self.name))
+    # Misc attributes
+    gmm_assignment_col_name = 'gmm_assignment'
+    svm_assignment_col_name = 'svm_assignment'
+
+    features_which_average_by_mean = ['DistFrontPawsTailbaseRelativeBodyLength',
+                                      'DistBackPawsBaseTailRelativeBodyLength', 'InterforepawDistance', 'BodyLength', ]
+    features_which_average_by_sum = ['SnoutToTailbaseChangeInAngle', 'SnoutSpeed', 'TailbaseSpeed']
+    features_names_7 = features_which_average_by_mean + features_which_average_by_sum
 
 
 class TestPipeline1(Pipeline):
@@ -410,20 +460,12 @@ class TestPipeline1(Pipeline):
         return self
 
 
-def read_pipeline(path: str) -> Pipeline:
-    """
-    With a valid path, read in an existing pipeline
-    :param path:
-    :return:
-    """
-
-    # TODO: add check for valid path
-    with open(path, 'rb') as file:
-        pipeline = joblib.load(file)
-
-    return pipeline
+def generate_pipeline_filename(name):
+    file_name = f'{name}.pipeline'
+    return file_name
 
 
 if __name__ == '__main__':
-    p = TestPipeline1(tsne_source='sklearn').build().make_video()
-    print(f'Accuracy score: {p.acc_score}')
+    # Test build
+    p = TestPipeline1(tsne_source='sklearn').build(); print(f'Accuracy score: {p.acc_score}')
+    pass
