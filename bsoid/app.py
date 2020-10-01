@@ -363,7 +363,7 @@ def build_and_run_new_pipeline():
 
 
 def streamlit():
-    bsoid.streamlit.home()
+    bsoid.streamlit.main()
 
 ########################################################################################################################
 

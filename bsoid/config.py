@@ -42,7 +42,7 @@ deco__log_entry_exit: callable = bsoid_logging.log_entry_exit  # TODO: temporary
 
 
 ########################################################################################################################
-# Set default vars
+# Set default variables
 # Fetch the B-SOiD project directory regardless of clone location
 BSOID_BASE_PROJECT_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # Output directory to where you want the analysis to be stored
@@ -59,8 +59,7 @@ configuration = configparser.ConfigParser()
 configuration.read(os.path.join(BSOID_BASE_PROJECT_PATH, config_file_name))
 
 
-########################################################################################################################
-##### READ CONFIG FOR RUNTIME VARIABLES #####
+##### READ CONFIG FOR RUNTIME VARIABLES ################################################################################
 
 # PATH
 DLC_PROJECT_PATH = configuration.get('PATH', 'DLC_PROJECT_PATH')
@@ -92,8 +91,11 @@ GENERATE_VIDEOS: bool = configuration.getboolean('APP', 'GENERATE_VIDEOS')
 PERCENT_FRAMES_TO_LABEL: float = configuration.getfloat('APP', 'PERCENT_FRAMES_TO_LABEL')
 # TODO: HIGH: add asserts below for PERCENT_FRAMES_TO_LABEL so that a valid number between 0. and 1. is ensured.
 DEFAULT_TEST_FILE: str = os.path.join(BSOID_BASE_PROJECT_PATH, 'tests', 'test_data', configuration.get('TESTING', 'DEFAULT_TEST_FILE'))
-OUTPUT_VIDEO_FPS = configuration.getint('APP', 'OUTPUT_VIDEO_FPS')
+OUTPUT_VIDEO_FPS = configuration.getint('APP', 'OUTPUT_VIDEO_FPS') \
+    if configuration.get('APP', 'OUTPUT_VIDEO_FPS').isnumeric() \
+    else int(VIDEO_FPS * PERCENT_FRAMES_TO_LABEL)
 IDENTIFICATION_ORDER: int = configuration.getint('APP', 'FILE_IDENTIFICATION_ORDER_LEGACY')  # TODO: low: deprecate
+
 
 # Now, pick an example video that corresponds to one of the csv files from the PREDICT_FOLDERS  # TODO: ************* This note from the original author implies that VID_NAME must be a video that corresponds to a csv from PREDICT_FOLDERS
 # VID_NAME = os.path.join(OST_BASE_PROJECT_PATH, 'GUI_projects', 'labelled_videos', '002_ratA_inc2_above.mp4')  # '/home/aaron/Documents/OST-with-DLC/GUI_projects/labelled_videos/002_ratA_inc2_above.mp4'
@@ -101,24 +103,15 @@ VIDEO_TO_LABEL_PATH: str = configuration.get('APP', 'VIDEO_TO_LABEL_PATH')
 
 
 # Assertions to ensure that, before runtime, the config variables are valid.
-assert isinstance(IDENTIFICATION_ORDER, int) and IDENTIFICATION_ORDER in {0, 1}, \
-    f'check IDENTIFICATION_ORDER for type validity'
-
 assert os.path.isdir(DLC_PROJECT_PATH), f'DLC_PROJECT_PATH DOES NOT EXIST: {DLC_PROJECT_PATH}'
 assert os.path.isdir(OUTPUT_PATH), f'OUTPUT PATH INVALID/DOES NOT EXIST: {OUTPUT_PATH}'
-
 assert os.path.isfile(DEFAULT_TEST_FILE), f'Test file was not found: {DEFAULT_TEST_FILE}'
 assert COMPILE_CSVS_FOR_TRAINING in {0, 1}, f'Invalid COMP value detected: {COMPILE_CSVS_FOR_TRAINING}.'
-assert os.path.isdir(VIDEO_OUTPUT_FOLDER_PATH),\
+assert isinstance(IDENTIFICATION_ORDER, int), f'check IDENTIFICATION_ORDER for type validity'
+assert os.path.isdir(VIDEO_OUTPUT_FOLDER_PATH), \
     f'`short_video_output_directory` dir. (value={VIDEO_OUTPUT_FOLDER_PATH}) must exist for runtime but does not.'
-assert os.path.isfile(VIDEO_TO_LABEL_PATH) or not VIDEO_TO_LABEL_PATH, f'Video does not exist: {VIDEO_TO_LABEL_PATH}. Check pathing in config.ini file.'
-
-# def get_config_str() -> str:
-#     """ Debugging function """
-#     config_string = ''
-#     for section in configuration.sections():
-#         config_string += f'SECTION: {section} // OPTIONS: {configuration.options(section)}\n'
-#     return config_string.strip()
+assert os.path.isfile(VIDEO_TO_LABEL_PATH) or not VIDEO_TO_LABEL_PATH, \
+    f'Video does not exist: {VIDEO_TO_LABEL_PATH}. Check pathing in config.ini file.'
 
 
 ########################################################################################################################
@@ -133,29 +126,19 @@ PREDICT_DATA_FOLDER_PATH = configuration.get('PATH', 'PREDICT_DATA_FOLDER_PATH')
 assert os.path.isabs(TRAIN_DATA_FOLDER_PATH), f'TODO, NOT AN ABS PATH review me! {__file__}'
 
 
-TRAIN_FOLDERS_IN_DLC_PROJECT_toBeDeprecated = [  # TODO: DEPREC WARNING
+TRAIN_FOLDERS_IN_DLC_PROJECT_toBeDeprecated = [  # TODO: DEPREC
     'sample_train_data_folder',
 ]
-PREDICT_FOLDERS_IN_DLC_PROJECT_toBeDeprecated: List[str] = [  # TODO: DEPREC WARNING
+PREDICT_FOLDERS_IN_DLC_PROJECT_toBeDeprecated: List[str] = [  # TODO: DEPREC
     'sample_predic_data_folder',
 ]
 
 TRAIN_FOLDERS_PATHS_toBeDeprecated = [os.path.join(DLC_PROJECT_PATH, folder)
                                       for folder in TRAIN_FOLDERS_IN_DLC_PROJECT_toBeDeprecated
-                                      if not os.path.isdir(folder)]
+                                      if not os.path.isdir(folder)]  # TODO: why the if statement?
 
 PREDICT_FOLDERS_PATHS_toBeDeprecated = [os.path.join(DLC_PROJECT_PATH, folder)
                                         for folder in PREDICT_FOLDERS_IN_DLC_PROJECT_toBeDeprecated]
-
-# Asserts
-for folder_path in TRAIN_FOLDERS_PATHS_toBeDeprecated:
-    assert os.path.isdir(folder_path), f'Training folder does not exist: {folder_path}'
-    assert os.path.isabs(folder_path), f'Predict folder PATH is not absolute and should be: {folder_path}'
-
-for folder_path in PREDICT_FOLDERS_PATHS_toBeDeprecated:
-    assert os.path.isdir(folder_path), f'Prediction folder does not exist: {folder_path}'
-    assert os.path.isabs(folder_path), f'Predict folder PATH is not absolute and should be: {folder_path}'
-
 
 ### Create a folder to store extracted images.
 config_value_alternate_output_path_for_annotated_frames = configuration.get(  # TODO:low:address.deleteable?duplicate?
@@ -166,7 +149,14 @@ FRAMES_OUTPUT_PATH = config_value_alternate_output_path_for_annotated_frames = \
     if configuration.get('PATH', 'ALTERNATE_OUTPUT_PATH_FOR_ANNOTATED_FRAMES') \
     else FRAMES_OUTPUT_PATH  # '/home/aaron/Documents/OST-with-DLC/B-SOID/OUTPUT/frames'
 
+# Asserts
+for folder_path in TRAIN_FOLDERS_PATHS_toBeDeprecated:
+    assert os.path.isdir(folder_path), f'Training folder does not exist: {folder_path}'
+    assert os.path.isabs(folder_path), f'Predict folder PATH is not absolute and should be: {folder_path}'
 
+for folder_path in PREDICT_FOLDERS_PATHS_toBeDeprecated:
+    assert os.path.isdir(folder_path), f'Prediction folder does not exist: {folder_path}'
+    assert os.path.isabs(folder_path), f'Predict folder PATH is not absolute and should be: {folder_path}'
 assert os.path.isdir(config_value_alternate_output_path_for_annotated_frames), \
     f'config_value_alternate_output_path_for_annotated_frames does not exist. ' \
     f'config_value_alternate_output_path_for_annotated_frames = ' \
@@ -314,8 +304,8 @@ def get_part(part) -> str:
 
 bodyparts = {key: configuration['DLC_FEATURES'][key] for key in configuration['DLC_FEATURES']}
 
-###
 
+###
 
 def get_config_str() -> str:
     """ Debugging function """
@@ -386,3 +376,4 @@ if __name__ == '__main__':
     pass
     print(type(RANDOM_STATE))
     print(VIDEO_TO_LABEL_PATH)
+    print('OUTPUT_VIDEO_FPS', OUTPUT_VIDEO_FPS)
