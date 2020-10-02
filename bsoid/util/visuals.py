@@ -6,6 +6,7 @@ from mpl_toolkits.mplot3d import Axes3D  # Despite being "unused", this import M
 from typing import List, Tuple
 import inspect
 import os
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sn
@@ -227,8 +228,9 @@ def plot_classes_bsoidumap(data, assignments, **kwargs) -> object:
     return fig
 
 
-@config.deco__log_entry_exit(logger)
-def plot_GM_assignments_in_3d(data: np.ndarray, assignments, save_fig_to_file: bool, fig_file_prefix='train_assignments', show_later=False, **kwargs):
+# @config.deco__log_entry_exit(logger)
+def plot_GM_assignments_in_3d(data: np.ndarray, assignments, save_fig_to_file: bool,
+                              fig_file_prefix='train_assignments', show_later=False, **kwargs) -> object:
     """
     Plot trained TSNE for EM-GMM assignments
     :param data: 2D array, trained_tsne array (3 columns)
@@ -254,9 +256,11 @@ def plot_GM_assignments_in_3d(data: np.ndarray, assignments, save_fig_to_file: b
     tsne_x, tsne_y, tsne_z = data[:, 0], data[:, 1], data[:, 2]
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
+    # Loop over assignments
     for i, g in enumerate(np.unique(assignments)):
+        # Select data for only assignment i
         idx = np.where(np.array(assignments) == g)
-        # TODO: below error: "IndexError: index 13 is out of bounds for axis 0 with size 13"
+        # Assign to colour and plot
         ax.scatter(tsne_x[idx], tsne_y[idx], tsne_z[idx], c=colormap[i], label=g, s=s, marker=marker, alpha=alpha)
     ax.set_xlabel('Dim. 1')
     ax.set_ylabel('Dim. 2')
@@ -268,10 +272,12 @@ def plot_GM_assignments_in_3d(data: np.ndarray, assignments, save_fig_to_file: b
         plt.draw()
     else:
         plt.show()
-    # my_file = 'train_assignments'
+
     if save_fig_to_file:
         file_name = f'{fig_file_prefix}_{time_str}'  # fig.savefig(os.path.join(config.OUTPUT_PATH, f'{fig_file_prefix}_{time_str}.svg'))
         save_graph_to_file(fig, file_name)
+
+    return fig
 
 
 # TODO: central difference b/w APP and UMAP is what is returned -- Tuple or solely a Fig
