@@ -13,7 +13,7 @@ import os
 import sys
 
 import bsoid
-from bsoid.pipeline import *  # This line is required for Streamlit to load Pipeline objects. Do not delete.
+from bsoid.pipeline import *  # This line is required for Streamlit to load Pipeline objects. Do not delete. For a more robust solution, consider: https://rebeccabilbro.github.io/module-main-has-no-attribute/
 
 logger = bsoid.config.initialize_logger(__name__)
 
@@ -29,7 +29,7 @@ map_command_to_func = {
     'cleanlogs': bsoid.app.clear_logs,
     'buildandrunlegacy': bsoid.main_LEGACY.test_function_to_build_then_run_py,
     'newbuild': bsoid.app.build_classifier_new_pipeline,
-    'streamlit': bsoid.streamlit.main
+    'streamlit': bsoid.streamlit.home
 }
 
 
