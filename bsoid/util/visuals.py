@@ -229,8 +229,7 @@ def plot_classes_bsoidumap(data, assignments, **kwargs) -> object:
 
 
 # @config.deco__log_entry_exit(logger)
-def plot_GM_assignments_in_3d(data: np.ndarray, assignments, save_fig_to_file: bool,
-                              fig_file_prefix='train_assignments', show_later=False, **kwargs) -> object:
+def plot_GM_assignments_in_3d(data: np.ndarray, assignments, save_fig_to_file: bool, fig_file_prefix='train_assignments', show_now=True, show_later=False, **kwargs) -> object:
     """
     Plot trained TSNE for EM-GMM assignments
     :param data: 2D array, trained_tsne array (3 columns)
@@ -239,6 +238,7 @@ def plot_GM_assignments_in_3d(data: np.ndarray, assignments, save_fig_to_file: b
     :param fig_file_prefix:
     :param show_later: use draw() instead of show()
     """
+    # TODO: find out why attaching the log entry/exit decorator kills the streamlit rotation app
     if not isinstance(data, np.ndarray):
         err = f'Expected `data` to be of type numpy.ndarray but instead found: {type(data)} (value = {data}).'
         logger.error(err)
@@ -248,8 +248,8 @@ def plot_GM_assignments_in_3d(data: np.ndarray, assignments, save_fig_to_file: b
     marker = kwargs.get('marker', 'o')
     alpha = kwargs.get('alpha', 0.8)
     title = kwargs.get('title', 'Assignments by GMM')
+    azim_elev = kwargs.get('azim_elev', (70, 135))
     # Plot graph
-    time_str = config.runtime_timestr  # time_str = time.strftime("%Y%m%d_%H%M")
     uk = list(np.unique(assignments))
     R = np.linspace(0, 1, len(uk))
     colormap = plt.cm.get_cmap("Spectral")(R)
@@ -259,22 +259,23 @@ def plot_GM_assignments_in_3d(data: np.ndarray, assignments, save_fig_to_file: b
     # Loop over assignments
     for i, g in enumerate(np.unique(assignments)):
         # Select data for only assignment i
-        idx = np.where(np.array(assignments) == g)
+        idx = np.where(assignments == g)
         # Assign to colour and plot
         ax.scatter(tsne_x[idx], tsne_y[idx], tsne_z[idx], c=colormap[i], label=g, s=s, marker=marker, alpha=alpha)
     ax.set_xlabel('Dim. 1')
     ax.set_ylabel('Dim. 2')
     ax.set_zlabel('Dim. 3')
-    ax.view_init(70, 135)
+    ax.view_init(*azim_elev)
     plt.title(title)
     plt.legend(ncol=3)
-    if show_later:
-        plt.draw()
-    else:
+    # Draw now?
+    if show_now:
         plt.show()
-
+    else:
+        plt.draw()
+    # Save to graph to file?
     if save_fig_to_file:
-        file_name = f'{fig_file_prefix}_{time_str}'  # fig.savefig(os.path.join(config.OUTPUT_PATH, f'{fig_file_prefix}_{time_str}.svg'))
+        file_name = f'{fig_file_prefix}_{config.runtime_timestr}'  # fig.savefig(os.path.join(config.OUTPUT_PATH, f'{fig_file_prefix}_{time_str}.svg'))
         save_graph_to_file(fig, file_name)
 
     return fig

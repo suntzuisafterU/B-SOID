@@ -22,18 +22,29 @@ DELETE THIS STRING
 Author also specifies that: the features are also smoothed over, or averaged across,
     a sliding window of size equivalent to 60ms (30ms prior to and after the frame of interest).
 """
+from bhtsne import tsne as TSNE_bhtsne
+from sklearn import mixture
+from sklearn.manifold import TSNE as TSNE_sklearn
+from sklearn.metrics import accuracy_score, plot_confusion_matrix
+from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.neural_network import MLPClassifier
+from sklearn.preprocessing import StandardScaler
+from sklearn.svm import SVC
 from tqdm import tqdm
 from typing import Any, Dict, List, Tuple
+import hdbscan
 import inspect
 import itertools
 import math
 import numpy as np
+import openTSNE
 import os
 import pandas as pd
 import umap
 
 from bsoid import config
-from bsoid.util import check_arg, likelihoodprocessing, visuals, statistics
+from bsoid.util import check_arg, likelihoodprocessing, statistics
+
 
 logger = config.initialize_logger(__name__)
 

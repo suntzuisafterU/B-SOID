@@ -116,7 +116,7 @@ def read_pipeline(path_to_file: str) -> pipeline.Pipeline:
     """
     # TODO: do final checks on this funct
     if not os.path.isfile(path_to_file):
-        invalid_file_err = f'Invalid path: {path_to_file}'
+        invalid_file_err = f'Invalid path: {path_to_file}. Cannot open, is not file.'
         logger.error(invalid_file_err)
         raise ValueError(invalid_file_err)
     with open(path_to_file, 'rb') as file:

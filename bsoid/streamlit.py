@@ -7,33 +7,27 @@ from mpl_toolkits.mplot3d import Axes3D  # Despite being "unused", this import M
 
 import joblib
 import glob
+import matplotlib.pyplot as plt
 import numpy as np
 import os
 import pandas as pd
 import streamlit as st
 import time
+import umap
 
 
 import bsoid
-logger = bsoid.config.initialize_logger(__file__)
+from bsoid import config
+logger = config.initialize_logger(__file__)
 
 
 ###
 
 # Instantiate names for buttons, options that can be changed on the fly but logic below stays the same
 title = f'B-SOiD streamlit app'
-p = None
 valid_video_extensions = {'avi', 'mp4', }
-
 # Variables for buttons, drop-down menus, and other things
 start_new_project, load_existing_project = 'Start new', 'Load existing'
-
-# Add a slider to the sidebar:
-# random_slider = st.sidebar.slider(
-#     'Select a range of values',
-#     0.0, 100.0, (25.0, 75.0)
-# )
-
 
 ########################################################################################################################
 
@@ -42,7 +36,57 @@ def line_break():
     st.markdown('---')
 
 
-# @st.cache(persist=True)
+# @st.cache(allow_output_mutation=True, persist=True)
+def plot_GM_assignments_in_3d(data: np.ndarray, assignments, save_fig_to_file: bool, fig_file_prefix='train_assignments', show_now=True, azim_elev = (70,135)) -> object:
+    """
+    100% copied from bsoid/util/visuals.py....don't keep this functions long term.
+
+    Plot trained TSNE for EM-GMM assignments
+    :param data: 2D array, trained_tsne array (3 columns)
+    :param assignments: 1D array, EM-GMM assignments
+    :param save_fig_to_file:
+    :param fig_file_prefix:
+    :param show_later: use draw() instead of show()
+    """
+    # Arg checking
+    if not isinstance(data, np.ndarray):
+        err = f'Expected `data` to be of type numpy.ndarray but instead found: {type(data)} (value = {data}).'
+        logger.error(err)
+        raise TypeError(err)
+    # Parse kwargs
+    s = 's'
+    marker = 'o'
+    alpha = 0.8
+    title = 'Assignments by GMM'
+    # Plot graph
+    uk = list(np.unique(assignments))
+    R = np.linspace(0, 1, len(uk))
+    colormap = plt.cm.get_cmap("Spectral")(R)
+    tsne_x, tsne_y, tsne_z = data[:, 0], data[:, 1], data[:, 2]
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    # Loop over assignments
+    for i, g in enumerate(np.unique(assignments)):
+        # Select data for only assignment i
+        idx = np.where(np.array(assignments) == g)
+        # Assign to colour and plot
+        ax.scatter(tsne_x[idx], tsne_y[idx], tsne_z[idx], c=colormap[i], label=g, s=s, marker=marker, alpha=alpha)
+    ax.set_xlabel('Dim. 1')
+    ax.set_ylabel('Dim. 2')
+    ax.set_zlabel('Dim. 3')
+    ax.view_init(*azim_elev)
+    plt.title(title)
+    plt.legend(ncol=3)
+    if show_now:
+        plt.show()
+    else:
+        plt.draw()
+
+    return fig
+
+
+###
+
 def get_example_vid(path):  # TODO: rename
     with open(path, 'rb') as video_file:
         video_bytes = video_file.read()
@@ -53,24 +97,17 @@ def home(*args, **kwargs):
     """
     Designated home page when streamlit is run for BSOID
     """
-    # Set up current_func() variables
+    # Set up current function variables
     is_pipeline_loaded = False
 
     ### Sidebar ###
     is_project_info_submitted_empty = st.sidebar.empty()
     current_pipeline_name_empty = st.sidebar.empty()
-
-    # # Add a selectbox to the sidebar:
-    # some_selection = st.sidebar.selectbox(
-    #     label='How would you like to be contacted?',
-    #     options=('Email', 'Home phone', 'Mobile phone', )
-    # )
-
-    st.markdown('---')
+    st.sidebar.markdown('----')
 
     ### Main Page ###
     st.markdown(f'# {title}')
-    st.markdown('---')
+    line_break()
 
     # Open project
     st.markdown('## Open project')
@@ -118,7 +155,7 @@ def home(*args, **kwargs):
                                             f'User submitted: {path_to_project_file}')
                 # If OK: load project, continue
                 logger.debug(f'Attempting to open: {path_to_project_file}')
-                p = bsoid.io.read_pipeline(path_to_project_file)
+                p = bsoid.util.io.read_pipeline(path_to_project_file)
                 logger.debug(f'Successfully opened: {path_to_project_file}')
                 st.success('Pipeline successfully loaded.')
                 is_pipeline_loaded = True
@@ -132,6 +169,7 @@ def home(*args, **kwargs):
         st.markdown(f'---')
 
     if is_pipeline_loaded:
+        current_pipeline_name_empty.markdown(f'Pipeline name: __{p.name}__')
         show_pipeline_info(p)
 
     return
@@ -147,36 +185,52 @@ def show_pipeline_info(p: bsoid.pipeline.Pipeline):
     for loc in p.train_data_files_paths:
         st.markdown(f'- - {loc}')
     st.markdown(f'- Are the classifiers built: {p.is_built}')
+    st.markdown(f'Number of data points in df_features: {len(p.df_features)}')
     line_break()
 
     return show_actions(p)
 
 
 def show_actions(p: bsoid.pipeline.Pipeline):
-    # Rebuild classifiers
-    st.markdown(f'## Stuff to do:')
-    st.markdown(f'')
-    rebuild_classifiers_button = st.button('Rebuild classifiers', key='RebuildClassifiersButton')
-    if rebuild_classifiers_button:
-        st.markdown(f'### Rebuilding classifiers')
-        pass
-    view_analytics_button = st.button('View Analytics', key='ViewAnalyticsButton')
-    if view_analytics_button:
-        st.markdown('### Available analytics')
-        view_EMGMM_distributions = st.button('View EM/GMM distributions', key='ViewEMGMMDistributionsButton')
-        if view_EMGMM_distributions:
-            view_analytics_button = True
-            st.markdown(f'EM/GMM distributions')
-            fig = p.plot_assignments_in_3d()
-            st.write(f'3d graph: {str(fig)}')
-            st.pyplot(fig)
-            st.graphviz_chart(fig)
+    # Rebuild classifiers TODO?
 
-        pass
+    # Sidebar
+    azim = st.sidebar.slider("azimuth (camera angle rotation on Y-axis)", 0, 90, 20, 5)
+    elev = st.sidebar.slider("elevation (camera rotation about the Z-axis)", 0, 180, 110, 5)
+    st.sidebar.markdown(f'---')
 
-    fig = p.plot_assignments_in_3d()
-    st.write(f'3d graph: {str(fig)}')
+    # Main
+    st.markdown(f'## Stuff to do? TODO')
+    st.markdown('')
+
+    # rebuild_classifiers_button = st.button('Rebuild classifiers', key='RebuildClassifiersButton')
+    # if rebuild_classifiers_button:
+    #     st.markdown(f'### Rebuilding classifiers')
+    #     pass
+    # view_analytics_button = st.button('View Analytics', key='ViewAnalyticsButton')
+    # if view_analytics_button:
+
+    # st.markdown('### Available analytics')
+
+    # view_EMGMM_distributions = st.button('Show EM/GMM distributions', key='ViewEMGMMDistributionsButton')
+    # a, b = generate_data(p)
+
+    st.markdown(f'### EM/GMM distributions')
+    # fig = p.plot_assignments_in_3d(show_now=True, azim_elev=(azim, elev))
+    # df_dims_and_assignment = p.df_post_tsne[p.dims_cols_names+[p.gmm_assignment_col_name, ]]
+    # fig = plot_GM_assignments_in_3d(df_dims_and_assignment[p.dims_cols_names].values,
+    #                                 df_dims_and_assignment[p.gmm_assignment_col_name].values, False,
+    #                                 azim_elev=(azim, elev))
+
+    fig = p.plot_assignments_in_3d(azim_elev=(azim, elev))
+
     st.pyplot(fig)
 
-    line_break()
+    # fig = generate_3d_emgmm_plot(p, azim, elev)
+
+    # ax = fig.gca(projection='3d')
+    # ax.view_init(azim, elev)
+
+    # st.pyplot(fig)
+
 
