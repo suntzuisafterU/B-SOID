@@ -42,8 +42,8 @@ import os
 import pandas as pd
 import umap
 
-from bsoid import config
-from bsoid.util import check_arg, likelihoodprocessing, statistics
+from . import config
+from .util import check_arg, likelihoodprocessing, statistics
 
 
 logger = config.initialize_logger(__name__)

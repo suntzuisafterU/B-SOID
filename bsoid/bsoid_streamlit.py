@@ -4,14 +4,12 @@ streamlit api: https://docs.streamlit.io/en/stable/api.html
 """
 from matplotlib.axes._axes import _log as matplotlib_axes_logger
 from mpl_toolkits.mplot3d import Axes3D  # Despite being "unused", this import MUST stay for 3d plotting to work. PLO!
-
-import joblib
-import glob
 import matplotlib.pyplot as plt
 import numpy as np
 import os
 import pandas as pd
 import streamlit as st
+import sys
 import time
 import umap
 
@@ -181,11 +179,11 @@ def show_pipeline_info(p: bsoid.pipeline.Pipeline):
     st.markdown(f'- Pipeline name: {p.name}')
     st.markdown(f'- Pipeline description: {p.description}')
     st.markdown(f'- Pipeline file location: {p.file_path}')
-    st.markdown(f'- Data sources:')
+    st.markdown(f'- Data sources: {len(p.train_data_files_paths)}')
     for loc in p.train_data_files_paths:
         st.markdown(f'- - {loc}')
     st.markdown(f'- Are the classifiers built: {p.is_built}')
-    st.markdown(f'Number of data points in df_features: {len(p.df_features)}')
+    st.markdown(f'- Number of data points in df_features: {len(p.df_features) if p.df_features else None}')
     line_break()
 
     return show_actions(p)
@@ -200,8 +198,20 @@ def show_actions(p: bsoid.pipeline.Pipeline):
     st.sidebar.markdown(f'---')
 
     # Main
-    st.markdown(f'## Stuff to do? TODO')
+    st.markdown(f'## (Re-)build classifiers?')
     st.markdown('')
+    line_break()
+
+    st.markdown('### Add new data sources')
+    new_file_button = st.button('Enter new file')
+    if new_file_button:
+        new_filepath = st.text_input('Insert new data file:')
+        if new_filepath:
+            if not os.path.isfile(new_filepath) or not os.path.isdir(new_filepath):
+                st.error(ValueError(f'Invalid path to data file: {new_filepath}'))
+                return
+            p.read_in_train_data_source(new_filepath).save()
+
 
     # rebuild_classifiers_button = st.button('Rebuild classifiers', key='RebuildClassifiersButton')
     # if rebuild_classifiers_button:
@@ -216,21 +226,120 @@ def show_actions(p: bsoid.pipeline.Pipeline):
     # a, b = generate_data(p)
 
     st.markdown(f'### EM/GMM distributions')
-    # fig = p.plot_assignments_in_3d(show_now=True, azim_elev=(azim, elev))
-    # df_dims_and_assignment = p.df_post_tsne[p.dims_cols_names+[p.gmm_assignment_col_name, ]]
-    # fig = plot_GM_assignments_in_3d(df_dims_and_assignment[p.dims_cols_names].values,
-    #                                 df_dims_and_assignment[p.gmm_assignment_col_name].values, False,
-    #                                 azim_elev=(azim, elev))
 
-    fig = p.plot_assignments_in_3d(azim_elev=(azim, elev))
-
-    st.pyplot(fig)
-
-    # fig = generate_3d_emgmm_plot(p, azim, elev)
-
-    # ax = fig.gca(projection='3d')
-    # ax.view_init(azim, elev)
-
+    # # Temporarily commented
+    # fig = p.plot_assignments_in_3d(azim_elev=(azim, elev))
     # st.pyplot(fig)
+
+
+
+
+
+try:
+    import streamlit.ReportThread as ReportThread
+    from streamlit.server.Server import Server
+except ImportError:
+    # Streamlit >= 0.65.0
+    import streamlit.report_thread as ReportThread
+    from streamlit.server.server import Server
+
+
+class SessionState(object):
+    def __init__(self, **kwargs):
+        """A new SessionState object.
+
+        Parameters
+        ----------
+        **kwargs : any
+            Default values for the session state.
+
+        Example
+        -------
+        >>> session_state = SessionState(user_name='', favorite_color='black')
+        >>> session_state.user_name = 'Mary'
+        ''
+        >>> session_state.favorite_color
+        'black'
+
+        """
+        for key, val in kwargs.items():
+            setattr(self, key, val)
+
+
+def get(**kwargs):
+    """Gets a SessionState object for the current session.
+
+    Creates a new object if necessary.
+
+    Parameters
+    ----------
+    **kwargs : any
+        Default values you want to add to the session state, if we're creating a
+        new one.
+
+    Example
+    -------
+    >>> session_state = get(user_name='', favorite_color='black')
+    >>> session_state.user_name
+    ''
+    >>> session_state.user_name = 'Mary'
+    >>> session_state.favorite_color
+    'black'
+
+    Since you set user_name above, next time your script runs this will be the
+    result:
+    >>> session_state = get(user_name='', favorite_color='black')
+    >>> session_state.user_name
+    'Mary'
+
+    """
+    # Hack to get the session object from Streamlit.
+
+    ctx = ReportThread.get_report_ctx()
+
+    this_session = None
+
+    current_server = Server.get_current()
+    if hasattr(current_server, '_session_infos'):
+        # Streamlit < 0.56
+        session_infos = Server.get_current()._session_infos.values()
+    else:
+        session_infos = Server.get_current()._session_info_by_id.values()
+
+    for session_info in session_infos:
+        s = session_info.session
+        if (
+            # Streamlit < 0.54.0
+            (hasattr(s, '_main_dg') and s._main_dg == ctx.main_dg)
+            or
+            # Streamlit >= 0.54.0
+            (not hasattr(s, '_main_dg') and s.enqueue == ctx.enqueue)
+            or
+            # Streamlit >= 0.65.2
+            (not hasattr(s, '_main_dg') and s._uploaded_file_mgr == ctx.uploaded_file_mgr)
+        ):
+            this_session = s
+
+    if this_session is None:
+        raise RuntimeError(
+            "Oh noes. Couldn't get your Streamlit Session object. "
+            'Are you doing something fancy with threads?')
+
+    # Got the session object! Now let's attach some state into it.
+
+    if not hasattr(this_session, '_custom_session_state'):
+        this_session._custom_session_state = SessionState(**kwargs)
+
+    return this_session._custom_session_state
+
+
+__all__ = ['get']
+
+
+
+if __name__ == '__main__':
+    BSOID = os.path.dirname(os.path.dirname(__file__))
+    if BSOID not in sys.path:
+        sys.path.insert(0, BSOID)
 
 

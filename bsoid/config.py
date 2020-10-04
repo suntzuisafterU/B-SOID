@@ -27,7 +27,7 @@ import sys
 import time
 
 
-from bsoid.util import bsoid_logging
+from .util import bsoid_logging
 
 
 # Debug opts

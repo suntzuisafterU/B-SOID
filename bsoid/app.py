@@ -350,7 +350,7 @@ def clear_logs() -> None:
 
 
 def TEST_readcsv():
-    # A test function to see if breakpoints work on read_csv
+    # A test function to see if breakpoints work on read_csv. Delete after debugging OK.
     path = f'C:\\Users\\killian\\projects\\OST-with-DLC\\GUI_projects\\EPM-DLC-projects\\' \
            f'sample_train_data_folder\\Video1DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000.csv'
     util.io.read_csv(path)
@@ -363,7 +363,8 @@ def build_and_run_new_pipeline():
 
 
 def streamlit():
-    bsoid.streamlit.main()
+    bsoid.bsoid_streamlit.home()
+
 
 ########################################################################################################################
 

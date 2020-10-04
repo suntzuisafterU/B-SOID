@@ -10,13 +10,14 @@ from . import (
     feature_engineering,
     main_LEGACY,  # TODO: low: remove this after rewiring legacy code (?)
     pipeline,
-    streamlit,
+    bsoid_streamlit,
     train,
     train_LEGACY,  # TODO: potentially remove after rewiring code
+    util,
 )
 
 # user-facing io api
-from bsoid.util.io import (
+from .util.io import (
     read_csv,
     read_csvs,
     read_pipeline,
