@@ -6,88 +6,97 @@ from sklearn import mixture
 from sklearn.manifold import TSNE as TSNE_sklearn
 from sklearn.metrics import accuracy_score, plot_confusion_matrix
 from sklearn.model_selection import train_test_split, cross_val_score
-from sklearn.neural_network import MLPClassifier
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 from tqdm import tqdm
 from typing import Any, Collection, Dict, List, Optional, Tuple, Union
-import hdbscan
 import inspect
 import joblib
-import itertools
-import math
-import matplotlib.pyplot as plt
 import numpy as np
 import openTSNE
 import os
 import pandas as pd
 import time
-import umap
 
 import bsoid
 from bsoid import classify, config, feature_engineering, train, util
-from bsoid.config import OUTPUT_PATH, VIDEO_FPS
-from bsoid.util.bsoid_logging import get_current_function  # for debugging purposes
 
-logger = config.initialize_logger(__file__)
+logger = bsoid.config.initialize_logger(__file__)
 
 
 ###
 
-class Pipeline(object):
+class PipelineAttributeHolder:
+    """
+    Helps obfuscate params from base Pipeline object for API clarity
+    """
+    _name: str = 'DefaultPipelineName'
+    _description: str = ''
+    _folder_source: str = config.OUTPUT_PATH  # Folder in which this pipeline resides
+    _is_pipeline_consistent: bool = True  # TODO: add note here: changes to False when new data added and pipeline needs to be rebuilt
+    data_ext: str = 'csv'
+
+    tsne_source: str = None
+
+    is_built = False
+
+    _scaler = None
+    _tsne_obj = None
+    _clf_gmm = None
+    _clf_svm = None
+    _random_state: Optional[int] = None
+    average_over_n_frames: int = 3
+    tsne_dimensions = 3
+
+    SKLEARN_SVM_PARAMS: dict = {}
+    SKLEARN_EMGMM_PARAMS: dict = {}
+    SKLEARN_TSNE_PARAMS: dict = {}
+
+    kwargs: dict = {}
+    # Properties
+    @property
+    def name(self): return self._name
+    @property
+    def description(self): return self._description
+    @property
+    def file_path(self) -> Optional[str]:  # TODO: low: review
+        if not self._folder_source:
+            return None
+        return os.path.join(self._folder_source, generate_pipeline_filename(self.name))
+    @property
+    def clf_gmm(self): return self._clf_gmm
+    @property
+    def clf_svm(self): return self._clf_svm
+    # TODO: implement property: random_state
+
+class Pipeline(PipelineAttributeHolder):
     """
 
     """
     # TODO: organize housing variables
-
-    _name: str = 'DefaultPipelineName'
-    _description: str = ''
-    source = None  # Folder in which this pipeline resides
-
-    default_vid_name = 'DefaultVideoName'
-
     train_data: List[pd.DataFrame] = []
     test_data: List[pd.DataFrame] = []
-
-    dfs_list_raw_data: List[pd.DataFrame] = []
+    dims_cols_names: List[str] = None
+    _dfs_list_raw_data: List[pd.DataFrame] = []
     df_features: pd.DataFrame = None
+    df_post_tsne: pd.DataFrame = None
 
-    average_over_n_frames: int = 3
-    data_ext: str = 'csv'
-
-    scaler = None
-    tsne = None
-    clf_gmm = None
-    clf_svm = None
-
-    tsne_source: str = None
-    tsne_dimensions = 3
     valid_tsne_sources: set = {'bhtsne', 'sklearn', 'opentsne', }
     train_data_files_paths: List[str] = []
     predict_data_files_paths: List[str] = []
     cross_val_scores: Collection = None
 
-    def __init__(self,
-                 name: str = None,
-                 data_source: str = None,
-                 tsne_source=None,
-                 data_extension='csv',
-                 **kwargs):
-        if not isinstance(name, str):
+    def __init__(self, name: str = None, tsne_source=None, data_extension='csv', **kwargs):
+        """ Initialize pipeline + config """
+        # Pipeline name
+        if name is not None and not isinstance(name, str):
             raise TypeError(f'name should be of type str but instead found type {type(name)}')
-        self.set_name(name)
-        if data_source is not None:
-            if not isinstance(data_source, str):
-                # TODO: finish err reporting
-                data_type_err = f'invalid type: {type(data_source)}'
-                raise TypeError(data_type_err)
-            if not os.path.isfile(data_source):
-                # TODO: finish err reporting
-                not_a_file_err = f'Not a file found: {data_source}'
-                logger.error(not_a_file_err)
-                raise ValueError(not_a_file_err)
-            # TOOD: save source?
-        # Validate tsne source type
+        elif isinstance(name, str): self.set_name(name)
+        else:
+            invalid_name_err = f'Invalid name input to pipeline: {name}'
+            logger.error(invalid_name_err)
+            raise ValueError(invalid_name_err)
+        # Validate t-SNE source type
         if tsne_source is not None and not isinstance(tsne_source, str):
             tsne_type_err = f'TODO bad type for tsne source ({type(tsne_source)}'
             logger.error(tsne_type_err)
@@ -97,45 +106,79 @@ class Pipeline(object):
             logger.error(tsne_err)
             raise ValueError(tsne_err)
         self.tsne_source = tsne_source
+        # Random state
+        random_state = kwargs.get('random_state')
+        if random_state is not None:
+            if not isinstance(random_state, int):
+                random_state_type_err = f'Invalid type found for random ' \
+                                        f'state: {type(random_state)} (value: {random_state})'
+                logger.error(random_state_type_err)
+                raise TypeError(random_state_type_err)
+            self._random_state = random_state
+        else: self._random_state = config.RANDOM_STATE
+
         # Validate data extension to be pulled from DLC output. Right now, only CSV and h5 supported by DLC to output.
         if data_extension is not None:
             if not isinstance(data_extension, str):
-                data_ext_type_err = f'Invalid type found for data ext: {type(data_extension)}TODO: clean up err message'
+                data_ext_type_err = f'Invalid type found for data ext: {type(data_extension)} /' \
+                                    f'TODO: clean up err message'
                 logger.error(data_ext_type_err)
                 raise TypeError(data_ext_type_err)
 
             self.data_ext = data_extension
+
+
         # TODO: add kwargs parsing for dimensions
-        self.dims_cols_names = [f'dim{d + 1}' for d in range(self.tsne_dimensions)]
+        self.dims_cols_names = [f'dim{d+1}' for d in range(self.tsne_dimensions)]
         #
         # TODO: add kwargs parsing for averaging over n-frames
         #
         # TODO: ADD KWARGS OPTION FOR OVERRIDING VERBOSE in CONFIG.INI!!!!!!!! ****
         self.kwargs = kwargs
+        # Final setup
+        self.__read_in_config_file_vars()
 
-    def read_in_predict_folder_data_filepaths(self) -> List[str]:
+    def read_in_kwargs(self, kwargs):
+        # TODO
+        return
+
+    def __read_in_config_file_vars(self):
+        """
+            Check if config variables are inserted. If they are not manually inserted on
+        Pipeline instantiation, insert config vars from config.ini.
+        """
+        if len(self.SKLEARN_SVM_PARAMS) == 0:
+            self.SKLEARN_SVM_PARAMS = config.SVM_PARAMS
+        if len(self.SKLEARN_EMGMM_PARAMS) == 0:
+            self.SKLEARN_EMGMM_PARAMS = config.EMGMM_PARAMS
+        if len(self.SKLEARN_TSNE_PARAMS) == 0:
+            self.SKLEARN_TSNE_PARAMS = config.TSNE_SKLEARN_PARAMS
+
+    def read_in_predict_folder_data_file_paths(self) -> List[str]:  # TODO: deprecate/re-work
         self.predict_data_files_paths = predict_data_files_paths = [os.path.join(config.PREDICT_DATA_FOLDER_PATH, x)
                                                                     for x in os.listdir(config.PREDICT_DATA_FOLDER_PATH)
-                                                                    if x.split('.')[-1] == self.data_ext]
-        # TODO: add err checking for empty files pulled?
+                                                                    if x.split('.')[-1] == self.data_ext].copy()
+        if len(predict_data_files_paths) <= 0:
+            err = f'Zero csv files found from: {config.PREDICT_DATA_FOLDER_PATH}'
+            logger.error(err)
         return predict_data_files_paths
 
-    def read_in_train_folder_data_filepaths(self) -> List[str]:
+    def read_in_train_folder_data_file_paths(self) -> List[str]:  # TODO: deprecate/re-work
         self.train_data_files_paths = predict_data_files_paths = [os.path.join(config.TRAIN_DATA_FOLDER_PATH, x)
                                                                   for x in os.listdir(config.TRAIN_DATA_FOLDER_PATH)
-                                                                  if x.split('.')[-1] == self.data_ext]
+                                                                  if x.split('.')[-1] == self.data_ext].copy()
         if len(predict_data_files_paths) <= 0:
-            err = f'Zero csv files found '
+            err = f'Zero csv files found from {config.TRAIN_DATA_FOLDER_PATH}'
             logger.error(err)
             raise ValueError(err)
         return predict_data_files_paths
 
     @config.deco__log_entry_exit(logger)
-    def scale_data(self, df_data: pd.DataFrame, features) -> pd.DataFrame:
+    def scale_data(self, df_data: pd.DataFrame, features: List[str]) -> pd.DataFrame:
         # TODO: add arg checking to ensure all features specified are in columns
-        self.scaler = scaler = StandardScaler()
-        scaler.fit(df_data[features])
-        arr_data_scaled = scaler.transform(df_data[features])
+        self._scaler = StandardScaler()
+        self._scaler.fit(df_data[features])
+        arr_data_scaled = self._scaler.transform(df_data[features])
         df_scaled_data = pd.DataFrame(arr_data_scaled, columns=features)
         for col in df_data.columns:
             if col not in set(df_scaled_data.columns):
@@ -144,8 +187,8 @@ class Pipeline(object):
 
     @config.deco__log_entry_exit(logger)
     def train_SVM(self, x_train, y_train, x_test=None) -> Optional[np.ndarray]:
-        self.clf_svm = SVC(**config.SVM_PARAMS)
-        self.clf_svm.fit(x_train, y_train)
+        self._clf_svm = SVC(**self.SKLEARN_SVM_PARAMS)
+        self._clf_svm.fit(x_train, y_train)
         if x_test is not None:
             return self.clf_svm.predict(x_test)
         return
@@ -157,7 +200,7 @@ class Pipeline(object):
         :param df:
         :return:
         """
-        self.clf_gmm = mixture.GaussianMixture(**config.EMGMM_PARAMS).fit(df)
+        self._clf_gmm = mixture.GaussianMixture(**self.SKLEARN_EMGMM_PARAMS).fit(df)
         assignments = self.clf_gmm.predict(df)
         return assignments
 
@@ -165,7 +208,7 @@ class Pipeline(object):
     def train_tsne_get_dimension_reduced_data(self, data: pd.DataFrame, **kwargs) -> np.ndarray:
         """
         TODO: elaborate
-        TODO: ensure that TSNE obj can be saved and used on
+        TODO: ensure that TSNE obj can be saved and used later for new data? *** Important ***
         :param data:
         :param kwargs:
         :return:
@@ -181,16 +224,16 @@ class Pipeline(object):
             arr_result = TSNE_sklearn(
                 perplexity=np.sqrt(len(data.columns)),  # Perplexity scales with sqrt, power law
                 learning_rate=max(200, len(data.columns) // 16),  # alpha*eta = n
-                **config.TSNE_SKLEARN_PARAMS,
+                **self.SKLEARN_TSNE_PARAMS,
             ).fit_transform(data[self.features_names_7])
         elif self.tsne_source == 'opentsne':
-            self.tsne = openTSNE.TSNE(
+            self._tsne_obj = openTSNE.TSNE(
                 negative_gradient_method='bh',  # TODO: make this a changeable var?
                 n_components=self.tsne_dimensions,
                 n_iter=config.TSNE_N_ITER,
                 n_jobs=10,
                 verbose=True)
-            tsne_embedding = self.tsne.fit(data[self.features_names_7].values)
+            tsne_embedding = self._tsne_obj.fit(data[self.features_names_7].values)
             arr_result = tsne_embedding.transform(data[self.features_names_7].values)
         else: raise RuntimeError(f'Invalid TSNE source type fell through the cracks: {self.tsne_source}')
         return arr_result
@@ -206,24 +249,23 @@ class Pipeline(object):
         final_out_path = os.path.join(output_path_dir, generate_pipeline_filename(self._name))
 
         # Check if valid final path to be saved
-        if not bsoid.io.is_pathname_valid(final_out_path):
+        if not bsoid.util.io.is_pathname_valid(final_out_path):
             invalid_path_err = f'Invalid output path save: {final_out_path}'
             logger.error(invalid_path_err)
             raise ValueError(invalid_path_err)
         with open(final_out_path, 'wb') as model_file:
             joblib.dump(self, model_file)
+        self._folder_source = output_path_dir
         logger.debug(f'Pipeline ({self.name}) saved to: {final_out_path}')
         return self
 
     def has_been_previously_saved(self):
-        if not self.source: return False
-        if not os.path.isfile(os.path.join(self.source, generate_pipeline_filename(self.name))): return False
+        if not self._folder_source: return False
+        if not os.path.isfile(os.path.join(self._folder_source, generate_pipeline_filename(self.name))): return False
         return True
 
-    def build(self): raise NotImplementedError(f'build() needs to be implemented for all child Pipeline classes.')
-
     def set_name(self, name):
-        if bsoid.io.has_invalid_chars_in_name_for_a_file(name):
+        if bsoid.util.io.has_invalid_chars_in_name_for_a_file(name):
             invalid_name_err = f'Invalid chars detected for name: {name}.'
             logger.error(invalid_name_err)
             raise ValueError(invalid_name_err)
@@ -245,7 +287,7 @@ class Pipeline(object):
         )
         return
 
-    def make_video_from_written_frames(self, new_video_name=default_vid_name, video_to_be_labeled=config.VIDEO_TO_LABEL_PATH):
+    def make_video_from_written_frames(self, new_video_name, video_to_be_labeled=config.VIDEO_TO_LABEL_PATH):
         util.videoprocessing.write_video_with_existing_frames(
             video_to_be_labeled,
             config.FRAMES_OUTPUT_PATH,
@@ -268,6 +310,35 @@ class Pipeline(object):
 
         return self
 
+    def plot_assignments_in_3d(self, show_now=False, save_to_file=False, azim_elev=(70, 135)):
+        if not self.is_built or not self._is_pipeline_consistent:
+            logger.warning(f'Classifiers have not been built. Nothing to graph.')
+            return None
+
+        self.fig_gm_assignments_3d = util.visuals.plot_GM_assignments_in_3d(
+            self.df_post_tsne[self.dims_cols_names].values,
+            self.df_post_tsne[self.gmm_assignment_col_name].values,
+            save_to_file,
+            show_now=show_now,
+            azim_elev=azim_elev,
+        )
+
+        return self.fig_gm_assignments_3d
+
+    def plot(self):
+        logger.debug(f'Enter GRAPH PLOTTING section of {inspect.stack()[0][3]}')
+        # # plot 3d stuff?
+        util.visuals.plot_GM_assignments_in_3d(self.df_post_tsne[self.dims_cols_names].values, self.df_post_tsne[self.gmm_assignment_col_name].values, config.SAVE_GRAPHS_TO_FILE)
+
+        # below plot is for cross-val scores
+        scores = cross_val_score()  # TODO: low
+        # util.visuals.plot_accuracy_SVM(scores, fig_file_prefix='TODO__replaceThisFigFilePrefixToSayIfItsKFOLDAccuracyOrTestAccuracy')
+
+        # TODO: fix below
+        # util.visuals.plot_feats_bsoidpy(features_10fps, gmm_assignments)
+        logger.debug(f'Exiting GRAPH PLOTTING section of {inspect.stack()[0][3]}')
+        return
+
     def set_desc(self, description):
         """ Set a description of the pipeline. Include any notes you want to keep regarding the process used. """
         if not isinstance(description, str):
@@ -280,20 +351,7 @@ class Pipeline(object):
     def get_desc(self):
         return self._description
 
-    # Properties
-    @property
-    def name(self):
-        return self._name
 
-    @property
-    def description(self):
-        return self._description
-
-    @property
-    def file_path(self):
-        if not self.source:
-            return None
-        return os.path.join(self.source, generate_pipeline_filename(self.name))
     # Misc attributes
     gmm_assignment_col_name = 'gmm_assignment'
     svm_assignment_col_name = 'svm_assignment'
@@ -319,7 +377,7 @@ class TestPipeline1(Pipeline):
         super(TestPipeline1, self).__init__(data_source=data_source, tsne_source=tsne_source, data_extension=data_ext, **kwargs)
 
     @config.deco__log_entry_exit(logger)
-    def engineer_features(self, list_dfs_raw_data: Union[List[pd.DataFrame], pd.DataFrame]) -> pd.DataFrame:
+    def engineer_features(self, list_dfs_raw_data: Union[List[pd.DataFrame], pd.DataFrame]) -> Pipeline:
         """
         All functions that take the raw data (data retrieved from using bsoid.read_csv()) and
         transforms it into classifier-ready data.
@@ -359,7 +417,12 @@ class TestPipeline1(Pipeline):
         df_features_all = pd.concat(dfs_features)
         self.df_features = df_features = df_features_all
 
-        return df_features
+        return self
+
+    def tsne_reduce_df_features(self) -> Pipeline:
+        arr_tsne_result = self.train_tsne_get_dimension_reduced_data(self.df_features_scaled)
+        self.df_post_tsne = pd.DataFrame(arr_tsne_result, columns=self.dims_cols_names)
+        return self
 
     @config.deco__log_entry_exit(logger)
     def build(self, save=False, inplace=False) -> Pipeline:
@@ -369,28 +432,24 @@ class TestPipeline1(Pipeline):
         :param inplace:
         :return:
         """
-        train_data_files_paths: List[str] = self.read_in_train_folder_data_filepaths()
-        # Get files names
-        train_data_files_paths = [train_data_files_paths[0], ]  # TODO: debugging effort. Delete later.
-        logger.warning(f'{inspect.stack()[0][3]}(): Only 1 file is being used for training '
-                       f'classifier to cut down on time. Later,'
-                       f'remove the above line here in build() and see how multiple files build')
+        train_data_files_paths: List[str] = self.read_in_train_folder_data_file_paths()
+        train_data_files_paths = self.train_data_files_paths
+
         # Read in train data
-        self.dfs_list_raw_data = dfs_list_raw_data = [util.io.read_csv(file_path)
-                                                      for file_path in train_data_files_paths]
+        self.dfs_list_raw_data = dfs_list_raw_data = [util.io.read_csv(file_path) for file_path in train_data_files_paths]
 
         # Engineer features
         logger.debug('Start engineering features')
         start = time.perf_counter()
-        df_features = self.engineer_features(dfs_list_raw_data)
+        self.engineer_features(dfs_list_raw_data)
         logger.debug(f'Finished engineering features in {round(time.perf_counter() - start, 1)} seconds.')
 
         # Scale data
-        df_features_scaled = self.scale_data(df_features, self.features_names_7)
+        self.df_features_scaled = self.scale_data(self.df_features, self.features_names_7)
 
         # TSNE -- create new dimensionally reduced data
-        arr_tsne_result = self.train_tsne_get_dimension_reduced_data(df_features_scaled)
-        self.df_post_tsne = pd.DataFrame(arr_tsne_result, columns=self.dims_cols_names)
+        self.tsne_reduce_df_features()
+
 
         # Train GMM, get assignments
         self.df_post_tsne[self.gmm_assignment_col_name] = self.train_gmm_and_get_labels(self.df_post_tsne[self.dims_cols_names])
@@ -400,6 +459,7 @@ class TestPipeline1(Pipeline):
             self.df_post_tsne[self.dims_cols_names], self.df_post_tsne[self.gmm_assignment_col_name],
             test_size=config.HOLDOUT_PERCENT, random_state=config.RANDOM_STATE)  # TODO: add shuffle kwarg?
         self.df_features_train, self.df_features_test, self.df_labels_train, self.df_labels_test = df_features_train, df_features_test, df_labels_train, df_labels_test
+
         # # Train SVM
         df_labels_train[self.svm_assignment_col_name] = self.train_SVM(df_features_train, df_labels_train, df_features_test)
         self.df_labels_train = df_labels_train
@@ -418,7 +478,7 @@ class TestPipeline1(Pipeline):
         # # Do plotting, save info as necessary
         if config.PLOT_GRAPHS:  # TODO; silently kill this section for now
             logger.debug(f'Enter GRAPH PLOTTING section of {inspect.stack()[0][3]}')
-            util.visuals.plot_GM_assignments_in_3d(df_post_tsne[self.dims_cols_names].values, df_post_tsne[self.gmm_assignment_col_name].values, config.SAVE_GRAPHS_TO_FILE)
+            # util.visuals.plot_GM_assignments_in_3d(df_post_tsne[self.dims_cols_names].values, df_post_tsne[self.gmm_assignment_col_name].values, config.SAVE_GRAPHS_TO_FILE)
 
             # below plot is for cross-val scores
             # util.visuals.plot_accuracy_SVM(scores, fig_file_prefix='TODO__replaceThisFigFilePrefixToSayIfItsKFOLDAccuracyOrTestAccuracy')
@@ -427,26 +487,14 @@ class TestPipeline1(Pipeline):
             # util.visuals.plot_feats_bsoidpy(features_10fps, gmm_assignments)
             logger.debug(f'Exiting GRAPH PLOTTING section of {inspect.stack()[0][3]}')
 
+        self.is_built = True
         logger.debug(f'All done with building classifiers!')
         return self
-
-    def plot(self):
-        logger.debug(f'Enter GRAPH PLOTTING section of {inspect.stack()[0][3]}')
-        # # plot 3d stuff?
-        # util.visuals.plot_classes_EMGMM_assignments(df_post_tsne[self.dims_cols_names].values, df_post_tsne[self.gmm_assignment_col_name].values, config.SAVE_GRAPHS_TO_FILE)
-
-        # below plot is for cross-val scores
-        # util.visuals.plot_accuracy_SVM(scores, fig_file_prefix='TODO__replaceThisFigFilePrefixToSayIfItsKFOLDAccuracyOrTestAccuracy')
-
-        # TODO: fix below
-        # util.visuals.plot_feats_bsoidpy(features_10fps, gmm_assignments)
-        logger.debug(f'Exiting GRAPH PLOTTING section of {inspect.stack()[0][3]}')
-        return
 
     def run(self):
         """ Runs after build(). Using terminology from old implementation. TODO """
         # read in paths
-        data_files_paths: List[str] = self.read_in_predict_folder_data_filepaths()
+        data_files_paths: List[str] = self.read_in_predict_folder_data_file_paths()
         # Read in PREDICT data
         dfs_raw = [util.io.read_csv(csv_path) for csv_path in data_files_paths]
 
@@ -467,5 +515,28 @@ def generate_pipeline_filename(name):
 
 if __name__ == '__main__':
     # Test build
-    p = TestPipeline1(tsne_source='sklearn').build(); print(f'Accuracy score: {p.acc_score}')
+    name = 'TestPipeline43'
+    loc = 'C:\\Users\\killian\\Pictures'
+    full_loc = os.path.join(loc, name)
+    actual_save_loc = f'C:\\{name}.pipeline'
+
+    make_new = True
+    if make_new:
+        p = TestPipeline1(name=name, tsne_source='sklearn').build()
+        p.save(loc)
+        print(f'Accuracy score: {p.acc_score}')
+
+    read_existing = True
+    if read_existing:
+        p = bsoid.read_pipeline(actual_save_loc)
+        p = bsoid.read_pipeline(full_loc)
+        print(str(p.train_data_files_paths))
+        p.plot_assignments_in_3d(show_now=True)
+
     pass
+
+    """
+    
+    C:\TestPipeline42.pipeline
+    
+    """
