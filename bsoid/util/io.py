@@ -25,6 +25,8 @@ ERROR_INVALID_NAME = 123  # necessary for valid filename checking
 ########################################################################################################################
 
 
+# TODO: med/high: change function to accept either CSV or h5 files from DLC. Functionally, should be the same except for
+#  deciding to use read_h5() or read_csv()
 def read_csv(csv_file_path: str, **kwargs) -> pd.DataFrame:
     """
     Reads in a CSV that is assumed to be an output of DLC. The raw CSV is re-formatted to be more
@@ -57,7 +59,7 @@ def read_csv(csv_file_path: str, **kwargs) -> pd.DataFrame:
         logger.error(err)
         raise ValueError(err)
     # Read in kwargs
-    nrows = kwargs.get('nrows', sys.maxsize)
+    nrows = kwargs.get('nrows', sys.maxsize)  # TODO: address case where nrows is <= 3 (no data parsed then)
     filename = csv_file_path  # os.path.split(csv_file_path)[-1]
     file_without_suffix = filename[:filename.rfind('.')]
     # # # # # # #
