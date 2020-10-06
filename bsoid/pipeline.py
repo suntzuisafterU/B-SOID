@@ -25,6 +25,9 @@ from bsoid import config, feature_engineering, util
 logger = config.initialize_logger(__file__)
 
 
+### TODOS
+# TODO: implement ACTUAL random state s.t. all random state property calls beget a truly random integer
+
 ###
 
 class PipelineAttributeHolder:
@@ -36,11 +39,12 @@ class PipelineAttributeHolder:
     _name: str = 'DefaultPipelineName'
     _description: str = ''
     _folder_source: str = config.OUTPUT_PATH  # Folder in which this pipeline resides
-    _is_pipeline_consistent: bool = True  # TODO: add note here: changes to False when new data added and pipeline needs to be rebuilt
+
     data_ext: str = 'csv'
 
     # Tracking vars
-    is_built = False
+    _is_built = False
+    _has_unused_raw_data: bool = False  # TODO: add note here: changes to False when new data added and pipeline needs to be rebuilt
     tsne_source: str = None
 
     # Sources
@@ -81,16 +85,10 @@ class PipelineAttributeHolder:
     def clf_gmm(self): return self._clf_gmm
     @property
     def clf_svm(self): return self._clf_svm
-    # TODO: implement property: random_state
-    def set_desc(self, description):
-        """ Set a description of the pipeline. Include any notes you want to keep regarding the process used. """
-        if not isinstance(description, str):
-            invalid_type_err = f'Invalid type submitted. found: {type(description)} TODO clean up this err message'
-            logger.error(invalid_type_err)
-            raise TypeError(invalid_type_err)
-        self._description = description
-        return self
-
+    @property
+    def random_state(self): return self._random_state
+    @property
+    def has_unused_raw_data(self): return self._has_unused_raw_data
     def get_desc(self) -> str: return self._description
 
     def set_name(self, name):
@@ -101,6 +99,14 @@ class PipelineAttributeHolder:
             raise ValueError(invalid_name_err)
         self._name = name
 
+        return self
+    def set_desc(self, description):
+        """ Set a description of the pipeline. Include any notes you want to keep regarding the process used. """
+        if not isinstance(description, str):
+            invalid_type_err = f'Invalid type submitted. found: {type(description)} TODO clean up this err message'
+            logger.error(invalid_type_err)
+            raise TypeError(invalid_type_err)
+        self._description = description
         return self
 
 
@@ -134,20 +140,16 @@ class Pipeline(PipelineAttributeHolder):
         if name is not None and not isinstance(name, str):
             raise TypeError(f'name should be of type str but instead found type {type(name)}')
         elif isinstance(name, str): self.set_name(name)
-        else:
-            invalid_name_err = f'Invalid name input to pipeline: {name}'
-            logger.error(invalid_name_err)
-            raise ValueError(invalid_name_err)
-        # Validate t-SNE source type
-        if tsne_source is not None and not isinstance(tsne_source, str):
-            tsne_type_err = f'TODO bad type for tsne source ({type(tsne_source)}'
-            logger.error(tsne_type_err)
-            raise TypeError(tsne_type_err)
-        if tsne_source not in self.valid_tsne_sources:
-            tsne_err = f'TODO: non-implemented tsne source: {tsne_source}'
-            logger.error(tsne_err)
-            raise ValueError(tsne_err)
-        self.tsne_source = tsne_source
+        if tsne_source is not None:
+            if not isinstance(tsne_source, str):
+                tsne_type_err = f'TODO bad type for tsne source ({type(tsne_source)}'
+                logger.error(tsne_type_err)
+                raise TypeError(tsne_type_err)
+            if tsne_source not in self.valid_tsne_sources:
+                tsne_err = f'TODO: non-implemented tsne source: {tsne_source}'
+                logger.error(tsne_err)
+                raise ValueError(tsne_err)
+            self.tsne_source = tsne_source
         # Validate data extension to be pulled from DLC output. Right now, only CSV and h5 supported by DLC to output.
         if data_extension is not None:
             if not isinstance(data_extension, str):
@@ -190,42 +192,55 @@ class Pipeline(PipelineAttributeHolder):
 
     def read_in_train_data_source(self, *train_data_args):
         """
-
+        Read in new data. Save to raw data list.
         train_data_args: any number of args. Types submitted expected to be either List[str] or [str]
             In the case that an arg is List[str], the arg must be a list of strings that
         """
-        if len(train_data_args) == 0: return  # Raise error?
+        if not train_data_args:
+            invalid_args_err = f'Invalid arg(s) submitted. Could not read args(s): {train_data_args}'
+            logger.error(invalid_args_err)
+            raise ValueError(invalid_args_err)
 
         for arg in train_data_args:
             if isinstance(arg, list) or isinstance(arg, tuple):
                 self.read_in_train_data_source(arg)
             else:
+                # Do type checking, path checking, then continue.
                 util.check_arg.ensure_type(arg, str)
-                if not os.path.isfile(arg) and not os.path.isdir(arg):
-                    file_not_there_err = f'File path submitted but not found: {arg}. Is not a file and not a dir.'
-                    logger.error(file_not_there_err)
-                    raise ValueError(file_not_there_err)
+
         assert len(train_data_args) == 1, f'Based on recursive structure above, arg SHOULD be collection of 1 item'
 
         path = train_data_args[0]
-        if os.path.isdir(path):  # Check directory for all file files of valid file ext
+        if os.path.isdir(path):  # If path is to a directory: check directory for all file files of valid file ext
             data_sources = [os.path.join(path, x) for x in os.listdir(path)
                             if x.split('.'[-1]) == self.data_ext
                             and os.path.join(path, x) not in self.train_data_files_paths]
+            if len(data_sources) <= 0: return self
             for file_path in data_sources:
                 df_i = util.io.read_csv(file_path)
                 self._dfs_list_raw_data.append(df_i)
                 self.train_data_files_paths.append(file_path)
-        elif os.path.isfile(path):
-
-            pass
+        elif os.path.isfile(path):  # If path is to a file: read in file
+            ext = path.split('.')[-1]
+            if ext != self.data_ext:
+                invalid_data_source_err = f'Invalid data source submitted. Expected data type extension ' \
+                                          f'of {self.data_ext} but instead found: {ext} (path={path}).'
+                logger.error(invalid_data_source_err)
+                raise ValueError(invalid_data_source_err)
+            if path in self.train_data_files_paths: return self
+            df_file = util.io.read_csv(path)
+            self._dfs_list_raw_data.append(df_file)
+            self.train_data_files_paths.append(path)
         else:
-            unusual_path_err = f'TODO: unusual path found: {path}'
+            unusual_path_err = f'Unusual file/dir path submitted but not found: {path}. Is not a valid ' \
+                                 f'file and not a directory.'  # TODO: low: improve error msg clarity
             logger.error(unusual_path_err)
             raise ValueError(unusual_path_err)
-        # Do
-        return self
 
+        self._has_unused_raw_data = True
+        return self
+    def read_in_predict_data_source(self):
+        raise NotImplementedError(f'TODO')  # TODO: low: mimic the read_train_data func above
     def __read_in_config_file_vars(self):
         """
             Check if config variables are inserted. If they are not manually inserted on
@@ -302,7 +317,7 @@ class Pipeline(PipelineAttributeHolder):
                 data,
                 dimensions=self.tsne_dimensions,
                 perplexity=np.sqrt(len(self.features_names_7)),
-                rand_seed=config.RANDOM_STATE, )
+                rand_seed=self.random_state, )
         elif self.tsne_source == 'sklearn':
             # TODO: high: Save the TSNE object
             arr_result = TSNE_sklearn(
@@ -348,8 +363,6 @@ class Pipeline(PipelineAttributeHolder):
         if not os.path.isfile(os.path.join(self._folder_source, generate_pipeline_filename(self.name))): return False
         return True
 
-
-
     def write_video_frames_to_disk(self, video_to_be_labeled=config.VIDEO_TO_LABEL_PATH):
         labels = list(self.df_post_tsne[self.gmm_assignment_col_name].values)
         labels = [f'label_i={i} // label={l}' for i, l in enumerate(labels)]
@@ -388,7 +401,8 @@ class Pipeline(PipelineAttributeHolder):
         return self
 
     def plot_assignments_in_3d(self, show_now=False, save_to_file=False, azim_elev=(70, 135)):
-        if not self.is_built or not self._is_pipeline_consistent:
+        # TODO: low: check for other runtiem vars
+        if not self._is_built:  # or not self._has_unused_raw_data:
             logger.warning(f'Classifiers have not been built. Nothing to graph.')
             return None
 
@@ -612,3 +626,5 @@ if __name__ == '__main__':
         C:\TestPipeline42.pipeline
         
         """
+
+# C:\\Users\\killian\\projects\\OST-with-DLC\\bsoid_train_videos
