@@ -196,17 +196,21 @@ class Pipeline(PipelineAttributeHolder):
         train_data_args: any number of args. Types submitted expected to be either List[str] or [str]
             In the case that an arg is List[str], the arg must be a list of strings that
         """
+        # Type checking first. If *args is None or empty collection, raise error.
         if not train_data_args:
             invalid_args_err = f'Invalid arg(s) submitted. Could not read args(s): {train_data_args}'
             logger.error(invalid_args_err)
             raise ValueError(invalid_args_err)
-
-        for arg in train_data_args:
-            if isinstance(arg, list) or isinstance(arg, tuple):
-                self.read_in_train_data_source(arg)
-            else:
-                # Do type checking, path checking, then continue.
-                util.check_arg.ensure_type(arg, str)
+        # If multiple args submitted, recursively call self in the case that an arg is a list.
+        if len(train_data_args) > 1:
+            for arg in train_data_args:
+                if isinstance(arg, list) or isinstance(arg, tuple):
+                    self.read_in_train_data_source(arg)
+                else:
+                    # Do type checking, path checking, then continue.
+                    util.check_arg.ensure_type(arg, str)
+                    self.read_in_train_data_source(arg)
+            return self
 
         assert len(train_data_args) == 1, f'Based on recursive structure above, arg SHOULD be collection of 1 item'
 
