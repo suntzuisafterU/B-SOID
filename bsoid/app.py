@@ -1,7 +1,6 @@
 """
 
-
-Every function in this file is an entire runtime sequence encapsulated.
+Every function in this file is an entire runtime sequence (app) encapsulated. Expect nothing to be returned.
 """
 from sklearn.model_selection import train_test_split, cross_val_score
 from typing import Any, List, Tuple
@@ -26,6 +25,7 @@ logger = config.initialize_logger(__name__)
 
 def build_classifier_new_pipeline(train_folders: List[str] = config.TRAIN_DATA_FOLDER_PATH) -> None:
     """
+    Testing out building new pipeline with dataframes
     new build_py implementation for new pipeline -- TEST
     1) retrieve data
     2) adaptively filter data
@@ -158,9 +158,9 @@ def build_classifier_new_pipeline(train_folders: List[str] = config.TRAIN_DATA_F
     return
 
 
-def run_classifier_new_pipeline():
+def run_classifier_new_pipeline() -> None:
     """
-
+    Trying to rework the old classify.py/main() to work with new dataframes approach.
     """
     path_to_model_file = os.path.join(OUTPUT_PATH, config.MODEL_FILENAME)
     try:
@@ -325,11 +325,17 @@ def clear_output_folders() -> None:
             except PermissionError as pe:
                 logger.warning(f'{inspect.stack()[0][3]}(): Could not delete file: {file_to_delete_full_path} / '
                                f'{repr(pe)}')
+            except Exception as e:
+                unusual_err = f'An unusual error was detected: {repr(e)}'
+                logger.error(unusual_err)
+                raise e
 
     return None
 
 
 def clear_logs() -> None:
+    """ Clear log files. Debatable if this even works because usually the log file is in use and
+    you'll get a permission error so it'll just keep on living. """
     log_folder = config.config_file_log_folder_path
     confirmation = input(f'You are about to destroy ALL files in your log '
                          f'folder ({log_folder}) -- are you sure you want to do this? [Y/N]: ').strip().upper()
@@ -350,26 +356,29 @@ def clear_logs() -> None:
 
 
 def TEST_readcsv():
-    # A test function to see if breakpoints work on read_csv. Delete after debugging OK.
+    """ A test function to see if breakpoints work on read_csv. Delete after debugging OK. """
     path = f'C:\\Users\\killian\\projects\\OST-with-DLC\\GUI_projects\\EPM-DLC-projects\\' \
            f'sample_train_data_folder\\Video1DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000.csv'
     util.io.read_csv(path)
 
 
 def build_and_run_new_pipeline():
+    """ Combines the new pipeline build and new pipeline run into one func to see if
+    they can run successfully in succession"""
     build_classifier_new_pipeline()
     run_classifier_new_pipeline()
     return
 
 
-def streamlit():
-    bsoid.bsoid_streamlit.home()
+def streamlit() -> None:
+    """ Streamlit code here. Currently this is the first and only iteration of streamlit apps, but
+    who knows how many will be created in the future. """
+    bsoid.streamlit_bsoid.home()
 
 
-########################################################################################################################
-
-def sample_runtime_function(*args, **kwargs):
-    time.sleep(3)
+def sample_runtime_function(sleep_secs=3, *args, **kwargs):
+    """ Sample function that takes n seconds to run """
+    time.sleep(sleep_secs)
     return
 
 
@@ -379,4 +388,4 @@ if __name__ == '__main__':
     # Run this file for ebugging purposes
     build_classifier_new_pipeline()
     # TEST_readcsv()
-
+    pass
