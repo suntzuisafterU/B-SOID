@@ -90,7 +90,8 @@ class PipelineAttributeHolder:
     @property
     def has_unused_raw_data(self): return self._has_unused_raw_data
     def get_desc(self) -> str: return self._description
-
+    @property
+    def is_built(self): return self._is_built
     def set_name(self, name):
         # TODO: will this cause problems later with naming convention?
         if util.io.has_invalid_chars_in_name_for_a_file(name):
@@ -110,7 +111,7 @@ class PipelineAttributeHolder:
         return self
 
 
-class Pipeline(PipelineAttributeHolder):
+class BasePipeline(PipelineAttributeHolder):
     """
     Base pipeline object. It enumerates the basic functions by which each pipeline should adhere.
 
@@ -243,6 +244,7 @@ class Pipeline(PipelineAttributeHolder):
 
         self._has_unused_raw_data = True
         return self
+
     def read_in_predict_data_source(self):
         raise NotImplementedError(f'TODO')  # TODO: low: mimic the read_train_data func above
     def __read_in_config_file_vars(self):
@@ -406,7 +408,7 @@ class Pipeline(PipelineAttributeHolder):
 
     def plot_assignments_in_3d(self, show_now=False, save_to_file=False, azim_elev=(70, 135)):
         # TODO: low: check for other runtiem vars
-        if not self._is_built:  # or not self._has_unused_raw_data:
+        if not self.is_built:  # or not self._has_unused_raw_data:
             logger.warning(f'Classifiers have not been built. Nothing to graph.')
             return None
 
@@ -444,7 +446,7 @@ class Pipeline(PipelineAttributeHolder):
     features_names_7 = features_which_average_by_mean + features_which_average_by_sum
 
 
-class TestPipeline1(Pipeline):
+class Pipeline(BasePipeline):
     """
     Pipelining stuff. TODO.
     Use DataFrames instead of unnamed numpy arrays like the previous iteration
@@ -456,10 +458,10 @@ class TestPipeline1(Pipeline):
     """
 
     def __init__(self, data_source: str = None, tsne_source: str = 'sklearn', data_ext=None, **kwargs):
-        super(TestPipeline1, self).__init__(data_source=data_source, tsne_source=tsne_source, data_extension=data_ext, **kwargs)
+        super(Pipeline, self).__init__(data_source=data_source, tsne_source=tsne_source, data_extension=data_ext, **kwargs)
 
     @config.deco__log_entry_exit(logger)
-    def engineer_features(self, list_dfs_raw_data: Union[List[pd.DataFrame], pd.DataFrame]) -> Pipeline:
+    def engineer_features(self, list_dfs_raw_data: Union[List[pd.DataFrame], pd.DataFrame]) -> BasePipeline:
         """
         All functions that take the raw data (data retrieved from using bsoid.read_csv()) and
         transforms it into classifier-ready data.
@@ -503,29 +505,27 @@ class TestPipeline1(Pipeline):
 
         return self
 
-    def tsne_reduce_df_features(self) -> Pipeline:
+    def tsne_reduce_df_features(self) -> BasePipeline:
         arr_tsne_result = self.train_tsne_get_dimension_reduced_data(self.df_features_scaled)
         self.df_post_tsne = pd.DataFrame(arr_tsne_result, columns=self.dims_cols_names)
         return self
 
     @config.deco__log_entry_exit(logger)
-    def build(self):
-        self.test_build()
+    def test_build(self) -> BasePipeline:
+        train_data_files_paths: List[str] = self.read_in_train_folder_data_file_paths_legacypathing()
+        self.train_data_files_paths = train_data_files_paths
+        return self.build()
 
-    def test_build(self) -> Pipeline:
+    def build(self) -> BasePipeline:
         """
         TODO
         :param save:
         :param inplace:
         :return:
         """
-
-        train_data_files_paths: List[str] = self.read_in_train_folder_data_file_paths_legacypathing()
-        train_data_files_paths = self.train_data_files_paths
-
         # Read in train data
         self.dfs_list_raw_data = dfs_list_raw_data = [util.io.read_csv(file_path)
-                                                      for file_path in train_data_files_paths]
+                                                      for file_path in self.train_data_files_paths]
 
         # Engineer features
         logger.debug('Start engineering features')
@@ -546,11 +546,11 @@ class TestPipeline1(Pipeline):
         df_features_train, df_features_test, df_labels_train, df_labels_test = train_test_split(
             self.df_post_tsne[self.dims_cols_names], self.df_post_tsne[self.gmm_assignment_col_name],
             test_size=config.HOLDOUT_PERCENT, random_state=config.RANDOM_STATE)  # TODO: add shuffle kwarg?
-        self.df_features_train, self.df_features_test, self.df_labels_train, self.df_labels_test = df_features_train, df_features_test, df_labels_train, df_labels_test
+        self.features_train, self.features_test, self.labels_train, self.labels_test = df_features_train, df_features_test, df_labels_train, df_labels_test
 
         # # Train SVM
         df_labels_train[self.svm_assignment_col_name] = self.train_SVM(df_features_train, df_labels_train, df_features_test)
-        self.df_labels_train = df_labels_train
+        self.labels_train = df_labels_train
 
         # Get cross-val, accuracy scores
         self.cross_val_scores = cross_val_score(
@@ -571,7 +571,8 @@ class TestPipeline1(Pipeline):
             # util.visuals.plot_feats_bsoidpy(features_10fps, gmm_assignments)
             logger.debug(f'Exiting GRAPH PLOTTING section of {inspect.stack()[0][3]}')
 
-        self.is_built = True
+        self._is_built = True
+        self._has_unused_raw_data = True
         logger.debug(f'All done with building classifiers!')
         return self
 
@@ -600,7 +601,7 @@ def generate_pipeline_filename(name):
 if __name__ == '__main__':
     BSOID = os.path.dirname(os.path.dirname(__file__))
     if BSOID not in sys.path:
-        sys.path.insert(0, BSOID)
+        sys.path.append(BSOID)
 
     run = True
     if run:
@@ -612,7 +613,7 @@ if __name__ == '__main__':
 
         make_new = False
         if make_new:
-            p = TestPipeline1(name=nom, tsne_source='sklearn').build()
+            p = Pipeline(name=nom, tsne_source='sklearn').build()
             p.save(loc)
             print(f'Accuracy score: {p.acc_score}')
 
@@ -625,10 +626,5 @@ if __name__ == '__main__':
 
         pass
 
-        """
-        
-        C:\TestPipeline42.pipeline
-        
-        """
 
 # C:\\Users\\killian\\projects\\OST-with-DLC\\bsoid_train_videos
