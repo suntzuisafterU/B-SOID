@@ -27,7 +27,7 @@ import sys
 import time
 
 
-from .util import bsoid_logging
+from bsoid import logging_bsoid
 
 
 # Debug opts
@@ -38,7 +38,7 @@ pd.set_option('display.max_colwidth', None)
 np.set_printoptions(threshold=1_000)
 
 
-deco__log_entry_exit: callable = bsoid_logging.log_entry_exit  # TODO: temporary measure to enable logging when entering/exiting functions
+deco__log_entry_exit: callable = logging_bsoid.log_entry_exit  # TODO: temporary measure to enable logging when entering/exiting functions
 
 
 ########################################################################################################################
@@ -178,7 +178,7 @@ log_file_file_path = str(Path(config_file_log_folder_path, config_file_name).abs
 
 
 # Instantiate logger decorator capable for
-initialize_logger: callable = bsoid_logging.preload_logger_with_config_vars(
+initialize_logger: callable = logging_bsoid.preload_logger_with_config_vars(
     logger_name, log_format, stdout_log_level, file_log_level, log_file_file_path)
 
 assert os.path.isdir(config_file_log_folder_path), f'Path does not exist: {config_file_log_folder_path}'

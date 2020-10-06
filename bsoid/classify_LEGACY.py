@@ -15,8 +15,8 @@ import numpy as np
 import os
 
 # # # B-SOiD imports # # #
-from bsoid import config, feature_engineering
-from bsoid.util import check_arg, likelihoodprocessing, videoprocessing, visuals
+from bsoid import config, feature_engineering, videoprocessing, visuals
+from bsoid.util import likelihoodprocessing
 
 logger = config.initialize_logger(__name__)
 

@@ -12,10 +12,11 @@ import os
 import pandas as pd
 import re
 import sys
+import traceback
 
 
-from bsoid import config, pipeline, statistics
-from bsoid.util.bsoid_logging import get_current_function
+from bsoid import config, logging_bsoid, pipeline, statistics
+
 
 logger = config.initialize_logger(__name__)
 ERROR_INVALID_NAME = 123  # necessary for valid filename checking. Do not remove this.
@@ -109,7 +110,7 @@ def read_csv(csv_file_path: str, **kwargs) -> pd.DataFrame:
     return df
 
 
-def read_pipeline(path_to_file: str) -> pipeline.PipelinePrime:
+def read_pipeline(path_to_file: str) -> pipeline:
     """
     With a valid path, read in an existing pipeline
     :param path_to_file:
@@ -148,7 +149,8 @@ def check_folder_for_dlc_output_files(folder_path: str, file_extension: str,
     else:
         path_to_check_for_csvs = f'{folder_path}{os.path.sep}*.{file_extension}'
 
-    logger.debug(f'{get_current_function()}: Path that is being checked using glob selection: {path_to_check_for_csvs}')
+    logger.debug(f'{logging_bsoid.get_current_function()}: Path that is being '
+                 f'checked using glob selection: {path_to_check_for_csvs}')
 
     file_names: List[str] = glob.glob(path_to_check_for_csvs, recursive=check_recursively)
 
@@ -167,14 +169,18 @@ def has_invalid_chars_in_name_for_a_file(name, additional_characters: Optional[C
     :param additional_characters:
     :return:
     """
-    if not isinstance(additional_characters, list) \
+    if additional_characters is not None \
+            and not isinstance(additional_characters, list) \
             and not isinstance(additional_characters, tuple) \
             and not isinstance(additional_characters, set):
         invalid_type_err = f'{inspect.stack()[0][3]}(): Invalid type ' \
                        f'found: {type(additional_characters)} (value: {additional_characters})'
         logger.error(invalid_type_err)
         raise TypeError(invalid_type_err)
-    invalid_chars_for_windows_files = {':', '*', '\\', '/', '?', '"', '<', '>', '|'}.union(set(additional_characters))
+
+    invalid_chars_for_windows_files = {':', '*', '\\', '/', '?', '"', '<', '>', '|'}
+    if additional_characters is not None:
+        invalid_chars_for_windows_files = invalid_chars_for_windows_files.union(set(additional_characters))
     if not isinstance(name, str) or not name:
         return True
     union_of_string_and_invalid_chars = set(name).intersection(invalid_chars_for_windows_files)

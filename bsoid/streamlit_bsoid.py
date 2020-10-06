@@ -11,11 +11,9 @@ import pandas as pd
 import streamlit as st
 import sys
 import time
-import umap
+import traceback
 
-
-import bsoid
-from bsoid import config
+from bsoid import config, io, pipeline
 logger = config.initialize_logger(__file__)
 
 
@@ -128,14 +126,17 @@ def home(*args, **kwargs):
 
             if is_project_info_submitted:
                 # Error checking first
-                if bsoid.io.has_invalid_chars_in_name_for_a_file(new_project_name):
+                if io.has_invalid_chars_in_name_for_a_file(new_project_name):
                     raise ValueError(
-                        f'Project name has invalid characters present. Re-submit project pipeline name. {new_project_name}')
+                        f'Project name has invalid characters present. Re-submit project '
+                        f'pipeline name. {new_project_name}')
                 if not os.path.isdir(path_to_project_dir):
-                    raise NotADirectoryError(f'The following (in double quotes) is not a valid directory: "{path_to_project_dir}". TODO: elaborate on error')
+                    raise NotADirectoryError(f'The following (in double quotes) is not a '
+                                             f'valid directory: "{path_to_project_dir}". TODO: elaborate on error')
                 # If OK: create default pipeline, save, continue
 
-                p = bsoid.pipeline.TestPipeline1(name=new_project_name).save(path_to_project_dir)
+                p = pipeline.PipelinePrime(name=new_project_name).save(path_to_project_dir)
+
                 st.success('New project pipeline saved to disk')
                 is_pipeline_loaded = True
             is_project_info_submitted_empty.write(f'is_project_info_submitted = {is_project_info_submitted}')
@@ -153,7 +154,7 @@ def home(*args, **kwargs):
                                             f'User submitted: {path_to_project_file}')
                 # If OK: load project, continue
                 logger.debug(f'Attempting to open: {path_to_project_file}')
-                p = bsoid.util.io.read_pipeline(path_to_project_file)
+                p = io.read_pipeline(path_to_project_file)
                 logger.debug(f'Successfully opened: {path_to_project_file}')
                 st.success('Pipeline successfully loaded.')
                 is_pipeline_loaded = True
@@ -161,6 +162,7 @@ def home(*args, **kwargs):
         else: return
     except Exception as e:
         # In case of error, show error and do not continue
+        st.markdown(f'{traceback.extract_stack()}')
         st.error(f'{repr(e)}')
         return
     finally:
@@ -173,7 +175,7 @@ def home(*args, **kwargs):
     return
 
 
-def show_pipeline_info(p: bsoid.pipeline.PipelinePrime):
+def show_pipeline_info(p: pipeline.PipelinePrime):
     """"""
     st.markdown(f'## Pipeline basic information')
     st.markdown(f'- Pipeline name: {p.name}')
@@ -189,7 +191,7 @@ def show_pipeline_info(p: bsoid.pipeline.PipelinePrime):
     return show_actions(p)
 
 
-def show_actions(p: bsoid.pipeline.PipelinePrime):
+def show_actions(p: pipeline.PipelinePrime):
     # Rebuild classifiers TODO?
 
     # Sidebar

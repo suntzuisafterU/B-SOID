@@ -149,12 +149,7 @@ def log_entry_exit(logger=None):
     return decorator
 
 
-def get_current_function():
-    """"""
-    return inspect.stack()[1][3]
-
-
 if __name__ == '__main__':
     # logger = create_generic_logger(__name__)
-    # logger.debug(f'Debugging stuff')  # TODO
+    # logger.debug(f'Debugging stuff')
     pass

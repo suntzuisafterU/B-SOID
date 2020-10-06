@@ -21,7 +21,8 @@ import time
 
 # TODO: low: resolve bsoid imports better
 # from bsoid import config, feature_engineering, util
-from . import config, feature_engineering, util
+from bsoid import config, feature_engineering, io
+from bsoid import util
 
 logger = config.initialize_logger(__file__)
 
@@ -72,7 +73,7 @@ class PipelineAttributeHolder:
     SKLEARN_TSNE_PARAMS: dict = {}
 
     kwargs: dict = {}
-
+    _acc_score: float = None
     # Properties
     @property
     def name(self): return self._name
@@ -96,7 +97,7 @@ class PipelineAttributeHolder:
     def is_built(self): return self._is_built
     def set_name(self, name):
         # TODO: will this cause problems later with naming convention?
-        if util.io.has_invalid_chars_in_name_for_a_file(name):
+        if io.has_invalid_chars_in_name_for_a_file(name):
             invalid_name_err = f'Invalid chars detected for name: {name}.'
             logger.error(invalid_name_err)
             raise ValueError(invalid_name_err)
@@ -111,7 +112,8 @@ class PipelineAttributeHolder:
             raise TypeError(invalid_type_err)
         self._description = description
         return self
-
+    @property
+    def accuracy_score(self): return self._acc_score
     # Misc attributes
     gmm_assignment_col_name = 'gmm_assignment'
     svm_assignment_col_name = 'svm_assignment'
@@ -233,7 +235,7 @@ class BasePipeline(PipelineAttributeHolder):
                             and os.path.join(path, x) not in self.train_data_files_paths]
             if len(data_sources) <= 0: return self
             for file_path in data_sources:
-                df_i = util.io.read_csv(file_path)
+                df_i = io.read_csv(file_path)
                 self._dfs_list_raw_data.append(df_i)
                 self.train_data_files_paths.append(file_path)
         elif os.path.isfile(path):  # If path is to a file: read in file
@@ -244,7 +246,7 @@ class BasePipeline(PipelineAttributeHolder):
                 logger.error(invalid_data_source_err)
                 raise ValueError(invalid_data_source_err)
             if path in self.train_data_files_paths: return self
-            df_file = util.io.read_csv(path)
+            df_file = io.read_csv(path)
             self._dfs_list_raw_data.append(df_file)
             self.train_data_files_paths.append(path)
         else:
@@ -365,7 +367,7 @@ class BasePipeline(PipelineAttributeHolder):
         final_out_path = os.path.join(output_path_dir, generate_pipeline_filename(self._name))
 
         # Check if valid final path to be saved
-        if not util.io.is_pathname_valid(final_out_path):
+        if not io.is_pathname_valid(final_out_path):
             invalid_path_err = f'Invalid output path save: {final_out_path}'
             logger.error(invalid_path_err)
             raise ValueError(invalid_path_err)
@@ -460,7 +462,7 @@ class PipelinePrime(BasePipeline):
     """
 
     def __init__(self, data_source: str = None, tsne_source: str = 'sklearn', data_ext=None, **kwargs):
-        super(PipelinePrime, self).__init__(data_source=data_source, tsne_source=tsne_source, data_extension=data_ext, **kwargs)
+        super().__init__(data_source=data_source, tsne_source=tsne_source, data_ext=data_ext, **kwargs)
 
     @config.deco__log_entry_exit(logger)
     def engineer_features(self, list_dfs_raw_data: Union[List[pd.DataFrame], pd.DataFrame]) -> BasePipeline:
@@ -526,7 +528,7 @@ class PipelinePrime(BasePipeline):
         :return:
         """
         # Read in train data
-        self.dfs_list_raw_data = dfs_list_raw_data = [util.io.read_csv(file_path)
+        self.dfs_list_raw_data = dfs_list_raw_data = [io.read_csv(file_path)
                                                       for file_path in self.train_data_files_paths]
 
         # Engineer features
@@ -583,7 +585,7 @@ class PipelinePrime(BasePipeline):
         # read in paths
         data_files_paths: List[str] = self.read_in_predict_folder_data_file_paths_legacypathing()
         # Read in PREDICT data
-        dfs_raw = [util.io.read_csv(csv_path) for csv_path in data_files_paths]
+        dfs_raw = [io.read_csv(csv_path) for csv_path in data_files_paths]
 
         # Engineer features accordingly (as above)
         df_features = self.engineer_features(dfs_raw)
@@ -608,21 +610,20 @@ if __name__ == '__main__':
     run = True
     if run:
         # Test build
-        nom = 'TestPipeline43'
+        nom = 'TestPipeline431asdfasdf'
         loc = 'C:\\Users\\killian\\Pictures'
         full_loc = os.path.join(loc, f'{nom}.pipeline')
         actual_save_loc = f'C:\\{nom}.pipeline'
 
-        make_new = False
+        make_new = True
         if make_new:
-            p = PipelinePrime(name=nom, tsne_source='sklearn').build()
-            p.save(loc)
-            print(f'Accuracy score: {p.acc_score}')
+            p = PipelinePrime(name=nom, tsne_source='sklearn').save(loc)
+            print(f'Accuracy score: {p.accuracy_score}')
 
-        read_existing = True
+        read_existing = False
         if read_existing:
             # p = bsoid.read_pipeline(actual_save_loc)
-            p = util.io.read_pipeline(full_loc)
+            p = io.read_pipeline(full_loc)
             print(str(p.train_data_files_paths))
             p.plot_assignments_in_3d(show_now=True)
 

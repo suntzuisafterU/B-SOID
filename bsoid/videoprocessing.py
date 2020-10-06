@@ -14,7 +14,7 @@ import os
 import random
 import time
 
-from . import io, likelihoodprocessing
+from bsoid.util import io, likelihoodprocessing
 from bsoid import config
 
 logger = config.initialize_logger(__name__)
@@ -196,7 +196,7 @@ def label_frame(frame, label):
     rectangle_bgr_black = (0, 0, 0)
     color_white_bgr = (255, 255, 255)
 
-    text_width, text_height = 10, 10#cv2.getTextSize(label, font, fontScale=font_scale, thickness=1)[0]
+    text_width, text_height = 10, 10  #cv2.getTextSize(label, font, fontScale=font_scale, thickness=1)[0]
     # TODO: evaluate magic variables RE: text offsetting on images
     text_offset_x, text_offset_y = 50, 50
     box_coordinates_topleft, box_coordinates_bottom_right = (

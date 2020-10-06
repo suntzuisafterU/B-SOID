@@ -17,12 +17,13 @@ from . import (
     train,
     train_LEGACY,  # TODO: potentially remove after rewiring code
     util,
+    videoprocessing,
+    visuals,
 )
 
 # user-facing io api
-from .util.io import (  # TODO: change to "from .io ..."
+from .io import (  # TODO: change to "from .io ..."
     read_csv,
-    read_csvs,
     read_pipeline,
 )
 

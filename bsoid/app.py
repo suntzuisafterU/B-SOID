@@ -13,9 +13,8 @@ import time
 
 # TODO: low: clean up imports
 import bsoid
-from bsoid import classify, classify_LEGACY, config, feature_engineering, train, train_LEGACY, util
+from bsoid import classify, classify_LEGACY, config, feature_engineering, logging_bsoid, train, train_LEGACY, util
 from bsoid.config import OUTPUT_PATH, VIDEO_FPS
-from bsoid.util.bsoid_logging import get_current_function  # for debugging purposes
 
 
 logger = config.initialize_logger(__name__)
@@ -59,8 +58,9 @@ def build_classifier_new_pipeline(train_folders: List[str] = config.TRAIN_DATA_F
     logger.debug(f'len(dfsList) = {len(dfs_unfiltered_list)}')
 
     if len(dfs_unfiltered_list) == 0:
-        err_zero_csvs = f'{get_current_function()}(): In the course of pulling CSVs to process in pipeline, ' \
-                         f'zero CSVs were read-in. Check that TRAIN_FOLDERS_PATHS ({config.TRAIN_FOLDERS_PATHS_toBeDeprecated}) ' \
+        err_zero_csvs = f'{logging_bsoid.get_current_function()}(): In the course of pulling ' \
+                        f'CSVs to process in pipeline, zero CSVs were read-in. Check that ' \
+                        f'TRAIN_FOLDERS_PATHS ({config.TRAIN_FOLDERS_PATHS_toBeDeprecated}) ' \
                          f'are valid spots to check for DLC csvs. '
         logger.error(err_zero_csvs)
         # For now, raise Exception just so that we can catch the bug in pathing more obviously during development.

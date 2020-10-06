@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import re
 
-from . import config, io
+from bsoid import config
 
 
 logger = config.initialize_logger(__name__)

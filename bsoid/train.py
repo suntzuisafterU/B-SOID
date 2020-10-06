@@ -10,26 +10,20 @@ Potential abbreviations:
 # Hierarchical Density-Based Spatial Clustering of Applications with Noise
 from bhtsne import tsne as TSNE_bthsne
 from sklearn.mixture import GaussianMixture
-from sklearn.manifold import TSNE as TSNE_sklearn
 from sklearn.metrics import plot_confusion_matrix
 from sklearn.model_selection import train_test_split, cross_val_score
-from sklearn.neural_network import MLPClassifier
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 from tqdm import tqdm
 from typing import Any, List, Tuple
-import hdbscan
 import inspect
-import itertools
 import math
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import time
-import umap
 
-from bsoid import config, feature_engineering, train_LEGACY
-from bsoid.util import check_arg, likelihoodprocessing, visuals
+from bsoid import config, feature_engineering, train_LEGACY, visuals
+from bsoid.util import check_arg, likelihoodprocessing
 
 logger = config.initialize_logger(__name__)
 
