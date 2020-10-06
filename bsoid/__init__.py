@@ -8,16 +8,18 @@ from . import (
     classify,
     classify_LEGACY,
     feature_engineering,
+    io,
     main_LEGACY,  # TODO: low: remove this after rewiring legacy code (?)
     pipeline,
     bsoid_streamlit,
+    statistics,
     train,
     train_LEGACY,  # TODO: potentially remove after rewiring code
     util,
 )
 
 # user-facing io api
-from .util.io import (
+from .util.io import (  # TODO: change to "from .io ..."
     read_csv,
     read_csvs,
     read_pipeline,
