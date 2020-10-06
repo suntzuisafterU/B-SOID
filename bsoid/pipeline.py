@@ -20,7 +20,8 @@ import sys
 import time
 
 # TODO: low: resolve bsoid imports better
-from bsoid import config, feature_engineering, util
+# from bsoid import config, feature_engineering, util
+from . import config, feature_engineering, util
 
 logger = config.initialize_logger(__file__)
 
@@ -71,6 +72,7 @@ class PipelineAttributeHolder:
     SKLEARN_TSNE_PARAMS: dict = {}
 
     kwargs: dict = {}
+
     # Properties
     @property
     def name(self): return self._name
@@ -109,6 +111,15 @@ class PipelineAttributeHolder:
             raise TypeError(invalid_type_err)
         self._description = description
         return self
+
+    # Misc attributes
+    gmm_assignment_col_name = 'gmm_assignment'
+    svm_assignment_col_name = 'svm_assignment'
+
+    features_which_average_by_mean = ['DistFrontPawsTailbaseRelativeBodyLength',
+                                      'DistBackPawsBaseTailRelativeBodyLength', 'InterforepawDistance', 'BodyLength', ]
+    features_which_average_by_sum = ['SnoutToTailbaseChangeInAngle', 'SnoutSpeed', 'TailbaseSpeed']
+    features_names_7 = features_which_average_by_mean + features_which_average_by_sum
 
 
 class BasePipeline(PipelineAttributeHolder):
@@ -436,17 +447,8 @@ class BasePipeline(PipelineAttributeHolder):
         logger.debug(f'Exiting GRAPH PLOTTING section of {inspect.stack()[0][3]}')
         return
 
-    # Misc attributes
-    gmm_assignment_col_name = 'gmm_assignment'
-    svm_assignment_col_name = 'svm_assignment'
 
-    features_which_average_by_mean = ['DistFrontPawsTailbaseRelativeBodyLength',
-                                      'DistBackPawsBaseTailRelativeBodyLength', 'InterforepawDistance', 'BodyLength', ]
-    features_which_average_by_sum = ['SnoutToTailbaseChangeInAngle', 'SnoutSpeed', 'TailbaseSpeed']
-    features_names_7 = features_which_average_by_mean + features_which_average_by_sum
-
-
-class Pipeline(BasePipeline):
+class PipelinePrime(BasePipeline):
     """
     Pipelining stuff. TODO.
     Use DataFrames instead of unnamed numpy arrays like the previous iteration
@@ -458,7 +460,7 @@ class Pipeline(BasePipeline):
     """
 
     def __init__(self, data_source: str = None, tsne_source: str = 'sklearn', data_ext=None, **kwargs):
-        super(Pipeline, self).__init__(data_source=data_source, tsne_source=tsne_source, data_extension=data_ext, **kwargs)
+        super(PipelinePrime, self).__init__(data_source=data_source, tsne_source=tsne_source, data_extension=data_ext, **kwargs)
 
     @config.deco__log_entry_exit(logger)
     def engineer_features(self, list_dfs_raw_data: Union[List[pd.DataFrame], pd.DataFrame]) -> BasePipeline:
@@ -613,7 +615,7 @@ if __name__ == '__main__':
 
         make_new = False
         if make_new:
-            p = Pipeline(name=nom, tsne_source='sklearn').build()
+            p = PipelinePrime(name=nom, tsne_source='sklearn').build()
             p.save(loc)
             print(f'Accuracy score: {p.acc_score}')
 
