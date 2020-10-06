@@ -9,6 +9,7 @@ from . import (
     classify_LEGACY,
     feature_engineering,
     io,
+    logging_bsoid,
     main_LEGACY,  # TODO: low: remove this after rewiring legacy code (?)
     pipeline,
     statistics,
