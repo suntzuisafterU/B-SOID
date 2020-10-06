@@ -2,7 +2,7 @@
 Functions related to opening/saving files should go here
 """
 
-from typing import Any, List, Tuple
+from typing import Any, Collection, List, Optional, Tuple, Union
 import errno
 import glob
 import inspect
@@ -14,12 +14,11 @@ import re
 import sys
 
 
-from . import config, feature_engineering, pipeline
-from . import statistics as likelihoodprocessing
+from bsoid import config, pipeline, statistics
 from bsoid.util.bsoid_logging import get_current_function
 
 logger = config.initialize_logger(__name__)
-ERROR_INVALID_NAME = 123  # necessary for valid filename checking
+ERROR_INVALID_NAME = 123  # necessary for valid filename checking. Do not remove this.
 
 
 ########################################################################################################################
@@ -118,7 +117,7 @@ def read_pipeline(path_to_file: str) -> pipeline.PipelinePrime:
     """
     # TODO: do final checks on this funct
     if not os.path.isfile(path_to_file):
-        invalid_file_err = f'Invalid path: {path_to_file}. Cannot open, is not file.'
+        invalid_file_err = f'Invalid path to pipeline: {path_to_file}. Cannot open file. '
         logger.error(invalid_file_err)
         raise ValueError(invalid_file_err)
     with open(path_to_file, 'rb') as file:
@@ -128,180 +127,69 @@ def read_pipeline(path_to_file: str) -> pipeline.PipelinePrime:
 
 ########################################################################################################################
 
-def check_for_csv_files_in_path(folder_path: str, check_recursively=False) -> List[str]:
+def check_folder_for_dlc_output_files(folder_path: str, file_extension: str,
+                                      check_recursively: bool = False, sort_names: bool = False) -> List[str]:
     """
 
-    :param folder_path: (str) an absolute path to a folder which will be checked by this function
-    :param check_recursively: (bool) indicates whether or not the folder should be
-        checked recursively into ALL subfolders or not checked recursively at all.
-    :return: (List[str]) A list of absolute paths to csvs
-    """
-    # Arg checking
-    if not os.path.isdir(folder_path) and os.path.abspath(folder_path):
-        folder_err = f'Invalid folder specified. Check that it exists and that'
-        logger.error(folder_err)
-        raise ValueError(folder_err)
-    #
-    path_to_check_for_csvs = f'{folder_path}{os.path.sep}**{os.path.sep}*.csv'
-    logger.debug(f'{get_current_function()}: Path that is being checked using glob selection: {path_to_check_for_csvs}')
-    filenames = glob.glob(path_to_check_for_csvs, recursive=check_recursively)
-    likelihoodprocessing.sort_list_nicely_in_place(filenames)
-    logger.info(f'{get_current_function()}: Total files found: {len(filenames)}. List of files found: {filenames}.')
-    if False in [os.path.abspath(folder) for folder in filenames]:
-        raise ValueError(f'FOLDERS NOT ABS PATHS: ', filenames)
-
-    return filenames
-
-
-def read_csvs(*sources) -> List[pd.DataFrame]:
-    """
-    Give a source/sources of .csv file, return a list of Pandas DataFrames
-    :param source: (valid types: str, List[str], or Tuple[str]) sources of .csv files to read in. These
-        csv files are expected to be of DLC output after video analysis. The general layout format
-        expected is as follows:
-
+    :param file_extension:
+    :param folder_path:
+    :param check_recursively:
+    :param sort_names:
     :return:
     """
-    raise NotImplementedError(' Development put on hold. Not yet implemented.')
-    # Check args
-    if isinstance(source, str):
-        sources = [source, ]
-    elif isinstance(source, list) or isinstance(source, tuple):
-        sources = source
-    else:
-        type_err = f'An invalid type was detected. Type was expected to be in {{str, List[str], Tuple[str]}}'
-        logger.error(type_err)
-        raise TypeError(type_err)
-
-    # Resolve csv file paths
-    # Read in csv files and return
-    list_df: List[pd.DataFrame] = []
-    return list_df
-
-
-def check_folder_contents_for_csv_files(absolute_folder_path: str, check_recursively: bool = False) -> List[str]:
-    """ Legacy? TODO: review this func
-    Finished.
-    # TODO: purpose
-    :param absolute_folder_path: (str) an absolute path, TODO
-    :param check_recursively: (bool) TODO
-    :return: TODO
-        Returns List of absolute paths to CSVs detected
-    """
-    # Check args
-    if not os.path.isdir(absolute_folder_path):
-        value_err = f'This path is not a valid path to a folder: {absolute_folder_path} ' \
-                    f'(type = {type(absolute_folder_path)}).'
+    if not os.path.isdir(folder_path):
+        value_err = f'This path is not a valid path to a folder: {folder_path} ' \
+                    f'(type = {type(folder_path)}).'
         logger.error(value_err)
         raise ValueError(value_err)
-    # Continue if values valid
-    path_to_check_for_csvs = f'{absolute_folder_path}{os.path.sep}**{os.path.sep}*.csv'
+    folder_path = os.path.abspath(folder_path)
+    if check_recursively:
+        path_to_check_for_csvs = f'{folder_path}{os.path.sep}**{os.path.sep}*.{file_extension}'
+    else:
+        path_to_check_for_csvs = f'{folder_path}{os.path.sep}*.{file_extension}'
+
     logger.debug(f'{get_current_function()}: Path that is being checked using glob selection: {path_to_check_for_csvs}')
-    filenames = glob.glob(path_to_check_for_csvs, recursive=check_recursively)
-    likelihoodprocessing.sort_list_nicely_in_place(filenames)
-    logger.info(f'{get_current_function()}: Total files found: {len(filenames)}. List of files found: {filenames}.')
-    return filenames
 
+    file_names: List[str] = glob.glob(path_to_check_for_csvs, recursive=check_recursively)
 
-### Legacy funcs kept for continuity
+    if sort_names: statistics.sort_list_nicely_in_place(file_names)
 
-def get_videos_from_folder_in_BASEPATH(folder_name: str, video_extension: str = 'mp4') -> List[str]:
-    """ * Legacy *
-    Previously named `get_video_names()`
-    Gets a list of video files within a folder
-    :param folder_name: str, folder path. Must reside in BASE_PATH.
-    :param video_extension:
-    :return: (List[str]) video file names all of which have a .mp4 extension
-    """
-    if not isinstance(folder_name, str):
-        err = f'`{inspect.stack()[0][3]}(): folder_name was expected to be of ' \
-              f'type str but instead found {type(folder_name)}.'
-        logger.error(err)
-        raise TypeError(err)
-    path_to_folder = os.path.join(config.DLC_PROJECT_PATH, folder_name)
-
-    path_to_folder_with_glob = f'{path_to_folder}/*.{video_extension}'
-    logger.debug(f'{inspect.stack()[0][3]}(): Path to check for videos: {path_to_folder_with_glob}.')
-    video_names = glob.glob(path_to_folder_with_glob)
-    likelihoodprocessing.sort_list_nicely_in_place(video_names)
-    return video_names
-
-
-def get_filenames_csvs_from_folders_recursively_in_dlc_project_path(folder: str) -> List:
-    """
-    Get_filenames() makes the assumption that the folder is in PROJECT Path; however, it is an obfuscated assumption
-    and bad. A new function that DOES NOT RESOLVE PATH IMPLICITLY WITHIN should be created and used.
-    :param folder:
-    :return:
-    """
-    path_to_check_for_csvs = f'{config.DLC_PROJECT_PATH}{os.path.sep}{folder}{os.path.sep}**{os.path.sep}*.csv'
-    logger.debug(f'{get_current_function()}():Path that is being checked using glob selection:{path_to_check_for_csvs}')
-    filenames = glob.glob(path_to_check_for_csvs, recursive=True)
-    likelihoodprocessing.sort_list_nicely_in_place(filenames)
-    logger.info(f'{get_current_function()}(): Total files found: {len(filenames)}. List of files found: {filenames}.')
-    return filenames
-
-
-def import_csvs_data_from_folders_in_PROJECTPATH_and_process_data(folders_in_project_path: list) -> Tuple[List[List[str]], List[np.ndarray], List]:
-    """
-    Import multiple folders containing .csv files and process them
-    :param folders_in_project_path: List[str]: Data folders
-    :return filenames: list, data filenames
-    :return data: List of arrays, filtered csv data
-    :return perc_rect_li: list, percent filtered
-    """
-    # TODO: what does `raw_data_list` do? It looks like a variable without a purpose. It appends but does not return.
-
-    if len(folders_in_project_path) == 0:
-        empty_folders_list_err = f'{inspect.stack()[0][3]}: argument `folders` list is empty. No folders to check.'
-        logger.error(empty_folders_list_err)
-        raise ValueError(empty_folders_list_err)
-
-    file_names_list, raw_data_list, list_of_arrays_of_data, perc_rect_list = [], [], [], []
-    # Iterate over folders
-    for idx_folder, folder in enumerate(folders_in_project_path):  # Loop through folders
-        filenames_found_in_current_folder: List[str] = get_filenames_csvs_from_folders_recursively_in_dlc_project_path(folder)
-        for idx_filename, filename in enumerate(filenames_found_in_current_folder):
-            logger.debug(f'{get_current_function()}(): Importing CSV file #{idx_filename+1}, {filename}, from folder #{idx_folder+1}')
-            df_current_file_data = pd.read_csv(filename, low_memory=False)
-            array_current_file_data_adaptively_filtered, perc_rect = feature_engineering.process_raw_data_and_filter_adaptively(df_current_file_data)
-            logger.debug(f'{get_current_function()}(): Done preprocessing (x,y) from file #{idx_filename+1}, folder #{idx_folder+1}.')
-            raw_data_list.append(df_current_file_data)
-            perc_rect_list.append(perc_rect)
-            list_of_arrays_of_data.append(array_current_file_data_adaptively_filtered)
-        file_names_list.append(filenames_found_in_current_folder)
-        logger.debug(f'{get_current_function()}(): Processed {len(filenames_found_in_current_folder)} CSV files from folder: {folder}')
-    # array_of_arrays_of_data: np.ndarray = np.array(data_list)
-    logger.info(f'{get_current_function()}(): Processed a total of {len(list_of_arrays_of_data)} CSV files')  # and compiled into a {array_of_arrays_of_data.shape} data list/array.')
-    return file_names_list, list_of_arrays_of_data, perc_rect_list
-
-
-def import_folders_app(ost_project_path, input_folders_list: list, BODYPARTS: dict) -> Tuple[List, List, np.ndarray, List]:
-    """ the _app version of import folders """
-    warning = f'Change usage from lilkelihoodprocessing to io. Caller = {inspect.stack()[1][3]}'
-    logger.warning(warning)
-    return import_folders_app(ost_project_path, input_folders_list, BODYPARTS)
+    return file_names
 
 
 ###
 
-def has_invalid_chars_in_name_for_a_file(name) -> bool:
-    invalid_chars_for_windows_files = {':', '*', '\\', '/', '?', '"', '<', '>', '|'}
+def has_invalid_chars_in_name_for_a_file(name, additional_characters: Optional[Collection[str]] = None) -> bool:
+    """
+    Checks if an invalid characters have been included in a potential path. Useful for checking user
+    input before attempting to save files. The list of invalid characters
+    :param name:
+    :param additional_characters:
+    :return:
+    """
+    if not isinstance(additional_characters, list) \
+            and not isinstance(additional_characters, tuple) \
+            and not isinstance(additional_characters, set):
+        invalid_type_err = f'{inspect.stack()[0][3]}(): Invalid type ' \
+                       f'found: {type(additional_characters)} (value: {additional_characters})'
+        logger.error(invalid_type_err)
+        raise TypeError(invalid_type_err)
+    invalid_chars_for_windows_files = {':', '*', '\\', '/', '?', '"', '<', '>', '|'}.union(set(additional_characters))
     if not isinstance(name, str) or not name:
         return True
-    union = set(name).intersection(invalid_chars_for_windows_files)
-    if len(union) != 0:
-        logger.error(f'Union = {union}')
+    union_of_string_and_invalid_chars = set(name).intersection(invalid_chars_for_windows_files)
+    if len(union_of_string_and_invalid_chars) != 0:
+        logger.error(f'Union = {union_of_string_and_invalid_chars}')
         return True
 
     return False
 
 
 def is_pathname_valid(pathname: str) -> bool:
-    """
+    """ Checks if the path name is valid. Useful for checking user inputs.
     Source: https://stackoverflow.com/a/34102855
-    `True` if the passed pathname is a valid pathname for the current OS;
-    `False` otherwise.
+    Returns: (bool) `True` if the passed pathname is a valid pathname for the current OS;
+                    `False` otherwise.
     """
     # If this pathname is either not a string or is but is empty, this pathname is invalid.
     try:
@@ -367,7 +255,12 @@ def is_pathname_valid(pathname: str) -> bool:
 
 
 if __name__ == '__main__':
-    path = f'C:\\Users\\killian\\projects\\OST-with-DLC\\GUI_projects\\EPM-DLC-projects\\sample_train_data_folder\\Video1DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000.csv'
-    read_csv(path)
+    path = f'C:\\Users\\killian\\projects\\OST-with-DLC\\GUI_projects\\EPM-DLC-projects\\' \
+           f'sample_train_data_folder\\Video1DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000.csv'
+    folder = f'C:\\Users\\killian\\projects\\OST-with-DLC\\GUI_projects\\EPM-DLC-projects\\sample_train_data_folder\\'
+    # read_csv(path)
+    x = check_folder_for_dlc_output_files(folder, 'csv', check_recursively=False)
+    print(x)
+    print(len(x))
     pass
 
