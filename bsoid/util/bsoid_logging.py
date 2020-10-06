@@ -9,6 +9,11 @@ import re
 import time
 
 
+def get_current_function() -> str:
+    """"""
+    return inspect.stack()[1][3]
+
+
 def preload_logger_with_config_vars(logger_name: str, log_format: str,
                                     stdout_log_level: str = None, file_log_level: str = None,
                                     file_log_file_path: str = None, email_log_level: str = None):

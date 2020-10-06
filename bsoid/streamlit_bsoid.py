@@ -173,7 +173,7 @@ def home(*args, **kwargs):
     return
 
 
-def show_pipeline_info(p: bsoid.pipeline.Pipeline):
+def show_pipeline_info(p: bsoid.pipeline.PipelinePrime):
     """"""
     st.markdown(f'## Pipeline basic information')
     st.markdown(f'- Pipeline name: {p.name}')
@@ -189,7 +189,7 @@ def show_pipeline_info(p: bsoid.pipeline.Pipeline):
     return show_actions(p)
 
 
-def show_actions(p: bsoid.pipeline.Pipeline):
+def show_actions(p: bsoid.pipeline.PipelinePrime):
     # Rebuild classifiers TODO?
 
     # Sidebar
