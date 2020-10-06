@@ -1,25 +1,19 @@
 """
 
 """
-
 from typing import Any, Dict, List, Tuple, Union
 import functools
 import inspect
 import numpy as np
 import pandas as pd
+import re
 
-from bsoid import config
+from . import config, io
 
 
 logger = config.initialize_logger(__name__)
 
-
-
 # LLHPROC
-
-def get_current_function() -> str:
-    """"""
-    return inspect.stack()[1][3]
 
 
 def boxcar_center(input_array, n) -> np.ndarray:
@@ -87,106 +81,8 @@ def augmented_runlength_encoding(labels: Union[List, np.ndarray]) -> Tuple[List[
         lengths_list.append(length)
         # Increment and continue
         i += 1
-
     return label_list, idx_list, lengths_list
 
-
-### Legacy functions ###################################################################################################
-
-def import_csvs_data_from_folders_in_PROJECTPATH_and_process_data(folders_in_project_path: list) -> Tuple[List[List[str]], List[np.ndarray], List]:
-    """
-    Import multiple folders containing .csv files and process them
-    :param folders_in_project_path: List[str]: Data folders
-    :return filenames: list, data filenames
-    :return data: List of arrays, filtered csv data
-    :return perc_rect_li: list, percent filtered
-    """
-    # TODO: what does `raw_data_list` do? It looks like a variable without a purpose. It appends but does not return.
-    warning = f''
-    logger.warning(warning)
-    return io.import_csvs_data_from_folders_in_PROJECTPATH_and_process_data(folders_in_project_path)
-
-
-def main(folders: List[str]) -> None:
-    """
-    :param folders: list, data folders
-    :return filenames: list, data filenames
-    :return data: list, filtered data list
-    :retrun perc_rect: 1D array, percent filtered per BODYPART
-    """
-    replacement_func = import_csvs_data_from_folders_in_PROJECTPATH_and_process_data
-    err = f'This function, {inspect.stack()[0][3]}(), will be '\
-          f'deprecated in future. Directly use {replacement_func.__qualname__} instead. '\
-          f'Caller = {inspect.stack()[1][3]}'
-    logger.error(err)
-    raise Exception(err)
-    # filenames, data, perc_rect = replacement_func(folders)
-    # return filenames, data, perc_rect
-
-
-def adaptive_filter_LEGACY(df_input_data: pd.DataFrame) -> Tuple[np.ndarray, List]:
-    """
-    Deprecation warning. Do not alter this function so that we can confirm new function output matches old function.
-    """
-    logger.warning(f'{inspect.stack()[0][3]}(): will be deprecated in future. '
-                   f'Instead, try using: {feature_engineering.process_raw_data_and_filter_adaptively.__qualname__}')
-    # Type checking args
-    if not isinstance(df_input_data, pd.DataFrame):
-        raise TypeError(f'`df_input` was expected to be of type pandas.DataFrame but '
-                        f'instead found: {type(df_input_data)}.')
-    # Continue args valid
-    l_index, x_index, y_index, percent_filterd_per_bodypart__perc_rect = [], [], [], []
-    # Remove top row. It contains COLUMN LABELS
-    df_input_data_with_top_row_removed: pd.DataFrame = df_input_data[1:]
-    array_input_data_with_top_row_removed: np.ndarray = np.array(df_input_data_with_top_row_removed)
-    # currdf = array_input_data_with_top_row_removed
-
-    # Loop over columns, aggregate which indices in the data fall under which category.
-    #   x, y, and likelihood are the three main types of columns output from DLC.
-    number_of_cols = len(array_input_data_with_top_row_removed[0])
-    for header_idx in range(number_of_cols):  # range(len(currdf[0])):
-        current_column_header = array_input_data_with_top_row_removed[0][header_idx]
-        if current_column_header == "likelihood":
-            l_index.append(header_idx)
-        elif current_column_header == "x":
-            x_index.append(header_idx)
-        elif current_column_header == "y":
-            y_index.append(header_idx)
-        elif current_column_header == 'coords':
-            pass  # Ignore. Usually this is the title of the index column and is only seen once. No data to be had here.
-        else:
-            err = f'An inappropriate column header was found: {array_input_data_with_top_row_removed[0][header_idx]}'  # TODO: elaborate on error
-            logger.error(err)
-            raise ValueError(err)
-
-    logger.debug(f'{get_current_function()}: Extracting likelihood value...')
-    curr_df1 = array_input_data_with_top_row_removed[:, 1:]
-    data_x = curr_df1[:, np.array(x_index) - 1]
-    data_y = curr_df1[:, np.array(y_index) - 1]
-    data_lh = curr_df1[:, np.array(l_index) - 1]
-    currdf_filt: np.ndarray = np.zeros((data_x.shape[0]-1, (data_x.shape[1]) * 2))  # Initialized as zeroes with  # currdf_filt: np.ndarray = np.zeros((data_x.shape[0]-1, (data_x.shape[1]) * 2))
-
-    logger.info('Computing data threshold to forward fill any sub-threshold (x,y)...')
-    percent_filterd_per_bodypart__perc_rect = [0 for _ in range(data_lh.shape[1])]  # for _ in range(data_lh.shape[1]): perc_rect.append(0)
-
-    for x in tqdm(range(data_lh.shape[1])):
-        histogram, bin_edges = np.histogram(data_lh[1:, x].astype(np.float))
-        rise_a = np.where(np.diff(histogram) >= 0)
-        if rise_a[0][0] > 1:
-            llh = ((bin_edges[rise_a[0][0]] + bin_edges[rise_a[0][0]-1]) / 2)
-        else:
-            llh = ((bin_edges[rise_a[0][1]] + bin_edges[rise_a[0][1]-1]) / 2)
-        data_lh_float = data_lh[1:, x].astype(np.float)
-        percent_filterd_per_bodypart__perc_rect[x] = np.sum(data_lh_float < llh) / data_lh.shape[0]
-        for i in range(1, data_lh.shape[0] - 1):
-            if data_lh_float[i] < llh:
-                currdf_filt[i, (2 * x):(2 * x + 2)] = currdf_filt[i - 1, (2 * x):(2 * x + 2)]
-            else:
-                currdf_filt[i, (2 * x):(2 * x + 2)] = np.hstack([data_x[i, x], data_y[i, x]])
-    currdf_filt = np.array(currdf_filt[1:])
-    currdf_filt = currdf_filt.astype(np.float)
-
-    return currdf_filt, percent_filterd_per_bodypart__perc_rect
 
 # Stats
 def mean(*args):
@@ -200,7 +96,7 @@ def sum_args(*args):
 
 
 def get_feature_distribution(features: np.ndarray):
-    """
+    """ TODO: investigate this funtion from legacy
     TODO: low: purpose
     :param features: (ndarray) TODO
     :return: Tuple TODO
@@ -209,12 +105,11 @@ def get_feature_distribution(features: np.ndarray):
         p_cts:
         edges:
     """
-
     if not isinstance(features, np.ndarray):
         raise TypeError(f"Argument `features` expected to be of type np.ndarray but instead "
                         f"found {type(features)} (value: {features}).")
-
     feature_range, feature_median, p_cts, edges = [], [], [], []
+    # Iterates over rows so that ___
     for i in range(features.shape[0]):
         feature_range.append(
             [np.quantile(features[i, :], 0.05),
@@ -225,43 +120,6 @@ def get_feature_distribution(features: np.ndarray):
         p_cts.append(p_ct)
         edges.append(edge)
     return feature_range, feature_median, p_cts, edges
-
-
-def transition_matrix_app(labels, n: int) -> Tuple:
-    """
-    TODO: purpose
-    :param n: TODO
-    :param labels: 1D array, predicted labels
-    :return df_tm: object, transition matrix data frame
-    """
-    # n = 1 + max(labels)
-    tm = [[0] * n for _ in range(n)]
-    for (i, j) in zip(labels, labels[1:]):
-        tm[i][j] += 1
-    B = np.matrix(tm)  # TODO: HIGH: numpy error: the matrix subclass is not the recommended way to represent matrices or deal with linear algebra (see https://docs.scipy.org/doc/numpy/user/numpy-for-matlab-users.html). Please adjust your code to use regular ndarray.
-    df_tm = pd.DataFrame(tm)
-    B = np.matrix(tm)
-    B_norm = B / B.sum(axis=1)
-    return B, df_tm, B_norm
-
-
-# TODO: HIGH: reconcile below transition_matrix() and above
-def transition_matrix(labels) -> pd.DataFrame:  # source: bsoid_py, bsoid_umap, bsoid_voc
-    """
-    TODO: purpose
-    :param labels: 1D array, predicted labels
-    :return df_transition_matrix: (DataFrame) Transition matrix DataFrame
-    """
-    n = 1 + max(labels)
-    transition_matrix = [[0] * n for _ in range(n)]
-    for i, j in zip(labels, labels[1:]):
-        transition_matrix[i][j] += 1
-    for row in transition_matrix:
-        s = sum(row)
-        if s > 0:
-            row[:] = [f / s for f in row]
-    df_transition_matrix = pd.DataFrame(transition_matrix)
-    return df_transition_matrix
 
 
 def rle(in_array) -> Union[Tuple[None, None, None], Tuple[Any, Any, Any]]:
@@ -375,18 +233,3 @@ def behv_dur(labels) -> Tuple[pd.DataFrame, pd.DataFrame]:
     df_dur_statistics = pd.DataFrame(all_duration_data_as_array, columns=duration_statistics_columns)
 
     return df_runlengths, df_dur_statistics
-
-
-@config.deco__log_entry_exit(logger)
-def get_runlengths_statistics_transition_matrix_from_labels(labels) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    """ TODO: rename function for concision when purpose made clearer
-    TODO: med: purpose
-    :param labels: 1D array: predicted labels
-    :returns
-        df_runlengths: (DataFrame)  TODO
-        df_dur_statistics: (DataFrame) behavioral duration statistics data frame
-        tm: (DataFrame) transition matrix data frame
-    """
-    df_runlengths, df_dur_statistics = behv_dur(labels)
-    tm = transition_matrix(labels)
-    return df_runlengths, df_dur_statistics, tm
