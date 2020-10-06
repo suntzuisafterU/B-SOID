@@ -250,14 +250,14 @@ def plot_GM_assignments_in_3d(data: np.ndarray, assignments, save_fig_to_file: b
     title = kwargs.get('title', 'Assignments by GMM')
     azim_elev = kwargs.get('azim_elev', (70, 135))
     # Plot graph
-    uk = list(np.unique(assignments))
-    R = np.linspace(0, 1, len(uk))
+    unique_assignments = list(np.unique(assignments))
+    R = np.linspace(0, 1, len(unique_assignments))
     colormap = plt.cm.get_cmap("Spectral")(R)
     tsne_x, tsne_y, tsne_z = data[:, 0], data[:, 1], data[:, 2]
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     # Loop over assignments
-    for i, g in enumerate(np.unique(assignments)):
+    for i, g in enumerate(unique_assignments):
         # Select data for only assignment i
         idx = np.where(assignments == g)
         # Assign to colour and plot
