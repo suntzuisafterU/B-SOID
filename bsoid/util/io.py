@@ -110,7 +110,7 @@ def read_csv(csv_file_path: str, **kwargs) -> pd.DataFrame:
     return df
 
 
-def read_pipeline(path_to_file: str) -> pipeline.Pipeline:
+def read_pipeline(path_to_file: str) -> pipeline.BasePipeline:
     """
     With a valid path, read in an existing pipeline
     :param path_to_file:
