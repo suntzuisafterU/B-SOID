@@ -11,8 +11,8 @@ from . import (
     io,
     main_LEGACY,  # TODO: low: remove this after rewiring legacy code (?)
     pipeline,
-    bsoid_streamlit,
     statistics,
+    streamlit_bsoid,
     train,
     train_LEGACY,  # TODO: potentially remove after rewiring code
     util,
