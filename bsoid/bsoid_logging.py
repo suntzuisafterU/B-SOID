@@ -42,16 +42,6 @@ def preload_logger_with_config_vars(logger_name: str, log_format: str,
     return argument_loaded_function
 
 
-def log_function_decorator(decorator_arg=None):
-    """An example of a decorator that takes an optional arg"""
-    def decorator(func):
-        def function_wrapper(*args, **kwargs):
-            result = create_generic_logger(*args, **kwargs)
-            return result
-        return function_wrapper
-    return decorator
-
-
 def create_generic_logger(logger_name: str, log_format: str,
                           stdout_log_level: str = None,
                           file_log_level: str = None, file_log_file_path: str = None,
@@ -119,17 +109,6 @@ def create_generic_logger(logger_name: str, log_format: str,
     return logger
 
 
-def decorator_example(func):
-    # TODO:
-    def function_wrapper(*args, **kwargs):
-        print(f'args: {args} / kwargs: {kwargs}')
-        result = func(*args, **kwargs)
-        print(f'result: {result}')
-        return result
-
-    return function_wrapper
-
-
 def log_entry_exit(logger=None):
     """
     Meta decorator. If used as deco., then must have argument of logger for it to
@@ -144,6 +123,27 @@ def log_entry_exit(logger=None):
             end_time = time.perf_counter()
             if logger:
                 logger.debug(f'Now exiting: {func.__qualname__}(). Time spent in function: {round(end_time-start_time, 1)} seconds')
+            return result
+        return function_wrapper
+    return decorator
+
+
+def decorator_example(func):
+    # Example functions to show how to make a decorator
+    def function_wrapper(*args, **kwargs):
+        print(f'args: {args} / kwargs: {kwargs}')
+        result = func(*args, **kwargs)
+        print(f'result: {result}')
+        return result
+
+    return function_wrapper
+
+
+def log_function_decorator(decorator_arg=None):
+    """An example of a decorator that takes an optional arg"""
+    def decorator(func):
+        def function_wrapper(*args, **kwargs):
+            result = create_generic_logger(*args, **kwargs)
             return result
         return function_wrapper
     return decorator
