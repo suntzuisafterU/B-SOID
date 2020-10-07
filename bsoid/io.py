@@ -60,8 +60,8 @@ def read_csv(csv_file_path: str, **kwargs) -> pd.DataFrame:
         raise ValueError(err)
     # Read in kwargs
     nrows = kwargs.get('nrows', sys.maxsize)  # TODO: address case where nrows is <= 3 (no data parsed then)
-    filename = csv_file_path  # os.path.split(csv_file_path)[-1]
-    file_without_suffix = filename[:filename.rfind('.')]
+    file_path = csv_file_path  # os.path.split(csv_file_path)[-1]
+    file_folder, file_name = os.path.split(file_path)
     # # # # # # #
     # Read in CSV
     df = pd.read_csv(csv_file_path, header=None, nrows=nrows)
@@ -103,7 +103,10 @@ def read_csv(csv_file_path: str, **kwargs) -> pd.DataFrame:
     # Instantiate 'scorer' column so we can track the model if needed later
     df['scorer'] = dlc_scorer
     # Save source for future use
-    df['source'] = filename
+    df['source'] = file_path
+    df['file_source'] = file_path
+    # Save data file name (different from pathing source)
+    df['data_source'] = file_name
     # Number the frames
     df['frame'] = range(len(df))
 
