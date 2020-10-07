@@ -90,7 +90,8 @@ DEFAULT_SAVED_GRAPH_FILE_FORMAT: str = configuration.get('APP', 'DEFAULT_SAVED_G
 GENERATE_VIDEOS: bool = configuration.getboolean('APP', 'GENERATE_VIDEOS')
 PERCENT_FRAMES_TO_LABEL: float = configuration.getfloat('APP', 'PERCENT_FRAMES_TO_LABEL')
 # TODO: HIGH: add asserts below for PERCENT_FRAMES_TO_LABEL so that a valid number between 0. and 1. is ensured.
-DEFAULT_TEST_FILE: str = os.path.join(BSOID_BASE_PROJECT_PATH, 'tests', 'test_data', configuration.get('TESTING', 'DEFAULT_TEST_FILE'))
+DEFAULT_TEST_FILE: str = os.path.join(BSOID_BASE_PROJECT_PATH, 'tests', 'test_data',
+                                      configuration.get('TESTING', 'DEFAULT_TEST_FILE'))
 OUTPUT_VIDEO_FPS = configuration.getint('APP', 'OUTPUT_VIDEO_FPS') \
     if configuration.get('APP', 'OUTPUT_VIDEO_FPS').isnumeric() \
     else int(VIDEO_FPS * PERCENT_FRAMES_TO_LABEL)
@@ -177,7 +178,7 @@ file_log_level = configuration.get('LOGGING', 'FILE_LOG_LEVEL', fallback=None)
 log_file_file_path = str(Path(config_file_log_folder_path, config_file_name).absolute())
 
 
-# Instantiate logger decorator capable for
+# Instantiate file-specific logger. Use at top of file as: "logger = bsoid.config.initialize_logger(__file__)"
 initialize_logger: callable = logging_bsoid.preload_logger_with_config_vars(
     logger_name, log_format, stdout_log_level, file_log_level, log_file_file_path)
 
