@@ -12,8 +12,7 @@ import pandas as pd
 import time
 
 # TODO: low: clean up imports
-import bsoid
-from bsoid import classify, classify_LEGACY, config, feature_engineering, logging_bsoid, train, train_LEGACY, util
+from bsoid import classify, classify_LEGACY, config, feature_engineering, io, logging_bsoid, streamlit_bsoid, train, train_LEGACY, util
 from bsoid.config import OUTPUT_PATH, VIDEO_FPS
 
 
@@ -359,7 +358,7 @@ def TEST_readcsv():
     """ A test function to see if breakpoints work on read_csv. Delete after debugging OK. """
     path = f'C:\\Users\\killian\\projects\\OST-with-DLC\\GUI_projects\\EPM-DLC-projects\\' \
            f'sample_train_data_folder\\Video1DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000.csv'
-    util.io.read_csv(path)
+    io.read_csv(path)
 
 
 def build_and_run_new_pipeline():
@@ -373,7 +372,7 @@ def build_and_run_new_pipeline():
 def streamlit() -> None:
     """ Streamlit code here. Currently this is the first and only iteration of streamlit apps, but
     who knows how many will be created in the future. """
-    bsoid.streamlit_bsoid.home()
+    streamlit_bsoid.home()
 
 
 def sample_runtime_function(sleep_secs=3, *args, **kwargs):
