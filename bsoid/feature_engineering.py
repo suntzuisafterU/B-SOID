@@ -22,29 +22,15 @@ DELETE THIS STRING
 Author also specifies that: the features are also smoothed over, or averaged across,
     a sliding window of size equivalent to 60ms (30ms prior to and after the frame of interest).
 """
-from bhtsne import tsne as TSNE_bhtsne
-from sklearn import mixture
-from sklearn.manifold import TSNE as TSNE_sklearn
-from sklearn.metrics import accuracy_score, plot_confusion_matrix
-from sklearn.model_selection import train_test_split, cross_val_score
-from sklearn.neural_network import MLPClassifier
-from sklearn.preprocessing import StandardScaler
-from sklearn.svm import SVC
 from tqdm import tqdm
-from typing import Any, Dict, List, Tuple
-import hdbscan
+from typing import List, Tuple
 import inspect
 import itertools
 import math
 import numpy as np
-import openTSNE
-import os
 import pandas as pd
-import umap
 
-from bsoid import config, statistics
-from bsoid.util import check_arg
-
+from bsoid import config, statistics, check_arg
 
 logger = config.initialize_logger(__name__)
 
@@ -60,8 +46,7 @@ def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.Da
     Follows same form as legacy only for continuity reasons. Can be refactored for performance later.
 
     Note: the top row ends up as ZERO according to original algorithm implementation
-    :param in_df:
-    :param df_input_data: (DataFrame) expected: raw DataFrame of DLC results right after
+    :param in_df: (DataFrame) expected: raw DataFrame of DLC results right after
         reading in using bsoid.read_csv().
 
         EXAMPLE `df_input_data` input:  # TODO: remove bodyparts_coords col? Check bsoid.io.read_csv() return format.
@@ -644,7 +629,6 @@ def integrate_df_feature_into_bins(df, feature: str, method: str, n_frames: int,
     :param method:
     :param n_frames:
     :param copy: (bool)
-    :param fps:
     :return:
     """
     # Arg checking
@@ -687,6 +671,7 @@ def average_values_over_moving_window(data, method, n_frames: int) -> np.ndarray
         averaging_function = statistics.mean
     elif method == 'sum':
         averaging_function = statistics.sum_args
+    else: raise TypeError(f'{inspect.stack()[0][3]}(): This should never be read.')
     #
     if isinstance(data, pd.Series):
         data = data.values
@@ -1080,7 +1065,6 @@ def adaptive_filter_data_app(input_df: pd.DataFrame, BODYPARTS: dict):  # TODO: 
     currdf_filt = np.array(currdf_filt)
     currdf_filt = currdf_filt.astype(np.float)
     return currdf_filt, perc_rect
-
 
 
 if __name__ == '__main__':
