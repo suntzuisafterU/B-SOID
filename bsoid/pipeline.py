@@ -1,5 +1,5 @@
 """
-train_data_sources
+
 """
 from bhtsne import tsne as TSNE_bhtsne
 from sklearn import mixture
@@ -19,16 +19,16 @@ import pandas as pd
 import sys
 import time
 
-# TODO: low: resolve bsoid imports better
-# from bsoid import config, feature_engineering, util
-from bsoid import config, feature_engineering, io
-from bsoid import util
+
+from bsoid import check_arg, config, feature_engineering, io, videoprocessing, visuals
+
 
 logger = config.initialize_logger(__file__)
 
 
 ### TODOS
 # TODO: implement ACTUAL random state s.t. all random state property calls beget a truly random integer
+
 
 ###
 
@@ -45,8 +45,8 @@ class PipelineAttributeHolder:
     data_ext: str = 'csv'
 
     # Tracking vars
-    _is_built = False
-    _has_unused_raw_data: bool = False  # TODO: add note here: changes to False when new data added and pipeline needs to be rebuilt
+    _is_built = False  # Is False until the classifiers are built then changes to True
+    _has_unused_raw_data: bool = False  # Changes to True if new data is added and classifiers not rebuilt
     tsne_source: str = None
 
     # Sources
@@ -72,8 +72,19 @@ class PipelineAttributeHolder:
     SKLEARN_EMGMM_PARAMS: dict = {}
     SKLEARN_TSNE_PARAMS: dict = {}
 
-    kwargs: dict = {}
     _acc_score: float = None
+
+    # Misc attributes
+    gmm_assignment_col_name = 'gmm_assignment'
+    svm_assignment_col_name = 'svm_assignment'
+
+    features_which_average_by_mean = ['DistFrontPawsTailbaseRelativeBodyLength',
+                                      'DistBackPawsBaseTailRelativeBodyLength', 'InterforepawDistance', 'BodyLength', ]
+    features_which_average_by_sum = ['SnoutToTailbaseChangeInAngle', 'SnoutSpeed', 'TailbaseSpeed']
+    features_names_7 = features_which_average_by_mean + features_which_average_by_sum
+    #
+    kwargs: dict = {}
+
     # Properties
     @property
     def name(self): return self._name
@@ -95,7 +106,9 @@ class PipelineAttributeHolder:
     def get_desc(self) -> str: return self._description
     @property
     def is_built(self): return self._is_built
-    def set_name(self, name):
+
+    # Setters
+    def set_name(self, name) -> __class__:
         # TODO: will this cause problems later with naming convention?
         if io.has_invalid_chars_in_name_for_a_file(name):
             invalid_name_err = f'Invalid chars detected for name: {name}.'
@@ -104,7 +117,8 @@ class PipelineAttributeHolder:
         self._name = name
 
         return self
-    def set_desc(self, description):
+
+    def set_description(self, description) -> __class__:
         """ Set a description of the pipeline. Include any notes you want to keep regarding the process used. """
         if not isinstance(description, str):
             invalid_type_err = f'Invalid type submitted. found: {type(description)} TODO clean up this err message'
@@ -114,14 +128,7 @@ class PipelineAttributeHolder:
         return self
     @property
     def accuracy_score(self): return self._acc_score
-    # Misc attributes
-    gmm_assignment_col_name = 'gmm_assignment'
-    svm_assignment_col_name = 'svm_assignment'
 
-    features_which_average_by_mean = ['DistFrontPawsTailbaseRelativeBodyLength',
-                                      'DistBackPawsBaseTailRelativeBodyLength', 'InterforepawDistance', 'BodyLength', ]
-    features_which_average_by_sum = ['SnoutToTailbaseChangeInAngle', 'SnoutSpeed', 'TailbaseSpeed']
-    features_names_7 = features_which_average_by_mean + features_which_average_by_sum
 
 
 class BasePipeline(PipelineAttributeHolder):
@@ -222,7 +229,7 @@ class BasePipeline(PipelineAttributeHolder):
                     self.read_in_train_data_source(arg)
                 else:
                     # Do type checking, path checking, then continue.
-                    util.check_arg.ensure_type(arg, str)
+                    check_arg.ensure_type(arg, str)
                     self.read_in_train_data_source(arg)
             return self
 
@@ -390,14 +397,14 @@ class BasePipeline(PipelineAttributeHolder):
         #     labels,
         # )
         # TODO: ensure new implementation works!!!!!
-        util.videoprocessing.write_annotated_frames_to_disk_from_video_NEW(
+        videoprocessing.write_annotated_frames_to_disk_from_video_NEW(
             video_to_be_labeled,
             labels,
         )
         return
 
     def make_video_from_written_frames(self, new_video_name, video_to_be_labeled=config.VIDEO_TO_LABEL_PATH):
-        util.videoprocessing.write_video_with_existing_frames(
+        videoprocessing.write_video_with_existing_frames(
             video_to_be_labeled,
             config.FRAMES_OUTPUT_PATH,
             new_video_name,
@@ -425,7 +432,7 @@ class BasePipeline(PipelineAttributeHolder):
             logger.warning(f'Classifiers have not been built. Nothing to graph.')
             return None
 
-        self.fig_gm_assignments_3d = util.visuals.plot_GM_assignments_in_3d(
+        self.fig_gm_assignments_3d = visuals.plot_GM_assignments_in_3d(
             self.df_post_tsne[self.dims_cols_names].values,
             self.df_post_tsne[self.gmm_assignment_col_name].values,
             save_to_file,
@@ -438,7 +445,7 @@ class BasePipeline(PipelineAttributeHolder):
     def plot(self):
         logger.debug(f'Enter GRAPH PLOTTING section of {inspect.stack()[0][3]}')
         # # plot 3d stuff?
-        util.visuals.plot_GM_assignments_in_3d(self.df_post_tsne[self.dims_cols_names].values, self.df_post_tsne[self.gmm_assignment_col_name].values, config.SAVE_GRAPHS_TO_FILE)
+        visuals.plot_GM_assignments_in_3d(self.df_post_tsne[self.dims_cols_names].values, self.df_post_tsne[self.gmm_assignment_col_name].values, config.SAVE_GRAPHS_TO_FILE)
 
         # below plot is for cross-val scores
         scores = cross_val_score()  # TODO: low

@@ -4,6 +4,7 @@ __version__ = '0.0.1'  # TODO: HIGH: ensure version number is correct before pus
 # General imports for packages
 from . import (
     app,
+    check_arg,
     config,
     classify,
     classify_LEGACY,
