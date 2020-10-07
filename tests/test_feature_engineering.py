@@ -83,6 +83,23 @@ Difference:
 
         self.assertTrue(is_filtered_data_equal, err_not_equal)
 
+    def test__adaptively_filter_dlc_output__shouldReturnSameNumberOfRowsAsInput__always(self):
+        # Arrange
+        df_input = bsoid.io.read_csv(single_test_file_location, nrows=bsoid.config.max_rows_to_read_in_from_csv)
+        input_num_rows = len(df_input)
+        # Act
+        df_output, _ = bsoid.feature_engineering.adaptively_filter_dlc_output(df_input)
+        output_num_rows = len(df_output)
+
+        # Assert
+        err_msg = f"""
+{df_input.to_string()}
+
+{df_output.to_string()}
+TODO: improve error message
+""".strip()
+        self.assertEqual(input_num_rows, output_num_rows, err_msg)
+
     def test___newFEGoodAsOldFE(self):
         # Arrange
         # Set up functions for feature engineering
