@@ -22,8 +22,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from bsoid import config, feature_engineering, train_LEGACY, visuals
-from bsoid.util import check_arg, likelihoodprocessing
+from bsoid import check_arg, config, feature_engineering, statistics, train_LEGACY, visuals
 
 logger = config.initialize_logger(__name__)
 
@@ -306,13 +305,13 @@ def extract_7_features_bsoid_tsne_py(list_of_arrays_data: List[np.ndarray], body
             snout__proximal_tail__distance__aka_BODYLENGTH__normalized[j] = np.linalg.norm(snout__proximal_tail__distance__aka_BODYLENGTH[j, :])
         ## "Smooth" features for final use
         # Body length (1)
-        snout__proximal_tail__distance__aka_BODYLENGTH__normalized_smoothed = likelihoodprocessing.boxcar_center(snout__proximal_tail__distance__aka_BODYLENGTH__normalized, win_len)                           # sn_pt_norm_smth
+        snout__proximal_tail__distance__aka_BODYLENGTH__normalized_smoothed = statistics.boxcar_center(snout__proximal_tail__distance__aka_BODYLENGTH__normalized, win_len)                           # sn_pt_norm_smth
         # Inter-forepaw distance (4)
-        inter_forepaw_distance__normalized__smoothed = likelihoodprocessing.boxcar_center(inter_forepaw_distance__normalized, win_len)                                               # fpd_norm_smth
+        inter_forepaw_distance__normalized__smoothed = statistics.boxcar_center(inter_forepaw_distance__normalized, win_len)                                               # fpd_norm_smth
         # (2)
-        snout__center_forepaws__normalized__smoothed = likelihoodprocessing.boxcar_center(snout__proximal_tail__distance__aka_BODYLENGTH__normalized - cfp_pt__center_between_forepaws__minus__proximal_tail__normalized, win_len)   # sn_cfp_norm_smth
+        snout__center_forepaws__normalized__smoothed = statistics.boxcar_center(snout__proximal_tail__distance__aka_BODYLENGTH__normalized - cfp_pt__center_between_forepaws__minus__proximal_tail__normalized, win_len)   # sn_cfp_norm_smth
         # (3)
-        snout__center_hindpaws__normalized__smoothed = likelihoodprocessing.boxcar_center(snout__proximal_tail__distance__aka_BODYLENGTH__normalized - chp__proximal_tail__normalized, win_len)   # sn_chp_norm_smth
+        snout__center_hindpaws__normalized__smoothed = statistics.boxcar_center(snout__proximal_tail__distance__aka_BODYLENGTH__normalized - chp__proximal_tail__normalized, win_len)   # sn_chp_norm_smth
 
         ### Create the 3 time-varying features ###
         snout__proximal_tail__angle = np.zeros(num_data_rows - 1)                   # originally: sn_pt_ang
@@ -326,9 +325,9 @@ def extract_7_features_bsoid_tsne_py(list_of_arrays_data: List[np.ndarray], body
             snout_speed__aka_snout__displacement[k] = np.linalg.norm(data_array[k + 1, 2 * bodyparts['Snout/Head']:2 * bodyparts['Snout/Head'] + 1] - data_array[k, 2 * bodyparts['Snout/Head']:2 * bodyparts['Snout/Head'] + 1])
             tail_speed__aka_proximal_tail__displacement[k] = np.linalg.norm(data_array[k + 1, 2 * bodyparts['Tailbase']:2 * bodyparts['Tailbase'] + 1] - data_array[k,2 * bodyparts['Tailbase']:2 * bodyparts['Tailbase'] + 1])
         # Smooth features for final use
-        snout__proximal_tail__angle__smoothed = likelihoodprocessing.boxcar_center(snout__proximal_tail__angle, win_len)  # sn_pt_ang_smth =>
-        snout_speed__aka_snout_displacement_smoothed = likelihoodprocessing.boxcar_center(snout_speed__aka_snout__displacement, win_len)  # sn_disp_smth =>
-        tail_speed__aka_proximal_tail__displacement__smoothed = likelihoodprocessing.boxcar_center(tail_speed__aka_proximal_tail__displacement, win_len)  # originally: pt_disp_smth
+        snout__proximal_tail__angle__smoothed = statistics.boxcar_center(snout__proximal_tail__angle, win_len)  # sn_pt_ang_smth =>
+        snout_speed__aka_snout_displacement_smoothed = statistics.boxcar_center(snout_speed__aka_snout__displacement, win_len)  # sn_disp_smth =>
+        tail_speed__aka_proximal_tail__displacement__smoothed = statistics.boxcar_center(tail_speed__aka_proximal_tail__displacement, win_len)  # originally: pt_disp_smth
 
         ### Append final features to features list ###
         features.append(np.vstack((
@@ -507,7 +506,7 @@ def get_data_train_TSNE_then_GMM_then_SVM_then_return_EVERYTHING__py(train_folde
     ##########
     # Get data
     file_names_list, list_of_arrays_of_training_data, _perc_rect = \
-        likelihoodprocessing.import_csvs_data_from_folders_in_PROJECTPATH_and_process_data(train_folders)
+        statistics.import_csvs_data_from_folders_in_PROJECTPATH_and_process_data(train_folders)
 
     # Check that outputs are fine for runtime
     if len(file_names_list) == 0:
