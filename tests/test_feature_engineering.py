@@ -18,70 +18,18 @@ single_test_file_location = os.path.join(bsoid.config.BSOID_BASE_PROJECT_PATH, '
 
 
 class TestFeatureEngineering(TestCase):
-
-    def test__adaptive_filtering__ensure_new_implementation_using_df_is_correct_compared_to_implementation(self):
+    def test__adaptively_filter_dlc_output__(self):
+        # TODO: ensuring that cols like scorer, file_source, etc don't go missing
         # Arrange
-        # Read in data
-        df_input_data_original = pd.read_csv(single_test_file_location, nrows=bsoid.config.max_rows_to_read_in_from_csv)
-        df_input_data_new = bsoid.io.read_csv(single_test_file_location, nrows=bsoid.config.max_rows_to_read_in_from_csv)
-
-        # prep functions
-        original_adaptive_filter: callable = bsoid.util.likelihoodprocessing.process_raw_data_and_filter_adaptively
-        new_adaptive_filter: callable = bsoid.feature_engineering.adaptively_filter_dlc_output
+        df_input = bsoid.io.read_csv(single_test_file_location, nrows=bsoid.config.max_rows_to_read_in_from_csv)
 
         # Act
-        arr_original_adaptive_filter_output, _ = original_adaptive_filter(df_input_data_original)
-        df_new_adaptive_filter_output, _ = new_adaptive_filter(df_input_data_new)
-        df_new_adaptive_filter_output = df_new_adaptive_filter_output.drop('scorer', axis=1)
-        arr_new_adaptive_filter_output = np.array(df_new_adaptive_filter_output)
+
 
         # Assert
-        is_filtered_data_equal = np.array_equal(arr_original_adaptive_filter_output, arr_new_adaptive_filter_output)
-        top_n_rows_display, bottom_n_rows_display = 6, 4
-        err_not_equal = f"""
-------------------------------------------------------------------------------------------------------------------------
-Original output shape:
-{arr_original_adaptive_filter_output.shape}
-New output shape: 
-{arr_new_adaptive_filter_output.shape}
 
----
-
-First {top_n_rows_display} rows of original:
-{arr_original_adaptive_filter_output[:top_n_rows_display, :]}
-
-First {top_n_rows_display} rows of new:
-{arr_new_adaptive_filter_output[:top_n_rows_display, :]}
-
----
-
-Last {bottom_n_rows_display} rows of original:
-{arr_original_adaptive_filter_output[-bottom_n_rows_display:, :]}
-
-Last {bottom_n_rows_display} rows of new:
-{arr_new_adaptive_filter_output[-bottom_n_rows_display:, :]}
-
----
-
-
-New raw Data:
-{df_input_data_new}
-
----
-
-Original output:
-{arr_original_adaptive_filter_output}
-
-New output:
-{arr_new_adaptive_filter_output}
-
----
-
-Difference:
-{arr_original_adaptive_filter_output-arr_new_adaptive_filter_output}
-"""
-
-        self.assertTrue(is_filtered_data_equal, err_not_equal)
+        self.assertEqual()
+        return
 
     def test__adaptively_filter_dlc_output__shouldReturnSameNumberOfRowsAsInput__always(self):
         # Arrange
@@ -153,3 +101,70 @@ DIFF:
 {new_result_final - old_result_final}
 """
         self.assertTrue(arrays_are_equal, fail_msg)
+
+    def test__adaptive_filtering__ensure_new_implementation_using_df_is_correct_compared_to_implementation(self):
+        # Arrange
+        # Read in data
+        df_input_data_original = pd.read_csv(single_test_file_location,
+                                             nrows=bsoid.config.max_rows_to_read_in_from_csv)
+        df_input_data_new = bsoid.io.read_csv(single_test_file_location,
+                                              nrows=bsoid.config.max_rows_to_read_in_from_csv)
+
+        # prep functions
+        original_adaptive_filter: callable = bsoid.util.likelihoodprocessing.process_raw_data_and_filter_adaptively
+        new_adaptive_filter: callable = bsoid.feature_engineering.adaptively_filter_dlc_output
+
+        # Act
+        arr_original_adaptive_filter_output, _ = original_adaptive_filter(df_input_data_original)
+        df_new_adaptive_filter_output, _ = new_adaptive_filter(df_input_data_new)
+        df_new_adaptive_filter_output = df_new_adaptive_filter_output.drop('scorer', axis=1)
+        arr_new_adaptive_filter_output = np.array(df_new_adaptive_filter_output)
+
+        # Assert
+        is_filtered_data_equal = np.array_equal(arr_original_adaptive_filter_output, arr_new_adaptive_filter_output)
+        top_n_rows_display, bottom_n_rows_display = 6, 4
+        err_not_equal = f"""
+------------------------------------------------------------------------------------------------------------------------
+Original output shape:
+{arr_original_adaptive_filter_output.shape}
+New output shape: 
+{arr_new_adaptive_filter_output.shape}
+
+---
+
+First {top_n_rows_display} rows of original:
+{arr_original_adaptive_filter_output[:top_n_rows_display, :]}
+
+First {top_n_rows_display} rows of new:
+{arr_new_adaptive_filter_output[:top_n_rows_display, :]}
+
+---
+
+Last {bottom_n_rows_display} rows of original:
+{arr_original_adaptive_filter_output[-bottom_n_rows_display:, :]}
+
+Last {bottom_n_rows_display} rows of new:
+{arr_new_adaptive_filter_output[-bottom_n_rows_display:, :]}
+
+---
+
+
+New raw Data:
+{df_input_data_new}
+
+---
+
+Original output:
+{arr_original_adaptive_filter_output}
+
+New output:
+{arr_new_adaptive_filter_output}
+
+---
+
+Difference:
+{arr_original_adaptive_filter_output - arr_new_adaptive_filter_output}
+"""
+
+        self.assertTrue(is_filtered_data_equal, err_not_equal)
+

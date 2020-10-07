@@ -30,7 +30,8 @@ import math
 import numpy as np
 import pandas as pd
 
-from bsoid import config, statistics, check_arg
+from bsoid import check_arg, config, statistics, logging_bsoid
+
 
 logger = config.initialize_logger(__name__)
 
@@ -38,16 +39,18 @@ logger = config.initialize_logger(__name__)
 #### NEW ###############################################################################################################
 
 def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.DataFrame, List[float]]:  # TODO: implement new adaptive-filter_data for new data pipelineing
-    """ *NEW* --> Successor function to old method in likelikhood processing. Uses new DF format.
+    """ *NEW* --> Successor function to old method in likelikhood processing. Uses new DataFrame type.
     Takes in a ____ TODO...
-    Usually this function is completed directly after reading in dlc data
+
+    Usually this function is completed directly after reading in DLC data.
 
     (Described as adaptive high-pass filter by original author)
-    Follows same form as legacy only for continuity reasons. Can be refactored for performance later.
+    Note: this function follows same form as legacy only for
+        continuity reasons. Can be refactored for performance later.
 
-    Note: the top row ends up as ZERO according to original algorithm implementation
-    :param in_df: (DataFrame) expected: raw DataFrame of DLC results right after
-        reading in using bsoid.read_csv().
+    Note: the top row ends up as ZERO according to original algorithm implementation; however, we do not remove
+        the top row like the original implementation.
+    :param in_df: (DataFrame) expected: raw DataFrame of DLC results right after reading in using bsoid.read_csv().
 
         EXAMPLE `df_input_data` input:  # TODO: remove bodyparts_coords col? Check bsoid.io.read_csv() return format.
               bodyparts_coords        Snout/Head_x       Snout/Head_y Snout/Head_likelihood Forepaw/Shoulder1_x Forepaw/Shoulder1_y Forepaw/Shoulder1_likelihood  ...                                          scorer          source
@@ -73,13 +76,11 @@ def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.Da
 
     """
     # Checking args
-    if not isinstance(in_df, pd.DataFrame):
-        type_err = f'Input data was expected to be of type pandas.DataFrame but instead found: {type(in_df)}.'
-        logger.error(type_err)
-        raise TypeError(type_err)
+    check_arg.ensure_type(in_df, pd.DataFrame)
     # Continue
     # # Scorer
-    if 'scorer' not in in_df.columns:
+    set_in_df_columns = set(in_df.columns)
+    if 'scorer' not in set_in_df_columns:
         col_not_found_err = f'TODO: "scorer" col not found but should exist (as a result from bsoid.read_csv()) // ' \
                             f'All columns: {in_df.columns}'
         logger.error(col_not_found_err)
@@ -91,7 +92,7 @@ def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.Da
         raise ValueError(err)
     scorer_value: str = scorer_values[0]
     # # Source
-    if 'source' in in_df.columns:
+    if 'source' in set_in_df_columns:
         source_filenames_values = np.unique(in_df['source'])
         if len(scorer_values) != 1:
             err = f'TODO: there should be 1 unique source value. If there are more than 1, too many values, ' \
@@ -101,6 +102,11 @@ def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.Da
         source = in_df['source'].values[0]
     else:
         source = None
+
+    # if 'file_source' in set_in_df_columns:
+    file_source = in_df['file_source'][0] if 'file_source' in set_in_df_columns else None
+    data_source = in_df['data_source'][0] if 'data_source' in set_in_df_columns else None
+
     # Resolve kwargs
     df = in_df.copy() if copy else in_df
 
@@ -132,7 +138,7 @@ def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.Da
                   f'{column_suffix}. Column = "{col}". ' \
                   f'Check on CSV to see if has an unexpected output format from DLC.'
             logger.error(err)
-            raise ValueError(err)
+            # raise ValueError(err)
     if len(coords_cols_names) > 1:
         err = f'An unexpected number of columns were detected that contained the substring "coords". ' \
               f'Normally, there is only 1 "coords" column in a DLC output CSV, but this is an abnormal case. ' \
@@ -202,9 +208,14 @@ def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.Da
     # Create frame, replace 'scorer' column. Return.
     df_adaptively_filtered_data = pd.DataFrame(array_filtered_data_without_first_row, columns=columns_ordered)
     df_adaptively_filtered_data['scorer'] = scorer_value
-    # Re-add source
+    # Re-add source, etc
     if source is not None:
         df_adaptively_filtered_data['source'] = source
+    if file_source is not None:
+        df_adaptively_filtered_data['file_source'] = file_source
+    if data_source is not None:
+        df_adaptively_filtered_data['data_source'] = data_source
+
     df_adaptively_filtered_data['frame'] = range(len(df_adaptively_filtered_data))
     if len(in_df) != len(df_adaptively_filtered_data):
         missing_rows_err = f'Input df has {len(df)} rows but output df ' \
@@ -461,6 +472,7 @@ def engineer_7_features_dataframe_NOMISSINGDATA(df: pd.DataFrame, features_names
                                     f'engineering but was not found. All submitted columns are: {df.columns}'
             logger.error(err_feature_y_missing)
             raise ValueError(err_feature_y_missing)
+
     if 'scorer' in df.columns:
         unique_scorers = np.unique(df['scorer'].values)
         if len(unique_scorers) != 1:
@@ -690,6 +702,71 @@ def average_values_over_moving_window(data, method, n_frames: int) -> np.ndarray
 
 
 ### OLD ################################################################################################################
+
+def adaptive_filter_LEGACY(df_input_data: pd.DataFrame) -> Tuple[np.ndarray, List]:
+    """
+    Deprecation warning. Do not alter this function so that we can confirm new function output matches old function.
+    """
+    logger.warning(f'{inspect.stack()[0][3]}(): will be deprecated in future. '
+                   f'Instead, try using: {process_raw_data_and_filter_adaptively.__qualname__}')
+    # Type checking args
+    if not isinstance(df_input_data, pd.DataFrame):
+        raise TypeError(f'`df_input` was expected to be of type pandas.DataFrame but '
+                        f'instead found: {type(df_input_data)}.')
+    # Continue args valid
+    l_index, x_index, y_index, percent_filterd_per_bodypart__perc_rect = [], [], [], []
+    # Remove top row. It contains COLUMN LABELS
+    df_input_data_with_top_row_removed: pd.DataFrame = df_input_data[1:]
+    array_input_data_with_top_row_removed: np.ndarray = np.array(df_input_data_with_top_row_removed)
+    # currdf = array_input_data_with_top_row_removed
+
+    # Loop over columns, aggregate which indices in the data fall under which category.
+    #   x, y, and likelihood are the three main types of columns output from DLC.
+    number_of_cols = len(array_input_data_with_top_row_removed[0])
+    for header_idx in range(number_of_cols):  # range(len(currdf[0])):
+        current_column_header = array_input_data_with_top_row_removed[0][header_idx]
+        if current_column_header == "likelihood":
+            l_index.append(header_idx)
+        elif current_column_header == "x":
+            x_index.append(header_idx)
+        elif current_column_header == "y":
+            y_index.append(header_idx)
+        elif current_column_header == 'coords':
+            pass  # Ignore. Usually this is the title of the index column and is only seen once. No data to be had here.
+        else:
+            err = f'An inappropriate column header was found: {array_input_data_with_top_row_removed[0][header_idx]}'  # TODO: elaborate on error
+            logger.error(err)
+            raise ValueError(err)
+
+    logger.debug(f'{logging_bsoid.get_current_function()}: Extracting likelihood value...')
+    curr_df1 = array_input_data_with_top_row_removed[:, 1:]
+    data_x = curr_df1[:, np.array(x_index) - 1]
+    data_y = curr_df1[:, np.array(y_index) - 1]
+    data_lh = curr_df1[:, np.array(l_index) - 1]
+    currdf_filt: np.ndarray = np.zeros((data_x.shape[0]-1, (data_x.shape[1]) * 2))  # Initialized as zeroes with  # currdf_filt: np.ndarray = np.zeros((data_x.shape[0]-1, (data_x.shape[1]) * 2))
+
+    logger.info('Computing data threshold to forward fill any sub-threshold (x,y)...')
+    percent_filterd_per_bodypart__perc_rect = [0 for _ in range(data_lh.shape[1])]  # for _ in range(data_lh.shape[1]): perc_rect.append(0)
+
+    for x in tqdm(range(data_lh.shape[1])):
+        histogram, bin_edges = np.histogram(data_lh[1:, x].astype(np.float))
+        rise_a = np.where(np.diff(histogram) >= 0)
+        if rise_a[0][0] > 1:
+            llh = ((bin_edges[rise_a[0][0]] + bin_edges[rise_a[0][0]-1]) / 2)
+        else:
+            llh = ((bin_edges[rise_a[0][1]] + bin_edges[rise_a[0][1]-1]) / 2)
+        data_lh_float = data_lh[1:, x].astype(np.float)
+        percent_filterd_per_bodypart__perc_rect[x] = np.sum(data_lh_float < llh) / data_lh.shape[0]
+        for i in range(1, data_lh.shape[0] - 1):
+            if data_lh_float[i] < llh:
+                currdf_filt[i, (2 * x):(2 * x + 2)] = currdf_filt[i - 1, (2 * x):(2 * x + 2)]
+            else:
+                currdf_filt[i, (2 * x):(2 * x + 2)] = np.hstack([data_x[i, x], data_y[i, x]])
+    currdf_filt = np.array(currdf_filt[1:])
+    currdf_filt = currdf_filt.astype(np.float)
+
+    return currdf_filt, percent_filterd_per_bodypart__perc_rect
+
 
 def original_feature_extraction_win_len_formula(fps: int):
     """"""
@@ -1069,12 +1146,12 @@ def adaptive_filter_data_app(input_df: pd.DataFrame, BODYPARTS: dict):  # TODO: 
 
 if __name__ == '__main__':
     d = [[1, 10, 100], [2, 0, 100], [3, 3, 3]]
-    data = np.array(d)
+    data_d = np.array(d)
     cols = ['x', 'y', 'z']
-    df = pd.DataFrame(data, columns=cols)
-    print(df.to_string())
+    dff = pd.DataFrame(data_d, columns=cols)
+    print(dff.to_string())
     print('---')
-    # print(integrate_df_feature_into_bins(df, 'x', 'avg', 3))
-    print(average_values_over_moving_window(df['x'], 'sum', 2))
+    # print(integrate_df_feature_into_bins(dff, 'x', 'avg', 3))
+    print(average_values_over_moving_window(dff['x'], 'sum', 2))
 
     pass

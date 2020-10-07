@@ -28,8 +28,8 @@ import pandas as pd
 import time
 import umap
 
-from bsoid import config, feature_engineering, visuals
-from bsoid.util import check_arg, likelihoodprocessing
+from bsoid import config, feature_engineering, visuals, check_arg
+from bsoid.util import likelihoodprocessing
 
 logger = config.initialize_logger(__name__)
 

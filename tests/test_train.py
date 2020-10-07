@@ -13,7 +13,7 @@ test_file_name = bsoid.config.DEFAULT_TEST_FILE
 
 class TestTrain(TestCase):
 
-    def test__(self):
+    def test__REPLACETHISFUNCTIONNAME(self):
         # Arrange
         df_input_data = pd.read_csv(test_file_name, nrows=bsoid.config.max_rows_to_read_in_from_csv)
 
