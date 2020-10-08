@@ -54,9 +54,12 @@ class PipelineAttributeHolder:
     predict_data_files_paths: List[str] = []
 
     # Data
-    _dfs_list_raw_data: List[pd.DataFrame] = []  # Raw data frames kept right after read_data() function called
-    df_features: pd.DataFrame = None
-    df_features_scaled: pd.DataFrame = None
+    _dfs_list_raw_train_data: List[pd.DataFrame] = []  # Raw data frames kept right after read_data() function called
+    _dfs_list_raw_predict_data: List[pd.DataFrame] = []
+
+    df_features_train: pd.DataFrame = None
+    df_features_train_scaled: pd.DataFrame = None
+    df_features_predict: pd.DataFrame = None
 
     train_data: List[pd.DataFrame] = []
     test_data: List[pd.DataFrame] = []
@@ -223,14 +226,15 @@ class BasePipeline(PipelineAttributeHolder):
             Check if config variables are inserted. If they are not manually inserted on
         Pipeline instantiation, insert config vars from config.ini.
         """
+        if self._source_folder is None:
+            self._source_folder = config.OUTPUT_PATH
+
         if len(self.SKLEARN_SVM_PARAMS) == 0:
             self.SKLEARN_SVM_PARAMS = config.SVM_PARAMS
         if len(self.SKLEARN_EMGMM_PARAMS) == 0:
             self.SKLEARN_EMGMM_PARAMS = config.EMGMM_PARAMS
         if len(self.SKLEARN_TSNE_PARAMS) == 0:
             self.SKLEARN_TSNE_PARAMS = config.TSNE_SKLEARN_PARAMS
-        if self._folder_source is None:
-            self._folder_source = config.OUTPUT_PATH
 
     # Read/delete data
     def add_train_data_source(self, *train_data_args):
@@ -265,7 +269,7 @@ class BasePipeline(PipelineAttributeHolder):
             if len(data_sources) <= 0: return self
             for file_path in data_sources:
                 df_i = io.read_csv(file_path)
-                self._dfs_list_raw_data.append(df_i)
+                self._dfs_list_raw_train_data.append(df_i)
                 self.train_data_files_paths.append(file_path)
         elif os.path.isfile(path):  # If path is to a file: read in file
             ext = path.split('.')[-1]
@@ -276,7 +280,7 @@ class BasePipeline(PipelineAttributeHolder):
                 raise ValueError(invalid_data_source_err)
             if path in self.train_data_files_paths: return self
             df_file = io.read_csv(path)
-            self._dfs_list_raw_data.append(df_file)
+            self._dfs_list_raw_train_data.append(df_file)
             self.train_data_files_paths.append(path)
         else:
             unusual_path_err = f'Unusual file/dir path submitted but not found: {path}. Is not a valid ' \
@@ -320,7 +324,7 @@ class BasePipeline(PipelineAttributeHolder):
             if len(data_sources) <= 0: return self
             for file_path in data_sources:
                 df_i = io.read_csv(file_path)
-                self._dfs_list_raw_data.append(df_i)
+                self._dfs_list_raw_train_data.append(df_i)
                 self.train_data_files_paths.append(file_path)
         elif os.path.isfile(path):  # If path is to a file: read in file
             ext = path.split('.')[-1]
@@ -331,7 +335,7 @@ class BasePipeline(PipelineAttributeHolder):
                 raise ValueError(invalid_data_source_err)
             if path in self.train_data_files_paths: return self
             df_file = io.read_csv(path)
-            self._dfs_list_raw_data.append(df_file)
+            self._dfs_list_raw_train_data.append(df_file)
             self.train_data_files_paths.append(path)
         else:
             unusual_path_err = f'Unusual file/dir path submitted but not found: {path}. Is not a valid ' \
@@ -353,10 +357,10 @@ class BasePipeline(PipelineAttributeHolder):
         # Queue up data to use
         if features is None:
             features = self.features_names_7
-        df_features = self.df_features
+        df_features = self.df_features_train
         # Check args
         check_arg.ensure_type(features, list)
-        check_arg.ensure_columns_in_DataFrame(features, df_features)
+        check_arg.ensure_columns_in_DataFrame(df_features, features)
         # Do
         self._scaler = StandardScaler()
         self._scaler.fit(df_features[features])
@@ -453,14 +457,14 @@ class BasePipeline(PipelineAttributeHolder):
 
     def _write_self_to_file(self, final_out_path):
         """
+        TODO:
+        Note: does ZERO error checking. save() should do all error checking.
         :param final_out_path: (str)
         :return:
         """
-        check_arg.ensure_has_valid_chars_for_path(final_out_path)
         with open(final_out_path, 'wb') as model_file:
             joblib.dump(self, model_file)
         return
-
 
     def has_been_previously_saved(self):
         if not self._folder_source: return False
@@ -584,18 +588,31 @@ class PipelinePrime(BasePipeline):
         super().__init__(data_source=data_source, tsne_source=tsne_source, data_ext=data_ext, **kwargs)
 
     @config.deco__log_entry_exit(logger)
-    def engineer_features(self) -> BasePipeline:
+    def _engineer_features(self) -> BasePipeline:
+
+        return self
+    def engineer_features(self):
+        logger.warn('deprec warning')
+        return self.engineer_features_train()
+
+    def engineer_features_predict(self):
+
+        return self
+    def engineer_features_train(self) -> BasePipeline:
         """
         All functions that take the raw data (data retrieved from using bsoid.read_csv()) and
         transforms it into classifier-ready data.
-        :param list_dfs_raw_data: (DataFrame or list of DataFrames)
+
         :return:
         (Includes scorer, source cols)
         """
-        columns_to_save = ['scorer', 'source', 'file_source', 'data_source', 'frame']  # TODO: med: these cols really should be saved in
-                              #  engineer_7_features_dataframe_NOMISSINGDATA(),
-                              #  but that func can be amended later due to time constraints
-        list_dfs_raw_data: List[pd.DataFrame] = self._dfs_list_raw_data
+        # TODO: med: these cols really should be saved in
+        #  engineer_7_features_dataframe_NOMISSINGDATA(),
+        #  but that func can be amended later due to time constraints
+        columns_to_save = ['scorer', 'source', 'file_source', 'data_source', 'frame']
+
+        list_dfs_raw_data: List[pd.DataFrame] = self._dfs_list_raw_train_data
+
         # Reconcile args
         if isinstance(list_dfs_raw_data, pd.DataFrame):
             list_dfs_raw_data = [list_dfs_raw_data, ]
@@ -603,7 +620,8 @@ class PipelinePrime(BasePipeline):
             raise TypeError(f'Invalid type found: {type(list_dfs_raw_data)} // TODO: elaborate')
 
         # Adaptively filter features
-        dfs_list_adaptively_filtered: List[Tuple[pd.DataFrame, List[float]]] = [feature_engineering.adaptively_filter_dlc_output(df) for df in list_dfs_raw_data]
+        dfs_list_adaptively_filtered: List[Tuple[pd.DataFrame, List[float]]] = [
+            feature_engineering.adaptively_filter_dlc_output(df) for df in list_dfs_raw_data]
 
         # Engineer features as necessary
         dfs_features = []
@@ -635,7 +653,7 @@ class PipelinePrime(BasePipeline):
 
         # Aggregate all train data, save to Pipeline
         df_features = pd.concat(dfs_features)
-        self.df_features = df_features
+        self.df_features_train = df_features
 
         return self
 
@@ -659,13 +677,13 @@ class PipelinePrime(BasePipeline):
         # Engineer features
         logger.debug(f'{inspect.stack()[0][3]}(: Start engineering features')
         start = time.perf_counter()
-        if reengineer_features:  # or self.has_unused_raw_data
-            self.engineer_features()
+        if reengineer_features or not self.df_features_train:  # or self.has_unused_raw_data
+            self.engineer_features_train()
 
         logger.debug(f'Finished engineering features in {round(time.perf_counter() - start, 1)} seconds.')
 
         # Scale data
-        self.scale_data(self.features_names_7)
+        self.scale_data()
 
         # TSNE -- create new dimensionally reduced data
         self.tsne_reduce_df_features()
@@ -705,7 +723,7 @@ class PipelinePrime(BasePipeline):
         dfs_raw = [io.read_csv(csv_path) for csv_path in data_files_paths]
 
         # Engineer features accordingly (as above)
-        df_features = self.engineer_features(dfs_raw)
+        self.engineer_features_train()
         # TODO: low
         # Predict labels
             # How does frameshifting 2x fit in?
@@ -734,6 +752,8 @@ if __name__ == '__main__':
     if BSOID not in sys.path:
         sys.path.append(BSOID)
 
+    test_file_1 = "C:\\Users\\killian\\projects\\OST-with-DLC\\bsoid_train_videos\\Video1DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000.csv"
+
     run = True
     if run:
         # Test build
@@ -744,10 +764,13 @@ if __name__ == '__main__':
 
         make_new = True
         if make_new:
-            p = PipelinePrime(name=nom, train_data_source=[], tsne_source='sklearn').build().save(loc)
+            p = PipelinePrime(name=nom, tsne_source='sklearn')
+            p = p.add_train_data_source(test_file_1)
+            p = p.build()
+            p = p.save(loc)
             print(f'Accuracy score: {p.accuracy_score}')
 
-        read_existing = True
+        read_existing = False
         if read_existing:
             # p = bsoid.read_pipeline(actual_save_loc)
             p = io.read_pipeline(full_loc)
