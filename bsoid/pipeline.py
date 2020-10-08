@@ -2,9 +2,9 @@
 todo
 """
 from bhtsne import tsne as TSNE_bhtsne
-from sklearn import mixture
 from sklearn.manifold import TSNE as TSNE_sklearn
 from sklearn.metrics import accuracy_score
+from sklearn.mixture import GaussianMixture
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
@@ -34,13 +34,13 @@ logger = config.initialize_logger(__file__)
 
 class PipelineAttributeHolder:
     """
-    Helps obfuscate params from base Pipeline object for API clarity
+    Helps hide params from base Pipeline object for API clarity
     Implement setters and getters.
     """
     # Base information
     _name: str = 'DefaultPipelineName'
     _description: str = ''
-    _folder_source: str = config.OUTPUT_PATH  # Folder in which this pipeline resides
+    _source_folder: str = None  # Folder in which this pipeline resides
     data_ext: str = 'csv'
     dims_cols_names: Union[List[str], Tuple[str]] = None
 
@@ -101,8 +101,8 @@ class PipelineAttributeHolder:
     def description(self): return self._description
     @property
     def file_path(self) -> Optional[str]:  # TODO: low: review
-        if not self._folder_source: return None
-        return os.path.join(self._folder_source, generate_pipeline_filename(self.name))
+        if not self._source_folder: return None
+        return os.path.join(self._source_folder, generate_pipeline_filename(self.name))
     @property
     def clf_gmm(self): return self._clf_gmm
     @property
@@ -116,18 +116,19 @@ class PipelineAttributeHolder:
     def is_built(self): return self._is_built
     @property
     def accuracy_score(self): return self._acc_score
+    @property
+    def location(self): return self._source_folder
 
     # Setters
     def set_name(self, name):
         # TODO: will this cause problems later with naming convention?
-        if io.has_invalid_chars_in_name_for_a_file(name):
+        if check_arg.has_invalid_chars_in_name_for_a_file(name):
             invalid_name_err = f'Invalid chars detected for name: {name}.'
             logger.error(invalid_name_err)
             raise ValueError(invalid_name_err)
         self._name = name
 
         return self
-
     def set_description(self, description):
         """ Set a description of the pipeline. Include any notes you want to keep regarding the process used. """
         if not isinstance(description, str):
@@ -136,6 +137,12 @@ class PipelineAttributeHolder:
             raise TypeError(invalid_type_err)
         self._description = description
         return self
+    def set_save_location_folder(self, folder_path):
+        if not os.path.isdir(folder_path):
+            err = f'TODO: elaborate: invalid folder path'
+            logger.error(err)
+            raise ValueError(err)
+        self._source_folder = folder_path
 
 
 class BasePipeline(PipelineAttributeHolder):
@@ -144,7 +151,8 @@ class BasePipeline(PipelineAttributeHolder):
 
     Parameters
     ----------
-    (Filler)
+    name : str
+        Name of pipeline. TODO: LOW: elaborate
 
     kwargs
     ----------
@@ -156,6 +164,7 @@ class BasePipeline(PipelineAttributeHolder):
         Specify a TSNE implementation.
         Valid TSNE implementations are: {sklearn, bhtsne}.
     """
+    # Init
     def __init__(self, name: str = None, tsne_source=None, data_extension='csv', **kwargs):
         """ Initialize pipeline + config """
         # Pipeline name
@@ -164,11 +173,11 @@ class BasePipeline(PipelineAttributeHolder):
         elif isinstance(name, str): self.set_name(name)
         if tsne_source is not None:
             if not isinstance(tsne_source, str):
-                tsne_type_err = f'TODO bad type for tsne source ({type(tsne_source)}'
+                tsne_type_err = f'TODO: LOW: ELABORATE: bad type for tsne source ({type(tsne_source)}'
                 logger.error(tsne_type_err)
                 raise TypeError(tsne_type_err)
             if tsne_source not in self.valid_tsne_sources:
-                tsne_err = f'TODO: non-implemented tsne source: {tsne_source}'
+                tsne_err = f'TODO: LOW: ELABORATE: non-implemented tsne source: {tsne_source}'
                 logger.error(tsne_err)
                 raise ValueError(tsne_err)
             self.tsne_source = tsne_source
@@ -184,14 +193,14 @@ class BasePipeline(PipelineAttributeHolder):
         # TODO: add kwargs parsing for dimensions
         self.dims_cols_names = [f'dim{d+1}' for d in range(self.tsne_dimensions)]
         # TODO: ADD KWARGS OPTION FOR OVERRIDING VERBOSE in CONFIG.INI!!!!!!!! ****
-        self.kwargs = kwargs
         # Final setup
         self.__read_in_kwargs(**kwargs)
         self.__read_in_config_file_vars()
+        self.kwargs = kwargs
 
     def __read_in_kwargs(self, **kwargs):
         """ Reads in kwargs else pull form config file """
-        # TODO: add kwargs parsing for averaging over n-frames
+        # TODO: LOW: add kwargs parsing for averaging over n-frames
         # Read in training data sources
         train_data_source = kwargs.get('train_data_source')
         if train_data_source is not None:
@@ -220,11 +229,13 @@ class BasePipeline(PipelineAttributeHolder):
             self.SKLEARN_EMGMM_PARAMS = config.EMGMM_PARAMS
         if len(self.SKLEARN_TSNE_PARAMS) == 0:
             self.SKLEARN_TSNE_PARAMS = config.TSNE_SKLEARN_PARAMS
+        if self._folder_source is None:
+            self._folder_source = config.OUTPUT_PATH
 
     # Read/delete data
     def add_train_data_source(self, *train_data_args):
         """
-        Read in new data. Save to raw data list.
+        Reads in new data and saves raw data.
         train_data_args: any number of args. Types submitted expected to be either List[str] or [str]
             In the case that an arg is List[str], the arg must be a list of strings that
         """
@@ -274,6 +285,7 @@ class BasePipeline(PipelineAttributeHolder):
             raise ValueError(unusual_path_err)
 
         self._has_unused_raw_data = True
+
         return self
 
     def add_predict_data_source(self, *predict_data_args):
@@ -335,7 +347,6 @@ class BasePipeline(PipelineAttributeHolder):
         raise NotImplementedError(f'TODO')
 
     # Data processing
-    @config.deco__log_entry_exit(logger)
     def scale_data(self, features: Optional[List[str]] = None):
         """ Scales training data """
         # TODO: add arg checking to ensure all features specified are in columns
@@ -373,7 +384,7 @@ class BasePipeline(PipelineAttributeHolder):
         :param df:
         :return:
         """
-        self._clf_gmm = mixture.GaussianMixture(**self.SKLEARN_EMGMM_PARAMS).fit(df)
+        self._clf_gmm = GaussianMixture(**self.SKLEARN_EMGMM_PARAMS).fit(df)
         assignments = self.clf_gmm.predict(df)
         return assignments
 
@@ -410,30 +421,44 @@ class BasePipeline(PipelineAttributeHolder):
                 verbose=True)
             tsne_embedding = self._tsne_obj.fit(data[self.features_names_7].values)
             arr_result = tsne_embedding.transform(data[self.features_names_7].values)
-        else: raise RuntimeError(f'Invalid TSNE source type fell through the cracks: {self.tsne_source}')
+        else:
+            raise RuntimeError(f'Invalid TSNE source type fell through the cracks: {self.tsne_source}')
         return arr_result
 
     # Saving and stuff
-    def save(self, output_path_dir):  # TODO: alt pathing?
+    def save(self, output_path_dir=None):
         """
         :param output_path_dir: (str) an absolute path to a DIRECTORY where the pipeline will be saved.
         """
-        if output_path_dir is None: output_path_dir = config.OUTPUT_PATH
+        if output_path_dir is None:
+            output_path_dir = config.OUTPUT_PATH
         # Check if valid directory
         if not os.path.isdir(output_path_dir):
             raise ValueError(f'Invalid output path dir specified: {output_path_dir}')
         final_out_path = os.path.join(output_path_dir, generate_pipeline_filename(self._name))
 
         # Check if valid final path to be saved
-        if not io.is_pathname_valid(final_out_path):
+        if not check_arg.is_pathname_valid(final_out_path):
             invalid_path_err = f'Invalid output path save: {final_out_path}'
             logger.error(invalid_path_err)
             raise ValueError(invalid_path_err)
-        with open(final_out_path, 'wb') as model_file:
-            joblib.dump(self, model_file)
+
+        self._write_self_to_file(final_out_path)
+
         self._folder_source = output_path_dir
         logger.debug(f'Pipeline ({self.name}) saved to: {final_out_path}')
         return self
+
+    def _write_self_to_file(self, final_out_path):
+        """
+        :param final_out_path: (str)
+        :return:
+        """
+
+        with open(final_out_path, 'wb') as model_file:
+            joblib.dump(self, model_file)
+        return
+
 
     def has_been_previously_saved(self):
         if not self._folder_source: return False
@@ -522,7 +547,7 @@ class BasePipeline(PipelineAttributeHolder):
 
         return self
 
-    # Legacy trash. Potential deprecation material.
+    # Legacy stuff. Potential deprecation material.
     def read_in_predict_folder_data_file_paths_legacypathing(self) -> List[str]:  # TODO: deprecate/re-work
         self.predict_data_files_paths = predict_data_files_paths = [os.path.join(config.PREDICT_DATA_FOLDER_PATH, x)
                                                                     for x in os.listdir(config.PREDICT_DATA_FOLDER_PATH)
@@ -531,7 +556,6 @@ class BasePipeline(PipelineAttributeHolder):
             err = f'Zero csv files found from: {config.PREDICT_DATA_FOLDER_PATH}'
             logger.error(err)
         return predict_data_files_paths
-
     def read_in_train_folder_data_file_paths_legacypathing(self) -> List[str]:  # TODO: deprecate/re-work
         self.train_data_files_paths = predict_data_files_paths = [os.path.join(config.TRAIN_DATA_FOLDER_PATH, x)
                                                                   for x in os.listdir(config.TRAIN_DATA_FOLDER_PATH)
@@ -541,6 +565,9 @@ class BasePipeline(PipelineAttributeHolder):
             logger.error(err)
             raise ValueError(err)
         return predict_data_files_paths
+    def read_in_train_data_source(self, *args, **kwargs):
+        logger.warn(f'Will be deprecated soon')
+        return self.add_train_data_source(*args)
 
 
 class PipelinePrime(BasePipeline):
@@ -630,7 +657,7 @@ class PipelinePrime(BasePipeline):
         # Engineer features
         logger.debug(f'{inspect.stack()[0][3]}(: Start engineering features')
         start = time.perf_counter()
-        if reengineer_features or self.has_unused_raw_data:
+        if reengineer_features:  # or self.has_unused_raw_data
             self.engineer_features()
 
         logger.debug(f'Finished engineering features in {round(time.perf_counter() - start, 1)} seconds.')
@@ -643,7 +670,6 @@ class PipelinePrime(BasePipeline):
 
         # Train GMM, get assignments
         self.df_post_tsne[self.gmm_assignment_col_name] = self.train_gmm_and_get_labels(self.df_post_tsne[self.dims_cols_names])
-
 
         # Test-train split
         df_features_train, df_features_test, df_labels_train, df_labels_test = train_test_split(
@@ -685,8 +711,18 @@ class PipelinePrime(BasePipeline):
 
         return self
 
+    def generate_predict_data_assignments(self):
+        if not self.is_built:
+            raise ValueError(f'')
+
+
+        return self
+
 
 def generate_pipeline_filename(name):
+    """
+    Generates a pipeline filename given its name. This is an effort to standardize naming for saving pipelines.
+    """
     file_name = f'{name}.pipeline'
     return file_name
 

@@ -3,7 +3,7 @@ Functionality for visualizing plots and saving those plots.
 """
 from matplotlib.axes._axes import _log as matplotlib_axes_logger
 from mpl_toolkits.mplot3d import Axes3D  # Despite being "unused", this import MUST stay for 3d plotting to work. PLO!
-from typing import List, Tuple
+from typing import Any, Collection, Dict, List, Tuple
 import inspect
 import os
 import matplotlib
@@ -18,6 +18,81 @@ logger = config.initialize_logger(__name__)
 matplotlib_axes_logger.setLevel('ERROR')
 
 TM = NotImplementedError('TODO: HIGH: The source of TM has not been determined. Find and fix as such.')  # TODO: low
+
+
+### New
+
+def plot_GM_assignments_in_3d_new(data: np.ndarray, assignments, show_now=True, **kwargs) -> Tuple[object, object]:
+    """
+    Plot trained TSNE for EM-GMM assignments.
+
+    :param data: 2D array, trained_tsne array (3 columns)
+    :param assignments: 1D array, EM-GMM assignments
+    :param show_now:
+    """
+    # TODO: find out why attaching the log entry/exit decorator kills the streamlit graph-rotation app
+    if not isinstance(data, np.ndarray):
+        err = f'Expected `data` to be of type numpy.ndarray but instead found: {type(data)} (value = {data}).'
+        logger.error(err)
+        raise TypeError(err)
+    # Parse kwargs
+    s = kwargs.get('s', 0.5)
+    marker = kwargs.get('marker', 'o')
+    alpha = kwargs.get('alpha', 0.8)
+    title = kwargs.get('title', 'Assignments by GMM')
+    azim_elev = kwargs.get('azim_elev', (70, 135))
+    # Plot graph
+    unique_assignments = list(np.unique(assignments))
+    R = np.linspace(0, 1, len(unique_assignments))
+    colormap = plt.cm.get_cmap("Spectral")(R)
+    tsne_x, tsne_y, tsne_z = data[:, 0], data[:, 1], data[:, 2]
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    # Loop over assignments
+    for i, g in enumerate(unique_assignments):
+        # Select data for only assignment i
+        idx = np.where(assignments == g)
+        # Assign to colour and plot
+        ax.scatter(tsne_x[idx], tsne_y[idx], tsne_z[idx], c=colormap[i], label=g, s=s, marker=marker, alpha=alpha)
+    ax.set_xlabel('Dim. 1')
+    ax.set_ylabel('Dim. 2')
+    ax.set_zlabel('Dim. 3')
+    ax.view_init(*azim_elev)
+    plt.title(title)
+    plt.legend(ncol=3)
+    # Draw now?
+    if show_now:
+        plt.show()
+    else:
+        plt.draw()
+
+    return fig, ax
+
+
+def plot_assignment_distribution_histogram(assignments: Collection, **kwargs) -> Tuple[object, object]:
+    """
+    Produce histogram plot of assignments. Useful for seeing lop-sided outcomes.
+    :param assignments:
+    :param kwargs:
+    :return:
+    """
+    # Arg checking
+    if not isinstance(assignments, np.ndarray):
+        assignments = np.array(assignments)
+    # Kwarg resolution
+    histtype = kwargs.get('histtype', 'stepfilled')
+    # Do
+    unique_assignments = np.unique(assignments)
+    R = np.linspace(0, 1, len(unique_assignments))
+    colormap = plt.cm.get_cmap("Spectral")(R)
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    for i, g in enumerate(unique_assignments):
+        idx = np.where(assignments == g)
+        plt.hist(assignments[idx], histtype=histtype, color=colormap[i])
+
+    return fig, ax
 
 
 #######################################################################################################################

@@ -13,7 +13,7 @@ import sys
 import time
 import traceback
 
-from bsoid import config, io, pipeline
+from bsoid import check_arg, config, io, pipeline
 logger = config.initialize_logger(__file__)
 
 
@@ -33,14 +33,13 @@ def line_break():
 
 
 # @st.cache(allow_output_mutation=True, persist=True)
-def plot_GM_assignments_in_3d(data: np.ndarray, assignments, save_fig_to_file: bool, fig_file_prefix='train_assignments', show_now=True, azim_elev = (70,135)) -> object:
+def plot_GM_assignments_in_3d(data: np.ndarray, assignments, fig_file_prefix='train_assignments', show_now=True, azim_elev = (70,135)) -> object:
     """
     100% copied from bsoid/util/visuals.py....don't keep this functions long term.
 
     Plot trained TSNE for EM-GMM assignments
     :param data: 2D array, trained_tsne array (3 columns)
     :param assignments: 1D array, EM-GMM assignments
-    :param save_fig_to_file:
     :param fig_file_prefix:
     :param show_later: use draw() instead of show()
     """
@@ -126,7 +125,7 @@ def home(*args, **kwargs):
 
             if is_project_info_submitted:
                 # Error checking first
-                if io.has_invalid_chars_in_name_for_a_file(new_project_name):
+                if check_arg.has_invalid_chars_in_name_for_a_file(new_project_name):
                     raise ValueError(
                         f'Project name has invalid characters present. Re-submit project '
                         f'pipeline name. {new_project_name}')
@@ -212,7 +211,7 @@ def show_actions(p: pipeline.PipelinePrime):
             if not os.path.isfile(new_filepath) or not os.path.isdir(new_filepath):
                 st.error(ValueError(f'Invalid path to data file: {new_filepath}'))
                 return
-            p.read_in_train_data_source(new_filepath).save()
+            p.add_train_data_source(new_filepath).save()
 
 
     # rebuild_classifiers_button = st.button('Rebuild classifiers', key='RebuildClassifiersButton')
@@ -336,7 +335,6 @@ def get(**kwargs):
 
 
 __all__ = ['get']
-
 
 
 if __name__ == '__main__':
