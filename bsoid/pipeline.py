@@ -70,8 +70,8 @@ class PipelineAttributeHolder:
     _clf_gmm = None
     _clf_svm = None
     _random_state: Optional[int] = None
-    average_over_n_frames: int = 3
-    tsne_dimensions = 3
+    average_over_n_frames: int = 3  # TODO: low: add to kwargs
+    tsne_dimensions = 3  # TODO: low: add to kwargs
 
     SKLEARN_SVM_PARAMS: dict = {}
     SKLEARN_EMGMM_PARAMS: dict = {}
@@ -204,7 +204,7 @@ class BasePipeline(PipelineAttributeHolder):
     def __read_in_kwargs(self, **kwargs):
         """ Reads in kwargs else pull form config file """
         # TODO: LOW: add kwargs parsing for averaging over n-frames
-        # Read in training data sources
+        # Read in training data source
         train_data_source = kwargs.get('train_data_source')
         if train_data_source is not None:
             self.add_train_data_source(train_data_source)
@@ -239,27 +239,13 @@ class BasePipeline(PipelineAttributeHolder):
     # Read/delete data
     def add_train_data_source(self, *train_data_args):
         """
-        Reads in new data and saves raw data.
+        Reads in new data and saves raw data. A source can be either a directory or a file.
         train_data_args: any number of args. Types submitted expected to be either List[str] or [str]
             In the case that an arg is List[str], the arg must be a list of strings that
         """
         # Type-checking first. If *args is None or empty collection, raise error.
         if not train_data_args:
-            invalid_args_err = f'Invalid arg(s) submitted. Could not read args(s): {train_data_args}'
-            logger.error(invalid_args_err)
-            raise ValueError(invalid_args_err)
-        # If multiple args submitted, recursively call self in the case that an arg is a list.
-        if len(train_data_args) > 1:
-            for arg in train_data_args:
-                if isinstance(arg, list) or isinstance(arg, tuple):
-                    self.add_train_data_source(arg)
-                else:
-                    # Do type checking, path checking, then continue.
-                    check_arg.ensure_type(arg, str)
-                    self.add_train_data_source(arg)
             return self
-
-        assert len(train_data_args) == 1, f'Based on recursive structure above, arg SHOULD be collection of 1 item'
 
         path = train_data_args[0]
         if os.path.isdir(path):  # If path is to a directory: check directory for all file files of valid file ext
@@ -271,6 +257,7 @@ class BasePipeline(PipelineAttributeHolder):
                 df_i = io.read_csv(file_path)
                 self._dfs_list_raw_train_data.append(df_i)
                 self.train_data_files_paths.append(file_path)
+            return self.add_train_data_source(*train_data_args[1:])
         elif os.path.isfile(path):  # If path is to a file: read in file
             ext = path.split('.')[-1]
             if ext != self.data_ext:
@@ -282,15 +269,13 @@ class BasePipeline(PipelineAttributeHolder):
             df_file = io.read_csv(path)
             self._dfs_list_raw_train_data.append(df_file)
             self.train_data_files_paths.append(path)
+            return self.add_train_data_source(*train_data_args[1:])
+
         else:
             unusual_path_err = f'Unusual file/dir path submitted but not found: {path}. Is not a valid ' \
-                                 f'file and not a directory.'  # TODO: low: improve error msg clarity
+                               f'file and not a directory.'  # TODO: low: improve error msg clarity
             logger.error(unusual_path_err)
             raise ValueError(unusual_path_err)
-
-        self._has_unused_raw_data = True
-
-        return self
 
     def add_predict_data_source(self, *predict_data_args):
         """
@@ -448,27 +433,18 @@ class BasePipeline(PipelineAttributeHolder):
             raise ValueError(invalid_path_err)
 
         # Write to file
-        self._write_self_to_file(final_out_path)
+        with open(final_out_path, 'wb') as model_file:
+            joblib.dump(self, model_file)
+
         self._source_folder = output_path_dir
 
         logger.debug(f'Pipeline ({self.name}) saved to: {final_out_path}')
 
         return self
 
-    def _write_self_to_file(self, final_out_path):
-        """
-        TODO:
-        Note: does ZERO error checking. save() should do all error checking.
-        :param final_out_path: (str)
-        :return:
-        """
-        with open(final_out_path, 'wb') as model_file:
-            joblib.dump(self, model_file)
-        return
-
     def has_been_previously_saved(self):
-        if not self._folder_source: return False
-        if not os.path.isfile(os.path.join(self._folder_source, generate_pipeline_filename(self.name))): return False
+        if not self._source_folder: return False
+        if not os.path.isfile(os.path.join(self._source_folder, generate_pipeline_filename(self.name))): return False
         return True
 
     # Video stuff
@@ -509,7 +485,15 @@ class BasePipeline(PipelineAttributeHolder):
 
         return self
 
-    # Plotting stuff
+    # Diagnostics and graphs
+    def diagnostics(self) -> str:
+        diag = f"""
+self.is_built: {self.is_built}
+self.has_unused_raw_data: {self.has_unused_raw_data}
+len(self._dfs_list_raw_train_data): {len(self._dfs_list_raw_train_data)}
+self.train_data_files_paths: {self.train_data_files_paths}
+""".strip()
+        return diag
     def plot_assignments_in_3d(self, show_now=False, save_to_file=False, azim_elev=(70, 135)):
         # TODO: low: check for other runtiem vars
         if not self.is_built:  # or not self._has_unused_raw_data:
@@ -591,6 +575,7 @@ class PipelinePrime(BasePipeline):
     def _engineer_features(self) -> BasePipeline:
 
         return self
+
     def engineer_features(self):
         logger.warn('deprec warning')
         return self.engineer_features_train()
@@ -598,6 +583,7 @@ class PipelinePrime(BasePipeline):
     def engineer_features_predict(self):
 
         return self
+
     def engineer_features_train(self) -> BasePipeline:
         """
         All functions that take the raw data (data retrieved from using bsoid.read_csv()) and
@@ -624,7 +610,7 @@ class PipelinePrime(BasePipeline):
             feature_engineering.adaptively_filter_dlc_output(df) for df in list_dfs_raw_data]
 
         # Engineer features as necessary
-        dfs_features = []
+        dfs_features: List[pd.DataFrame] = []
         for df_i, _ in tqdm(dfs_list_adaptively_filtered, desc='Engineer features...'):
             # Save scorer, source values because the current way of engineering features strips out that info.
             # scorer, source, file_source, data_source = df_i['scorer'][0], df_i['source'][0], df_i['file_source'][0], df_i['data_source'][0]
@@ -757,7 +743,7 @@ if __name__ == '__main__':
     run = True
     if run:
         # Test build
-        nom = 'prime1'
+        nom = 'prime6'
         loc = 'C:\\Users\\killian\\Pictures'
         full_loc = os.path.join(loc, f'{nom}.pipeline')
         actual_save_loc = f'C:\\{nom}.pipeline'
