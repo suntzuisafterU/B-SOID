@@ -29,7 +29,7 @@ map_command_to_func = {
     'cleanlogs': bsoid.app.clear_logs,
     'buildandrunlegacy': bsoid.main_LEGACY.test_function_to_build_then_run_py,
     'newbuild': bsoid.app.build_classifier_new_pipeline,
-    'streamlit': bsoid.bsoid_streamlit.home
+    'streamlit': bsoid.streamlit_bsoid.home,
 }
 
 

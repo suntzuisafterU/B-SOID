@@ -45,11 +45,14 @@ def ensure_columns_in_DataFrame(columns: Collection[str], df: pd.DataFrame) -> N
             logger.error(err)
             raise ValueError(err)
 
+
 def ensure_has_valid_chars_for_path(path):
     if has_invalid_chars_in_name_for_a_file(path):
         err = f'Caller: {get_caller_function()}(): TODO ; ELABORATE; invalid path '
         logger.error(err)
         raise ValueError(err)
+
+
 def has_invalid_chars_in_name_for_a_file(name, additional_characters: Optional[Collection[str]] = None) -> bool:
     """
     Checks if an invalid characters have been included in a potential path. Useful for checking user
