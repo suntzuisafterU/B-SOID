@@ -40,7 +40,7 @@ logger = config.initialize_logger(__name__)
 
 def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.DataFrame, List[float]]:  # TODO: implement new adaptive-filter_data for new data pipelineing
     """ *NEW* --> Successor function to old method in likelikhood processing. Uses new DataFrame type.
-    Takes in a ____ TODO...
+    Takes in a ____ TODO: low: ...
 
     Usually this function is completed directly after reading in DLC data.
 
@@ -133,6 +133,8 @@ def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.Da
         elif col == 'scorer': pass  # Ignore 'scorer' column. It tracks the DLC data source.
         elif col == 'source': pass  # Keeps track of CSV/h5 source
         elif col == 'frame': pass  # Keeps track of frame numbers
+        elif col == 'file_source': pass
+        elif col == 'data_source': pass
         else:
             err = f'{inspect.stack()[0][3]}(): An inappropriate column header was found: ' \
                   f'{column_suffix}. Column = "{col}". ' \
