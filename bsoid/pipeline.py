@@ -228,7 +228,6 @@ class BasePipeline(PipelineAttributeHolder):
         """
         if self._source_folder is None:
             self._source_folder = config.OUTPUT_PATH
-
         if len(self.SKLEARN_SVM_PARAMS) == 0:
             self.SKLEARN_SVM_PARAMS = config.SVM_PARAMS
         if len(self.SKLEARN_EMGMM_PARAMS) == 0:
@@ -355,7 +354,7 @@ class BasePipeline(PipelineAttributeHolder):
         for col in df_features.columns:
             if col not in set(df_scaled_data.columns):
                 df_scaled_data[col] = df_features[col]
-        self.df_features_scaled = df_scaled_data
+        self.df_features_train_scaled = df_scaled_data
         return self
 
     @config.deco__log_entry_exit(logger)
@@ -577,6 +576,7 @@ class PipelinePrime(BasePipeline):
         return self
 
     def engineer_features(self):
+        raise NotImplementedError()
         logger.warn('deprec warning')
         return self.engineer_features_train()
 
@@ -644,7 +644,7 @@ class PipelinePrime(BasePipeline):
         return self
 
     def tsne_reduce_df_features(self):
-        arr_tsne_result = self.train_tsne_get_dimension_reduced_data(self.df_features_scaled)
+        arr_tsne_result = self.train_tsne_get_dimension_reduced_data(self.df_features_train_scaled)
         self.df_post_tsne = pd.DataFrame(arr_tsne_result, columns=self.dims_cols_names)
         return self
 
@@ -687,12 +687,12 @@ class PipelinePrime(BasePipeline):
         df_labels_train[self.svm_assignment_col_name] = self.train_SVM(df_features_train, df_labels_train, df_features_test)
         self.labels_train = df_labels_train
 
-        # Get cross-val, accuracy scores
-        self.cross_val_scores = cross_val_score(
-            self.clf_svm, df_features_test, df_labels_train[self.svm_assignment_col_name])
+        # # Get cross-val, accuracy scores
+        # self.cross_val_scores = cross_val_score(
+        #     self.clf_svm, df_features_test, df_labels_train[self.svm_assignment_col_name])
 
-        self.acc_score = accuracy_score(
-            y_pred=self.clf_svm.predict(df_features_test), y_true=df_labels_train[self.svm_assignment_col_name])
+        # self.acc_score = accuracy_score(
+        #     y_pred=self.clf_svm.predict(df_features_test), y_true=df_labels_train[self.svm_assignment_col_name])
 
         # Final touches. Save state of pipeline.
         self._is_built = True
