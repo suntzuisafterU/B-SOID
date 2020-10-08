@@ -443,10 +443,12 @@ class BasePipeline(PipelineAttributeHolder):
             logger.error(invalid_path_err)
             raise ValueError(invalid_path_err)
 
+        # Write to file
         self._write_self_to_file(final_out_path)
+        self._source_folder = output_path_dir
 
-        self._folder_source = output_path_dir
         logger.debug(f'Pipeline ({self.name}) saved to: {final_out_path}')
+
         return self
 
     def _write_self_to_file(self, final_out_path):
@@ -454,7 +456,7 @@ class BasePipeline(PipelineAttributeHolder):
         :param final_out_path: (str)
         :return:
         """
-
+        check_arg.ensure_has_valid_chars_for_path(final_out_path)
         with open(final_out_path, 'wb') as model_file:
             joblib.dump(self, model_file)
         return
