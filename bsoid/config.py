@@ -152,12 +152,16 @@ FRAMES_OUTPUT_PATH = config_value_alternate_output_path_for_annotated_frames = \
 
 # Asserts
 for folder_path in TRAIN_FOLDERS_PATHS_toBeDeprecated:
-    assert os.path.isdir(folder_path), f'Training folder does not exist: {folder_path}'
-    assert os.path.isabs(folder_path), f'Predict folder PATH is not absolute and should be: {folder_path}'
+    assert os.path.isdir(folder_path), f'(ToBeDeprecated): TRAIN_FOLDERS_PATH: ' \
+                                       f'Training folder does not exist: {folder_path}'
+    assert os.path.isabs(folder_path), f'(ToBeDeprecated): TRAIN_FOLDERS_PATH: ' \
+                                       f'Predict folder PATH is not absolute and should be: {folder_path}'
 
 for folder_path in PREDICT_FOLDERS_PATHS_toBeDeprecated:
-    assert os.path.isdir(folder_path), f'Prediction folder does not exist: {folder_path}'
-    assert os.path.isabs(folder_path), f'Predict folder PATH is not absolute and should be: {folder_path}'
+    assert os.path.isdir(folder_path), f'(ToBeDeprecated): PREDICT_FOLDERS_PATH: ' \
+                                       f'Prediction folder does not exist: {folder_path}'
+    assert os.path.isabs(folder_path), f'(ToBeDeprecated): PREDICT_FOLDERS_PATH: ' \
+                                       f'Predict folder PATH is not absolute and should be: {folder_path}'
 assert os.path.isdir(config_value_alternate_output_path_for_annotated_frames), \
     f'config_value_alternate_output_path_for_annotated_frames does not exist. ' \
     f'config_value_alternate_output_path_for_annotated_frames = ' \
@@ -239,18 +243,22 @@ SVM_PARAMS = {
 ##### BSOID VOC #####
 # TSNE parameters, can tweak if you are getting undersplit/oversplit behaviors
 # the missing perplexity is scaled with data size (1% of data for nearest neighbors)
-TSNE_SKLEARN_PARAMS = {
-    'n_components': configuration.getint('TSNE', 'n_components'),
-    'n_jobs': configuration.getint('TSNE', 'n_jobs'),
-    'verbose': configuration.getint('TSNE', 'verbose'),
-    'random_state': RANDOM_STATE,
-    'n_iter': configuration.getint('TSNE', 'n_iter'),
-    'early_exaggeration': configuration.getfloat('TSNE', 'early_exaggeration'),
-}
+
+TSNE_EARLY_EXAGGERATION = configuration.getfloat('TSNE', 'early_exaggeration')
+TSNE_N_COMPONENTS = configuration.getint('TSNE', 'n_components')
+TSNE_N_ITER = configuration.getint('TSNE', 'n_iter')
+TSNE_N_JOBS = configuration.getint('TSNE', 'n_jobs')
 TSNE_THETA = configuration.getfloat('TSNE', 'theta')
 TSNE_VERBOSE = configuration.getint('TSNE', 'verbose')
-TSNE_N_ITER = configuration.getint('TSNE', 'n_iter')
 
+TSNE_SKLEARN_PARAMS = {  # TODO: low: deprecate? This was the old, obfu way of packing kwargs.
+    'n_components': TSNE_N_COMPONENTS,
+    'n_jobs': TSNE_N_JOBS,
+    'verbose': TSNE_VERBOSE,
+    'random_state': RANDOM_STATE,
+    'n_iter': TSNE_N_ITER,
+    'early_exaggeration': TSNE_EARLY_EXAGGERATION,
+}
 
 ########################################################################################################################
 ##### TESTING VARIABLES #####
