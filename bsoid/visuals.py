@@ -303,8 +303,22 @@ def plot_classes_bsoidumap(data, assignments, **kwargs) -> object:
     return fig
 
 
-# @config.deco__log_entry_exit(logger)
 def plot_GM_assignments_in_3d(data: np.ndarray, assignments, save_fig_to_file: bool, fig_file_prefix='train_assignments', show_now=True, show_later=False, **kwargs) -> object:
+    """
+    Plot trained TSNE for EM-GMM assignments
+    This follows old implementation that only returned the figure
+    :param data: 2D array, trained_tsne array (3 columns)
+    :param assignments: 1D array, EM-GMM assignments
+    :param save_fig_to_file:
+    :param fig_file_prefix:
+    :param show_later: use draw() instead of show()
+    """
+    ax, fig = plot_GM_assignments_in_3d_tuple(data=data, assignments=assignments, save_fig_to_file=save_fig_to_file, fig_file_prefix=fig_file_prefix, show_now=show_now, **kwargs)
+
+    return fig
+
+
+def plot_GM_assignments_in_3d_tuple(data: np.ndarray, assignments, save_fig_to_file: bool, fig_file_prefix='train_assignments', show_now=True, **kwargs) -> Tuple[object, object]:
     """
     Plot trained TSNE for EM-GMM assignments
     :param data: 2D array, trained_tsne array (3 columns)
@@ -353,7 +367,7 @@ def plot_GM_assignments_in_3d(data: np.ndarray, assignments, save_fig_to_file: b
         file_name = f'{fig_file_prefix}_{config.runtime_timestr}'  # fig.savefig(os.path.join(config.OUTPUT_PATH, f'{fig_file_prefix}_{time_str}.svg'))
         save_graph_to_file(fig, file_name)
 
-    return fig
+    return fig, ax
 
 
 # TODO: central difference b/w APP and UMAP is what is returned -- Tuple or solely a Fig
