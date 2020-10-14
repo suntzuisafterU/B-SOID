@@ -318,7 +318,7 @@ def plot_GM_assignments_in_3d(data: np.ndarray, assignments, save_fig_to_file: b
     return fig
 
 
-def plot_GM_assignments_in_3d_tuple(data: np.ndarray, assignments, save_fig_to_file: bool, fig_file_prefix='train_assignments', show_now=True, **kwargs) -> Tuple[object, object]:
+def plot_GM_assignments_in_3d_tuple(data: np.ndarray, assignments, save_fig_to_file: bool, fig_file_prefix='train_assignments', show_now=True, **kwargs) -> Tuple[object, object]:  # TODO: medium: rename this function
     """
     Plot trained TSNE for EM-GMM assignments
     :param data: 2D array, trained_tsne array (3 columns)
@@ -327,7 +327,7 @@ def plot_GM_assignments_in_3d_tuple(data: np.ndarray, assignments, save_fig_to_f
     :param fig_file_prefix:
     :param show_later: use draw() instead of show()
     """
-    # TODO: find out why attaching the log entry/exit decorator kills the streamlit rotation app
+    # TODO: find out why attaching the log entry/exit decorator kills the streamlit rotation app. For now, do not attach.
     if not isinstance(data, np.ndarray):
         err = f'Expected `data` to be of type numpy.ndarray but instead found: {type(data)} (value = {data}).'
         logger.error(err)
