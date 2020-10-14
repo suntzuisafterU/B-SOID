@@ -90,7 +90,7 @@ def generate_video_with_labels(labels: Union[List, Tuple], source_video_file_pat
 
     ###########################################################################################
     # Extract first image in images list. Set dimensions.
-    height, width, _layers = frames[0]
+    height, width, _layers = frames[0].shape
 
     # Open video writer object
     video_writer = cv2.VideoWriter(
@@ -615,11 +615,19 @@ if __name__ == '__main__':
     test_file_2 = "C:\\Users\\killian\\projects\\OST-with-DLC\\bsoid_train_videos\\Video2DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000.csv"
     assert os.path.isfile(test_file_1)
     assert os.path.isfile(test_file_2)
-    # ex_vid_1_path = f"C:\\Users\\killian\\projects\\B-SOID\\examples\\group1_example_1.avi"
+
+
+    # def generate_video_with_labels(labels: Union[List, Tuple], source_video_file_path, output_file_name, output_fps,
+    #                                fourcc='mp4v', output_dir_path=config.OUTPUT_PATH, **kwargs):
+    labels = [str(y) for y in list(range(5000))]
+    video_out_dir = f"C:\\Users\\killian\\projects\\B-SOID\\examples"
+
+    ex_vid_1_path = f"C:\\Users\\killian\\projects\\B-SOID\\examples\\group1_example_1.avi"
+    generate_video_with_labels(labels, ex_vid_1_path, 'group1example1LABELEDasdf', 1, output_dir_path=video_out_dir)
+
     # output_video_path = f"C:\\Users\\killian\\projects\\B-SOID\\examples\\group1_example_1_LABELATTEMPT1"
-    # video_out_dir = f"C:\\Users\\killian\\projects\\B-SOID\\examples"
     # font_scale, font = 1, cv2.FONT_HERSHEY_COMPLEX
-    # labels = [str(y) for y in list(range(500))]
+# labels = [str(y) for y in list(range(500))]
     # rectangle_bgr = (0, 0, 0)
     # four_character_code = cv2.VideoWriter_fourcc(*'mp4v')  # TODO: ensure fourcc can be change-able
     #
@@ -689,7 +697,7 @@ if __name__ == '__main__':
 
 def a():
     video_path = ex_vid_1_path = f"C:\\Users\\killian\\projects\\B-SOID\\examples\\group1_example_1.avi"
-    output_video_path = f"C:\\Users\\killian\\projects\\B-SOID\\examples\\group1_example_1_LABELATTEMPT1"
+    output_video_path = f"C:\\Users\\killian\\projects\\B-SOID\\examples\\group1_example_1_LABELATTEMPT1asdfasdfasdf"
     video_out_dir = f"C:\\Users\\killian\\projects\\B-SOID\\examples"
     # Test out new vid writing func
 
