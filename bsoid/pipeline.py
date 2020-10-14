@@ -50,7 +50,7 @@ class PipelineAttributeHolder:
     # Tracking vars
     _is_built = False  # Is False until the classifiers are built then changes to True
     _has_unused_training_data: bool = False  # Changes to True if new data is added and classifiers not rebuilt
-    _has_nonengineered_predict_data: bool = False  # Changes to True if new predict data is added
+    _has_unengineered_predict_data: bool = False  # Changes to True if new predict data is added
     tsne_source: str = None
     valid_tsne_sources: set = {'bhtsne', 'sklearn', 'opentsne', }
 
@@ -367,9 +367,10 @@ class BasePipeline(PipelineAttributeHolder):
             logger.error(unusual_path_err)
             raise ValueError(unusual_path_err)
 
+    def remove_predict_data_source(self, source):
+        raise NotImplementedError(f'TODO: Implement')
     def remove_train_data_source(self, source: str):
-        # TODO: implement
-        raise NotImplementedError(f'TODO')
+        raise NotImplementedError(f'TODO: implement')
 
     # Data processing
     ## Scaling data
@@ -399,15 +400,14 @@ class BasePipeline(PipelineAttributeHolder):
         """ Scales training data """
         # TODO: add arg checking to ensure all features specified are in columns
         # Queue up data to use
-        if features is None:
-            features = self.features_names_7
+        if features is None: features = self.features_names_7
         df_features_train = self.df_features_train
         # Check args
         check_arg.ensure_type(features, list)
         check_arg.ensure_columns_in_DataFrame(df_features_train, features)
         # Do
         df_scaled_data = self._create_scaler_and_scaled_data(df_features_train, features, create_new_scaler=True)
-        check_arg.ensure_type(df_scaled_data, pd.DataFrame)  # Debugging effort
+        check_arg.ensure_type(df_scaled_data, pd.DataFrame)  # Debugging effort. Remove later.
         self.df_features_train_scaled = df_scaled_data
         return self
 
@@ -415,8 +415,7 @@ class BasePipeline(PipelineAttributeHolder):
         """ Scales prediction data """
         # TODO: add arg checking to ensure all features specified are in columns
         # Queue up data to use
-        if features is None:
-            features = self.features_names_7
+        if features is None: features = self.features_names_7
         df_features_predict = self.df_features_predict
         # Check args
         check_arg.ensure_type(features, list)
@@ -469,8 +468,7 @@ class BasePipeline(PipelineAttributeHolder):
             )
             tsne_embedding = tsne_obj.fit(data[self.features_names_7].values)
             arr_result = tsne_embedding.transform(data[self.features_names_7].values)
-        else:
-            raise RuntimeError(f'Invalid TSNE source type fell through the cracks: {self.tsne_source}')
+        else: raise RuntimeError(f'Invalid TSNE source type fell through the cracks: {self.tsne_source}')
 
         return arr_result
 
@@ -576,7 +574,8 @@ class BasePipeline(PipelineAttributeHolder):
 
             self.write_video_frames_to_disk()
             # Write video
-            self.make_video_from_written_frames()
+
+            # self.make_video_from_written_frames()
 
         return self
 
@@ -605,7 +604,6 @@ self.train_data_files_paths: {self.train_data_files_paths}
             show_now=show_now,
             azim_elev=azim_elev,
         )
-
         return self.fig_gm_assignments_3d
     def plot(self):
         # logger.debug(f'Enter GRAPH PLOTTING section of {inspect.stack()[0][3]}')
@@ -632,7 +630,6 @@ self.train_data_files_paths: {self.train_data_files_paths}
         logger.debug(f'Exiting GRAPH PLOTTING section of {inspect.stack()[0][3]}')
 
         return self
-
     # Legacy stuff. Potential deprecation material.
     def read_in_predict_folder_data_file_paths_legacypathing(self) -> List[str]:  # TODO: deprecate/re-work
         self.predict_data_files_paths = predict_data_files_paths = [os.path.join(config.PREDICT_DATA_FOLDER_PATH, x)
@@ -666,7 +663,7 @@ class PipelinePrime(BasePipeline):
     # Higher level data processing functions
 
     def tsne_reduce_df_features_train(self):
-        arr_tsne_result = self.train_tsne_get_dimension_reduced_data___FIGUREOUTNEWFINC(self.df_features_train)
+        arr_tsne_result = self.train_tsne_get_dimension_reduced_data(self.df_features_train)
         self.df_features_train_scaled = pd.concat([
             self.df_features_train_scaled,
             pd.DataFrame(arr_tsne_result, columns=self.dims_cols_names),
@@ -727,6 +724,7 @@ class PipelinePrime(BasePipeline):
         return df_features
 
     def engineer_features(self):
+        """ Engineer features for all data (train & predict) """
         self.engineer_features_train()
         self.engineer_features_predict()
         return self
@@ -748,6 +746,7 @@ class PipelinePrime(BasePipeline):
         # Save data, return
         self.df_features_train = df_features
         end = time.perf_counter()
+
         return self
 
     def engineer_features_predict(self) -> BasePipeline:
@@ -794,12 +793,8 @@ class PipelinePrime(BasePipeline):
         """
         # Engineer features
         logger.debug(f'{inspect.stack()[0][3]}(: Start engineering features')
-        start = time.perf_counter()
-        if reengineer_features or self._has_unused_raw_data:  # or self.has_unused_raw_data
+        if reengineer_features or self._has_unused_training_data:
             self.engineer_features_train()
-        end = time.perf_counter()
-
-        logger.debug(f'Finished engineering features in {round(end - start, 1)} seconds.')
 
         # Scale data
         self.created_scaled_train_data()
@@ -810,7 +805,8 @@ class PipelinePrime(BasePipeline):
         # Train GMM, get assignments
         self.train_gmm(self.df_features_train_scaled[self.dims_cols_names])
 
-        self.df_features_train_scaled[self.gmm_assignment_col_name] = self.train_gmm_and_get_labels(self.df_features_train_scaled[self.dims_cols_names])
+        self.df_features_train_scaled[self.gmm_assignment_col_name] = self.train_gmm_and_get_labels(
+            self.df_features_train_scaled[self.dims_cols_names])
 
         # Test-train split
         self.add_test_data_column_to_scaled_train_data()
@@ -828,7 +824,7 @@ class PipelinePrime(BasePipeline):
 
         # Final touches. Save state of pipeline.
         self._is_built = True
-        self._has_unused_raw_data = False
+        self._has_unused_training_data = False
         logger.debug(f'All done with building classifiers!')
         return self
 
@@ -837,7 +833,7 @@ class PipelinePrime(BasePipeline):
         if not self.is_built:
             self.build_classifier()
         # Engineer predict features
-        if self._has_nonengineered_predict_data:
+        if self._has_unengineered_predict_data:
             self.engineer_features_predict()
         # Scale
 
@@ -847,27 +843,21 @@ class PipelinePrime(BasePipeline):
 
         return self
 
-    def run(self):
-        """ Runs after build(). Using terminology from old implementation. TODO """
-        raise NotImplementedError('Not yet implemented')
-        # # read in paths
-        # data_files_paths: List[str] = self.read_in_predict_folder_data_file_paths_legacypathing()
+    def generate_predict_data_assignments(self, reengineer_features: bool = False) -> BasePipeline:  # TODO: low: rename?
+        """ Runs after build(). Using terminology from old implementation. TODO: purpose """
+        # TODO: add arg checking for empty predict data?
 
-        # Read in PREDICT data
-        dfs_raw = [io.read_csv(csv_path) for csv_path in data_files_paths]
+        # Check that classifiers are built on the training data
+        if not self.is_built:
+            self.build_classifier()
+        # Check if predict features have been engineered
+        if reengineer_features or self._has_unengineered_predict_data:
+            self.engineer_features_predict()
 
-        # Engineer features accordingly (as above)
-        self.engineer_features_predict()
         # TODO: low
         # Predict labels
             # How does frameshifting 2x fit in?
         # Generate videos
-
-        return self
-
-    def generate_predict_data_assignments(self):
-        if not self.is_built:
-            raise ValueError(f'')
 
         return self
 
