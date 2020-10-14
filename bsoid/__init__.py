@@ -1,3 +1,6 @@
+"""
+TODO: med: Add in description of the `bsoid` module
+"""
 # from bsoid import *  # TODO: ???
 __version__ = '0.0.1'  # TODO: HIGH: ensure version number is correct before pushing. See setup.py for version.
 
