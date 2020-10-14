@@ -6,24 +6,116 @@ Extracting frames from videos
 from typing import Any, List, Tuple, Union
 from tqdm import tqdm
 import cv2
-import glob
+# import glob
 import inspect
 import multiprocessing
 import numpy as np
 import os
 import random
-import time
+import sys
+# import time
 
-from bsoid.util import io, likelihoodprocessing
-from bsoid import config
+
+from bsoid import check_arg, config, statistics
 
 logger = config.initialize_logger(__name__)
 
 
 #####
 
+def generate_video_with_labels(labels: Union[List, Tuple], source_video_file_path, output_file_name, output_fps, fourcc='mp4v', output_dir_path=config.OUTPUT_PATH, **kwargs):
+    """
+
+    :param labels:
+    :param source_video_file_path:
+    :param output_file_name:
+    :param output_fps:
+    :param fourcc:
+    :param output_dir_path:
+    :param kwargs:
+        font_scale (int):
+        rectangle_br: (tuple(int, int, int)):  Sets colour for rectangle around text
+    :return:
+    """
+    # Get kwargs, check args
+    if not os.path.isfile(source_video_file_path):
+        not_a_vid_err = f'This is not a video: {source_video_file_path} / todo: elaborate'
+        logger.error(not_a_vid_err)
+        raise ValueError(not_a_vid_err)
+    check_arg.ensure_type(output_fps, int)
+    check_arg.ensure_type(fourcc, str)
+    font_scale = kwargs.get('font_scale', 1)
+    check_arg.ensure_type(font_scale, int)
+    rectangle_bgr = kwargs.get('rectangle_bgr', (0, 0, 0))  # 000=Black box? TODO check
+    check_arg.ensure_type(rectangle_bgr, tuple)
+    text_color_bgr = (255, 255, 255)  # 255 = white?
+    # Do
+    font = cv2.FONT_HERSHEY_COMPLEX
+    four_character_code = cv2.VideoWriter_fourcc(*fourcc)  # TODO: ensure fourcc can be change-able
+
+    cv2_video_object = cv2.VideoCapture(source_video_file_path)
+    total_frames_of_source_vid = int(cv2_video_object.get(cv2.CAP_PROP_FRAME_COUNT))
+    logger.debug(f'Total frames: {total_frames_of_source_vid}')
+
+    # Loop over frames, assign labels to all
+    print('Is it opened?', cv2_video_object.isOpened())
+    i, frame_count = 0, 0
+    frames = []
+    while cv2_video_object.isOpened():
+        text_for_frame = labels[i]
+        is_frame_retrieved, frame = cv2_video_object.read()
+        if not is_frame_retrieved:
+            break
+        print(f'Frame type: {type(frame)}')
+        # print(frame)
+
+        text_width, text_height = cv2.getTextSize(text_for_frame, font, fontScale=font_scale, thickness=1)[0]
+        # text_width, text_height = 10, 10
+
+        text_offset_x, text_offset_y = 50, 50  # TODO: low: address magic variables later
+        box_coordinates = (
+            (text_offset_x - 12, text_offset_y + 12),  # pt1, or top left point
+            (text_offset_x + text_width + 12, text_offset_y - text_height - 8),  # pt2, or bottom right point
+        )
+        cv2.rectangle(frame, box_coordinates[0], box_coordinates[1], rectangle_bgr, cv2.FILLED)
+        cv2.putText(img=frame, text=labels[i], org=(text_offset_x, text_offset_y),
+                    fontFace=font, fontScale=font_scale, color=text_color_bgr, thickness=1)
+        # Wrap up
+        frames.append(frame)
+        i += 1
+        frame_count += 1
+        cv2_video_object.set(1, frame_count)
+    cv2_video_object.release()
+    logger.debug(f'Is it opened? {cv2_video_object.isOpened()}')
+
+    ###########################################################################################
+    # Extract first image in images list. Set dimensions.
+    height, width, _layers = frames[0]
+
+    # Open video writer object
+    video_writer = cv2.VideoWriter(
+        os.path.join(output_dir_path, f'{output_file_name}.mp4'),   # Full output file path
+        four_character_code,                                        # fourcc
+        output_fps,                                                 # fps
+        (width, height)                                             # frameSize
+    )
+    # Loop over all images and write to file (as video) with video writer
+    log_every, i = 250, 0
+    for img in tqdm(frames, desc='Writing video...'):  # TODO: low: add progress bar
+        video_writer.write(img)
+        if i % log_every == 0:
+            logger.debug(f'Working on iter: {i}')
+        i += 1
+    # All done. Release video, clean up, and return.
+    video_writer.release()
+    cv2.destroyAllWindows()
+
+    return
+
+
 def generate_frame_filename(frame_idx: int, ext=config.FRAMES_OUTPUT_FORMAT) -> str:
     """ Create a standardized way of naming frames from read-in videos """
+    # TODO: low: move this func. Writing to file likely won't happen much in future, but do not deprecate this.
     total_num_length = 6
     leading_zeroes = max(total_num_length - len(str(frame_idx)), 0)
     name = f'frame_{"0"*leading_zeroes}{frame_idx}.{ext}'
@@ -302,96 +394,6 @@ def write_annotated_frames_to_disk_from_video_source_NEW_multiprocessed(path_to_
 
 ### Video creation
 
-
-@config.deco__log_entry_exit(logger)
-def create_labeled_video_NEW(video_path, labels, use_existing_frames=False, frame_dir=config.FRAMES_OUTPUT_PATH, output_path=config.VIDEO_OUTPUT_FOLDER_PATH, output_fps=5) -> None:
-    """  * NEW * NEWNEW
-
-    # TODO: magic variable for output_fps
-    :param video_path:
-    :param labels:
-    :param use_existing_frames: (bool)
-    :param frame_dir:
-    :param output_path:
-    :param output_fps:
-    :return:
-    """
-    # Arg validation
-    assert os.path.isfile(video_path), f'Video does not exist: {video_path}'
-
-    # Prep frames if necessary
-    if not use_existing_frames:
-        write_annotated_frames_to_disk_from_video_source_NEW_multiprocessed(path_to_video=video_path, labels=labels)
-
-    # Create list of only .png images found in the frames directory
-    images: List[str] = [img for img in os.listdir(frame_dir) if img.endswith(f'.{config.FRAMES_OUTPUT_FORMAT}')]
-    if len(images) <= 0:
-        empty_list_err = f'{inspect.stack()[0][3]}(): Zero .{config.FRAMES_OUTPUT_FORMAT} frames ' \
-                         f'were found in {frame_dir}. Could not created labeled video. Exiting early.'  # TODO
-        logger.error(empty_list_err)
-        return  # Return early
-
-    # # # Do vid creation stuff
-    # Sort images alphanumerically
-    likelihoodprocessing.sort_list_nicely_in_place(images)
-
-    # Extract first image in images list. Set dimensions.
-    four_character_code = cv2.VideoWriter_fourcc(*'mp4v')  # TODO: ensure fourcc can be change-able
-    first_image = cv2.imread(os.path.join(frame_dir, images[0]))
-    height, width, _layers = first_image.shape
-
-    # Loop over the range generated from the total unique labels available
-
-    set_unique_labels = set(np.unique(labels))
-
-    # Get video object, prep variables
-    cv2_video_object: cv2.VideoCapture = cv2.VideoCapture(video_path)
-    total_frames = int(cv2_video_object.get(cv2.CAP_PROP_FRAME_COUNT))
-    logger.debug(f'Total frames: {total_frames}')
-    logger.debug(f'Initial labels shape: {labels.shape}')
-    # progress_bar = tqdm(total=total_frames, desc='Writing images to file...')
-    # width, height = cv2_video_object.get(3), cv2_video_object.get(4)  # TODO: low: address unused variables
-
-    logger.debug(f'Labels shape after padding: {labels.shape}')
-    frame_idx = 0  # TODO: med: rename `count` -- what is it counting? Other variable `i` already tracks iterations over the while loop
-    font_scale, font = 1, cv2.FONT_HERSHEY_COMPLEX
-    rectangle_bgr = (0, 0, 0)
-    frames_queue: List[Tuple[bool, Any, str, int]] = []
-    video_frame_idx = 0
-    # queue up images to write
-    done = False
-    while not done:
-        is_frame_retrieved, frame = cv2_video_object.read()
-        if is_frame_retrieved:
-            # Do
-            # TODO:
-            # Save & set metrics, prepare for next frame, and update progress bar
-            # frame_count += frames_to_skip_after_each_write
-
-            cv2_video_object.set(1, frame_idx)  # first arg: 'propID' (like property ID), second arg is 'value'
-            # progress_bar.update(frames_to_skip_after_each_write)
-            video_frame_idx += 1
-        else:  # No more frames left to retrieve. Release object and finish.
-            done = True
-            cv2_video_object.release()
-            break
-
-    video_name = f'group_{idx_label} / example_{idx_random_range}.mp4'
-    # Open video writer object
-    video_writer = cv2.VideoWriter(
-        os.path.join(output_path, video_name),  # filename
-        four_character_code,  # fourcc
-        output_fps,  # fps
-        (width, height)  # frameSize
-    )
-    # Loop over all images and write to file with video writer
-    for image in grp_images:
-        video_writer.write(cv2.imread(os.path.join(frame_dir, image)))
-    video_writer.release()
-    cv2.destroyAllWindows()
-    return
-
-
 ### Legacy #############################################################################################################
 
 @config.deco__log_entry_exit(logger)
@@ -495,7 +497,7 @@ def create_labeled_example_videos_by_label(labels, critical_behaviour_minimum_du
         logger.error(empty_list_err)
         # raise ValueError(empty_list_err)
         return
-    likelihoodprocessing.sort_list_nicely_in_place(images)
+    statistics.sort_list_nicely_in_place(images)
 
     # Extract first image in images list. Set dimensions.
     four_character_code = cv2.VideoWriter_fourcc(*fourcc_extension)
@@ -503,7 +505,7 @@ def create_labeled_example_videos_by_label(labels, critical_behaviour_minimum_du
     height, width, _layers = first_image.shape
 
     # ?  TODO
-    labels_list, idx_list, lengths_list = likelihoodprocessing.augmented_runlength_encoding(labels)
+    labels_list, idx_list, lengths_list = statistics.augmented_runlength_encoding(labels)
     ranges_list, idx2_list = [], []
 
     # Loop over lengths
@@ -605,3 +607,89 @@ def get_frames_from_video_then_create_labeled_video(path_to_video, labels, fps, 
 #         list_of_lists_of_videos.append(videos_list_from_current_folder)  # list_of_lists_of_videos.append(videos_list_from_current_folder)
 #         logger.info(f'Processed {len(videos_list_from_current_folder)} mp4 files from folder: {folder}.')
 #     return
+
+if __name__ == '__main__':
+    BSOID = os.path.dirname(os.path.dirname(__file__))
+    if BSOID not in sys.path: sys.path.append(BSOID)
+    test_file_1 = "C:\\Users\\killian\\projects\\OST-with-DLC\\bsoid_train_videos\\Video1DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000.csv"
+    test_file_2 = "C:\\Users\\killian\\projects\\OST-with-DLC\\bsoid_train_videos\\Video2DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000.csv"
+    assert os.path.isfile(test_file_1)
+    assert os.path.isfile(test_file_2)
+    # ex_vid_1_path = f"C:\\Users\\killian\\projects\\B-SOID\\examples\\group1_example_1.avi"
+    # output_video_path = f"C:\\Users\\killian\\projects\\B-SOID\\examples\\group1_example_1_LABELATTEMPT1"
+    # video_out_dir = f"C:\\Users\\killian\\projects\\B-SOID\\examples"
+    # font_scale, font = 1, cv2.FONT_HERSHEY_COMPLEX
+    # labels = [str(y) for y in list(range(500))]
+    # rectangle_bgr = (0, 0, 0)
+    # four_character_code = cv2.VideoWriter_fourcc(*'mp4v')  # TODO: ensure fourcc can be change-able
+    #
+    # cv2_video_object = cv2.VideoCapture(ex_vid_1_path)
+    #
+    # print('Is it opened?', cv2_video_object.isOpened())
+    # i, frame_count = 0, 0
+    # frames = []
+    # while cv2_video_object.isOpened():
+    #     text_for_frame = labels[i]
+    #     is_frame_retrieved, frame = cv2_video_object.read()
+    #     if not is_frame_retrieved:
+    #         break
+    #     # frame = cv2.imencode('.png', frame)
+    #     print(f'Frame type: {type(frame)}')
+    #     # print(frame)
+    #     # text_width, text_height = cv2.getTextSize(text_for_frame, font, fontScale=font_scale, thickness=1)[0]
+    #     text_width, text_height = 10, 10
+    #     text_offset_x, text_offset_y = 50, 50
+    #     box_coordinates = (
+    #         (text_offset_x - 12, text_offset_y + 12),  # pt1, or top left point
+    #         (text_offset_x + text_width + 12, text_offset_y - text_height - 8),  # pt2, or bottom right point
+    #     )
+    #     cv2.rectangle(frame, box_coordinates[0], box_coordinates[1], rectangle_bgr, cv2.FILLED)
+    #     cv2.putText(img=frame, text=labels[i], org=(text_offset_x, text_offset_y),
+    #                 fontFace=font, fontScale=font_scale, color=(255, 255, 255), thickness=1)
+    #     print(type(frame))
+    #     i += 1
+    #     frame_count += 1
+    #     cv2_video_object.set(1, frame_count)
+    #     frames.append(frame)
+    # cv2_video_object.release()
+    # print('Is it opened?', cv2_video_object.isOpened())
+    # ###########################################################################################
+    # # Extract first image in images list. Set dimensions.
+    # first_image = frames[0]
+    # height, width, _layers = first_image.shape
+    #
+    # # Loop over the range generated from the total unique labels available
+    #
+    # # Get video object, prep variables
+    # cv2_video_object: cv2.VideoCapture = cv2.VideoCapture(video_path)
+    # total_frames = int(cv2_video_object.get(cv2.CAP_PROP_FRAME_COUNT))
+    # logger.debug(f'Total frames: {total_frames}')
+    #
+    # # Open video writer object
+    # video_writer = cv2.VideoWriter(
+    #     os.path.join(config.VIDEO_OUTPUT_FOLDER_PATH, f'{output_video_path}.mp4'),  # filename
+    #     four_character_code,  # fourcc
+    #     output_fps,  # fps
+    #     (width, height)  # frameSize
+    # )
+    #
+    # # Loop over all images and write to file with video writer
+    # log_every, i = 0, 250
+    # for image in tqdm(frames, desc='Writing video...'):  # TODO: low: add progress bar
+    #     video_writer.write(image)
+    #     if i % log_every == 0:
+    #         logger.debug(f'Working on iter: {i}')
+    #     i += 1
+    # video_writer.release()
+    # cv2.destroyAllWindows()
+
+
+# C:\\Users\\killian\\projects\\OST-with-DLC\\bsoid_train_videos
+
+
+def a():
+    video_path = ex_vid_1_path = f"C:\\Users\\killian\\projects\\B-SOID\\examples\\group1_example_1.avi"
+    output_video_path = f"C:\\Users\\killian\\projects\\B-SOID\\examples\\group1_example_1_LABELATTEMPT1"
+    video_out_dir = f"C:\\Users\\killian\\projects\\B-SOID\\examples"
+    # Test out new vid writing func
+
