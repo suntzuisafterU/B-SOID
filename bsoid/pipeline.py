@@ -6,9 +6,9 @@ Notes
 """
 from bhtsne import tsne as TSNE_bhtsne
 from sklearn.manifold import TSNE as TSNE_sklearn
-# from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score
 from sklearn.mixture import GaussianMixture
-# from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 from sklearn.utils import shuffle
@@ -42,17 +42,17 @@ class PipelineAttributeHolder:
     Implement setters and getters.
     """
     # Base information
-    _name, _description = 'DefaultPipelineName', ''
+    _name, _description = 'DefaultPipelineName', 'Default pipeline description'
     _source_folder: str = None  # Folder in which this pipeline resides
     data_ext: str = 'csv'  # Extension which data is read from
     dims_cols_names: Union[List[str], Tuple[str]] = None
+    valid_tsne_sources: set = {'bhtsne', 'sklearn', 'opentsne', }
 
     # Tracking vars
     _is_built = False  # Is False until the classifiers are built then changes to True
     _has_unused_training_data: bool = False  # Changes to True if new data is added and classifiers not rebuilt
     _has_unengineered_predict_data: bool = False  # Changes to True if new predict data is added
     tsne_source: str = None
-    valid_tsne_sources: set = {'bhtsne', 'sklearn', 'opentsne', }
 
     # Sources
     train_data_files_paths: List[str] = []
@@ -72,21 +72,20 @@ class PipelineAttributeHolder:
 
     # Model objects
     _scaler = None
-    _tsne_obj = None
+    # _tsne_obj = None  # TODO: low: deprecate this variable. TSNE mappings aren't saved like PCA.
     _clf_gmm = None
     _clf_svm = None
 
     _random_state: Optional[int] = None
     average_over_n_frames: int = 3  # TODO: low: add to kwargs
-    test_train_split_pct = None
-
+    test_train_split_pct: float = None
 
     # TSNE
     tsne_dimensions: int = None  # Functions in as `n_components` for final dims reducedTODO: low: add to kwargs
     tsne_n_iter: int = None
     tsne_early_exaggeration: float = None
-    tsne_n_jobs: int = 1  # n cores used during process
-    tsne_verbose: int = 0
+    tsne_n_jobs: int = None  # n cores used during process
+    tsne_verbose: int = None
 
     # Old way of aggregating vars
     SKLEARN_SVM_PARAMS: dict = {}
@@ -108,7 +107,7 @@ class PipelineAttributeHolder:
     kwargs: dict = {}
 
     # SORT ME
-    cross_val_scores: Collection = None
+    cross_val_scores: Collection[float] = None
     test_col_name = 'is_test_data'
 
     # Properties
@@ -126,7 +125,6 @@ class PipelineAttributeHolder:
     def clf_svm(self): return self._clf_svm
     @property
     def random_state(self): return self._random_state
-
     def get_desc(self) -> str: return self._description
     @property
     def is_built(self): return self._is_built
@@ -267,7 +265,6 @@ class BasePipeline(PipelineAttributeHolder):
             tsne_verbose = config.TSNE_VERBOSE
         check_arg.ensure_type(tsne_verbose, int)
         self.tsne_verbose = tsne_verbose
-
     def __read_in_config_file_vars(self):
         """
             Check if config variables are inserted. If they are not manually inserted on
@@ -325,7 +322,6 @@ class BasePipeline(PipelineAttributeHolder):
                                f'file and not a directory.'  # TODO: low: improve error msg clarity
             logger.error(unusual_path_err)
             raise ValueError(unusual_path_err)
-
     def add_predict_data_source(self, *predict_data_args):
         """
         Reads in new data and saves raw data. A source can be either a directory or a file.
@@ -346,6 +342,7 @@ class BasePipeline(PipelineAttributeHolder):
                 df_i = io.read_csv(file_path)
                 self._dfs_list_raw_predict_data.append(df_i)
                 self.predict_data_files_paths.append(file_path)
+            self._has_unengineered_predict_data = True
             return self.add_predict_data_source(*predict_data_args[1:])
         elif os.path.isfile(path):  # If path is to a file: read in file
             ext = path.split('.')[-1]
@@ -359,6 +356,7 @@ class BasePipeline(PipelineAttributeHolder):
             df_file = io.read_csv(path)
             self._dfs_list_raw_predict_data.append(df_file)
             self.predict_data_files_paths.append(path)
+            self._has_unengineered_predict_data = True
             return self.add_predict_data_source(*predict_data_args[1:])
 
         else:
@@ -366,17 +364,15 @@ class BasePipeline(PipelineAttributeHolder):
                                f'file and not a directory.'  # TODO: low: improve error msg clarity
             logger.error(unusual_path_err)
             raise ValueError(unusual_path_err)
-
-    def remove_predict_data_source(self, source):
-        raise NotImplementedError(f'TODO: Implement')
-    def remove_train_data_source(self, source: str):
-        raise NotImplementedError(f'TODO: implement')
+    def remove_predict_data_source(self, source): raise NotImplementedError(f'TODO: Implement')
+    def remove_train_data_source(self, source: str): raise NotImplementedError(f'TODO: implement')
 
     # Data processing
     ## Scaling data
     def _create_scaler_and_scaled_data(self, df, features, create_new_scaler: bool = False) -> pd.DataFrame:
         """
         A universal data scaling function that is usable for training data as well as new prediction data.
+        Scales down features in place and does not keep original data.
         """
         # TODO: add arg checking to ensure all features specified are in columns
         # Queue up data to use
@@ -396,8 +392,15 @@ class BasePipeline(PipelineAttributeHolder):
                 df_scaled_data[col] = df[col].values
         return df_scaled_data
 
-    def created_scaled_train_data(self, features: Optional[List[str]] = None):
-        """ Scales training data """
+    def scale_transform_train_data(self, features: Optional[List[str]] = None, create_new_scaler=True):
+        """
+        Scales training data. By default, creates new scaler according to train
+        data and stores it in pipeline
+
+        :param features:
+        :param create_new_scaler:
+        :return:
+        """
         # TODO: add arg checking to ensure all features specified are in columns
         # Queue up data to use
         if features is None: features = self.features_names_7
@@ -405,14 +408,21 @@ class BasePipeline(PipelineAttributeHolder):
         # Check args
         check_arg.ensure_type(features, list)
         check_arg.ensure_columns_in_DataFrame(df_features_train, features)
-        # Do
-        df_scaled_data = self._create_scaler_and_scaled_data(df_features_train, features, create_new_scaler=True)
+        # Get scaled data
+        df_scaled_data = self._create_scaler_and_scaled_data(
+            df_features_train, features, create_new_scaler=create_new_scaler)
         check_arg.ensure_type(df_scaled_data, pd.DataFrame)  # Debugging effort. Remove later.
+        # Save data. Return.
         self.df_features_train_scaled = df_scaled_data
         return self
 
-    def created_scaled_predict_data(self, features: Optional[List[str]] = None):
-        """ Scales prediction data """
+    def scale_transform_predict_data(self, features: Optional[List[str]] = None):
+        """
+        Scales prediction data. Utilizes existing scaler.
+
+        :param features:
+        :return:
+        """
         # TODO: add arg checking to ensure all features specified are in columns
         # Queue up data to use
         if features is None: features = self.features_names_7
@@ -421,9 +431,10 @@ class BasePipeline(PipelineAttributeHolder):
         check_arg.ensure_type(features, list)
         check_arg.ensure_type(df_features_predict, pd.DataFrame)
         check_arg.ensure_columns_in_DataFrame(df_features_predict, features)
-        # Do
+        # Get scaled data
         df_scaled_data: pd.DataFrame = self._create_scaler_and_scaled_data(df_features_predict, features)
         check_arg.ensure_type(df_scaled_data, pd.DataFrame)  # Debugging effort
+        # Save data. Return.
         self.df_features_predict_scaled = df_scaled_data
         return self
 
@@ -472,8 +483,12 @@ class BasePipeline(PipelineAttributeHolder):
 
         return arr_result
 
-    def train_gmm(self, df):
-        self._clf_gmm = GaussianMixture(**self.SKLEARN_EMGMM_PARAMS).fit(df)
+    def train_GMM(self, df):
+        """  """
+
+        self._clf_gmm = GaussianMixture(  # TODO: med: manually input params
+            **self.SKLEARN_EMGMM_PARAMS
+        ).fit(df)
         return self
 
     @config.deco__log_entry_exit(logger)
@@ -483,7 +498,7 @@ class BasePipeline(PipelineAttributeHolder):
         :param df:
         :return:
         """
-        self.train_gmm(df)
+        self.train_GMM(df)
         assignments = self.clf_gmm.predict(df)
         return assignments
 
@@ -492,20 +507,20 @@ class BasePipeline(PipelineAttributeHolder):
         return assignment
 
     @config.deco__log_entry_exit(logger)
-    def train_SVM(self) -> Optional[np.ndarray]:
+    def train_SVM(self):
         df = self.df_features_train_scaled
 
-        self._clf_svm = SVC(**self.SKLEARN_SVM_PARAMS)
+        self._clf_svm = SVC(**self.SKLEARN_SVM_PARAMS)  # TODO: HIGH: manually input SVM params instead of dict
         self._clf_svm.fit(
-            X=df.loc[~df[self.test_col_name]][self.dims_cols_names],
+            X=df.loc[~df[self.test_col_name]][self.features_names_7],
             y=df.loc[~df[self.test_col_name]][self.gmm_assignment_col_name]
         )
 
-        df[self.svm_assignment_col_name] = self.clf_svm.predict(df[self.dims_cols_names].values)
+        # df[self.svm_assignment_col_name] = self.clf_svm.predict(df[self.dims_cols_names].values)
 
-        self.df_features_train_scaled = df
+        # self.df_features_train_scaled = df
 
-        return
+        return self
 
     # Saving and stuff
     def save(self, output_path_dir=None):
@@ -513,7 +528,8 @@ class BasePipeline(PipelineAttributeHolder):
         :param output_path_dir: (str) an absolute path to a DIRECTORY where the pipeline will be saved.
         """
         if output_path_dir is None:
-            output_path_dir = config.OUTPUT_PATH
+            output_path_dir = config.OUTPUT_PATH if self._source_folder is None else self._source_folder
+        logger.debug(f'Attempting to save pipeline to the following folder: {output_path_dir}.')
         # Check if valid directory
         if not os.path.isdir(output_path_dir):
             raise ValueError(f'Invalid output path dir specified: {output_path_dir}')
@@ -528,14 +544,14 @@ class BasePipeline(PipelineAttributeHolder):
         # Write to file
         with open(final_out_path, 'wb') as model_file:
             joblib.dump(self, model_file)
-
+        # Since successful, save
         self._source_folder = output_path_dir
 
         logger.debug(f'Pipeline ({self.name}) saved to: {final_out_path}')
 
         return self
 
-    def has_been_previously_saved(self):
+    def has_been_previously_saved(self) -> bool:
         if not self._source_folder: return False
         if not os.path.isfile(os.path.join(self._source_folder, generate_pipeline_filename(self.name))): return False
         return True
@@ -590,7 +606,6 @@ len(self._dfs_list_raw_train_data): {len(self._dfs_list_raw_train_data)}
 self.train_data_files_paths: {self.train_data_files_paths}
 """.strip()
         return diag
-
     def plot_assignments_in_3d(self, show_now=False, save_to_file=False, azim_elev=(70, 135)):
         # TODO: low: check for other runtiem vars
         if not self.is_built:  # or not self._has_unused_raw_data:
@@ -671,6 +686,48 @@ class PipelinePrime(BasePipeline):
         return self
 
     # Pipeline-building functions
+
+
+    # ___ Stuff to be sorted/defined ___ #
+    @config.deco__log_entry_exit(logger)
+    def test_build(self) -> BasePipeline:
+        logger.info(f'{inspect.stack()[0][3]}(): This function will be deprecated soon. Used only for initial building')
+        train_data_files_paths: List[str] = self.read_in_train_folder_data_file_paths_legacypathing()
+        self.train_data_files_paths = train_data_files_paths
+        return self.build(True)
+    def add_test_data_column_to_scaled_train_data(self, test_data_col_name: str = None):
+        """
+        Add boolean column to scaled training data DataFrame to assign train/test data
+        """
+        if test_data_col_name is None:
+            test_data_col_name = self.test_col_name
+        df = self.df_features_train_scaled
+        df_shuffled = shuffle(df)  # Shuffles data, loses none in the process. Assign bool accordingly.
+        df_shuffled[test_data_col_name] = False
+        df_shuffled.loc[:int(len(df) * self.test_train_split_pct), test_data_col_name] = True  # TODO: med/high: ensure that the holdout percent is pull
+
+        df_shuffled = df_shuffled.reset_index()
+        self.df_features_train_scaled = df_shuffled
+
+        return self
+
+    def build(self, reengineer_features):
+        """ todo """
+        return self.build_classifier(reengineer_features)
+
+    def build_predict_data(self):
+
+        if not self.is_built:
+            self.build_classifier()
+        # Engineer predict features
+        if self._has_unengineered_predict_data:
+            self.engineer_features_predict()
+        # Scale
+
+        return self
+
+
+    # Engineering features
     def _engineer_features(self, dfs: List[pd.DataFrame]) -> pd.DataFrame:
         """
         The MAIN function that will build features for BOTH training and prediction data. This
@@ -722,13 +779,11 @@ class PipelinePrime(BasePipeline):
         df_features = pd.concat(dfs_features)
 
         return df_features
-
     def engineer_features(self):
         """ Engineer features for all data (train & predict) """
         self.engineer_features_train()
         self.engineer_features_predict()
         return self
-
     def engineer_features_train(self) -> BasePipeline:
         """
         All functions that take the raw data (data retrieved from using bsoid.read_csv()) and
@@ -748,7 +803,6 @@ class PipelinePrime(BasePipeline):
         end = time.perf_counter()
 
         return self
-
     def engineer_features_predict(self) -> BasePipeline:
         """ TODO
         """
@@ -760,67 +814,46 @@ class PipelinePrime(BasePipeline):
         self.df_features_predict = df_features
         return self
 
-    # ___
-    @config.deco__log_entry_exit(logger)
-    def test_build(self) -> BasePipeline:
-        train_data_files_paths: List[str] = self.read_in_train_folder_data_file_paths_legacypathing()
-        self.train_data_files_paths = train_data_files_paths
-        return self.build(True)
-
-    def add_test_data_column_to_scaled_train_data(self, test_data_col_name: str = None):
-        """
-        Add boolean column to scaled training data DataFrame to assign train/test data
-        """
-        if test_data_col_name is None:
-            test_data_col_name = self.test_col_name
-        df = self.df_features_train_scaled
-        df_shuffled = shuffle(df)  # Shuffles data, loses none in the process
-        df_shuffled[test_data_col_name] = False
-        df_shuffled.loc[:int(len(df) * self.test_train_split_pct), test_data_col_name] = True  # TODO: med/high: ensure that the holdout percent is pull
-
-        df_shuffled = df_shuffled.reset_index()
-        self.df_features_train_scaled = df_shuffled
-
-        return self
-
-    def build(self, reengineer_features):
-        """ todo """
-        return self.build_classifier(reengineer_features)
-
-    def build_classifier(self, reengineer_features: bool = False) -> BasePipeline:
+    # Build classifier
+    def build_classifier(self, reengineer_train_features: bool = False) -> BasePipeline:
         """
 
         """
         # Engineer features
         logger.debug(f'{inspect.stack()[0][3]}(: Start engineering features')
-        if reengineer_features or self._has_unused_training_data:
+        if reengineer_train_features or self._has_unused_training_data:
             self.engineer_features_train()
 
         # Scale data
-        self.created_scaled_train_data()
+        self.scale_transform_train_data(create_new_scaler=True)  # Optional kwarg specified for clarity
 
         # TSNE -- create new dimensionally reduced data
         self.tsne_reduce_df_features_train()
 
         # Train GMM, get assignments
-        self.train_gmm(self.df_features_train_scaled[self.dims_cols_names])
+        self.train_GMM(self.df_features_train_scaled[self.dims_cols_names])
 
-        self.df_features_train_scaled[self.gmm_assignment_col_name] = self.train_gmm_and_get_labels(
-            self.df_features_train_scaled[self.dims_cols_names])
+        self.df_features_train_scaled[self.gmm_assignment_col_name] = self.clf_gmm.predict(
+            self.df_features_train_scaled[self.dims_cols_names].values)
 
         # Test-train split
         self.add_test_data_column_to_scaled_train_data()
 
         # # Train SVM
         self.train_SVM()
+        self.df_features_train_scaled[self.svm_assignment_col_name] = self.clf_svm.predict(
+            self.df_features_train_scaled[self.features_names_7].values)
 
-        # # Get cross-val, accuracy scores
-        # self.cross_val_scores = cross_val_score(
-        #     self.clf_svm, df_features_test, df_labels_train[self.svm_assignment_col_name])
+        # # Get cross-val accuracy scores
+        self.cross_val_scores = cross_val_score(
+            self.clf_svm,
+            self.df_features_train_scaled[self.features_names_7],
+            self.df_features_train_scaled[self.svm_assignment_col_name],
+        )
 
         # self.acc_score = accuracy_score(
-        #     y_pred=self.clf_svm.predict(df_features_test), y_true=df_labels_train[self.svm_assignment_col_name])
-
+        #     y_pred=self.clf_svm.predict(self.df_features_train_scaled.loc[][self.svm_assignment_col_name]),
+        #     y_true=df_labels_train[self.svm_assignment_col_name])
 
         # Final touches. Save state of pipeline.
         self._is_built = True
@@ -828,39 +861,30 @@ class PipelinePrime(BasePipeline):
         logger.debug(f'All done with building classifiers!')
         return self
 
-    def build_predict_data(self):
-
-        if not self.is_built:
-            self.build_classifier()
-        # Engineer predict features
-        if self._has_unengineered_predict_data:
-            self.engineer_features_predict()
-        # Scale
-
-        # TSNE REduce
-
-        # Get assignments from SVM
-
-        return self
-
-    def generate_predict_data_assignments(self, reengineer_features: bool = False) -> BasePipeline:  # TODO: low: rename?
+    # Generating predict data
+    def generate_predict_data_assignments(self, reengineer_train_data_features: bool = False) -> BasePipeline:  # TODO: low: rename?
         """ Runs after build(). Using terminology from old implementation. TODO: purpose """
         # TODO: add arg checking for empty predict data?
 
         # Check that classifiers are built on the training data
         if not self.is_built:
             self.build_classifier()
-        # Check if predict features have been engineered
-        if reengineer_features or self._has_unengineered_predict_data:
-            self.engineer_features_predict()
 
-        # TODO: low
-        # Predict labels
-            # How does frameshifting 2x fit in?
-        # Generate videos
+        # Check if predict features have been engineered
+        if reengineer_train_data_features or self._has_unengineered_predict_data:
+            self.engineer_features_predict()
+            self.scale_transform_predict_data()
+
+        # Add prediction labels
+        self.df_features_predict_scaled[self.svm_assignment_col_name] = self.clf_svm.predict(
+            self.df_features_predict_scaled[self.features_names_7].values)
 
         return self
 
+    def build_and_predict(self):
+        """ TODO: purpose: build all data and get predict datas """
+
+        return self
 
 def generate_pipeline_filename(name):
     """
@@ -887,15 +911,16 @@ if __name__ == '__main__':
         actual_save_loc = f'C:\\{nom}.pipeline'
 
         make_new = True
-        save_new = False
+        save_new = True
         if make_new:
             p = PipelinePrime(name=nom)
             p = p.add_train_data_source(test_file_1)
             p = p.add_predict_data_source(test_file_2)
-            p = p.build(True)
+            p = p.build_classifier(True)
+            p = p.generate_predict_data_assignments()
             if save_new:
                 p = p.save(loc)
-            print(f'Accuracy score: {p.accuracy_score}')
+            print(f'cross_val_scores: {p.cross_val_scores}')
 
         read_existing = False
         if read_existing:
