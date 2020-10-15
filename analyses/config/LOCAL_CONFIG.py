@@ -42,7 +42,7 @@ FRAME_DIR = os.path.join(OST_BASE_PROJECT_PATH, 'B-SOID', 'output', 'frames')  #
 # Create a folder to store extracted images, make sure this folder exist.
 #   This program will predict labels and print them on these images
 # In addition, this will also create an entire sample group videos for ease of understanding
-SHORTVID_DIR = os.path.join(OST_BASE_PROJECT_PATH, 'B-SOID', 'output', 'short_videos')  # '/home/aaron/Documents/OST-with-DLC/B-SOID/OUTPUT/short_videos'
+SHORTVID_DIR = os.path.join(OST_BASE_PROJECT_PATH, 'B-SOID', 'output', 'videos')  # '/home/aaron/Documents/OST-with-DLC/B-SOID/OUTPUT/videos'
 
 # Now, pick an example video that corresponds to one of the csv files from the PREDICT_FOLDERS
 VID_NAME = os.path.join(OST_BASE_PROJECT_PATH, 'GUI_projects', 'labelled_videos', '002_ratA_inc2_above.mp4')  # '/home/aaron/Documents/OST-with-DLC/GUI_projects/labelled_videos/002_ratA_inc2_above.mp4'

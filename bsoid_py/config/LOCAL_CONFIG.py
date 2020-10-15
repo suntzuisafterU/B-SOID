@@ -49,7 +49,7 @@ VID_NAME = os.path.join(OST_BASE_PROJECT_PATH, 'GUI_projects', 'labelled_videos'
 FRAME_DIR = os.path.join(OST_BASE_PROJECT_PATH, 'B-SOID', 'OUTPUT', 'frames')  # originally: '/home/aaron/Documents/OST-with-DLC/B-SOID/OUTPUT/frames'
 
 # In addition, this will also create an entire sample group videos for ease of understanding
-SHORTVID_DIR = os.path.join(OST_BASE_PROJECT_PATH, 'B-SOID', 'OUTPUT', 'short_videos')  # originally: '/home/aaron/Documents/OST-with-DLC/B-SOID/OUTPUT/short_videos'
+SHORTVID_DIR = os.path.join(OST_BASE_PROJECT_PATH, 'B-SOID', 'OUTPUT', 'videos')  # originally: '/home/aaron/Documents/OST-with-DLC/B-SOID/OUTPUT/videos'
 
 # IF YOU'D LIKE TO SKIP PLOTTING/CREATION OF VIDEOS, change below plot settings to False
 PLOT_TRAINING = True
