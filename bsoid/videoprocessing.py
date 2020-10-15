@@ -13,7 +13,7 @@ import numpy as np
 import os
 import random
 import sys
-# import time
+import time
 
 
 from bsoid import check_arg, config, statistics
@@ -59,14 +59,18 @@ def generate_video_with_labels(labels: Union[List, Tuple], source_video_file_pat
 
     # Loop over frames, assign labels to all
     print('Is it opened?', cv2_video_object.isOpened())
+    done = False
     i, frame_count = 0, 0
     frames = []
-    while cv2_video_object.isOpened():
+    while cv2_video_object.isOpened() and not done:
         text_for_frame = labels[i]
         is_frame_retrieved, frame = cv2_video_object.read()
         if not is_frame_retrieved:
+            logger.debug(f'Is frame retrieved? {is_frame_retrieved}')
+            done = True
+            cv2_video_object.release()
             break
-        print(f'Frame type: {type(frame)}')
+        # print(f'Frame type: {type(frame)}')
         # print(frame)
 
         text_width, text_height = cv2.getTextSize(text_for_frame, font, fontScale=font_scale, thickness=1)[0]
@@ -85,7 +89,8 @@ def generate_video_with_labels(labels: Union[List, Tuple], source_video_file_pat
         i += 1
         frame_count += 1
         cv2_video_object.set(1, frame_count)
-    cv2_video_object.release()
+        if i % 100 == 0:
+            logger.debug(f'Done iter {i}')
     logger.debug(f'Is it opened? {cv2_video_object.isOpened()}')
 
     ###########################################################################################
@@ -616,20 +621,22 @@ if __name__ == '__main__':
     assert os.path.isfile(test_file_1)
     assert os.path.isfile(test_file_2)
 
+    # Do stuff: ___
+    labels = [f"label = {y}" for y in list(range(50_000))]
+    video_out_dir = f"C:\\Users\\killian\\projects\\B-SOID\\output"
 
-    # def generate_video_with_labels(labels: Union[List, Tuple], source_video_file_path, output_file_name, output_fps,
-    #                                fourcc='mp4v', output_dir_path=config.OUTPUT_PATH, **kwargs):
-    labels = [str(y) for y in list(range(5000))]
-    video_out_dir = f"C:\\Users\\killian\\projects\\B-SOID\\examples"
+    ex_vid_1_path = f"C:\\Users\\killian\\projects\\OST-with-DLC\\bsoid_train_videos\\Video1.mp4"
+    start = time.perf_counter()
+    generate_video_with_labels(labels, ex_vid_1_path, 'group1example1LABELEDasasdfasdfdf', 30, output_dir_path=video_out_dir)
+    end = time.perf_counter()
+    print(f'Total time in seconds: {end - start}')
 
-    ex_vid_1_path = f"C:\\Users\\killian\\projects\\B-SOID\\examples\\group1_example_1.avi"
-    generate_video_with_labels(labels, ex_vid_1_path, 'group1example1LABELEDasdf', 1, output_dir_path=video_out_dir)
 
     # output_video_path = f"C:\\Users\\killian\\projects\\B-SOID\\examples\\group1_example_1_LABELATTEMPT1"
     # font_scale, font = 1, cv2.FONT_HERSHEY_COMPLEX
-# labels = [str(y) for y in list(range(500))]
+    # labels = [str(y) for y in list(range(500))]
     # rectangle_bgr = (0, 0, 0)
-    # four_character_code = cv2.VideoWriter_fourcc(*'mp4v')  # TODO: ensure fourcc can be change-able
+    # four_character_code = cv2.VideoWriter_fourcc(*'mp4v')
     #
     # cv2_video_object = cv2.VideoCapture(ex_vid_1_path)
     #
@@ -683,7 +690,7 @@ if __name__ == '__main__':
     #
     # # Loop over all images and write to file with video writer
     # log_every, i = 0, 250
-    # for image in tqdm(frames, desc='Writing video...'):  # TODO: low: add progress bar
+    # for image in tqdm(frames, desc='Writing video...'): 
     #     video_writer.write(image)
     #     if i % log_every == 0:
     #         logger.debug(f'Working on iter: {i}')
