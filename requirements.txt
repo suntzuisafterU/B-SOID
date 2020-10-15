@@ -8,6 +8,7 @@ numpy>=1.16.4
 pandas>=1.0.3
 psutil>=5.7.0
 opencv-python
+openTSNE
 seaborn>=0.10.0
 scikit-learn>=0.22.1
 streamlit>=0.64.0
