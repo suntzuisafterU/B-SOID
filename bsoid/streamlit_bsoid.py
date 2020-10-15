@@ -14,84 +14,24 @@ import time
 import traceback
 
 from bsoid import check_arg, config, io, pipeline
+
 logger = config.initialize_logger(__file__)
 
 
-###
-
-# Instantiate names for buttons, options that can be changed on the fly but logic below stays the same
+### Instantiate names for buttons, options that can be changed on the fly but logic below stays the same
 title = f'B-SOiD streamlit app'
 valid_video_extensions = {'avi', 'mp4', }
 # Variables for buttons, drop-down menus, and other things
 start_new_project, load_existing_project = 'Start new', 'Load existing'
 
-########################################################################################################################
-
-
-def line_break():
-    st.markdown('---')
-
-
-# @st.cache(allow_output_mutation=True, persist=True)
-def plot_GM_assignments_in_3d(data: np.ndarray, assignments, fig_file_prefix='train_assignments', show_now=True, azim_elev = (70,135)) -> object:
-    """
-    100% copied from bsoid/util/visuals.py....don't keep this functions long term.
-
-    Plot trained TSNE for EM-GMM assignments
-    :param data: 2D array, trained_tsne array (3 columns)
-    :param assignments: 1D array, EM-GMM assignments
-    :param fig_file_prefix:
-    :param show_later: use draw() instead of show()
-    """
-    # Arg checking
-    if not isinstance(data, np.ndarray):
-        err = f'Expected `data` to be of type numpy.ndarray but instead found: {type(data)} (value = {data}).'
-        logger.error(err)
-        raise TypeError(err)
-    # Parse kwargs
-    s = 's'
-    marker = 'o'
-    alpha = 0.8
-    title = 'Assignments by GMM'
-    # Plot graph
-    uk = list(np.unique(assignments))
-    R = np.linspace(0, 1, len(uk))
-    colormap = plt.cm.get_cmap("Spectral")(R)
-    tsne_x, tsne_y, tsne_z = data[:, 0], data[:, 1], data[:, 2]
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    # Loop over assignments
-    for i, g in enumerate(np.unique(assignments)):
-        # Select data for only assignment i
-        idx = np.where(np.array(assignments) == g)
-        # Assign to colour and plot
-        ax.scatter(tsne_x[idx], tsne_y[idx], tsne_z[idx], c=colormap[i], label=g, s=s, marker=marker, alpha=alpha)
-    ax.set_xlabel('Dim. 1')
-    ax.set_ylabel('Dim. 2')
-    ax.set_zlabel('Dim. 3')
-    ax.view_init(*azim_elev)
-    plt.title(title)
-    plt.legend(ncol=3)
-    if show_now:
-        plt.show()
-    else:
-        plt.draw()
-
-    return fig
-
-
-###
-
-def get_example_vid(path):  # TODO: rename
-    with open(path, 'rb') as video_file:
-        video_bytes = video_file.read()
-    return video_bytes
+### Page data ###
 
 stuff = dict()
 
+
 def home(*args, **kwargs):
     """
-    Designated home page when streamlit is run for BSOID
+    Designated home page/entry point when Streamlit is used for B-SOiD
     """
     global stuff
     st.markdown("Stuff at top!")
@@ -245,9 +185,67 @@ def show_actions(p: pipeline.PipelinePrime):
     # st.pyplot(fig)
 
 
+# Accessory functions
+
+def line_break():
+    st.markdown('---')
 
 
+def get_example_vid(path):  # TODO: rename
+    with open(path, 'rb') as video_file:
+        video_bytes = video_file.read()
+    return video_bytes
 
+
+# @st.cache(allow_output_mutation=True, persist=True)
+def plot_GM_assignments_in_3d(data: np.ndarray, assignments, fig_file_prefix='train_assignments', show_now=True, azim_elev = (70,135)) -> object:
+    """
+    100% copied from bsoid/util/visuals.py....don't keep this functions long term.
+
+    Plot trained TSNE for EM-GMM assignments
+    :param data: 2D array, trained_tsne array (3 columns)
+    :param assignments: 1D array, EM-GMM assignments
+    :param fig_file_prefix:
+    :param show_later: use draw() instead of show()
+    """
+    # Arg checking
+    if not isinstance(data, np.ndarray):
+        err = f'Expected `data` to be of type numpy.ndarray but instead found: {type(data)} (value = {data}).'
+        logger.error(err)
+        raise TypeError(err)
+    # Parse kwargs
+    s = 's'
+    marker = 'o'
+    alpha = 0.8
+    title = 'Assignments by GMM'
+    # Plot graph
+    uk = list(np.unique(assignments))
+    R = np.linspace(0, 1, len(uk))
+    colormap = plt.cm.get_cmap("Spectral")(R)
+    tsne_x, tsne_y, tsne_z = data[:, 0], data[:, 1], data[:, 2]
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    # Loop over assignments
+    for i, g in enumerate(np.unique(assignments)):
+        # Select data for only assignment i
+        idx = np.where(np.array(assignments) == g)
+        # Assign to colour and plot
+        ax.scatter(tsne_x[idx], tsne_y[idx], tsne_z[idx], c=colormap[i], label=g, s=s, marker=marker, alpha=alpha)
+    ax.set_xlabel('Dim. 1')
+    ax.set_ylabel('Dim. 2')
+    ax.set_zlabel('Dim. 3')
+    ax.view_init(*azim_elev)
+    plt.title(title)
+    plt.legend(ncol=3)
+    if show_now:
+        plt.show()
+    else:
+        plt.draw()
+
+    return fig
+
+
+# Attempting to use the hack for saving session state. Delete-able.
 try:
     import streamlit.ReportThread as ReportThread
     from streamlit.server.Server import Server
@@ -349,9 +347,15 @@ def get(**kwargs):
 __all__ = ['get']
 
 
+# Main
+
 if __name__ == '__main__':
+    # Note: this import only necessary when running streamlit onto this file specifically rather than
+    #   calling `streamlit run main.py streamlit`
     BSOID = os.path.dirname(os.path.dirname(__file__))
     if BSOID not in sys.path:
         sys.path.insert(0, BSOID)
+    home()
+
 
 
