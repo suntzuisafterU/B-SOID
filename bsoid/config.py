@@ -150,7 +150,8 @@ FRAMES_OUTPUT_PATH = config_value_alternate_output_path_for_annotated_frames = \
     if configuration.get('PATH', 'ALTERNATE_OUTPUT_PATH_FOR_ANNOTATED_FRAMES') \
     else FRAMES_OUTPUT_PATH  # '/home/aaron/Documents/OST-with-DLC/B-SOID/OUTPUT/frames'
 
-# Asserts
+# Asserts  # TODO: delete or rework these asserts below
+
 # for folder_path in TRAIN_FOLDERS_PATHS_toBeDeprecated:
 #     assert os.path.isdir(folder_path), f'(ToBeDeprecated): TRAIN_FOLDERS_PATH: ' \
 #                                        f'Training folder does not exist: {folder_path}'
