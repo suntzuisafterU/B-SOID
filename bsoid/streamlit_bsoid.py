@@ -195,7 +195,7 @@ def show_pipeline_info(p: pipeline.PipelinePrime):
     st.markdown(f'- Number of data points in df_features_train: {len(p.df_features_train) if p.df_features_train else None}')
     line_break()
 
-    return
+
     return show_actions(p)
 
 
