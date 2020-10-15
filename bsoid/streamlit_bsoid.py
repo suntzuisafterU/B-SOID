@@ -92,6 +92,14 @@ def home(*args, **kwargs):
     """
     Designated home page when streamlit is run for BSOID
     """
+    st.markdown("Stuff at top!")
+    button1: bool = st.button('Testbutton1')
+    if button1:
+        button2 = st.button('TESTBUTTON2')
+        if button2:
+            st.markdown('button2 pressed')
+
+    line_break()
     # Set up current function variables
     is_pipeline_loaded = False
 
@@ -187,6 +195,7 @@ def show_pipeline_info(p: pipeline.PipelinePrime):
     st.markdown(f'- Number of data points in df_features: {len(p.df_features) if p.df_features else None}')
     line_break()
 
+    return
     return show_actions(p)
 
 
