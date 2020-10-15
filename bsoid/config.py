@@ -111,7 +111,7 @@ assert COMPILE_CSVS_FOR_TRAINING in {0, 1}, f'Invalid COMP value detected: {COMP
 assert isinstance(IDENTIFICATION_ORDER, int), f'check IDENTIFICATION_ORDER for type validity'
 assert os.path.isdir(VIDEO_OUTPUT_FOLDER_PATH), \
     f'`short_video_output_directory` dir. (value={VIDEO_OUTPUT_FOLDER_PATH}) must exist for runtime but does not.'
-assert os.path.isfile(VIDEO_TO_LABEL_PATH) or not VIDEO_TO_LABEL_PATH, \
+assert not VIDEO_TO_LABEL_PATH or os.path.isfile(VIDEO_TO_LABEL_PATH), \
     f'Video does not exist: {VIDEO_TO_LABEL_PATH}. Check pathing in config.ini file.'
 
 
@@ -151,17 +151,18 @@ FRAMES_OUTPUT_PATH = config_value_alternate_output_path_for_annotated_frames = \
     else FRAMES_OUTPUT_PATH  # '/home/aaron/Documents/OST-with-DLC/B-SOID/OUTPUT/frames'
 
 # Asserts
-for folder_path in TRAIN_FOLDERS_PATHS_toBeDeprecated:
-    assert os.path.isdir(folder_path), f'(ToBeDeprecated): TRAIN_FOLDERS_PATH: ' \
-                                       f'Training folder does not exist: {folder_path}'
-    assert os.path.isabs(folder_path), f'(ToBeDeprecated): TRAIN_FOLDERS_PATH: ' \
-                                       f'Predict folder PATH is not absolute and should be: {folder_path}'
+# for folder_path in TRAIN_FOLDERS_PATHS_toBeDeprecated:
+#     assert os.path.isdir(folder_path), f'(ToBeDeprecated): TRAIN_FOLDERS_PATH: ' \
+#                                        f'Training folder does not exist: {folder_path}'
+#     assert os.path.isabs(folder_path), f'(ToBeDeprecated): TRAIN_FOLDERS_PATH: ' \
+#                                        f'Predict folder PATH is not absolute and should be: {folder_path}'
 
-for folder_path in PREDICT_FOLDERS_PATHS_toBeDeprecated:
-    assert os.path.isdir(folder_path), f'(ToBeDeprecated): PREDICT_FOLDERS_PATH: ' \
-                                       f'Prediction folder does not exist: {folder_path}'
-    assert os.path.isabs(folder_path), f'(ToBeDeprecated): PREDICT_FOLDERS_PATH: ' \
-                                       f'Predict folder PATH is not absolute and should be: {folder_path}'
+# for folder_path in PREDICT_FOLDERS_PATHS_toBeDeprecated:
+#     assert os.path.isdir(folder_path), f'(ToBeDeprecated): PREDICT_FOLDERS_PATH: ' \
+#                                        f'Prediction folder does not exist: {folder_path}'
+#     assert os.path.isabs(folder_path), f'(ToBeDeprecated): PREDICT_FOLDERS_PATH: ' \
+#                                        f'Predict folder PATH is not absolute and should be: {folder_path}'
+
 assert os.path.isdir(config_value_alternate_output_path_for_annotated_frames), \
     f'config_value_alternate_output_path_for_annotated_frames does not exist. ' \
     f'config_value_alternate_output_path_for_annotated_frames = ' \
