@@ -192,7 +192,7 @@ def show_pipeline_info(p: pipeline.PipelinePrime):
     for loc in p.train_data_files_paths:
         st.markdown(f'- - {loc}')
     st.markdown(f'- Are the classifiers built: {p.is_built}')
-    st.markdown(f'- Number of data points in df_features: {len(p.df_features) if p.df_features else None}')
+    st.markdown(f'- Number of data points in df_features_train: {len(p.df_features_train) if p.df_features_train else None}')
     line_break()
 
     return
