@@ -11,7 +11,7 @@ import os
 import pandas as pd
 import time
 
-from bsoid.config import VIDEO_FPS as FPS, MODEL_NAME, OUTPUT_PATH, TRAIN_FOLDERS, PREDICT_FOLDERS
+from bsoid.config import VIDEO_FPS as FPS, MODEL_NAME, OUTPUT_PATH, TRAIN_FOLDERS_IN_DLC_PROJECT_toBeDeprecated, PREDICT_FOLDERS_IN_DLC_PROJECT_toBeDeprecated
 # from bsoid.config.GLOBAL_CONFIG import CV_IT, EMGMM_PARAMS, HLDOUT, SVM_PARAMS
 import bsoid
 
@@ -67,7 +67,7 @@ def run(predict_folders):
     filenames = []
     all_df = []
     for i, fd in enumerate(predict_folders):  # Loop through folders
-        f = bsoid.util.likelihoodprocessing.get_filenames(fd)
+        f = bsoid.io.get_filenames_csvs_from_folders_recursively_in_dlc_project_path(fd)
         for j, filename in enumerate(f):
             logging.info(f'Importing CSV file {j+1} from folder {i+1}')
             curr_df = pd.read_csv(filename, low_memory=False)
@@ -142,4 +142,4 @@ def main(train_folders, predict_folders):
 
 
 if __name__ == "__main__":
-    main(TRAIN_FOLDERS, PREDICT_FOLDERS)
+    main(TRAIN_FOLDERS_IN_DLC_PROJECT_toBeDeprecated, PREDICT_FOLDERS_IN_DLC_PROJECT_toBeDeprecated)
