@@ -12,3 +12,4 @@ logs
 tags
 typescript
 .idea/
+venv/
