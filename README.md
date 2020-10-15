@@ -1,3 +1,15 @@
+
+To run streamlit, run: `streamlit run main.py streamlit`
+
+
+
+
+---
+
+---
+
+Formal readme below
+
 # B-SOiD
 
 ## Installation
@@ -7,13 +19,13 @@
 
 
 
----
+------------------------------------------------------------------------------------------------------------------------
 
 ## Setup
 
 Setup instructions go here
 
----
+------------------------------------------------------------------------------------------------------------------------
 
 ## Usage
 
@@ -21,9 +33,21 @@ Usage instructions go here
 
 To run the streamlit app, run: `streamlit run main.py streamlit`
 
----
 
-## Developer TODOs
+------------------------------------------------------------------------------------------------------------------------
+
+#### Misc. Notes
+
+Potential Abbreviations
+- sc:
+  - scaled
+  - scores
+- fs:
+  - frameshift
+  
+------------------------------------------------------------------------------------------------------------------------
+
+## Developer TODOs:
 
 Things to refactor before extending functionality
 
