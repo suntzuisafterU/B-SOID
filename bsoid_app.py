@@ -25,9 +25,9 @@ import streamlit as st
 import time
 import umap
 
-from bsoid import classify, config
-from bsoid.config import BSOID_BASE_PROJECT_PATH, CROSSVALIDATION_K, DLC_PROJECT_PATH, HDBSCAN_PARAMS, HOLDOUT_PERCENT, MLP_PARAMS, OUTPUT_PATH, TRAIN_FOLDERS_IN_DLC_PROJECT_toBeDeprecated, UMAP_PARAMS
-from bsoid.util import likelihoodprocessing, statistics, videoprocessing, visuals
+from bsoid import classify, config, io, videoprocessing, visuals
+from bsoid.config import BSOID_BASE_PROJECT_PATH, CROSSVALIDATION_K, DLC_PROJECT_PATH, HDBSCAN_PARAMS, HOLDOUT_PERCENT, MLP_PARAMS, UMAP_PARAMS
+from bsoid.util import likelihoodprocessing, statistics
 
 logger = config.initialize_logger(__name__)
 
@@ -160,7 +160,7 @@ def run_streamlit_app():
         if st.button("Start pre-processing"):
             filenames_list, rawdata_list, data_list, perc_rect_list = [], [], [], []
             for idx_folder, folder in enumerate(TRAIN_FOLDERS):  # Loop through folders
-                f = likelihoodprocessing.get_filenames(folder)
+                f = io.get_filenames_csvs_from_folders_recursively_in_dlc_project_path(folder)
                 my_bar = st.progress(0)
                 for j, filename in enumerate(f):
                     curr_df = pd.read_csv(filename, low_memory=False)
@@ -654,7 +654,7 @@ def run_streamlit_app():
                     frameshift_labels.append(np.array(labels_fs2).flatten('F'))
                 st.info(f'Done frameshift-predicting **{csv_file}**.')
                 # def create_labeled_vid_app(labels, crit, counts, output_fps, video_frames_directory, output_path) -> None:
-                videoprocessing.create_labeled_vid_app(
+                videoprocessing.create_labeled_example_videos_by_label(
                     frameshift_labels[0], crit=int(min_frames), counts=int(number_examples),  # TODO: high: why is only the first frameshift_labels indexed?
                     output_fps=int(out_fps), video_frames_directory=frame_dir, output_path=shortvid_dir)
                 st.balloons()
@@ -703,7 +703,7 @@ def run_streamlit_app():
                          'folders, under sub-directory BSOID.')
                 with open(os.path.join(OUTPUT_PATH, app_model_neuralnet_filename), 'rb') as fr:
                     feats_test, labels_test, classifier, clf, scores, nn_assignments = joblib.load(fr)
-                folders, filenames, data_new, perc_rect = likelihoodprocessing.import_folders_app(DLC_PROJECT_PATH, TEST_FOLDERS, BODYPARTS)
+                folders, filenames, data_new, perc_rect = io.import_folders_app(DLC_PROJECT_PATH, TEST_FOLDERS, BODYPARTS)
                 labels_frameshift, labels_fs2, frameshift_labels = [], [], []  # TODO: HIGH: RE-EVALUATE VARIABLE NAMES --> `labels_fs` and `fs_labels` <-------
                 bar = st.progress(0)
                 for i in range(len(data_new)):
@@ -729,7 +729,7 @@ def run_streamlit_app():
                 all_df = []
                 folders_list = []
                 for i, folder in enumerate(TEST_FOLDERS):  # Loop through folders
-                    f = likelihoodprocessing.get_filenames(folder)
+                    f = io.get_filenames_csvs_from_folders_recursively_in_dlc_project_path(folder)
                     for j, filename in enumerate(f):
                         curr_df = pd.read_csv(filename, low_memory=False)
                         filenames.append(filename)
