@@ -87,14 +87,17 @@ def get_example_vid(path):  # TODO: rename
         video_bytes = video_file.read()
     return video_bytes
 
+stuff = dict()
 
 def home(*args, **kwargs):
     """
     Designated home page when streamlit is run for BSOID
     """
+    global stuff
     st.markdown("Stuff at top!")
     button1: bool = st.button('Testbutton1')
-    if button1:
+    if button1 or stuff['b1']:
+        stuff['b1'] = button1
         button2 = st.button('TESTBUTTON2')
         if button2:
             st.markdown('button2 pressed')
