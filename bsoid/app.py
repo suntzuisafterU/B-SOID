@@ -1,9 +1,8 @@
 """
-
 Every function in this file is an entire runtime sequence (app) encapsulated. Expect nothing to be returned.
 """
 from sklearn.model_selection import train_test_split, cross_val_score
-from typing import Any, List, Tuple
+from typing import List, Tuple
 import inspect
 import joblib
 import numpy as np
@@ -12,14 +11,63 @@ import pandas as pd
 import time
 
 # TODO: low: clean up imports
-from bsoid import classify, classify_LEGACY, config, feature_engineering, io, logging_bsoid, streamlit_bsoid, train, train_LEGACY, util
+from bsoid import classify, classify_LEGACY, config, feature_engineering, io, logging_bsoid,\
+    streamlit_bsoid, train, train_LEGACY, util
 from bsoid.config import OUTPUT_PATH, VIDEO_FPS
 
 
 logger = config.initialize_logger(__name__)
 
 
-###
+# Command-line functions
+def clear_output_folders() -> None:
+    """
+    For each folder specified below (magic variables be damned),
+        delete everything in that folder except for the .placeholder file and any sub-folders there-in.
+    """
+    # Choose folders to clear (currently set as magic variables in function below)
+    folders_to_clear: List[str] = [config.OUTPUT_PATH,
+                                   config.GRAPH_OUTPUT_PATH,
+                                   config.VIDEO_OUTPUT_FOLDER_PATH,
+                                   config.FRAMES_OUTPUT_PATH, ]
+    # Loop over all folders to empty
+    for folder_path in folders_to_clear:
+        # Parse all files in current folder_path, but exclusive placeholders, folders
+        valid_files_to_delete = [file_name for file_name in os.listdir(folder_path)
+                                 if file_name != '.placeholder'
+                                 and not os.path.isdir(os.path.join(folder_path, file_name))]
+        # Loop over remaining files (within current folder iter) that are to be deleted next
+        for file in valid_files_to_delete:
+            file_to_delete_full_path = os.path.join(folder_path, file)
+            try:
+                os.remove(file_to_delete_full_path)
+                logger.debug(f'{inspect.stack()[0][3]}(): Deleted file: {file_to_delete_full_path}')
+            except PermissionError as pe:
+                logger.warning(f'{inspect.stack()[0][3]}(): Could not delete file: {file_to_delete_full_path} / '
+                               f'{repr(pe)}')
+            except Exception as e:
+                unusual_err = f'An unusual error was detected: {repr(e)}'
+                logger.error(unusual_err)
+                raise e
+
+    return None
+
+
+def streamlit() -> None:
+    """ Streamlit code here. Currently this is the first and only iteration of streamlit apps, but
+    who knows how many will be created in the future. """
+    streamlit_bsoid.home()
+
+
+# Trying to emulate previous pipelines
+
+def build_and_run_new_pipeline():
+    """ Combines the new pipeline build and new pipeline run into one func to see if
+    they can run successfully in succession"""
+    build_classifier_new_pipeline()
+    run_classifier_new_pipeline()
+    return
+
 
 def build_classifier_new_pipeline(train_folders: List[str] = config.TRAIN_DATA_FOLDER_PATH) -> None:
     """
@@ -299,92 +347,9 @@ def run_classifier_new_pipeline() -> None:
     return data_new, features_new, labels_fs_low, labels_fs_high
 
 
-def clear_output_folders() -> None:
-    """
-    For each folder specified below (magic variables be damned),
-        delete everything in that folder except for the .placeholder file and any sub-folders there-in.
-    """
-    # Choose folders to clear (currently set as magic variables in function below)
-    folders_to_clear: List[str] = [config.OUTPUT_PATH,
-                                   config.GRAPH_OUTPUT_PATH,
-                                   config.VIDEO_OUTPUT_FOLDER_PATH,
-                                   config.FRAMES_OUTPUT_PATH, ]
-    # Loop over all folders to empty
-    for folder_path in folders_to_clear:
-        # Parse all files in current folder_path, but exclusive placeholders, folders
-        valid_files_to_delete = [file_name for file_name in os.listdir(folder_path)
-                                 if file_name != '.placeholder'
-                                 and not os.path.isdir(os.path.join(folder_path, file_name))]
-        # Loop over remaining files (within current folder iter) that are to be deleted next
-        for file in valid_files_to_delete:
-            file_to_delete_full_path = os.path.join(folder_path, file)
-            try:
-                os.remove(file_to_delete_full_path)
-                logger.debug(f'{inspect.stack()[0][3]}(): Deleted file: {file_to_delete_full_path}')
-            except PermissionError as pe:
-                logger.warning(f'{inspect.stack()[0][3]}(): Could not delete file: {file_to_delete_full_path} / '
-                               f'{repr(pe)}')
-            except Exception as e:
-                unusual_err = f'An unusual error was detected: {repr(e)}'
-                logger.error(unusual_err)
-                raise e
-
-    return None
-
-
-def clear_logs() -> None:
-    """ Clear log files. Debatable if this even works because usually the log file is in use and
-    you'll get a permission error so it'll just keep on living. """
-    log_folder = config.config_file_log_folder_path
-    confirmation = input(f'You are about to destroy ALL files in your log '
-                         f'folder ({log_folder}) -- are you sure you want to do this? [Y/N]: ').strip().upper()
-
-    if confirmation == 'Y' or confirmation == 'YES':
-        files_to_delete = [file for file in os.listdir(log_folder) if file != '.placeholder']
-        for file in files_to_delete:
-            file_to_delete_path = os.path.join(log_folder, file)
-            try:
-                os.remove(file_to_delete_path)
-                logger.debug(f'{inspect.stack()[0][3]}(): deleted file: {file_to_delete_path}')
-            except PermissionError as pe:
-                logger.warning(f'{inspect.stack()[0][3]}(): Could not delete file: {file_to_delete_path} / {repr(pe)}')
-    else:
-        print('Clearing log files canceled. Have a great day!')
-
-    return
-
-
-def TEST_readcsv():
-    """ A test function to see if breakpoints work on read_csv. Delete after debugging OK. """
-    path = f'C:\\Users\\killian\\projects\\OST-with-DLC\\GUI_projects\\EPM-DLC-projects\\' \
-           f'sample_train_data_folder\\Video1DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000.csv'
-    io.read_csv(path)
-
-
-def build_and_run_new_pipeline():
-    """ Combines the new pipeline build and new pipeline run into one func to see if
-    they can run successfully in succession"""
-    build_classifier_new_pipeline()
-    run_classifier_new_pipeline()
-    return
-
-
-def streamlit() -> None:
-    """ Streamlit code here. Currently this is the first and only iteration of streamlit apps, but
-    who knows how many will be created in the future. """
-    streamlit_bsoid.home()
-
+# Sample function
 
 def sample_runtime_function(sleep_secs=3, *args, **kwargs):
     """ Sample function that takes n seconds to run """
     time.sleep(sleep_secs)
     return
-
-
-########################################################################################################################
-
-if __name__ == '__main__':
-    # Run this file for ebugging purposes
-    build_classifier_new_pipeline()
-    # TEST_readcsv()
-    pass
