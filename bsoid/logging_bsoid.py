@@ -20,9 +20,10 @@ def get_caller_function() -> str:
 
 def preload_logger_with_config_vars(logger_name: str, log_format: str,
                                     stdout_log_level: str = None, file_log_level: str = None,
-                                    file_log_file_path: str = None, email_log_level: str = None):
+                                    file_log_file_path: str = None, email_log_level: str = None) -> callable:
     """
-    Create a meta logger.  TODO: expand
+    Create a file-specific logger creation function.
+    Returns a functions which takes 1 argument for a name (usually __file__) which acts as a prefix to the 'name' arg.
     """
     def argument_loaded_function(current_python_file_name: str, log_format: str = log_format):
         """Load in stored config args"""
