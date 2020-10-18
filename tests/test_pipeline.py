@@ -83,10 +83,11 @@ dfs = {[x.to_string() for x in pipeline_65465465465._dfs_list_raw_train_data]}
 """
         self.assertEqual(expected_amount_of_dataframes, actual_amount_of_dataframes, err_msg)
 
+    @skip  # TODO: review if test completely built
     def test__pipeline_adding_train_data_file_source__shouldAddParticularFileTo____when____(self):
         """"""
         # Arrange
-        p = bsoid.pipeline.PipelinePrime('Test')
+        p = bsoid.pipeline.PipelinePrime('Test123123123')
         data_source_file_path = test_file_name
         self.assertTrue(data_source_file_path not in p.train_data_files_paths)
 
@@ -99,13 +100,6 @@ dfs = {[x.to_string() for x in pipeline_65465465465._dfs_list_raw_train_data]}
 p.train_data_files_paths = {p.train_data_files_paths}
 """.strip()
         self.assertTrue(is_path_now_in_list_of_paths, err_msg)
-
-
-    # ADDING NEW PREDICT DATA SOURCES
-
-    # ENGINEERING FEATURES
-
-    # BUILDING CLASSIFIERS
 
 
     @skip
