@@ -3,6 +3,9 @@
 
 Notes
     - the OpenTSNE implementation does not allow more than 2 components
+TODOs:
+    low: implement ACTUAL random state s.t. all random state property calls beget a truly random integer
+
 """
 from bhtsne import tsne as TSNE_bhtsne
 from sklearn.manifold import TSNE as TSNE_sklearn
@@ -17,21 +20,17 @@ from typing import Any, Collection, List, Optional, Tuple, Union
 import inspect
 import joblib
 import numpy as np
-import openTSNE
+# import openTSNE
 import os
 import pandas as pd
 import sys
 import time
 
 
-from bsoid import check_arg, config, feature_engineering, io, videoprocessing, visuals
+from bsoid import check_arg, config, feature_engineering, io, logging_bsoid, videoprocessing, visuals
 
 
 logger = config.initialize_logger(__file__)
-
-
-### TODOS
-# TODO: low: implement ACTUAL random state s.t. all random state property calls beget a truly random integer
 
 
 # Base pipeline objects that outline the API
@@ -201,7 +200,7 @@ class BasePipeline(PipelineAttributeHolder):
 
     """
     # Init
-    def __init__(self, name: str = None, tsne_source=None, data_extension='csv', **kwargs):
+    def __init__(self, name: str = None, save_folder=None, tsne_source=None, data_extension='csv', **kwargs):
         # Pipeline name
         if name is not None and not isinstance(name, str):
             raise TypeError(f'name should be of type str but instead found type {type(name)}')
@@ -235,6 +234,7 @@ class BasePipeline(PipelineAttributeHolder):
         self.__read_in_config_file_vars()
         self.dims_cols_names = [f'dim{d + 1}' for d in range(self.tsne_dimensions)]  # TODO
         self.kwargs = kwargs
+
     def __read_in_kwargs(self, **kwargs):
         """ Reads in kwargs else pull form config file """
         # TODO: LOW: add kwargs parsing for averaging over n-frames
@@ -408,7 +408,7 @@ class BasePipeline(PipelineAttributeHolder):
                                f'file and not a directory.'  # TODO: low: improve error msg clarity
             logger.error(unusual_path_err)
             raise ValueError(unusual_path_err)
-    def remove_predict_data_source(self, source): raise NotImplementedError(f'TODO: Implement')
+    def remove_predict_data_source(self, source: str): raise NotImplementedError(f'TODO: Implement')
     def remove_train_data_source(self, source: str): raise NotImplementedError(f'TODO: implement')
     ## Scaling data
     def _create_scaled_data(self, df, features, create_new_scaler: bool = False) -> pd.DataFrame:
@@ -566,6 +566,28 @@ class BasePipeline(PipelineAttributeHolder):
         )
 
         return self
+    # More data transformations
+    def engineer_features(self, data: pd.DataFrame):
+        err = f'{logging_bsoid.get_current_function()}(): Not Implemented for base Pipeline object.'
+        logger.error(err)
+        raise NotImplementedError(err)
+    def add_test_data_column_to_scaled_train_data(self, test_data_col_name: str = None):
+        """
+        Add boolean column to scaled training data DataFrame to assign train/test data
+        """
+        if test_data_col_name is None:
+            test_data_col_name = self.test_col_name
+        check_arg.ensure_type(test_data_col_name, str)
+
+        df = self.df_features_train_scaled
+        df_shuffled = shuffle(df)  # Shuffles data, loses none in the process. Assign bool accordingly.
+        df_shuffled[test_data_col_name] = False
+        df_shuffled.loc[:int(len(df) * self.test_train_split_pct), test_data_col_name] = True  # TODO: med/high: ensure that the holdout percent is pull
+
+        df_shuffled = df_shuffled.reset_index()
+        self.df_features_train_scaled = df_shuffled
+
+        return self
     # Saving and stuff
     def save(self, output_path_dir=None):
         """
@@ -612,13 +634,6 @@ class BasePipeline(PipelineAttributeHolder):
             labels,
         )
         return
-    def make_video_from_written_frames(self, new_video_name, video_to_be_labeled=config.VIDEO_TO_LABEL_PATH):
-        videoprocessing.write_video_with_existing_frames(
-            video_to_be_labeled,
-            config.FRAMES_OUTPUT_PATH,
-            new_video_name,
-        )
-        return
     def make_video(self, video_to_be_labeled=config.VIDEO_TO_LABEL_PATH, output_fps=config.OUTPUT_VIDEO_FPS):
         labels = list(self.df_features_train_scaled[self.gmm_assignment_col_name].values)
         labels = [f'label={l}' for l in labels]
@@ -627,7 +642,6 @@ class BasePipeline(PipelineAttributeHolder):
                               f'Submitted video path: {video_to_be_labeled}. '
             logger.error(not_a_video_err)
         else:
-
             self.write_video_frames_to_disk()
             # Write video
 
@@ -650,46 +664,35 @@ len(self._dfs_list_raw_train_data): {len(self._dfs_list_raw_train_data)}
 self.train_data_files_paths: {self.train_data_files_paths}
 """.strip()
         return diag
-    def plot_assignments_in_3d(self, show_now=False, save_to_file=False, azim_elev=(70, 135)):
+    def plot_assignments_in_3d(self, show_now=False, save_to_file=False, azim_elev: Tuple[int, int] = (70, 135)):
+        """
+
+        :param show_now:
+        :param save_to_file:
+        :param azim_elev:
+        :return:
+        """
         logger.error(f'ERROR: {inspect.stack()[0][3]}(): TODO: IMPLEMENT.')
         # TODO: low: check for other runtiem vars
         if not self.is_built:  # or not self._has_unused_raw_data:
-            logger.warning(f'Classifiers have not been built. Nothing to graph.')
-            return None
+            e = f'Classifiers have not been built. Nothing to graph.'
+            logger.warning(e)
+            raise ValueError(e)
 
-        self.fig_gm_assignments_3d = visuals.plot_GM_assignments_in_3d(
+        fig, ax = visuals.plot_GM_assignments_in_3d_tuple(
             self.df_features_train_scaled[self.dims_cols_names].values,
             self.df_features_train_scaled[self.gmm_assignment_col_name].values,
             save_to_file,
             show_now=show_now,
             azim_elev=azim_elev,
         )
-        return self.fig_gm_assignments_3d
-    def plot(self):
-        logger.debug(f'Enter GRAPH PLOTTING section of {inspect.stack()[0][3]}')
-        # # plot 3d stuff?
-        fig, ax = visuals.plot_GM_assignments_in_3d_tuple(self.df_features_train_scaled[self.dims_cols_names].values, self.df_features_train_scaled[self.gmm_assignment_col_name].values, config.SAVE_GRAPHS_TO_FILE)
-        #
-        # # below plot is for cross-val scores
-        # scores = cross_val_score()  # TODO: low
-        # # util.visuals.plot_accuracy_SVM(scores, fig_file_prefix='TODO__replaceThisFigFilePrefixToSayIfItsKFOLDAccuracyOrTestAccuracy')
-        #
-        # # TODO: fix below
-        # # util.visuals.plot_feats_bsoidpy(features_10fps, gmm_assignments)
-        # logger.debug(f'Exiting GRAPH PLOTTING section of {inspect.stack()[0][3]}')
-        return
-    def plot_stuff_figure_out_make_sure_it_works(self):
-        logger.debug(f'Enter GRAPH PLOTTING section of {inspect.stack()[0][3]}')
-        # util.visuals.plot_GM_assignments_in_3d(self.df_features_train_scaled[self.dims_cols_names].values, df_features_train_scaled[self.gmm_assignment_col_name].values, config.SAVE_GRAPHS_TO_FILE)
-
-        # below plot is for cross-val scores
+        return fig  # self.fig_gm_assignments_3d
+    def plot_cross_val_scoring(self):
+        not_implemented = f''
+        logger.error(not_implemented)
         # util.visuals.plot_accuracy_SVM(scores, fig_file_prefix='TODO__replaceThisFigFilePrefixToSayIfItsKFOLDAccuracyOrTestAccuracy')
-
-        # TODO: fix below
-        # util.visuals.plot_feats_bsoidpy(features_10fps, gmm_assignments)
-        logger.debug(f'Exiting GRAPH PLOTTING section of {inspect.stack()[0][3]}')
-
-        return self
+        # util.visuals.plot_accuracy_SVM(scores, fig_file_prefix='TODO__replaceThisFigFilePrefixToSayIfItsKFOLDAccuracyOrTestAccuracy')
+        raise NotImplementedError(not_implemented)
     # Legacy stuff. Potential deprecation material.
     def read_in_predict_folder_data_file_paths_legacypathing(self) -> List[str]:  # TODO: deprecate/re-work
         self.predict_data_files_paths = predict_data_files_paths = [os.path.join(config.PREDICT_DATA_FOLDER_PATH, x)
@@ -714,11 +717,11 @@ self.train_data_files_paths: {self.train_data_files_paths}
 
 class PipelinePrime(BasePipeline):
     """
-    First implementation of a pipeline.
+    First implementation of a pipeline. Utilizes the 7 original features from the original B-SOiD paper.
 
     Use DataFrames instead of unnamed numpy arrays like the previous iteration
 
-    For a list of valid kwarg parameters, check parent object.
+    For a list of valid kwarg parameters, check parent object, "BasePipeline".
     """
     def __init__(self, name=None, data_source: str = None, tsne_source: str = 'sklearn', data_ext=None, **kwargs):
         super().__init__(name=name, data_source=data_source, tsne_source=tsne_source, data_ext=data_ext, **kwargs)
@@ -733,28 +736,6 @@ class PipelinePrime(BasePipeline):
         return self
 
     # Pipeline-building functions
-    # ___ Stuff to be sorted/defined ___ #
-    def add_test_data_column_to_scaled_train_data(self, test_data_col_name: str = None):
-        """
-        Add boolean column to scaled training data DataFrame to assign train/test data
-        """
-        if test_data_col_name is None:
-            test_data_col_name = self.test_col_name
-        df = self.df_features_train_scaled
-        df_shuffled = shuffle(df)  # Shuffles data, loses none in the process. Assign bool accordingly.
-        df_shuffled[test_data_col_name] = False
-        df_shuffled.loc[:int(len(df) * self.test_train_split_pct), test_data_col_name] = True  # TODO: med/high: ensure that the holdout percent is pull
-
-        df_shuffled = df_shuffled.reset_index()
-        self.df_features_train_scaled = df_shuffled
-
-        return self
-
-    @config.deco__log_entry_exit(logger)
-    def build(self, reengineer_features=False):
-        """ todo """
-        return self.build_classifier(reengineer_features)
-
     @config.deco__log_entry_exit(logger)
     def build_predict_data(self):
         if not self.is_built:
@@ -930,7 +911,9 @@ class PipelinePrime(BasePipeline):
         """
         Build all classifiers and get predictions from predict data
         """
+        # Build model
         self.build_classifier(reengineer_features=reengineer_train_features)
+        # Get predict data
         self.generate_predict_data_assignments(reengineer_predict_features=reengineer_predict_features)
         return self
 
@@ -939,7 +922,7 @@ class PipelinePrime(BasePipeline):
 
 def generate_pipeline_filename(name):
     """
-    Generates a pipeline filename given its name. This is an effort to standardize naming for saving pipelines.
+    Generates a pipeline file name given its name. This is an effort to standardize naming for saving pipelines.
     """
     file_name = f'{name}.pipeline'
     return file_name
