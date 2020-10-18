@@ -30,23 +30,23 @@ git clone https://github.com/YttriLab/B-SOID.git
 ## New usage instructions
 
 ### Python3
-Here are the [instructions](docs/bsoid_new_tutorial.md) for usage
+Here are the [instructions](legacy_docs/bsoid_new_tutorial.md) for usage
 
 TODO: Instructions go here
 
 ---
 
 ## Old Usage Instructions
-### ~~MATLAB: Follow these [steps](docs/matlab_tutorial.md).~~ MATLAB implementation under construction. Currently not functional.
+### ~~MATLAB: Follow these [steps](legacy_docs/matlab_tutorial.md).~~ MATLAB implementation under construction. Currently not functional.
 
 ### Python3: Watch this [tutorial video](demo/bsoid_py_tutorial_v2.mp4). 
-Here are the [command lines](docs/python3_tutorial.md) for you to copy and paste.
+Here are the [command lines](legacy_docs/python3_tutorial.md) for you to copy and paste.
 
 ### Python3, B-SOiD v1.3 (UMAP + HDBSCAN)
-Here are the [command lines](docs/bsoid_umap_tutorial.md) for you to copy and paste.
+Here are the [command lines](legacy_docs/bsoid_umap_tutorial.md) for you to copy and paste.
 
 ### There's an app for that! (UMAP + HDBSCAN)
-Here are the [command lines](docs/bsoid_app_init.md) for you to copy and paste to initialize the app.
+Here are the [command lines](legacy_docs/bsoid_app_init.md) for you to copy and paste to initialize the app.
 
 ---
 
