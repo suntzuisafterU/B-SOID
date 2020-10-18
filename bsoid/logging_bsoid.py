@@ -9,10 +9,7 @@ import re
 import time
 
 
-def get_current_function() -> str:
-    """"""
-    return inspect.stack()[1][3]
-
+# Logger object creation
 
 def preload_logger_with_config_vars(logger_name: str, log_format: str,
                                     stdout_log_level: str = None, file_log_level: str = None,
@@ -130,6 +127,20 @@ def log_entry_exit(logger=None):
     return decorator
 
 
+# Accessory functions
+
+def get_current_function() -> str:
+    """"""
+    return inspect.stack()[1][3]
+
+
+def get_caller_function() -> str:
+    """"""
+    return inspect.stack()[2][3]
+
+
+# Example functions (not actively in use but useful to have)
+
 def decorator_example(func):
     # Example functions to show how to make a decorator
     def function_wrapper(*args, **kwargs):
@@ -152,6 +163,4 @@ def log_function_decorator(decorator_arg=None):
 
 
 if __name__ == '__main__':
-    # logger = create_generic_logger(__name__)
-    # logger.debug(f'Debugging stuff')
     pass
