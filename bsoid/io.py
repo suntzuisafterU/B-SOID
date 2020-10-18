@@ -158,6 +158,49 @@ def check_folder_for_dlc_output_files(folder_path: str, file_extension: str,
     return file_names
 
 
+# Legacy Functions
+
+def check_folder_contents_for_csv_files(absolute_folder_path: str, check_recursively: bool = False) -> List[str]:
+    """ Legacy? TODO: review this func
+    Finished.
+    # TODO: purpose
+    :param absolute_folder_path: (str) an absolute path, TODO
+    :param check_recursively: (bool) TODO
+    :return: TODO
+        Returns List of absolute paths to CSVs detected
+    """
+    # Check args
+    if not os.path.isdir(absolute_folder_path):
+        value_err = f'This path is not a valid path to a folder: {absolute_folder_path} ' \
+                    f'(type = {type(absolute_folder_path)}).'
+        logger.error(value_err)
+        raise ValueError(value_err)
+    # Continue if values valid
+    path_to_check_for_csvs = f'{absolute_folder_path}{os.path.sep}**{os.path.sep}*.csv'
+    logger.debug(f'{logging_bsoid.get_current_function()}: Path that is being checked using glob selection: {path_to_check_for_csvs}')
+    filenames = glob.glob(path_to_check_for_csvs, recursive=check_recursively)
+    statistics.sort_list_nicely_in_place(filenames)
+    logger.info(f'{logging_bsoid.get_current_function()}: Total files found: {len(filenames)}. List of files found: {filenames}.')
+    return filenames
+
+
+def get_filenames_csvs_from_folders_recursively_in_dlc_project_path(folder: str) -> List:
+    """
+    Get_filenames() makes the assumption that the folder is in PROJECT Path; however, it is an obfuscated assumption
+    and bad. A new function that DOES NOT RESOLVE PATH IMPLICITLY WITHIN should be created and used.
+    :param folder:
+    :return:
+    """
+    path_to_check_for_csvs = f'{config.DLC_PROJECT_PATH}{os.path.sep}{folder}{os.path.sep}**{os.path.sep}*.csv'
+    logger.debug(f'{logging_bsoid.get_current_function()}():Path that is being checked using glob selection:{path_to_check_for_csvs}')
+    filenames = glob.glob(path_to_check_for_csvs, recursive=True)
+    statistics.sort_list_nicely_in_place(filenames)
+    logger.info(f'{logging_bsoid.get_current_function()}(): Total files found: {len(filenames)}. List of files found: {filenames}.')
+    return filenames
+
+
+# Debugging efforts
+
 if __name__ == '__main__':
     path = f'C:\\Users\\killian\\projects\\OST-with-DLC\\GUI_projects\\EPM-DLC-projects\\' \
            f'sample_train_data_folder\\Video1DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000.csv'
