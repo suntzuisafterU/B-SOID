@@ -21,7 +21,7 @@ from bsoid import check_arg, config, statistics
 logger = config.initialize_logger(__name__)
 
 
-#####
+###
 
 def generate_video_with_labels(labels: Union[List, Tuple], source_video_file_path, output_file_name, output_fps, fourcc='mp4v', output_dir_path=config.OUTPUT_PATH, **kwargs):
     """
@@ -46,7 +46,7 @@ def generate_video_with_labels(labels: Union[List, Tuple], source_video_file_pat
     check_arg.ensure_type(fourcc, str)
     font_scale = kwargs.get('font_scale', 1)
     check_arg.ensure_type(font_scale, int)
-    rectangle_bgr = kwargs.get('rectangle_bgr', (0, 0, 0))  # 000=Black box? TODO check
+    rectangle_bgr = kwargs.get('rectangle_bgr', (0, 0, 0))  # 000=Black box?
     check_arg.ensure_type(rectangle_bgr, tuple)
     text_color_bgr = (255, 255, 255)  # 255 = white?
     # Do
@@ -105,7 +105,8 @@ def generate_video_with_labels(labels: Union[List, Tuple], source_video_file_pat
         (width, height)                                             # frameSize
     )
     # Loop over all images and write to file (as video) with video writer
-    log_every, i = 250, 0
+    log_every = 250
+    i = 0
     for img in tqdm(frames, desc='Writing video...'):  # TODO: low: add progress bar
         video_writer.write(img)
         if i % log_every == 0:
@@ -233,10 +234,7 @@ def write_annotated_frames_to_disk_from_video_NEW(path_to_video: str, labels, fp
     return
 
 
-### New ################################################################################################################
-
-### Frame writing
-
+### Frame writing (new?)
 
 def write_individual_frame_to_file(is_frame_retrieved: bool, frame: np.ndarray, label, frame_idx, output_path=config.FRAMES_OUTPUT_PATH):
     """ * NEW *
@@ -397,9 +395,7 @@ def write_annotated_frames_to_disk_from_video_source_NEW_multiprocessed(path_to_
     return
 
 
-### Video creation
-
-### Legacy #############################################################################################################
+### Video creation - Legacy ############################################################################################
 
 @config.deco__log_entry_exit(logger)
 def write_annotated_frames_to_disk_from_video_LEGACY(path_to_video: str, labels, fps: int = config.VIDEO_FPS, output_path: str = config.FRAMES_OUTPUT_PATH, pct_frames_to_label: float = config.PERCENT_FRAMES_TO_LABEL):
@@ -585,33 +581,13 @@ def get_frames_from_video_then_create_labeled_video(path_to_video, labels, fps, 
     warning = f'Current function: {inspect.stack()[0][3]}(). Instead of calling this, call the two functions ' \
               f'inside explicitly. '
     logger.warning(warning)
+    # 1/2: Write annotated frames to disk
     write_annotated_frames_to_disk_from_video_LEGACY(path_to_video, labels, fps, output_path)
+    # 2/2: created labeled video from those frames on disk
     create_labeled_example_videos_by_label(
         labels, critical_behaviour_minimum_duration=3, num_randomly_generated_examples=5,
         frame_dir=output_path, output_path=config.VIDEO_OUTPUT_FOLDER_PATH)
 
-
-# def import_vidfolders(folders: List[str], output_path: List[str]):
-#     """ * LEGACY *
-#     Previously called `import_vidfolders()`
-#     Import multiple folders containing .mp4 files and extract frames from them
-#     :param folders: list of folder paths
-#     :param output_path: list, directory to where you want to store extracted vid images in LOCAL_CONFIG
-#     """
-#     list_of_lists_of_videos: List[List[str]] = []  # TODO: Q: why does this variable exist? It tracks but does not contribute to anything
-#     # Loop through folders
-#     for idx_folder, folder in enumerate(folders):
-#         videos_list_from_current_folder: List[str] = io.get_videos_from_folder_in_BASEPATH(folder)
-#         # Loop through videos found
-#         for idx_video, video in enumerate(videos_list_from_current_folder):
-#             logger.debug(f'{inspect.stack()[0][3]}():Extracting frames from {video} and appending labels to these images...')
-#             # Write (something) to disk TODO
-#             write_annotated_frames_to_disk_from_video_LEGACY(video, output_path)  # TODO: HIGH: missing param `FPS` *** runtime error imminent ********************************************************
-#             logger.debug(f'Done extracting images and writing labels, from MP4 file {idx_video+1}')
-#         # After looping through videos, append list of videos from current folder to list of lists because reasons
-#         list_of_lists_of_videos.append(videos_list_from_current_folder)  # list_of_lists_of_videos.append(videos_list_from_current_folder)
-#         logger.info(f'Processed {len(videos_list_from_current_folder)} mp4 files from folder: {folder}.')
-#     return
 
 if __name__ == '__main__':
     BSOID = os.path.dirname(os.path.dirname(__file__))
