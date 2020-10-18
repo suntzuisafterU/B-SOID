@@ -1,3 +1,4 @@
+# TODO: NOTE:
 # -*- coding: utf-8 -*-
 # Initial setup instructions from: https://queirozf.com/entries/package-a-python-project-and-make-it-available-via-pip-install-simple-example
 
@@ -9,30 +10,31 @@ with open('README.md', 'r') as readme_file:
 setuptools.setup(
     name='bsoid', # This is likely the name that will be called on `pip install _`, so make it count # TODO: HIGH: change module name
     version='0.0.1',  # TODO: HIGH: change initial version as necessary
-    url='https://github.com/username/repo',  # TODO: HIGH
-    author='Example Author',  # TODO: HIGH
-    author_email='example@example.com',  # TODO: HIGH
-    description='description goes here',  # TODO: HIGH
+    url='https://github.com/username/repo',  # TODO: HIGH: specify repository url
+    author='Example Author',  # TODO: HIGH: add author
+    author_email='example@example.com',  # TODO: HIGH: add author email
+    description='description goes here',  # TODO: HIGH: add (short) description
     long_description=long_description,
     long_description_content_type='text/markdown',
-    license='',  # TODO: HIGH
-    packages=setuptools.find_packages(include=['bsoid_py']), 
+    license='',  # TODO: HIGH: select license
+    # packages=setuptools.find_packages(include=['bsoid_py']),
     # TODO: Use the __init__ script inside bsoid_py to 'import' all modules/functions to be included in the library.
     #       For example see deeplabcut, or any other python libraries source code.
     install_requires=[  # TODO: HIGH: re-evaluate necessary minimum versions of packages in requirements.txt
         'Cython',
-        'numpy>=1.1',
-        'matplotlib>=1.5',  # TODO: re-evaluate matplotlib being version above 3.1. ??? Recall problems plotting on Linux and needing matplotlib to be a certain version
+        # 'numpy>=1.1',
+        # 'matplotlib>=1.5',  # TODO: re-evaluate matplotlib being version above 3.1. ??? Recall problems plotting on Linux and needing matplotlib to be a certain version
         'bhtsne',
         'ffmpeg',
         'hdbscan',
         'joblib',
-        'matplotlib',
+        'matplotlib>=3.0.3',
         'networkx',
-        'numpy',
+        'numpy>=1.16.4',
         'pandas',
         'psutil',
         'opencv-python',
+        'opentsne',
         'seaborn',
         'scikit-learn',
         'streamlit',
@@ -41,10 +43,10 @@ setuptools.setup(
         'umap-learn',
         # etc...
     ],
-    setup_requires=['pytest-runner'],
-    tests_require=['pytest'],
-    test_suite='tests',
-    classifiers=[ # https://pypi.org/classifiers/  #TODO: HIGH
+    setup_requires=['pytest-runner'],  # TODO: change this
+    tests_require=['pytest'],  # TODO: change this
+    test_suite='unittest',  # TODO: check this
+    classifiers=[  # https://pypi.org/classifiers/  #TODO: HIGH
         'Development Status :: 1 - Planning',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.7',
