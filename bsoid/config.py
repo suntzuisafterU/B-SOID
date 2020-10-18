@@ -206,15 +206,23 @@ HDBSCAN_PARAMS = {
 }
 
 # EM_GMM parameters
+gmm_n_components = configuration.getint('EM/GMM', 'n_components')
+gmm_covariance_type = configuration.get('EM/GMM', 'covariance_type')
+gmm_tol = configuration.getfloat('EM/GMM', 'tol')
+gmm_reg_covar = configuration.getfloat('EM/GMM', 'reg_covar')
+gmm_max_iter = configuration.getint('EM/GMM', 'max_iter')
+gmm_n_init = configuration.getint('EM/GMM', 'n_init')
+gmm_init_params = configuration.get('EM/GMM', 'init_params')
+gmm_verbose = configuration.getint('EM/GMM', 'verbose')
 EMGMM_PARAMS = {
-    'n_components': configuration.getint('EM/GMM', 'n_components'),
-    'covariance_type': configuration.get('EM/GMM', 'covariance_type'),
-    'tol': configuration.getfloat('EM/GMM', 'tol'),
-    'reg_covar': configuration.getfloat('EM/GMM', 'reg_covar'),
-    'max_iter': configuration.getint('EM/GMM', 'max_iter'),
-    'n_init': configuration.getint('EM/GMM', 'n_init'),
-    'init_params': configuration.get('EM/GMM', 'init_params'),
-    'verbose': configuration.getint('EM/GMM', 'verbose'),
+    'n_components': gmm_n_components,
+    'covariance_type': gmm_covariance_type,
+    'tol': gmm_tol,
+    'reg_covar': gmm_reg_covar,
+    'max_iter': gmm_max_iter,
+    'n_init': gmm_n_init,
+    'init_params': gmm_init_params,
+    'verbose': gmm_verbose,
     'random_state': configuration.getint('MODEL', 'RANDOM_STATE', fallback=RANDOM_STATE),
 }
 
@@ -232,12 +240,17 @@ MLP_PARAMS = {
 }
 
 # Multi-class support vector machine classifier params
+svm_c = configuration.getfloat('SVM', 'C')
+svm_gamma = configuration.getfloat('SVM', 'gamma')
+svm_probability = configuration.getboolean('SVM', 'probability')
+svm_verbose = configuration.getint('SVM', 'verbose')
+svm_random_state = configuration.getint('MODEL', 'RANDOM_STATE', fallback=RANDOM_STATE)
 SVM_PARAMS = {
-    'C': configuration.getfloat('SVM', 'C'),
-    'gamma': configuration.getfloat('SVM', 'gamma'),
-    'probability': configuration.getboolean('SVM', 'probability'),
-    'verbose': configuration.getint('SVM', 'verbose'),
-    'random_state': configuration.getint('MODEL', 'RANDOM_STATE', fallback=RANDOM_STATE),
+    'C': svm_c,
+    'gamma': svm_gamma,
+    'probability': svm_probability,
+    'verbose': svm_verbose,
+    'random_state': svm_random_state,
 }
 
 

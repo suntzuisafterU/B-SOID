@@ -2,21 +2,14 @@
 Encapsulate logging for BSOID
 """
 
-from logging.handlers import SMTPHandler
+from logging.handlers import SMTPHandler  # PLO: to be used potentially later in logging errors to email
 import inspect
 import logging
 import re
 import time
 
 
-def get_current_function() -> str:
-    """"""
-    return inspect.stack()[1][3]
-
-
-def get_caller_function() -> str:
-    return inspect.stack()[2][3]
-
+# Logger object creation
 
 def preload_logger_with_config_vars(logger_name: str, log_format: str,
                                     stdout_log_level: str = None, file_log_level: str = None,
@@ -46,16 +39,6 @@ def preload_logger_with_config_vars(logger_name: str, log_format: str,
     return argument_loaded_function
 
 
-def log_function_decorator(decorator_arg=None):
-    """An example of a decorator that takes an optional arg"""
-    def decorator(func):
-        def function_wrapper(*args, **kwargs):
-            result = create_generic_logger(*args, **kwargs)
-            return result
-        return function_wrapper
-    return decorator
-
-
 def create_generic_logger(logger_name: str, log_format: str,
                           stdout_log_level: str = None,
                           file_log_level: str = None, file_log_file_path: str = None,
@@ -63,12 +46,14 @@ def create_generic_logger(logger_name: str, log_format: str,
     """
     Generic logger instantiation.
 
-    :param logger_name: (str)
-    :param log_format: (str)
-    :param stdout_log_level:
-    :param file_log_level:
-    :param file_log_file_path:
-    :param email_log_level:
+    :param logger_name: (str, required) The name of the logger. If referenced in the formatter, this
+        name will be used in the logs.
+    :param log_format: (str, required): TOO
+    :param stdout_log_level: (str, ?) TODO
+    :param file_log_level: (str, ?) TODO
+    :param file_log_file_path: (str, ?) TODO
+    :param email_log_level: TODO:
+    Returns logger object
     """
     valid_log_levels = {'CRITICAL', 'FATAL', 'ERROR', 'WARN', 'WARNING', 'INFO', 'DEBUG', 'NOTSET'}
     formatter = logging.Formatter(log_format)
@@ -112,26 +97,15 @@ def create_generic_logger(logger_name: str, log_format: str,
         file_handler.setLevel(file_log_level.upper())
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
-    # # Logging to email  # TODO: low: instantiate email logging
-    # if email_log_level:
-    #     # mailhost, fromaddr, toaddrs, subject,
-    #     #                  credentials=None, secure=None, timeout=5.0
-    #     smtp_handler = SMTPHandler()
-    #     smtp_handler.setLevel(email_log_level.upper())
-    #     smtp_handler.setFormatter(formatter)
-    #     logger.addHandler(smtp_handler)
+    # Logging to email  # TODO: low: instantiate email logging
+    if email_log_level:
+        ## SMTP vars: mailhost, fromaddr, toaddrs, subject, credentials=None, secure=None, timeout=5.0
+        # smtp_handler = SMTPHandler()
+        # smtp_handler.setLevel(email_log_level.upper())
+        # smtp_handler.setFormatter(formatter)
+        # logger.addHandler(smtp_handler)
+        pass
     return logger
-
-
-def decorator_example(func):
-    # TODO:
-    def function_wrapper(*args, **kwargs):
-        print(f'args: {args} / kwargs: {kwargs}')
-        result = func(*args, **kwargs)
-        print(f'result: {result}')
-        return result
-
-    return function_wrapper
 
 
 def log_entry_exit(logger=None):
@@ -153,7 +127,40 @@ def log_entry_exit(logger=None):
     return decorator
 
 
+# Accessory functions
+
+def get_current_function() -> str:
+    """"""
+    return inspect.stack()[1][3]
+
+
+def get_caller_function() -> str:
+    """"""
+    return inspect.stack()[2][3]
+
+
+# Example functions (not actively in use but useful to have)
+
+def decorator_example(func):
+    # Example functions to show how to make a decorator
+    def function_wrapper(*args, **kwargs):
+        print(f'args: {args} / kwargs: {kwargs}')
+        result = func(*args, **kwargs)
+        print(f'result: {result}')
+        return result
+
+    return function_wrapper
+
+
+def log_function_decorator(decorator_arg=None):
+    """ An example of a decorator that takes an optional arg """
+    def decorator(func):
+        def function_wrapper(*args, **kwargs):
+            result = create_generic_logger(*args, **kwargs)
+            return result
+        return function_wrapper
+    return decorator
+
+
 if __name__ == '__main__':
-    # logger = create_generic_logger(__name__)
-    # logger.debug(f'Debugging stuff')  # TODO
     pass
