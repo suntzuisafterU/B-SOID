@@ -11,8 +11,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sn
 
-from bsoid import config
-from bsoid.util import likelihoodprocessing
+from bsoid import config, logging_bsoid
+
 
 logger = config.initialize_logger(__name__)
 matplotlib_axes_logger.setLevel('ERROR')
@@ -467,7 +467,7 @@ def plot_accuracy_SVM(scores, save_fig_to_file=config.SAVE_GRAPHS_TO_FILE,
         logger.error(f'len(x) does not equal len(scores). '
                      f'If you see an error next, check the logs! x = {x} / scores = {scores}.')
     if isinstance(x, np.ndarray) and isinstance(scores, np.ndarray):
-        logger.debug(f'{likelihoodprocessing.get_current_function()}: both inputs are arrays. '
+        logger.debug(f'{logging_bsoid.get_current_function()}: both inputs are arrays. '
                      f'x.shape = {x.shape} // scores.shape = {scores.shape}')
         if x.shape != scores.shape:
             logger.error(f'{inspect.stack()[0][3]}(): x = {x} // scores = {scores}')

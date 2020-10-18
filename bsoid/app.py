@@ -12,7 +12,7 @@ import time
 
 # TODO: low: clean up imports
 from bsoid import classify, classify_LEGACY, config, feature_engineering, io, logging_bsoid,\
-    streamlit_bsoid, train, train_LEGACY, util
+    streamlit_bsoid, train, train_LEGACY, util, videoprocessing, visuals
 from bsoid.config import OUTPUT_PATH, VIDEO_FPS
 
 
@@ -94,10 +94,10 @@ def build_classifier_new_pipeline(train_folders: List[str] = config.TRAIN_DATA_F
     # Loop over train folders to fetch data
     for train_path in config.TRAIN_FOLDERS_PATHS_toBeDeprecated:
         logger.debug(f'train_path = {train_path}')
-        csv_files_paths: List[str] = util.io.check_folder_contents_for_csv_files(train_path, check_recursively=True)
+        csv_files_paths: List[str] = io.check_folder_contents_for_csv_files(train_path, check_recursively=True)
         logger.debug(f'csvs = {csv_files_paths}')
         for file_csv in csv_files_paths:
-            df_csv_i: pd.DataFrame = util.io.read_csv(file_csv)
+            df_csv_i: pd.DataFrame = io.read_csv(file_csv)
             logger.debug(f'CSV read in: {file_csv}')
             dfs_unfiltered_list.append(df_csv_i)
             break  # Debugging effort. Remove this line later. todo
@@ -159,9 +159,9 @@ def build_classifier_new_pipeline(train_folders: List[str] = config.TRAIN_DATA_F
         scores = cross_val_score(classifier, feats_test, labels_test,
                                  cv=config.CROSSVALIDATION_K, n_jobs=config.CROSSVALIDATION_N_JOBS)
         logger.debug(f'Enter GRAPH PLOTTING section of {inspect.stack()[0][3]}')
-        util.visuals.plot_GM_assignments_in_3d(trained_tsne, df['assignments'], config.SAVE_GRAPHS_TO_FILE)
-        util.visuals.plot_accuracy_SVM(scores)
-        util.visuals.plot_feats_bsoidpy(df_features_10fps, gmm_assignments)
+        visuals.plot_GM_assignments_in_3d(trained_tsne, df['assignments'], config.SAVE_GRAPHS_TO_FILE)
+        visuals.plot_accuracy_SVM(scores)
+        visuals.plot_feats_bsoidpy(df_features_10fps, gmm_assignments)
         logger.debug(f'Exiting GRAPH PLOTTING section of {inspect.stack()[0][3]}')
 
 
@@ -234,18 +234,18 @@ def run_classifier_new_pipeline() -> None:
     labels_frameshift_high: List = classify_LEGACY.bsoid_frameshift_py(data_new, train_scaler_obj, config.VIDEO_FPS, behavioural_model)
 
     if config.PLOT_GRAPHS:
-        util.visuals.plot_feats_bsoidpy(features_new, labels_frameshift_low)
+        visuals.plot_feats_bsoidpy(features_new, labels_frameshift_low)
 
     # TODO: HIGH: Ensure that the labels predicted on predict_folders matches to the video that will be labeled hereafter
     if config.GENERATE_VIDEOS:
         if len(labels_frameshift_low) > 0:
             # 1/2 write frames to disk
-            util.videoprocessing.write_annotated_frames_to_disk_from_video_LEGACY(
+            videoprocessing.write_annotated_frames_to_disk_from_video_LEGACY(
                 config.VIDEO_TO_LABEL_PATH,
                 labels_frameshift_low[config.IDENTIFICATION_ORDER]
             )
             # 2/2 created labeled video
-            util.videoprocessing.create_labeled_example_videos_by_label(
+            videoprocessing.create_labeled_example_videos_by_label(
                 labels_frameshift_low[config.IDENTIFICATION_ORDER],
                 critical_behaviour_minimum_duration=3,
                 num_randomly_generated_examples=5,
@@ -296,7 +296,7 @@ def run_classifier_new_pipeline() -> None:
             (os.path.join(OUTPUT_PATH, f'BSOiD__labels__10Hz__{config.runtime_timestr}__{csvname}.csv')), index=True,
             chunksize=10000, encoding='utf-8')
 
-        runlen_df1, dur_stats1, df_tm1 = util.statistics.get_runlengths_statistics_transition_matrix_from_labels(
+        runlen_df1, dur_stats1, df_tm1 = statistics.get_runlengths_statistics_transition_matrix_from_labels(
             labels_fs_low[i])
 
         # if PLOT_TRAINING:
@@ -328,7 +328,7 @@ def run_classifier_new_pipeline() -> None:
         df_xy_fs.to_csv((os.path.join(OUTPUT_PATH, f'BSOiD__labels__{VIDEO_FPS}Hz{time_str}__{csvname}.csv')),
                         index=True, chunksize=10000, encoding='utf-8')
 
-        runlen_df2, dur_stats2, df_tm2 = util.statistics.get_runlengths_statistics_transition_matrix_from_labels(
+        runlen_df2, dur_stats2, df_tm2 = statistics.get_runlengths_statistics_transition_matrix_from_labels(
             labels_fs_high[i])
         runlen_df2.to_csv((os.path.join(OUTPUT_PATH, f'BSOiD__NeedsAName__{VIDEO_FPS}Hz__{time_str}__{csvname}.csv')),
                           index=True, chunksize=10000, encoding='utf-8')
@@ -344,7 +344,7 @@ def run_classifier_new_pipeline() -> None:
         joblib.dump([labels_fs_low, labels_fs_high], f)
 
     logger.info('All saved. Expand on this info message later.')
-    return data_new, features_new, labels_fs_low, labels_fs_high
+    # return data_new, features_new, labels_fs_low, labels_fs_high
 
 
 # Sample function
