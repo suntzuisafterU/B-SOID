@@ -3,10 +3,10 @@ Functionality for visualizing plots and saving those plots.
 """
 from matplotlib.axes._axes import _log as matplotlib_axes_logger
 from mpl_toolkits.mplot3d import Axes3D  # Despite being "unused", this import MUST stay for 3d plotting to work. PLO!
-from typing import Any, Collection, Dict, List, Tuple
+from typing import Collection, Tuple
 import inspect
 import os
-import matplotlib
+# import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sn
@@ -60,7 +60,7 @@ def plot_GM_assignments_in_3d_new(data: np.ndarray, assignments, show_now=True, 
     ax.view_init(*azim_elev)
     plt.title(title)
     plt.legend(ncol=3)
-    # Draw now?
+    # Show now?
     if show_now:
         plt.show()
     else:
@@ -303,7 +303,7 @@ def plot_classes_bsoidumap(data, assignments, **kwargs) -> object:
     return fig
 
 
-def plot_GM_assignments_in_3d(data: np.ndarray, assignments, save_fig_to_file: bool, fig_file_prefix='train_assignments', show_now=True, show_later=False, **kwargs) -> object:
+def plot_GM_assignments_in_3d(data: np.ndarray, assignments, save_fig_to_file: bool, fig_file_prefix='train_assignments', show_now=True, **kwargs) -> object:
     """
     Plot trained TSNE for EM-GMM assignments
     This follows old implementation that only returned the figure
@@ -533,8 +533,8 @@ def plot_feats_bsoidpy(features, labels) -> None:
                         if i < len(np.unique(labels_k)) - 1:
                             plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
                 if config.SAVE_GRAPHS_TO_FILE:
-                    file_name = f'session_{k+1}__feature_{j+1}__histogram__{time_str}'  # = my_file+'_'+time_str  # TODO: HIGH: clarify on what a "session" is/means to the user.
-                    save_graph_to_file(fig, file_name)  # fig.savefig(os.path.join(config.OUTPUT_PATH, my_file+'_'+time_str+'.svg'))
+                    file_name = f'session_{k+1}__feature_{j+1}__histogram__{time_str}'  # TODO: HIGH: clarify on what a "session" is/means to the user.
+                    save_graph_to_file(fig, file_name)
             plt.show()
     elif isinstance(labels, np.ndarray):
         R = np.linspace(0, 1, len(np.unique(labels)))
@@ -565,7 +565,7 @@ def plot_feats_bsoidpy(features, labels) -> None:
                     if i < len(np.unique(labels)) - 1:
                         plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
             if config.SAVE_GRAPHS_TO_FILE:
-                file_name = f'feature_{j + 1}__histogram__{time_str}'  # my_file = f'feat{j + 1}_hist' ;fig.savefig(os.path.join(config.OUTPUT_PATH, f'{my_file}_{time_str}.svg'))
+                file_name = f'feature_{j + 1}__histogram__{time_str}'
                 save_graph_to_file(fig, file_name)
         plt.show()
     else: raise TypeError(f'invalid type detected for labels: {type(labels)}')
@@ -787,7 +787,7 @@ def plot_tmat(transition_matrix: np.ndarray, fps: int, save_fig_to_file=True, fi
     logger.warning(warning_msg)
     return replacement_func(transition_matrix, fps, save_fig_to_file, fig_file_prefix)
 
-def plot_classes_bsoidvoc(data, assignments, save_fig_to_file=config.SAVE_GRAPHS_TO_FILE) -> None:
+def plot_classes_bsoidvoc(data, assignments, save_fig_to_file=config.SAVE_GRAPHS_TO_FILE):
     replacement_func = plot_GM_assignments_in_3d
     warning = f'This function, {inspect.stack()[0][3]}, will be deprecated and instead replaced with: ' \
               f'{replacement_func.__qualname__}. Find caller, {inspect.stack()[1][3]}, and replace use.'
