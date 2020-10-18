@@ -16,7 +16,7 @@ import sys
 
 from bsoid import config, feature_engineering, pipeline
 from bsoid.util import likelihoodprocessing
-from bsoid.bsoid_logging import get_current_function
+from bsoid.logging_bsoid import get_current_function
 
 logger = config.initialize_logger(__name__)
 ERROR_INVALID_NAME = 123  # necessary for valid filename checking
