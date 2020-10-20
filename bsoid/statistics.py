@@ -30,7 +30,7 @@ def boxcar_center(input_array, n) -> np.ndarray:
 
 
 def convert_int_from_string_if_possible(s: str):
-    """ Converts digit string to integer """
+    """ Converts digit string to integer if possible """
     if s.isdigit():
         return int(s)
     else:
@@ -65,7 +65,7 @@ def augmented_runlength_encoding(labels: Union[List, np.ndarray]) -> Tuple[List[
     """
     label_list, idx_list, lengths_list = [], [], []
     i = 0
-    while i < len(labels) - 1:
+    while i < len(labels):
         # 1/3: Record current index
         idx_list.append(i)
         # 2/3: Record current label
