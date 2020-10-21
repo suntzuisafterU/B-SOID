@@ -42,7 +42,8 @@ deco__log_entry_exit: callable = logging_bsoid.log_entry_exit  # TODO: temporary
 
 
 ########################################################################################################################
-# Set default variables
+### Set default variables
+
 # Fetch the B-SOiD project directory regardless of clone location
 BSOID_BASE_PROJECT_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # Output directory to where you want the analysis to be stored
@@ -70,8 +71,7 @@ VIDEO_OUTPUT_FOLDER_PATH = configuration.get('PATH', 'VIDEOS_OUTPUT_PATH') \
 GRAPH_OUTPUT_PATH = os.path.join(OUTPUT_PATH, 'graphs')
 FRAMES_OUTPUT_PATH = os.path.join(OUTPUT_PATH, 'frames')
 
-# APP
-# Resolve runtime application settings
+# APP: Resolve runtime application settings
 MODEL_NAME = configuration.get('APP', 'OUTPUT_MODEL_NAME')  # Machine learning model name?
 MODEL_FILENAME = f'bsoid_model__{MODEL_NAME}.sav'
 PIPELINE_NAME = configuration.get('APP', 'PIPELINE_NAME')
@@ -150,6 +150,7 @@ FRAMES_OUTPUT_PATH = config_value_alternate_output_path_for_annotated_frames = \
     if configuration.get('PATH', 'ALTERNATE_OUTPUT_PATH_FOR_ANNOTATED_FRAMES') \
     else FRAMES_OUTPUT_PATH  # '/home/aaron/Documents/OST-with-DLC/B-SOID/OUTPUT/frames'
 
+
 # Asserts  # TODO: delete or rework these asserts below
 
 # for folder_path in TRAIN_FOLDERS_PATHS_toBeDeprecated:
@@ -197,7 +198,7 @@ UMAP_PARAMS = {
     'n_neighbors': configuration.getint('UMAP', 'n_neighbors'),
     'n_components': configuration.getint('UMAP', 'n_components'),
     'min_dist': configuration.getfloat('UMAP', 'min_dist'),
-    'random_state': configuration.getint('MODEL', 'RANDOM_STATE', fallback=RANDOM_STATE),
+    'random_state': RANDOM_STATE,
 }
 
 # HDBSCAN params, density based clustering
@@ -223,7 +224,7 @@ EMGMM_PARAMS = {
     'n_init': gmm_n_init,
     'init_params': gmm_init_params,
     'verbose': gmm_verbose,
-    'random_state': configuration.getint('MODEL', 'RANDOM_STATE', fallback=RANDOM_STATE),
+    'random_state': RANDOM_STATE,
 }
 
 # Feedforward neural network (MLP) params
@@ -244,7 +245,7 @@ svm_c = configuration.getfloat('SVM', 'C')
 svm_gamma = configuration.getfloat('SVM', 'gamma')
 svm_probability = configuration.getboolean('SVM', 'probability')
 svm_verbose = configuration.getint('SVM', 'verbose')
-svm_random_state = configuration.getint('MODEL', 'RANDOM_STATE', fallback=RANDOM_STATE)
+svm_random_state = RANDOM_STATE
 SVM_PARAMS = {
     'C': svm_c,
     'gamma': svm_gamma,
@@ -266,7 +267,7 @@ TSNE_N_JOBS = configuration.getint('TSNE', 'n_jobs')
 TSNE_THETA = configuration.getfloat('TSNE', 'theta')
 TSNE_VERBOSE = configuration.getint('TSNE', 'verbose')
 
-TSNE_SKLEARN_PARAMS = {  # TODO: low: deprecate? This was the old, obfu way of packing kwargs.
+TSNE_SKLEARN_PARAMS = {  # TODO: low: deprecate? This was the old, opaque way of packing kwargs. Not used much anymore.
     'n_components': TSNE_N_COMPONENTS,
     'n_jobs': TSNE_N_JOBS,
     'verbose': TSNE_VERBOSE,
@@ -388,6 +389,8 @@ More example videos are in [this](../examples) directory .
 
 """
 
+
+# Debugging efforts below. __main__ not integral to package, can delete.
 
 if __name__ == '__main__':
     print(get_config_str())
