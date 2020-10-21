@@ -62,11 +62,19 @@ def ensure_is_file(path):
         raise FileNotFoundError(err)
 
 
-def has_invalid_chars_in_name_for_a_file(name, additional_characters: Optional[Collection[str]] = None) -> bool:
+def ensure_is_dir(path):
+    if not os.path.isdir(path):
+        err = f'Caller: {get_caller_function()}(): submitted file path "{path}" was ' \
+              f'expected to be a valid directory but was not.'
+        logger.error(err)
+        raise NotADirectoryError(err)
+
+
+def has_invalid_chars_in_name_for_a_file(file_name, additional_characters: Optional[Collection[str]] = None) -> bool:
     """
     Checks if an invalid characters have been included in a potential path. Useful for checking user
     input before attempting to save files. The list of invalid characters
-    :param name:
+    :param file_name:
     :param additional_characters:
     :return:
     """
@@ -82,9 +90,9 @@ def has_invalid_chars_in_name_for_a_file(name, additional_characters: Optional[C
     invalid_chars_for_windows_files = {':', '*', '\\', '/', '?', '"', '<', '>', '|'}
     if additional_characters is not None:
         invalid_chars_for_windows_files = invalid_chars_for_windows_files.union(set(additional_characters))
-    if not isinstance(name, str) or not name:
+    if not isinstance(file_name, str) or not file_name:
         return True
-    union_of_string_and_invalid_chars = set(name).intersection(invalid_chars_for_windows_files)
+    union_of_string_and_invalid_chars = set(file_name).intersection(invalid_chars_for_windows_files)
     if len(union_of_string_and_invalid_chars) != 0:
         logger.error(f'Union = {union_of_string_and_invalid_chars}')
         return True
