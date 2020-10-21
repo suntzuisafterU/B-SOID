@@ -6,7 +6,6 @@ Extracting frames from videos
 from typing import Any, List, Tuple, Union
 from tqdm import tqdm
 import cv2
-# import glob
 import inspect
 import multiprocessing
 import numpy as np
@@ -23,13 +22,14 @@ logger = config.initialize_logger(__name__)
 
 
 ### In development
-def make_ex_vid(labels, frames, output_file_name: str, video_source: str, output_fps=8, fourcc='mp4v', output_dir=config.OUTPUT_PATH, **kwargs):  # TODO: low: rename func
+
+def make_ex_vid(labels_list: Union[List, Tuple], frames_indices_list: Union[List, Tuple], output_file_name: str, video_source: str, output_fps=8, fourcc='mp4v', output_dir=config.OUTPUT_PATH, **kwargs):  # TODO: low: rename func
     """
 
     Make a video clip of an existing video
 
-    :param labels: (List[Any]) a list of labels to be included onto the frames for the final video
-    :param frames: (List[int]) a list of frames by index to be labeled and included in final video
+    :param labels_list: (List[Any]) a list of labels to be included onto the frames for the final video
+    :param frames_indices_list: (List[int]) a list of frames by index to be labeled and included in final video
     :param video_source: (str) a path to a file ___
     :param output_file_name:
     :param output_fps:
@@ -39,12 +39,13 @@ def make_ex_vid(labels, frames, output_file_name: str, video_source: str, output
     :return:
     """
     # Arg  checking
-    if not os.path.isfile(video_source):
-        not_a_file_err = f'{get_current_function()}(): The following video path is not a file: {video_source}.'
-        logger.error(not_a_file_err)
-        raise ValueError(not_a_file_err)
-    if len(labels) != len(frames):
-        non_matching_lengths_err = f'{get_current_function()}(): the number of labels and the list of frames do not match'
+    check_arg.ensure_is_file(video_source)
+    check_arg.ensure_has_valid_chars_for_path(output_file_name)
+    check_arg.ensure_is_dir(output_dir)
+    check_arg.ensure_type(output_fps, int)
+    if len(labels_list) != len(frames_indices_list):
+        non_matching_lengths_err = f'{get_current_function()}(): the number of ' \
+                                   f'labels and the list of frames do not match'
         logger.error(non_matching_lengths_err)
         raise ValueError(non_matching_lengths_err)
     # Kwargs
@@ -53,19 +54,21 @@ def make_ex_vid(labels, frames, output_file_name: str, video_source: str, output
     rectangle_bgr_black: Tuple[int, int, int] = kwargs.get('rectangle_bgr', (0, 0, 0))  # 000=Black box?
     check_arg.ensure_type(rectangle_bgr_black, tuple)
     text_colour_bgr_white = (254, 254, 254)  # 255 = white?
+    check_arg.ensure_type(text_colour_bgr_white, tuple)
+
     # Do
-    font = cv2.FONT_HERSHEY_COMPLEX
+    font: int = cv2.FONT_HERSHEY_COMPLEX
     four_character_code = cv2.VideoWriter_fourcc(*fourcc)
 
     cv2_video_object = cv2.VideoCapture(video_source)
     # total_frames_of_source_vid = int(cv2_video_object.get(cv2.CAP_PROP_FRAME_COUNT))
-    # logger.debug(f'Total frames: {total_frames_of_source_vid}')
 
-    numpy_frames = []
-    logger.debug(f"Is it opened? {cv2_video_object.isOpened()}")
+    # logger.debug(f"Is it opened? {cv2_video_object.isOpened()}")
 
-    for i in range(len(frames)):
-        label, frame_idx = labels[i], frames[i]
+    numpy_frames: List[np.ndarray] = []
+    # Loop over all requested frames, add text, then append to list for later video creation
+    for i in range(len(frames_indices_list)):
+        label, frame_idx = labels_list[i], frames_indices_list[i]
         cv2_video_object.set(1, frame_idx)
         is_frame_retrieved, frame = cv2_video_object.read()
         if not is_frame_retrieved:
@@ -81,12 +84,10 @@ def make_ex_vid(labels, frames, output_file_name: str, video_source: str, output
             (text_offset_x - 12, text_offset_y + 12),  # pt1, or top left point
             (text_offset_x + text_width + 12, text_offset_y - text_height - 8),  # pt2, or bottom right point
         )
-        box_coordinates = (
-            (text_offset_x - 12, text_offset_y + 12),  # pt1, or top left point
-            (text_offset_x + text_width + 12, text_offset_y - text_height - 8),  # pt2, or bottom right point
-        )
-        cv2.rectangle(frame, box_top_left, box_top_right, rectangle_bgr_black, cv2.FILLED)
 
+        # Add background colour for text
+        cv2.rectangle(frame, box_top_left, box_top_right, rectangle_bgr_black, cv2.FILLED)
+        # Add text
         cv2.putText(
             img=frame,
             text=str(text_for_frame),
@@ -100,32 +101,35 @@ def make_ex_vid(labels, frames, output_file_name: str, video_source: str, output
         numpy_frames.append(frame)
 
     ###########################################################################################
-    # Extract first image in images list. Set dimensions.
+    ### Now that all necessary frames are extracted & labeled, create video with them.
+    # Extract first image in images list. Get dimensions for video.
     height, width, _layers = numpy_frames[0].shape
 
     # Open video writer object
     video_writer = cv2.VideoWriter(
         os.path.join(output_dir, f'{output_file_name}.mp4'),  # Full output file path
-        four_character_code,  # fourcc
+        four_character_code,  # fourcc -- four character code
         output_fps,  # fps
         (width, height)  # frameSize
     )
     # Loop over all images and write to file (as video)
-    log_every = 250
+    log_every = 100
     i = 0
     for img in tqdm(numpy_frames, desc='Writing video...'):  # TODO: low: add progress bar
         video_writer.write(img)
         if i % log_every == 0:
-            logger.debug(f'Working on iter: {i}')
-            # pass
+            logger.debug(f'Working on iteration: {i}')
+            pass
         i += 1
 
     # All done. Release video, clean up, then return.
     video_writer.release()
     cv2.destroyAllWindows()
 
+    return
 
-###
+
+### ___
 
 def generate_video_with_labels(labels: Union[List, Tuple], source_video_file_path, output_file_name, output_fps, fourcc='mp4v', output_dir_path=config.OUTPUT_PATH, **kwargs):
     """
