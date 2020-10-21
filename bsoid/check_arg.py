@@ -55,6 +55,13 @@ def ensure_has_valid_chars_for_path(path):
         raise ValueError(err)
 
 
+def ensure_is_file(path):
+    if not os.path.isfile(path):
+        err = f"Caller: {get_caller_function()}(): file path '{path}' was expected to be a file path but was not."
+        logger.error(err)
+        raise FileNotFoundError(err)
+
+
 def has_invalid_chars_in_name_for_a_file(name, additional_characters: Optional[Collection[str]] = None) -> bool:
     """
     Checks if an invalid characters have been included in a potential path. Useful for checking user
