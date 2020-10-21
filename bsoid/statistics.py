@@ -3,7 +3,6 @@
 """
 from typing import Any, Dict, List, Tuple, Union
 import functools
-import inspect
 import numpy as np
 import pandas as pd
 import re
@@ -13,7 +12,7 @@ from bsoid import config
 
 logger = config.initialize_logger(__name__)
 
-# LLHPROC
+#
 
 
 def boxcar_center(input_array, n) -> np.ndarray:
@@ -53,7 +52,6 @@ def sort_list_nicely_in_place(list_input: list) -> None:
     list_input.sort(key=alphanum_key)
 
 
-@config.deco__log_entry_exit(logger)
 def augmented_runlength_encoding(labels: Union[List, np.ndarray]) -> Tuple[List[Any], List[int], List[int]]:
     """
     TODO: med: purpose // purpose unclear
@@ -124,6 +122,8 @@ def get_feature_distribution(features: np.ndarray):
 
 def rle(in_array) -> Union[Tuple[None, None, None], Tuple[Any, Any, Any]]:
     """
+    # TODO: verify that this works as specified from previous authors.
+        Results differ, but probably shouldn't, from `augmented_runlength_encoding()`
     Run length encoding. Partial credit to R's rle() function. Multi datatype arrays catered-for including non-Numpy.
 
     {
@@ -145,9 +145,9 @@ def rle(in_array) -> Union[Tuple[None, None, None], Tuple[Any, Any, Any]]:
 
     :param in_array: (ndarray) TODO
     :returns:
-        run_lengths: (list) TODO
-        start_positions: (list) TODO
-        values: (list) TODO
+        run_lengths: (ndarray)
+        start_positions: (ndarray) TODO
+        values: (ndarray) TODO
         """
 
     array = np.asarray(in_array)  # Force into numpy array type
