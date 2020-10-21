@@ -27,7 +27,7 @@ import sys
 import time
 
 
-from bsoid import check_arg, config, feature_engineering, io, logging_bsoid, videoprocessing, visuals
+from bsoid import check_arg, config, feature_engineering, io, logging_bsoid, statistics, videoprocessing, visuals
 
 
 logger = config.initialize_logger(__file__)
@@ -69,7 +69,7 @@ class PipelineAttributeHolder:
     df_features_predict_scaled: pd.DataFrame = None
 
     # Test/train split data
-    features_train, features_test, labels_train, labels_test = None, None, None, None
+    # features_train, features_test, labels_train, labels_test = None, None, None, None
 
     # Model objects
     _scaler = None
@@ -642,6 +642,76 @@ class BasePipeline(PipelineAttributeHolder):
             # self.make_video_from_written_frames()
 
         return self
+    def make_behaviour_example_videos(self, data_source: str, video_file_path: str):
+        # Video1DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000.csv
+        file_name_prefix = 'TestExample6'
+        text_bgr = (255, 255, 255)
+        index_leadup = 12
+        max_examples = 3
+
+
+        if data_source in np.unique(self.df_features_train_scaled['data_source'].values):
+            df = self.df_features_train_scaled
+        elif data_source in np.unique(self.df_features_predict_scaled['data_source'].values):
+            df = self.df_features_predict_scaled
+        else:
+            err = f''
+            logger.error(err)
+            raise ValueError(err)
+        logger.debug(f'Total records: {len(df)}')
+
+        df = df.loc[df["data_source"] == data_source].sort_values('frame')
+        print(f'Total source 1 records: {len(df)}')
+
+        # Get RLE
+        assignments = df[self.svm_assignment_col_name].values
+
+        rle_out: Tuple[List, List, List] = statistics.augmented_runlength_encoding(assignments)
+
+        # Zip RLE according to order
+        # First index is value, second is index, third is additional length
+        rle_filt = []
+        for ii in zip(*rle_out): rle_filt.append(list(ii))
+
+        # Roll up same values into a dict. Keys are labels, values are lists of [index, additional length]
+        maxx = 100_000_000
+        jj = 0
+        min_rows_to_include = 12
+        rle_by = {}
+        for label, idx, add_length in rle_filt:
+            rle_by[label] = []
+            if add_length >= min_rows_to_include:
+                # if label not in rle_by:
+                #     rle_by[label] = [[idx, add_length], ]
+                # else:
+                rle_by[label].append([idx, add_length])
+                jj += 1
+            if jj >= maxx:
+                break
+
+        ### Finally: making video clips
+        # Loop over assignments
+        for key, values_list in rle_by.items():
+            #     print(key, values_list[:5])
+            # Loop over examples
+            for i in range(min(max_examples, len(values_list))):
+                prefix = f'Aim: {key} / '
+                idx, add_length = values_list[i]
+                #         print(idx, add_length)
+                lower_bound_row_idx = max(0, int(idx) - index_leadup)
+                upper_bound_row_idx = min(len(df) - 1, idx + add_length + 1 + index_leadup)
+                #         print(lower_bound_row_idx, upper_bound_row_idx)
+                df_selection = df.iloc[lower_bound_row_idx:upper_bound_row_idx, :]
+
+                labels_list = df_selection[p.svm_assignment_col_name].values
+                frames_indices_list = df_selection['frame'].values
+                output_file_name = f'{file_name_prefix}_Example__label_{key}__example_{i}'
+
+                videoprocessing.make_ex_vid(labels_list, frames_indices_list, output_file_name, video_file_path,
+                                            prefix=prefix, text_bgr=text_bgr)
+
+        return self
+
     # Diagnostics and graphs
     def get_plot_svm_assignments_distribution(self) -> Tuple[object, object]:
         fig, ax = visuals.plot_assignment_distribution_histogram(
