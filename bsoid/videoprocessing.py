@@ -23,7 +23,7 @@ logger = config.initialize_logger(__name__)
 
 ### In development
 
-def make_ex_vid(labels_list: Union[List, Tuple], frames_indices_list: Union[List, Tuple], output_file_name: str, video_source: str, output_fps=8, fourcc='mp4v', output_dir=config.OUTPUT_PATH, **kwargs):  # TODO: low: rename func
+def make_ex_vid(labels_list: Union[List, Tuple], frames_indices_list: Union[List, Tuple], output_file_name: str, video_source: str, output_fps=15, fourcc='mp4v', output_dir=config.OUTPUT_PATH, **kwargs):  # TODO: low: rename func
     """
 
     Make a video clip of an existing video
@@ -48,21 +48,22 @@ def make_ex_vid(labels_list: Union[List, Tuple], frames_indices_list: Union[List
                                    f'labels and the list of frames do not match'
         logger.error(non_matching_lengths_err)
         raise ValueError(non_matching_lengths_err)
+
     # Kwargs
     font_scale = kwargs.get('font_scale', 1)
     check_arg.ensure_type(font_scale, int)
     rectangle_bgr_black: Tuple[int, int, int] = kwargs.get('rectangle_bgr', (0, 0, 0))  # 000=Black box?
     check_arg.ensure_type(rectangle_bgr_black, tuple)
-    text_colour_bgr_white = (254, 254, 254)  # 255 = white?
+    text_colour_bgr_white = kwargs.get('text_bgr', (255, 255, 255))  # 255 = white?
     check_arg.ensure_type(text_colour_bgr_white, tuple)
-
+    prefix = kwargs.get('prefix', '')
+    check_arg.ensure_type(prefix, str)
     # Do
     font: int = cv2.FONT_HERSHEY_COMPLEX
     four_character_code = cv2.VideoWriter_fourcc(*fourcc)
 
     cv2_video_object = cv2.VideoCapture(video_source)
     # total_frames_of_source_vid = int(cv2_video_object.get(cv2.CAP_PROP_FRAME_COUNT))
-
     # logger.debug(f"Is it opened? {cv2_video_object.isOpened()}")
 
     numpy_frames: List[np.ndarray] = []
@@ -76,7 +77,7 @@ def make_ex_vid(labels_list: Union[List, Tuple], frames_indices_list: Union[List
                            f'video: {int(cv2_video_object.get(cv2.CAP_PROP_FRAME_COUNT))}'
             raise Exception(no_frame_err)
 
-        text_for_frame = f'Label assigned: {label}'
+        text_for_frame = f'{prefix}Label assigned: {label}'
         text_offset_x, text_offset_y = 50, 50  # TODO: med/low: address magic variables later
 
         text_width, text_height = cv2.getTextSize(text_for_frame, font, fontScale=font_scale, thickness=1)[0]
