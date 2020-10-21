@@ -20,7 +20,7 @@ from typing import Any, Collection, List, Optional, Tuple, Union
 import inspect
 import joblib
 import numpy as np
-# import openTSNE
+# import openTSNE  # openTSNE only supports n_components 2 or less
 import os
 import pandas as pd
 import sys
@@ -42,7 +42,7 @@ class PipelineAttributeHolder:
     """
     # Base information
     _name, _description = 'DefaultPipelineName', 'Default pipeline description'
-    _source_folder: str = None  # Folder in which this pipeline resides
+    _source_folder: str = config.OUTPUT_PATH  # Folder in which this pipeline resides. OUTPUT_PATH is default.
     data_ext: str = 'csv'  # Extension which data is read from
     dims_cols_names: Union[List[str], Tuple[str]] = None
     valid_tsne_sources: set = {'bhtsne', 'sklearn', 'opentsne', }
@@ -87,18 +87,19 @@ class PipelineAttributeHolder:
     tsne_n_jobs: int = None  # n cores used during process
     tsne_verbose: int = None
     # GMM
-    ###TODO: high
+    gmm_n_components: int = None
+    gmm_covariance_type = None
+    gmm_tol: float = None
+    gmm_reg_covar = None
+    gmm_max_iter = None
+    gmm_n_init = None
+    gmm_init_params = None
+    gmm_verbose = None
     # SVM
     svm_c: float = None
     svm_gamma: float = None
     svm_probability: bool = None
     svm_verbose: int = None
-    # Old way of aggregating vars
-    SKLEARN_SVM_PARAMS: dict = {}
-    SKLEARN_EMGMM_PARAMS: dict = {}
-    SKLEARN_TSNE_PARAMS: dict = {}
-
-    _acc_score: float = None
 
     # Misc attributes
     gmm_assignment_col_name = 'gmm_assignment'
@@ -107,13 +108,14 @@ class PipelineAttributeHolder:
                                       'DistBackPawsBaseTailRelativeBodyLength', 'InterforepawDistance', 'BodyLength', ]
     features_which_average_by_sum = ['SnoutToTailbaseChangeInAngle', 'SnoutSpeed', 'TailbaseSpeed']
     features_names_7 = features_which_average_by_mean + features_which_average_by_sum
+    test_col_name = 'is_test_data'
 
     #
     kwargs: dict = {}
 
     # SORT ME
+    _acc_score: float = None
     cross_val_scores: Collection[float] = None
-    test_col_name = 'is_test_data'
 
     # Properties
     @property
@@ -140,10 +142,10 @@ class PipelineAttributeHolder:
     @property
     def scaler(self): return self._scaler
     # Setters
-    def set_name(self, name):
+    def set_name(self, name: str):
         # TODO: will this cause problems later with naming convention?
         if check_arg.has_invalid_chars_in_name_for_a_file(name):
-            invalid_name_err = f'Invalid chars detected for name: {name}.'
+            invalid_name_err = f'Invalid chars detected for name: {name}. Cannot save name.'
             logger.error(invalid_name_err)
             raise ValueError(invalid_name_err)
         self._name = name
@@ -151,18 +153,13 @@ class PipelineAttributeHolder:
         return self
     def set_description(self, description):
         """ Set a description of the pipeline. Include any notes you want to keep regarding the process used. """
-        if not isinstance(description, str):
-            invalid_type_err = f'Invalid type submitted. found: {type(description)} TODO clean up this err message'
-            logger.error(invalid_type_err)
-            raise TypeError(invalid_type_err)
+        check_arg.ensure_type(description, str)
         self._description = description
         return self
-    def set_save_location_folder(self, folder_path):
-        if not os.path.isdir(folder_path):
-            err = f'TODO: elaborate: invalid folder path'
-            logger.error(err)
-            raise ValueError(err)
-        self._source_folder = folder_path
+    def set_save_location(self, dir_path):
+        raise NotImplementedError(f'change not-saved variable in obj?')
+        check_arg.ensure_is_dir(dir_path)
+        self._source_folder = dir_path
 
 
 class BasePipeline(PipelineAttributeHolder):
@@ -175,6 +172,7 @@ class BasePipeline(PipelineAttributeHolder):
     ----------
     name : str
         Name of pipeline. Also is the name of the saved pipeline file.
+
 
     kwargs
         Kwargs default to pulling in data from config file unless overtly specified to override. See below specs.
@@ -196,16 +194,22 @@ class BasePipeline(PipelineAttributeHolder):
         'bhtsne'
             bhtsne explanation goes here
 
-    asdf
+
 
     """
     # Init
-    def __init__(self, name: str = None, save_folder=None, tsne_source=None, data_extension='csv', **kwargs):
+    def __init__(self, name: str = None, save_folder: str = None, tsne_source=None, data_extension='csv', **kwargs):
         # Pipeline name
         if name is not None and not isinstance(name, str):
             raise TypeError(f'name should be of type str but instead found type {type(name)}')
         elif isinstance(name, str):
             self.set_name(name)
+        # Save folder
+        if save_folder is not None:
+            check_arg.ensure_type(save_folder, str)
+            if save_folder:
+                check_arg.ensure_is_dir(save_folder)
+                self._source_folder = save_folder
         # TSNE source
         if tsne_source is not None:
             if not isinstance(tsne_source, str):
@@ -226,9 +230,6 @@ class BasePipeline(PipelineAttributeHolder):
                 raise TypeError(data_ext_type_err)
             self.data_ext = data_extension
 
-        # TODO: add kwargs parsing for dimensions
-
-        # TODO: ADD KWARGS OPTION FOR OVERRIDING VERBOSE in CONFIG.INI!!!!!!!! ****
         # Final setup
         self.__read_in_kwargs(**kwargs)
         self.__read_in_config_file_vars()
@@ -237,29 +238,22 @@ class BasePipeline(PipelineAttributeHolder):
 
     def __read_in_kwargs(self, **kwargs):
         """ Reads in kwargs else pull form config file """
+        # TODO: ADD KWARGS OPTION FOR OVERRIDING VERBOSE in CONFIG.INI!!!!!!!! ****
         # TODO: LOW: add kwargs parsing for averaging over n-frames
         # TODO: low/med: add kwargs for parsing test/train split pct
         # Read in training data source
         train_data_source = kwargs.get('train_data_source')
-        if train_data_source is not None:
-            self.add_train_data_source(train_data_source)
-
+        if train_data_source is not None: self.add_train_data_source(train_data_source)
         # Random state  # TODO: low ensure random state correct
-        random_state = kwargs.get('random_state')
+        random_state = kwargs.get('random_state', config.RANDOM_STATE)
         if random_state is not None:
-            if not isinstance(random_state, int):
-                random_state_type_err = f'Invalid type found for random ' \
-                                        f'state: {type(random_state)} (value: {random_state})'
-                logger.error(random_state_type_err)
-                raise TypeError(random_state_type_err)
+            check_arg.ensure_type(random_state, int)
             self._random_state = random_state
-        else:
-            self._random_state = config.RANDOM_STATE
         ### TSNE ###
         ## SKLEARN ##
-        n_components = kwargs.get('n_components', config.TSNE_N_COMPONENTS)  # TODO: low: shape up kwarg name for n components? See string name
-        check_arg.ensure_type(n_components, int)
-        self.tsne_dimensions = n_components
+        tsne_n_components = kwargs.get('n_components', config.TSNE_N_COMPONENTS)  # TODO: low: shape up kwarg name for n components? See string name
+        check_arg.ensure_type(tsne_n_components, int)
+        self.tsne_dimensions = tsne_n_components
         tsne_n_iter = kwargs.get('tsne_n_iter', config.TSNE_N_ITER)
         check_arg.ensure_type(tsne_n_iter, int)
         self.tsne_n_iter = tsne_n_iter
@@ -763,7 +757,7 @@ class PipelinePrime(BasePipeline):
         # Reconcile args
         if isinstance(list_dfs_raw_data, pd.DataFrame):
             list_dfs_raw_data = [list_dfs_raw_data, ]
-        elif not isinstance(list_dfs_raw_data, list):
+        if not isinstance(list_dfs_raw_data, list):
             raise TypeError(f'Invalid type found: {type(list_dfs_raw_data)} // TODO: elaborate')
 
         # Adaptively filter features
