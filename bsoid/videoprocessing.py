@@ -17,8 +17,112 @@ import time
 
 
 from bsoid import check_arg, config, statistics
+from bsoid.logging_bsoid import get_current_function
 
 logger = config.initialize_logger(__name__)
+
+
+### In development
+def make_ex_vid(labels, frames, output_file_name: str, video_source: str, output_fps=8, fourcc='mp4v', output_dir=config.OUTPUT_PATH, **kwargs):  # TODO: low: rename func
+    """
+
+    Make a video clip of an existing video
+
+    :param labels: (List[Any]) a list of labels to be included onto the frames for the final video
+    :param frames: (List[int]) a list of frames by index to be labeled and included in final video
+    :param video_source: (str) a path to a file ___
+    :param output_file_name:
+    :param output_fps:
+    :param fourcc:
+    :param output_dir:
+    :param kwargs:
+    :return:
+    """
+    # Arg  checking
+    if not os.path.isfile(video_source):
+        not_a_file_err = f'{get_current_function()}(): The following video path is not a file: {video_source}.'
+        logger.error(not_a_file_err)
+        raise ValueError(not_a_file_err)
+    if len(labels) != len(frames):
+        non_matching_lengths_err = f'{get_current_function()}(): the number of labels and the list of frames do not match'
+        logger.error(non_matching_lengths_err)
+        raise ValueError(non_matching_lengths_err)
+    # Kwargs
+    font_scale = kwargs.get('font_scale', 1)
+    check_arg.ensure_type(font_scale, int)
+    rectangle_bgr_black: Tuple[int, int, int] = kwargs.get('rectangle_bgr', (0, 0, 0))  # 000=Black box?
+    check_arg.ensure_type(rectangle_bgr_black, tuple)
+    text_colour_bgr_white = (254, 254, 254)  # 255 = white?
+    # Do
+    font = cv2.FONT_HERSHEY_COMPLEX
+    four_character_code = cv2.VideoWriter_fourcc(*fourcc)
+
+    cv2_video_object = cv2.VideoCapture(video_source)
+    # total_frames_of_source_vid = int(cv2_video_object.get(cv2.CAP_PROP_FRAME_COUNT))
+    # logger.debug(f'Total frames: {total_frames_of_source_vid}')
+
+    numpy_frames = []
+    logger.debug(f"Is it opened? {cv2_video_object.isOpened()}")
+
+    for i in range(len(frames)):
+        label, frame_idx = labels[i], frames[i]
+        cv2_video_object.set(1, frame_idx)
+        is_frame_retrieved, frame = cv2_video_object.read()
+        if not is_frame_retrieved:
+            no_frame_err = f'frame index ({frame_idx}) not found not found. Total frames in ' \
+                           f'video: {int(cv2_video_object.get(cv2.CAP_PROP_FRAME_COUNT))}'
+            raise Exception(no_frame_err)
+
+        text_for_frame = f'Label assigned: {label}'
+        text_offset_x, text_offset_y = 50, 50  # TODO: med/low: address magic variables later
+
+        text_width, text_height = cv2.getTextSize(text_for_frame, font, fontScale=font_scale, thickness=1)[0]
+        box_top_left, box_top_right = (
+            (text_offset_x - 12, text_offset_y + 12),  # pt1, or top left point
+            (text_offset_x + text_width + 12, text_offset_y - text_height - 8),  # pt2, or bottom right point
+        )
+        box_coordinates = (
+            (text_offset_x - 12, text_offset_y + 12),  # pt1, or top left point
+            (text_offset_x + text_width + 12, text_offset_y - text_height - 8),  # pt2, or bottom right point
+        )
+        cv2.rectangle(frame, box_top_left, box_top_right, rectangle_bgr_black, cv2.FILLED)
+
+        cv2.putText(
+            img=frame,
+            text=str(text_for_frame),
+            org=(text_offset_x, text_offset_y),
+            fontFace=font,
+            fontScale=font_scale,
+            color=text_colour_bgr_white,
+            thickness=1
+        )
+        # Wrap up
+        numpy_frames.append(frame)
+
+    ###########################################################################################
+    # Extract first image in images list. Set dimensions.
+    height, width, _layers = numpy_frames[0].shape
+
+    # Open video writer object
+    video_writer = cv2.VideoWriter(
+        os.path.join(output_dir, f'{output_file_name}.mp4'),  # Full output file path
+        four_character_code,  # fourcc
+        output_fps,  # fps
+        (width, height)  # frameSize
+    )
+    # Loop over all images and write to file (as video)
+    log_every = 250
+    i = 0
+    for img in tqdm(numpy_frames, desc='Writing video...'):  # TODO: low: add progress bar
+        video_writer.write(img)
+        if i % log_every == 0:
+            logger.debug(f'Working on iter: {i}')
+            # pass
+        i += 1
+
+    # All done. Release video, clean up, then return.
+    video_writer.release()
+    cv2.destroyAllWindows()
 
 
 ###
@@ -51,7 +155,7 @@ def generate_video_with_labels(labels: Union[List, Tuple], source_video_file_pat
     text_color_bgr = (255, 255, 255)  # 255 = white?
     # Do
     font = cv2.FONT_HERSHEY_COMPLEX
-    four_character_code = cv2.VideoWriter_fourcc(*fourcc)  # TODO: ensure fourcc can be change-able
+    four_character_code = cv2.VideoWriter_fourcc(*fourcc)
 
     cv2_video_object = cv2.VideoCapture(source_video_file_path)
     total_frames_of_source_vid = int(cv2_video_object.get(cv2.CAP_PROP_FRAME_COUNT))
