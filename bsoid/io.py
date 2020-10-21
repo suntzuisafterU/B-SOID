@@ -12,7 +12,7 @@ import re
 import sys
 
 
-from bsoid import config, logging_bsoid, pipeline, statistics
+from bsoid import check_arg, config, logging_bsoid, pipeline, statistics
 
 
 logger = config.initialize_logger(__name__)
@@ -98,15 +98,43 @@ def read_csv(csv_file_path: str, **kwargs) -> pd.DataFrame:
     df = df.reset_index(drop=True)
     # Instantiate 'scorer' column so we can track the model if needed later
     df['scorer'] = dlc_scorer
-    # Save source for future use
-    df['source'] = file_path
+    # File source __________
     df['file_source'] = file_path
     # Save data file name (different from pathing source)
     df['data_source'] = file_name
     # Number the frames
     df['frame'] = range(len(df))
 
+    # Save source for future use
+    # df['source'] = file_path
+
     return df
+
+
+def read_h5(data_file_path, **kwargs) -> pd.DataFrame:
+    # TODO: HIGH IMPLEMENT! :)
+    raise NotImplementedError(f'')
+    return
+
+
+def read_dlc_data(data_file_path: str, **kwargs) -> pd.DataFrame:
+    """
+
+    :param data_file_path:
+    :param kwargs:
+    :return:
+    """
+    check_arg.ensure_is_file(data_file_path)
+    file_extension = data_file_path.split('.')[-1]
+
+    if file_extension == 'csv':
+        return read_csv(data_file_path)
+    elif file_extension == 'h5':
+        return read_h5(data_file_path)
+    else:
+        invalid_ext_err = f'TODO: ELABORATE: invalid file trying to be read-in as DLC output'
+        logger.error(invalid_ext_err)
+        raise ValueError(invalid_ext_err)
 
 
 def read_pipeline(path_to_file: str) -> pipeline:
