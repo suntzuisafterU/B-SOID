@@ -1,4 +1,5 @@
 """
+Legacy file.
 TODO: purpose of file
 """
 # TODO: HIGH: move all the hard math into separate module file.
@@ -25,7 +26,7 @@ import streamlit as st
 import time
 import umap
 
-from bsoid import classify, config, io, videoprocessing, visuals
+from bsoid import classify, config, feature_engineering, io, videoprocessing, visuals
 from bsoid.config import BSOID_BASE_PROJECT_PATH, CROSSVALIDATION_K, DLC_PROJECT_PATH, HDBSCAN_PARAMS, HOLDOUT_PERCENT, MLP_PARAMS, UMAP_PARAMS
 from bsoid.util import likelihoodprocessing, statistics
 
@@ -164,7 +165,7 @@ def run_streamlit_app():
                 my_bar = st.progress(0)
                 for j, filename in enumerate(f):
                     curr_df = pd.read_csv(filename, low_memory=False)
-                    curr_df_filt, perc_rect = likelihoodprocessing.adaptive_filter_LEGACY(curr_df)
+                    curr_df_filt, perc_rect = feature_engineering.adaptive_filter_LEGACY(curr_df)
                     rawdata_list.append(curr_df)
                     perc_rect_list.append(perc_rect)
                     data_list.append(curr_df_filt)
@@ -195,7 +196,7 @@ def run_streamlit_app():
         #         pass
 
     if last_run:
-        with open(os.path.join(OUTPUT_PATH, app_model_data_filename), 'rb') as fr:
+        with open(os.path.join(config.OUTPUT_PATH, app_model_data_filename), 'rb') as fr:
             BASE_PATH, FPS, BODYPARTS, filenames, rawdata_list, training_data, perc_rect_list = joblib.load(fr)
         if st.checkbox('Show % body part processed per file?', False):
             st.write('This line chart shows __% body part below file-based threshold__')
