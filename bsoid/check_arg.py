@@ -1,5 +1,7 @@
 """
-
+Encapsulate all argument checking functions here.
+Since the patterns we use to log and raise exceptions are so frequent and
+    consistent, we abstract away and implement and store them here.
 """
 from typing import Collection, Optional
 import errno
@@ -11,8 +13,8 @@ import sys
 from bsoid.logging_bsoid import get_caller_function
 import bsoid
 
-ERROR_INVALID_NAME = 123  # Necessary for valid filename checking. Do not remove this.
 logger = bsoid.config.initialize_logger(__file__)
+ERROR_INVALID_NAME = 123  # PLO: Necessary for valid file name checking.
 
 
 ###
