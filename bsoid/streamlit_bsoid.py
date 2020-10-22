@@ -26,20 +26,25 @@ start_new_project, load_existing_project = 'Start new', 'Load existing'
 
 ### Page data ###
 
-stuff = dict()
+streamlit_variables_dict = {
+    'Testbutton1': False,
+    'Testbutton2': False,
+}
 
 
 def home(*args, **kwargs):
     """
     Designated home page/entry point when Streamlit is used for B-SOiD
     """
-    global stuff
+    global streamlit_variables_dict
+
     st.markdown("Stuff at top!")
     button1: bool = st.button('Testbutton1')
-    if button1 or stuff['b1']:
-        stuff['b1'] = button1
-        button2 = st.button('TESTBUTTON2')
+    if button1 or streamlit_variables_dict['Testbutton1']:
+        streamlit_variables_dict['Testbutton1'] = button1
+        button2 = st.button('Testbutton2')
         if button2:
+            streamlit_variables_dict['Testbutton2'] = True
             st.markdown('button2 pressed')
 
     line_break()
@@ -47,6 +52,7 @@ def home(*args, **kwargs):
     is_pipeline_loaded = False
 
     ### Sidebar ###
+    st.sidebar.markdown(f'Settings')
     is_project_info_submitted_empty = st.sidebar.empty()
     current_pipeline_name_empty = st.sidebar.empty()
     st.sidebar.markdown('----')
@@ -125,7 +131,7 @@ def home(*args, **kwargs):
     return
 
 
-def show_pipeline_info(p: pipeline.PipelinePrime):
+def show_pipeline_info(p: pipeline.PipelinePrime, **kwargs):
     """"""
     st.markdown(f'## Pipeline basic information')
     st.markdown(f'- Pipeline name: {p.name}')
@@ -138,7 +144,6 @@ def show_pipeline_info(p: pipeline.PipelinePrime):
     st.markdown(f'- Number of data points in df_features: {len(p.df_features) if p.df_features else None}')
     line_break()
 
-    return
     return show_actions(p)
 
 
