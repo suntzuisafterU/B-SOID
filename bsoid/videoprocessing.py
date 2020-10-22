@@ -22,8 +22,8 @@ logger = config.initialize_logger(__name__)
 
 
 ### In development
-
-def make_ex_vid(labels_list: Union[List, Tuple], frames_indices_list: Union[List, Tuple], output_file_name: str, video_source: str, output_fps=15, fourcc='mp4v', output_dir=config.OUTPUT_PATH, **kwargs):  # TODO: low: rename func
+# PREVIOUSLY: fourcc='mp4v'
+def make_ex_vid(labels_list: Union[List, Tuple], frames_indices_list: Union[List, Tuple], output_file_name: str, video_source: str, output_fps=15, fourcc='H264', output_dir=config.EXAMPLE_VIDEOS_OUTPUT_PATH, **kwargs):  # TODO: low: rename func
     """
 
     Make a video clip of an existing video
@@ -32,9 +32,9 @@ def make_ex_vid(labels_list: Union[List, Tuple], frames_indices_list: Union[List
     :param frames_indices_list: (List[int]) a list of frames by index to be labeled and included in final video
     :param video_source: (str) a path to a file ___
     :param output_file_name:
-    :param output_fps:
-    :param fourcc:
-    :param output_dir:
+    :param output_fps: (int)
+    :param fourcc: (str)
+    :param output_dir: (str)
     :param kwargs:
     :return:
     """
