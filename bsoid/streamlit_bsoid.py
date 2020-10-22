@@ -36,17 +36,27 @@ def home(*args, **kwargs):
     """
     Designated home page/entry point when Streamlit is used for B-SOiD
     """
-    global streamlit_variables_dict
+    # global streamlit_variables_dict
+    session_state = get(**streamlit_variables_dict)
+    # session_state = get()
 
     st.markdown("Stuff at top!")
-    button1: bool = st.button('Testbutton1')
-    if button1 or streamlit_variables_dict['Testbutton1']:
-        streamlit_variables_dict['Testbutton1'] = button1
-        button2 = st.button('Testbutton2')
-        if button2:
-            streamlit_variables_dict['Testbutton2'] = True
-            st.markdown('button2 pressed')
+    button1 = st.button('Test Button 1', 'Testbutton1')
+    st.markdown(f'Button 1 = {button1}')
+    st.markdown(f'Pre button1: Button 1 session state: {session_state["Testbutton1"]}')
+    if button1 or session_state['Testbutton1']:
+        line_break()
+        session_state['Testbutton1'] = not session_state['Testbutton1']
 
+        st.markdown(f'In button1: Button 1 session state: {session_state["Testbutton1"]}')
+
+        button2 = st.button('Test Button 2', 'Testbutton2')
+
+        if button2 or session_state['Testbutton2']:
+            line_break()
+            session_state['Testbutton2'] = True
+            st.markdown('button2 pressed')
+    return
     line_break()
     # Set up current function variables
     is_pipeline_loaded = False
@@ -91,7 +101,7 @@ def home(*args, **kwargs):
                                              f'valid directory: "{path_to_project_dir}". TODO: elaborate on error')
                 # If OK: create default pipeline, save, continue
 
-                p = pipeline.PipelinePrime(name=new_project_name).save(path_to_project_dir)
+                p: pipeline.BasePipeline = pipeline.PipelinePrime(name=new_project_name).save(path_to_project_dir)
 
                 st.success('New project pipeline saved to disk')
                 is_pipeline_loaded = True
@@ -110,7 +120,7 @@ def home(*args, **kwargs):
                                             f'User submitted: {path_to_project_file}')
                 # If OK: load project, continue
                 logger.debug(f'Attempting to open: {path_to_project_file}')
-                p = io.read_pipeline(path_to_project_file)
+                p: pipeline.BasePipeline = io.read_pipeline(path_to_project_file)
                 logger.debug(f'Successfully opened: {path_to_project_file}')
                 st.success('Pipeline successfully loaded.')
                 is_pipeline_loaded = True
@@ -190,19 +200,20 @@ def show_actions(p: pipeline.PipelinePrime):
     # st.pyplot(fig)
 
 
-# Accessory functions
+# Accessory functions #
 
 def line_break():
     st.markdown('---')
 
 
 def get_example_vid(path):  # TODO: rename
+    """"""
+    check_arg.ensure_is_file(path)
     with open(path, 'rb') as video_file:
         video_bytes = video_file.read()
     return video_bytes
 
 
-# @st.cache(allow_output_mutation=True, persist=True)
 def plot_GM_assignments_in_3d(data: np.ndarray, assignments, fig_file_prefix='train_assignments', show_now=True, azim_elev = (70,135)) -> object:
     """
     100% copied from bsoid/util/visuals.py....don't keep this functions long term.
@@ -250,7 +261,7 @@ def plot_GM_assignments_in_3d(data: np.ndarray, assignments, fig_file_prefix='tr
     return fig
 
 
-# Attempting to use the hack for saving session state. Delete-able.
+# SessionState: attempting to use the hack for saving session state.
 try:
     import streamlit.ReportThread as ReportThread
     from streamlit.server.Server import Server
@@ -280,6 +291,17 @@ class SessionState(object):
         """
         for key, val in kwargs.items():
             setattr(self, key, val)
+
+    def __getitem__(self, item):
+        try:
+            return getattr(self, item)
+        except Exception as e:
+            logger.error(f'Unexpected eror: {repr(e)}')
+            raise e
+
+    def __setitem__(self, key, value):
+        setattr(self, key, value)
+
 
 
 def get(**kwargs):
@@ -318,7 +340,7 @@ def get(**kwargs):
     current_server = Server.get_current()
     if hasattr(current_server, '_session_infos'):
         # Streamlit < 0.56
-        session_infos = Server.get_current()._session_infos.values()
+        session_infos = Server.get_current().session_infos.values()
     else:
         session_infos = Server.get_current()._session_info_by_id.values()
 
@@ -357,9 +379,9 @@ __all__ = ['get']
 if __name__ == '__main__':
     # Note: this import only necessary when running streamlit onto this file specifically rather than
     #   calling `streamlit run main.py streamlit`
-    BSOID = os.path.dirname(os.path.dirname(__file__))
-    if BSOID not in sys.path:
-        sys.path.insert(0, BSOID)
+    BSOID_project_path = os.path.dirname(os.path.dirname(__file__))
+    if BSOID_project_path not in sys.path:
+        sys.path.insert(0, BSOID_project_path)
     home()
 
 
