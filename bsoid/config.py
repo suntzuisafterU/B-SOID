@@ -70,6 +70,7 @@ VIDEO_OUTPUT_FOLDER_PATH = configuration.get('PATH', 'VIDEOS_OUTPUT_PATH') \
     if configuration.get('PATH', 'VIDEOS_OUTPUT_PATH') else os.path.join(OUTPUT_PATH, 'videos')
 GRAPH_OUTPUT_PATH = os.path.join(OUTPUT_PATH, 'graphs')
 FRAMES_OUTPUT_PATH = os.path.join(OUTPUT_PATH, 'frames')
+EXAMPLE_VIDEOS_OUTPUT_PATH = os.path.join(OUTPUT_PATH, 'example_videos')
 
 # APP: Resolve runtime application settings
 MODEL_NAME = configuration.get('APP', 'OUTPUT_MODEL_NAME')  # Machine learning model name?
