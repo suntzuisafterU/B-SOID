@@ -13,5 +13,6 @@ seaborn>=0.10.0
 scikit-learn>=0.22.1
 streamlit>=0.64.0
 tables
+tkinter
 tqdm>=4.46.0
 umap-learn>=0.4.6

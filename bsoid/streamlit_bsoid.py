@@ -4,6 +4,7 @@ streamlit api: https://docs.streamlit.io/en/stable/api.html
 """
 from matplotlib.axes._axes import _log as matplotlib_axes_logger
 from mpl_toolkits.mplot3d import Axes3D  # Despite being "unused", this import MUST stay for 3d plotting to work. PLO!
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import os
@@ -11,24 +12,27 @@ import pandas as pd
 import streamlit as st
 import sys
 import time
+import tkinter
 import traceback
 
 from bsoid import check_arg, config, io, pipeline
 
 logger = config.initialize_logger(__file__)
 
+matplotlib.use('TkAgg')
 
 ### Instantiate names for buttons, options that can be changed on the fly but logic below stays the same
-title = f'B-SOiD streamlit app'
+title = f'B-SOiD Streamlit app'
 valid_video_extensions = {'avi', 'mp4', }
 # Variables for buttons, drop-down menus, and other things
-start_new_project, load_existing_project = 'Start new', 'Load existing'
+start_new_project_option_text, load_existing_project_option_text = 'Start new', 'Load existing'
 
 ### Page data ###
 
-streamlit_variables_dict = {
-    'Testbutton1': False,
-    'Testbutton2': False,
+streamlit_variables_dict = {  # Instantiate default variable values here
+    # 'Testbutton1': False,
+    # 'Testbutton2': False,
+
 }
 
 
@@ -36,30 +40,28 @@ def home(*args, **kwargs):
     """
     Designated home page/entry point when Streamlit is used for B-SOiD
     """
-    # global streamlit_variables_dict
-    session_state = get(**streamlit_variables_dict)
-    # session_state = get()
-
-    st.markdown("Stuff at top!")
-    button1 = st.button('Test Button 1', 'Testbutton1')
-    st.markdown(f'Pre button1: Button 1 session state: {session_state["Testbutton1"]}')
-    if button1:
-        session_state['Testbutton1'] = not session_state['Testbutton1']
-    if session_state['Testbutton1']:
-        line_break()
-        # session_state['Testbutton1'] = not session_state['Testbutton1']
-
-        st.markdown(f'In button1: Button 1 session state: {session_state["Testbutton1"]}')
-
-        button2 = st.button('Test Button 2', 'Testbutton2')
-        if button2:
-            session_state['Testbutton2'] = not session_state['Testbutton2']
-        if session_state['Testbutton2']:
-            line_break()
-            session_state['Testbutton2'] = True
-            st.markdown('button2 pressed')
-
-    return
+    # # global streamlit_variables_dict
+    # session_state = get(**streamlit_variables_dict)
+    # # session_state = get()
+    #
+    # st.markdown("Stuff at top!")
+    # button1 = st.button('Test Button 1', 'Testbutton1')
+    # st.markdown(f'Pre button1: Button 1 session state: {session_state["Testbutton1"]}')
+    # if button1:
+    #     session_state['Testbutton1'] = not session_state['Testbutton1']
+    # if session_state['Testbutton1']:
+    #     line_break()
+    #     # session_state['Testbutton1'] = not session_state['Testbutton1']
+    #
+    #     st.markdown(f'In button1: Button 1 session state: {session_state["Testbutton1"]}')
+    #
+    #     button2 = st.button('Test Button 2', 'Testbutton2')
+    #     if button2:
+    #         session_state['Testbutton2'] = not session_state['Testbutton2']
+    #     if session_state['Testbutton2']:
+    #         line_break()
+    #         session_state['Testbutton2'] = True
+    #         st.markdown('button2 pressed')
 
     line_break()
     # Set up current function variables
@@ -79,13 +81,13 @@ def home(*args, **kwargs):
     st.markdown('## Open project')
     start_new_opt = st.selectbox(
         label='Start a new project or load an existing one?',
-        options=('', start_new_project, load_existing_project),
+        options=('', start_new_project_option_text, load_existing_project_option_text),
         key='StartProjectSelectBox',
     )
     # Initialize project
     try:
         # Start new project
-        if start_new_opt == start_new_project:
+        if start_new_opt == start_new_project_option_text:
             st.markdown(f'## Create new project pipeline')
             new_project_name = st.text_input(
                 'Enter a new project name. Please only use letters, numbers, and underscores. Press Enter when done.')
@@ -111,7 +113,7 @@ def home(*args, **kwargs):
                 is_pipeline_loaded = True
             is_project_info_submitted_empty.write(f'is_project_info_submitted = {is_project_info_submitted}')
         # Load existing
-        elif start_new_opt == load_existing_project:
+        elif start_new_opt == load_existing_project_option_text:
             st.write('Load existing project pipeline')
             path_to_project_file = st.text_input('Enter full path to existing project pipeline file')
             # is_project_info_submitted = st.button('Submit file', key='SubmitExistingProjectInfo')
@@ -155,7 +157,7 @@ def show_pipeline_info(p: pipeline.PipelinePrime, **kwargs):
     for loc in p.train_data_files_paths:
         st.markdown(f'- - {loc}')
     st.markdown(f'- Are the classifiers built: {p.is_built}')
-    st.markdown(f'- Number of data points in df_features: {len(p.df_features) if p.df_features else None}')
+    st.markdown(f'- Number of data points in df_features: {len(p.df_features_train) if p.df_features_train is not None else None}')
     line_break()
 
     return show_actions(p)
@@ -165,7 +167,7 @@ def show_actions(p: pipeline.PipelinePrime):
     # Rebuild classifiers TODO?
 
     # Sidebar
-    azim = st.sidebar.slider("azimuth (camera angle rotation on Y-axis)", 0, 90, 20, 5)
+    azim = st.sidebar.slider("azimuth (camera angle rotation about the Y-axis)", 0, 90, 20, 5)
     elev = st.sidebar.slider("elevation (camera rotation about the Z-axis)", 0, 180, 110, 5)
     st.sidebar.markdown(f'---')
 
@@ -175,7 +177,7 @@ def show_actions(p: pipeline.PipelinePrime):
     line_break()
 
     st.markdown('### Add new data sources')
-    new_file_button = st.button('Enter new file')
+    new_file_button = st.button('Enter new file')  # TODO
     if new_file_button:
         new_filepath = st.text_input('Insert new data file:')
         if new_filepath:
@@ -197,14 +199,21 @@ def show_actions(p: pipeline.PipelinePrime):
     # view_EMGMM_distributions = st.button('Show EM/GMM distributions', key='ViewEMGMMDistributionsButton')
     # a, b = generate_data(p)
 
-    st.markdown(f'### EM/GMM distributions')
+    st.markdown(f'### Viewing GMM distributions')
 
     # # Temporarily commented
-    # fig = p.plot_assignments_in_3d(azim_elev=(azim, elev))
-    # st.pyplot(fig)
+    # fig, ax = p.plot_assignments_in_3d(azim_elev=(azim, elev))
+    gmm_button = st.button('Pop up GMM distributions')
+    if gmm_button:
+        p.plot_assignments_in_3d(show_now=True)
 
 
 # Accessory functions #
+
+# @st.cache
+def get_3d_plot(p, **kwargs):
+    return p.plot_assignments_in_3d(**kwargs)
+
 
 def line_break():
     st.markdown('---')
@@ -218,15 +227,14 @@ def get_example_vid(path):  # TODO: rename
     return video_bytes
 
 
-def plot_GM_assignments_in_3d(data: np.ndarray, assignments, fig_file_prefix='train_assignments', show_now=True, azim_elev = (70,135)) -> object:
+# @st.cache
+def plot_GM_assignments_in_3d(data: np.ndarray, assignments, show_now=True, azim_elev = (70,135)) -> object:
     """
     100% copied from bsoid/util/visuals.py....don't keep this functions long term.
 
     Plot trained TSNE for EM-GMM assignments
     :param data: 2D array, trained_tsne array (3 columns)
     :param assignments: 1D array, EM-GMM assignments
-    :param fig_file_prefix:
-    :param show_later: use draw() instead of show()
     """
     # Arg checking
     if not isinstance(data, np.ndarray):
@@ -234,23 +242,32 @@ def plot_GM_assignments_in_3d(data: np.ndarray, assignments, fig_file_prefix='tr
         logger.error(err)
         raise TypeError(err)
     # Parse kwargs
-    s = 's'
+    s = 0.5
     marker = 'o'
     alpha = 0.8
     title = 'Assignments by GMM'
     # Plot graph
-    uk = list(np.unique(assignments))
-    R = np.linspace(0, 1, len(uk))
+    # uk = list(np.unique(assignments))
+    R = np.linspace(0, 1, len(np.unique(assignments)))
     colormap = plt.cm.get_cmap("Spectral")(R)
     tsne_x, tsne_y, tsne_z = data[:, 0], data[:, 1], data[:, 2]
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     # Loop over assignments
     for i, g in enumerate(np.unique(assignments)):
-        # Select data for only assignment i
-        idx = np.where(np.array(assignments) == g)
-        # Assign to colour and plot
-        ax.scatter(tsne_x[idx], tsne_y[idx], tsne_z[idx], c=colormap[i], label=g, s=s, marker=marker, alpha=alpha)
+        try:
+            # Select data for only assignment i
+            idx = np.where(np.array(assignments) == g)
+            # Assign to colour and plot
+            ax.scatter(tsne_x[idx], tsne_y[idx], tsne_z[idx], c=colormap[i],
+                       label=g,
+                       s=s,
+                       marker=marker,
+                       alpha=alpha
+                       )
+        except TypeError as te:
+            logger.error(f'type error: {te} // i = {i} / g = {g}')
+            raise te
     ax.set_xlabel('Dim. 1')
     ax.set_ylabel('Dim. 2')
     ax.set_zlabel('Dim. 3')
@@ -262,7 +279,7 @@ def plot_GM_assignments_in_3d(data: np.ndarray, assignments, fig_file_prefix='tr
     else:
         plt.draw()
 
-    return fig
+    return fig, ax
 
 
 # SessionState: attempting to use the hack for saving session state.
@@ -377,6 +394,32 @@ def get(**kwargs):
 __all__ = ['get']
 
 
+# Misc
+def example_of_value_saving():
+    session_state = get(**streamlit_variables_dict)
+
+    st.markdown("# [Title]")
+    button1 = st.button('Test Button 1', 'Testbutton1')
+    st.markdown(f'Pre button1: Button 1 session state: {session_state["Testbutton1"]}')
+    if button1:
+        session_state['Testbutton1'] = not session_state['Testbutton1']
+    if session_state['Testbutton1']:
+        line_break()
+        # session_state['Testbutton1'] = not session_state['Testbutton1']
+
+        st.markdown(f'In button1: Button 1 session state: {session_state["Testbutton1"]}')
+
+        button2 = st.button('Test Button 2', 'Testbutton2')
+        if button2:
+            session_state['Testbutton2'] = not session_state['Testbutton2']
+        if session_state['Testbutton2']:
+            line_break()
+            session_state['Testbutton2'] = True
+            st.markdown('button2 pressed')
+
+    return
+
+
 # Main
 
 if __name__ == '__main__':
@@ -385,7 +428,7 @@ if __name__ == '__main__':
     BSOID_project_path = os.path.dirname(os.path.dirname(__file__))
     if BSOID_project_path not in sys.path:
         sys.path.insert(0, BSOID_project_path)
-    home()
-
+    # home()
+    example_of_value_saving()
 
 
