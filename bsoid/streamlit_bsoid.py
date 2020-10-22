@@ -42,21 +42,25 @@ def home(*args, **kwargs):
 
     st.markdown("Stuff at top!")
     button1 = st.button('Test Button 1', 'Testbutton1')
-    st.markdown(f'Button 1 = {button1}')
     st.markdown(f'Pre button1: Button 1 session state: {session_state["Testbutton1"]}')
-    if button1 or session_state['Testbutton1']:
-        line_break()
+    if button1:
         session_state['Testbutton1'] = not session_state['Testbutton1']
+    if session_state['Testbutton1']:
+        line_break()
+        # session_state['Testbutton1'] = not session_state['Testbutton1']
 
         st.markdown(f'In button1: Button 1 session state: {session_state["Testbutton1"]}')
 
         button2 = st.button('Test Button 2', 'Testbutton2')
-
-        if button2 or session_state['Testbutton2']:
+        if button2:
+            session_state['Testbutton2'] = not session_state['Testbutton2']
+        if session_state['Testbutton2']:
             line_break()
             session_state['Testbutton2'] = True
             st.markdown('button2 pressed')
+
     return
+
     line_break()
     # Set up current function variables
     is_pipeline_loaded = False
@@ -296,12 +300,11 @@ class SessionState(object):
         try:
             return getattr(self, item)
         except Exception as e:
-            logger.error(f'Unexpected eror: {repr(e)}')
+            logger.error(f'Unexpected error: {repr(e)}')
             raise e
 
     def __setitem__(self, key, value):
         setattr(self, key, value)
-
 
 
 def get(**kwargs):
