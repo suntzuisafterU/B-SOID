@@ -201,11 +201,11 @@ def show_actions(p: pipeline.PipelinePrime):
     st.markdown(f'### Reviewing example videos of behaviours')
     example_vids_dir_file_list = [x for x in os.listdir(config.EXAMPLE_VIDEOS_OUTPUT_PATH)
                                   if x.split('.')[-1] in valid_video_extensions]
-    demo_videos = {k: os.path.join(config.EXAMPLE_VIDEOS_OUTPUT_PATH, k)
+    videos_dict = {k: os.path.join(config.EXAMPLE_VIDEOS_OUTPUT_PATH, k)
                    for k in example_vids_dir_file_list}
 
-    vid = st.selectbox("TODO: rename text for video select box", list(demo_videos.keys()), 0)
-    with open(demo_videos[vid], 'rb') as video_file:
+    vid = st.selectbox("TODO: rename text for video select box", list(videos_dict.keys()), 0)
+    with open(videos_dict[vid], 'rb') as video_file:
         # video_file = open(demo_vids[vid], 'rb')
         video_bytes = video_file.read()
         st.video(video_bytes)
@@ -231,61 +231,6 @@ def get_example_vid(path):  # TODO: rename
     with open(path, 'rb') as video_file:
         video_bytes = video_file.read()
     return video_bytes
-
-
-# @st.cache
-def plot_GM_assignments_in_3d(data: np.ndarray, assignments, show_now=True, azim_elev = (70,135)) -> object:
-    """
-    100% copied from bsoid/util/visuals.py....don't keep this functions long term.
-
-    Plot trained TSNE for EM-GMM assignments
-    :param data: 2D array, trained_tsne array (3 columns)
-    :param assignments: 1D array, EM-GMM assignments
-    """
-    # Arg checking
-    if not isinstance(data, np.ndarray):
-        err = f'Expected `data` to be of type numpy.ndarray but instead found: {type(data)} (value = {data}).'
-        logger.error(err)
-        raise TypeError(err)
-    # Parse kwargs
-    s = 0.5
-    marker = 'o'
-    alpha = 0.8
-    title = 'Assignments by GMM'
-    # Plot graph
-    # uk = list(np.unique(assignments))
-    R = np.linspace(0, 1, len(np.unique(assignments)))
-    colormap = plt.cm.get_cmap("Spectral")(R)
-    tsne_x, tsne_y, tsne_z = data[:, 0], data[:, 1], data[:, 2]
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    # Loop over assignments
-    for i, g in enumerate(np.unique(assignments)):
-        try:
-            # Select data for only assignment i
-            idx = np.where(np.array(assignments) == g)
-            # Assign to colour and plot
-            ax.scatter(tsne_x[idx], tsne_y[idx], tsne_z[idx], c=colormap[i],
-                       label=g,
-                       s=s,
-                       marker=marker,
-                       alpha=alpha
-                       )
-        except TypeError as te:
-            logger.error(f'type error: {te} // i = {i} / g = {g}')
-            raise te
-    ax.set_xlabel('Dim. 1')
-    ax.set_ylabel('Dim. 2')
-    ax.set_zlabel('Dim. 3')
-    ax.view_init(*azim_elev)
-    plt.title(title)
-    plt.legend(ncol=3)
-    if show_now:
-        plt.show()
-    else:
-        plt.draw()
-
-    return fig, ax
 
 
 # SessionState: attempting to use the hack for saving session state.
