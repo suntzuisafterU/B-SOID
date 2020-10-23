@@ -20,14 +20,21 @@ Usage
     'Mary'
 
 """
+
+import bsoid
+
 try:
     import streamlit.ReportThread as ReportThread
     from streamlit.server.Server import Server
-except ImportError:
-    # Streamlit >= 0.65.0
+except ImportError:  # For Streamlit >= 0.65.0
     import streamlit.report_thread as ReportThread
     from streamlit.server.server import Server
 
+
+logger = bsoid.config.initialize_logger(__file__)
+
+
+###
 
 class SessionState(object):
     def __init__(self, **kwargs):
@@ -49,6 +56,16 @@ class SessionState(object):
         """
         for key, val in kwargs.items():
             setattr(self, key, val)
+
+    def __getitem__(self, item):
+        try:
+            return getattr(self, item)
+        except Exception as e:
+            logger.error(f'Unexpected error: {repr(e)}')
+            raise e
+
+    def __setitem__(self, key, value):
+        setattr(self, key, value)
 
 
 def get(**kwargs):
@@ -87,7 +104,7 @@ def get(**kwargs):
     current_server = Server.get_current()
     if hasattr(current_server, '_session_infos'):
         # Streamlit < 0.56
-        session_infos = Server.get_current()._session_infos.values()
+        session_infos = Server.get_current().session_infos.values()
     else:
         session_infos = Server.get_current()._session_info_by_id.values()
 
