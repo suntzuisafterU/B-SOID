@@ -351,5 +351,7 @@ def run_classifier_new_pipeline() -> None:
 
 def sample_runtime_function(sleep_secs=3, *args, **kwargs):
     """ Sample function that takes n seconds to run """
+    logger.debug(f'{logging_bsoid.get_current_function()[0][3]}(): '
+                 f'Doing sample runtime execution for {sleep_secs} seconds.')
     time.sleep(sleep_secs)
     return
