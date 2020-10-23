@@ -19,7 +19,7 @@ from bsoid import check_arg, config, io, pipeline
 
 logger = config.initialize_logger(__file__)
 
-matplotlib.use('TkAgg')
+
 
 ### Instantiate names for buttons, options that can be changed on the fly but logic below stays the same
 title = f'B-SOiD Streamlit app'
@@ -40,6 +40,7 @@ def home(*args, **kwargs):
     """
     Designated home page/entry point when Streamlit is used for B-SOiD
     """
+    matplotlib.use('TkAgg')
     # # global streamlit_variables_dict
     # session_state = get(**streamlit_variables_dict)
     # # session_state = get()
@@ -153,11 +154,12 @@ def show_pipeline_info(p: pipeline.PipelinePrime, **kwargs):
     st.markdown(f'- Pipeline name: {p.name}')
     st.markdown(f'- Pipeline description: {p.description}')
     st.markdown(f'- Pipeline file location: {p.file_path}')
-    st.markdown(f'- Data sources: {len(p.train_data_files_paths)}')
-    for loc in p.train_data_files_paths:
-        st.markdown(f'- - {loc}')
+    # st.markdown(f'- TODO: FIX THIS: Data sources: {len(p.train_data_files_paths)}') #?
+    # for loc in p.train_data_files_paths:
+    #     st.markdown(f'- - {loc}')
     st.markdown(f'- Are the classifiers built: {p.is_built}')
-    st.markdown(f'- Number of data points in df_features: {len(p.df_features_train) if p.df_features_train is not None else None}')
+    st.markdown(f'- Number of data points in df_features: '
+                f'{len(p.df_features_train) if p.df_features_train is not None else None}')
     line_break()
 
     return show_actions(p)
@@ -172,40 +174,44 @@ def show_actions(p: pipeline.PipelinePrime):
     st.sidebar.markdown(f'---')
 
     # Main
-    st.markdown(f'## (Re-)build classifiers?')
-    st.markdown('')
-    line_break()
+    st.markdown(f'### (Re-)build classifiers?')
+    st.markdown(f'TODO: button goes here :)')
 
     st.markdown('### Add new data sources')
-    new_file_button = st.button('Enter new file')  # TODO
+    new_file_button = st.button('Enter new file (TODO)')  # TODO
     if new_file_button:
-        new_filepath = st.text_input('Insert new data file:')
-        if new_filepath:
-            if not os.path.isfile(new_filepath) or not os.path.isdir(new_filepath):
-                st.error(ValueError(f'Invalid path to data file: {new_filepath}'))
-                return
-            p.add_train_data_source(new_filepath).save()
+        st.markdown(f'Work In Progress!')
+        # new_filepath = st.text_input('Insert new data file:')
+        # if new_filepath:
+        #     if not os.path.isfile(new_filepath) or not os.path.isdir(new_filepath):
+        #         st.error(ValueError(f'Invalid path to data file: {new_filepath}'))
+        #         return
+        #     p.add_train_data_source(new_filepath).save()
 
-
-    # rebuild_classifiers_button = st.button('Rebuild classifiers', key='RebuildClassifiersButton')
-    # if rebuild_classifiers_button:
-    #     st.markdown(f'### Rebuilding classifiers')
-    #     pass
-    # view_analytics_button = st.button('View Analytics', key='ViewAnalyticsButton')
-    # if view_analytics_button:
-
-    # st.markdown('### Available analytics')
-
-    # view_EMGMM_distributions = st.button('Show EM/GMM distributions', key='ViewEMGMMDistributionsButton')
-    # a, b = generate_data(p)
-
+    line_break()
     st.markdown(f'### Viewing GMM distributions')
 
-    # # Temporarily commented
-    # fig, ax = p.plot_assignments_in_3d(azim_elev=(azim, elev))
+    # GMM diagnostics
     gmm_button = st.button('Pop up GMM distributions')
     if gmm_button:
         p.plot_assignments_in_3d(show_now=True)
+
+    #
+    line_break()
+    st.markdown(f'### Reviewing example videos of behaviours')
+    example_vids_dir_file_list = [x for x in os.listdir(config.EXAMPLE_VIDEOS_OUTPUT_PATH)
+                                  if x.split('.')[-1] in valid_video_extensions]
+    demo_videos = {k: os.path.join(config.EXAMPLE_VIDEOS_OUTPUT_PATH, k)
+                   for k in example_vids_dir_file_list}
+
+    vid = st.selectbox("TODO: rename text for video select box", list(demo_videos.keys()), 0)
+    with open(demo_videos[vid], 'rb') as video_file:
+        # video_file = open(demo_vids[vid], 'rb')
+        video_bytes = video_file.read()
+        st.video(video_bytes)
+
+
+    # button_create_example_vids = st.button('', key='asdfasdf')
 
 
 # Accessory functions #
