@@ -277,8 +277,14 @@ TSNE_SKLEARN_PARAMS = {  # TODO: low: deprecate? This was the old, opaque way of
     'early_exaggeration': TSNE_EARLY_EXAGGERATION,
 }
 
-########################################################################################################################
-##### TESTING VARIABLES #####
+
+##### STREAMLIT VARIABLES ##############################################################################################
+default_pipeline_file_path = configuration.get('STREAMLIT', 'default_pipeline_location')
+
+if default_pipeline_file_path:
+    assert os.path.isfile(default_pipeline_file_path)
+
+##### TESTING VARIABLES ################################################################################################
 # try:
 #     max_rows_to_read_in_from_csv = configuration.getint('TESTING', 'MAX_ROWS_TO_READ_IN_FROM_CSV')
 # except ValueError:  # In the case that the value is empty (since it is optional), assign max possible size to read in
@@ -394,14 +400,14 @@ More example videos are in [this](../examples) directory .
 # Debugging efforts below. __main__ not integral to package, can delete.
 
 if __name__ == '__main__':
-    print(get_config_str())
-    print(f'bodyparts: {bodyparts}')
-    print()
-    print(f'max_rows_to_read_in_from_csv = {max_rows_to_read_in_from_csv}')
-    print(f'VIDEO_FPS = {VIDEO_FPS}')
-    print(f'runtime_timestr = {runtime_timestr}')
-    print(f'config_file_log_folder_path = {config_file_log_folder_path}')
+    # print(get_config_str())
+    # print(f'bodyparts: {bodyparts}')
+    # print()
+    # print(f'max_rows_to_read_in_from_csv = {max_rows_to_read_in_from_csv}')
+    # print(f'VIDEO_FPS = {VIDEO_FPS}')
+    # print(f'runtime_timestr = {runtime_timestr}')
+    # print(f'config_file_log_folder_path = {config_file_log_folder_path}')
+    # print(type(RANDOM_STATE))
+    # print(VIDEO_TO_LABEL_PATH)
+    # print('OUTPUT_VIDEO_FPS', OUTPUT_VIDEO_FPS)
     pass
-    print(type(RANDOM_STATE))
-    print(VIDEO_TO_LABEL_PATH)
-    print('OUTPUT_VIDEO_FPS', OUTPUT_VIDEO_FPS)
