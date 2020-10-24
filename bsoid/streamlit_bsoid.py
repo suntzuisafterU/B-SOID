@@ -127,7 +127,7 @@ def home(*args, **kwargs):
             st.write('Load existing project pipeline')
             path_to_project_file = st.text_input(
                 'Enter full path to existing project pipeline file',
-                "C:\\videoTest1.pipeline",
+                # "C:\\videoTest1.pipeline",
                 key='text_input_load_existing_pipeline'
             )
             # is_project_info_submitted = st.button('Submit file', key='SubmitExistingProjectInfo')
@@ -193,12 +193,6 @@ def show_pipeline_info(p: pipeline.PipelinePrime, session=None, **kwargs):
     line_break()
 
     return show_actions(p)
-
-
-def flip_button_state(button_key: str):
-    # NOTE: LIKELY DOES NOT WORK!
-    file_session[key_button_see_rebuild_options] = not file_session[key_button_see_rebuild_options]
-    pass
 
 
 def show_actions(p: pipeline.PipelinePrime):
@@ -333,13 +327,19 @@ def line_break():
     st.markdown('---')
 
 
-@st.cache
+# @st.cache  # TODO: will st.cache benefit this part?
 def get_example_vid(path):  # TODO: rename
     """"""
     check_arg.ensure_is_file(path)
     with open(path, 'rb') as video_file:
         video_bytes = video_file.read()
     return video_bytes
+
+
+def flip_button_state(button_key: str):
+    # NOTE: LIKELY DOES NOT WORK!
+    file_session[key_button_see_rebuild_options] = not file_session[key_button_see_rebuild_options]
+    pass
 
 
 # # SessionState: attempting to use the hack for saving session state.
