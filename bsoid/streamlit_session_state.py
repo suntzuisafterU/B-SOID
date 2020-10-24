@@ -4,8 +4,6 @@ SOURCE: https://gist.github.com/tvst/036da038ab3e999a64497f42de966a92
 Usage
 -----
 
-    >>> import bsoid.SessionState
-    >>>
     >>> session_state = SessionState.get(user_name='', favorite_color='black')
     >>> session_state.user_name
     ''
@@ -21,7 +19,7 @@ Usage
 
 """
 
-import bsoid
+from bsoid import config
 
 try:
     import streamlit.ReportThread as ReportThread
@@ -31,7 +29,7 @@ except ImportError:  # For Streamlit >= 0.65.0
     from streamlit.server.server import Server
 
 
-logger = bsoid.config.initialize_logger(__file__)
+logger = config.initialize_logger(__file__)
 
 
 ###
