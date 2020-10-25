@@ -15,7 +15,7 @@ Formal readme below
 ## Installation
 
 1. Ensure that you have pip installed
-2. Run the following command: `pip install b-soid` (actual module name TBD)
+2. (Run the following command: `pip install b-soid` (actual module name TBD)) // TODO: med: review
 
 
 
@@ -29,9 +29,18 @@ Setup instructions go here
 
 ## Usage
 
-Usage instructions go here
+TODO: med: Usage instructions go here
 
-To run the streamlit app, run: `streamlit run main.py streamlit`
+### Streamlit
+
+To run normally: `streamlit run main.py streamlit`
+
+To run the Streamlit app with an existing Pipeline file, run: 
+    `streamlit run main.py streamlit -- -p FullPathToMyExisting.pipeline`
+
+
+
+
 
 
 ------------------------------------------------------------------------------------------------------------------------
