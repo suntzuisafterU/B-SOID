@@ -24,7 +24,8 @@ from bsoid import config
 try:
     import streamlit.ReportThread as ReportThread
     from streamlit.server.Server import Server
-except ImportError:  # For Streamlit >= 0.65.0
+except ImportError:
+    # For Streamlit >= 0.65.0
     import streamlit.report_thread as ReportThread
     from streamlit.server.server import Server
 
@@ -67,9 +68,8 @@ class SessionState(object):
 
 
 def get(**kwargs):
-    """Gets a SessionState object for the current session.
-
-    Creates a new object if necessary.
+    """
+    Gets a SessionState object for the current session. Creates a new object if necessary.
 
     Parameters
     ----------
@@ -133,4 +133,4 @@ def get(**kwargs):
     return this_session._custom_session_state
 
 
-__all__ = ['get']
+__all__ = ['get']  # TODO: low: evaluate if we should keep this line. Originally kept in original implementation as bugfix.
