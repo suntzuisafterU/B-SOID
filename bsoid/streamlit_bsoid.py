@@ -54,16 +54,13 @@ streamlit_variables_dict = {  # Instantiate default variable values here
     key_button_see_rebuild_options: False,
     key_button_change_info: False,
     key_button_rebuild_model: False,
-    testbutton1: False,
-    testbutton2: False,
     key_button_rebuild_model_confirmation: False,
     key_button_add_new_data: False,
     key_button_add_train_data_source: False,
     key_button_add_predict_data_source: False,
     key_button_update_description: False,
+    testbutton1: False, testbutton2: False,
 }
-
-file_session = streamlit_session_state.get(**streamlit_variables_dict)
 
 
 # Page layout
@@ -72,18 +69,13 @@ def home(*args, **kwargs):
     """
     Designated home page/entry point when Streamlit is used for B-SOiD
     """
-    # Set up initial variables
+    ### Set up initial variables
+    global file_session
+    file_session = streamlit_session_state.get(**streamlit_variables_dict)
     matplotlib.use('TkAgg')  # For allowing graphs to pop out as separate windows
-    # global streamlit_variables_dict
-    # session_state = streamlit_variables_dict.get(**streamlit_variables_dict)
     is_pipeline_loaded = False
 
     ### Sidebar ###
-
-    # st.sidebar.markdown(f'Settings')
-    # is_project_info_submitted_empty = st.sidebar.empty()
-    # current_pipeline_name_empty = st.sidebar.empty()
-    # st.sidebar.markdown('----')
 
     ### Main Page ###
     st.markdown(f'# {title}')
@@ -116,22 +108,17 @@ def home(*args, **kwargs):
                     raise NotADirectoryError(f'The following (in double quotes) is not a '
                                              f'valid directory: "{path_to_project_dir}". TODO: elaborate on error')
                 # If OK: create default pipeline, save, continue
-
                 p: pipeline.BasePipeline = pipeline.PipelinePrime(name=new_project_name).save(path_to_project_dir)
-
                 st.success('New project pipeline saved to disk')
                 is_pipeline_loaded = True
-            # is_project_info_submitted_empty.write(f'is_project_info_submitted = {is_project_info_submitted}')
         # Option: Load existing project
         elif start_new_opt == load_existing_project_option_text:
             st.write('Load existing project pipeline')
             path_to_project_file = st.text_input(
                 'Enter full path to existing project pipeline file',
-                # "C:\\videoTest1.pipeline",
+                value=config.default_pipeline_file_path if os.path.isfile(config.default_pipeline_file_path) else '',  # TODO: remove this line later, or change to a config default?
                 key='text_input_load_existing_pipeline'
             )
-            # is_project_info_submitted = st.button('Submit file', key='SubmitExistingProjectInfo')
-
             # Do checks
             if path_to_project_file:
                 # Error checking first
@@ -144,7 +131,6 @@ def home(*args, **kwargs):
                 logger.debug(f'Successfully opened: {path_to_project_file}')
                 st.success('Pipeline loaded successfully.')
                 is_pipeline_loaded = True
-                # is_project_info_submitted_empty.write('is_project_info_submitted = %s' % str(bool(path_to_project_file)))
         # Option: no selection made. Wait for user.
         else:
             return
@@ -284,7 +270,8 @@ def show_actions(p: pipeline.PipelinePrime):
                 file_session[key_button_rebuild_model_confirmation] = True
             if file_session[key_button_rebuild_model_confirmation]:
                 with st.spinner('Rebuilding model...'):
-                    app.sample_runtime_function()
+                    p = p.build(True, True).save()
+                    # app.sample_runtime_function()
                 st.success(f'Model was successfully re-built!')
                 file_session[key_button_rebuild_model_confirmation] = False
 
@@ -297,7 +284,6 @@ def show_actions(p: pipeline.PipelinePrime):
     if gmm_button:
         p.plot_assignments_in_3d(show_now=True)
 
-
     ### VIEWING SAMPLE VIDEOS OF BEHAVIOURS
     line_break()
     st.markdown(f'### Reviewing example videos of behaviours')
@@ -305,13 +291,11 @@ def show_actions(p: pipeline.PipelinePrime):
                                   if x.split('.')[-1] in valid_video_extensions]
     videos_dict = {k: os.path.join(config.EXAMPLE_VIDEOS_OUTPUT_PATH, k)
                    for k in example_vids_dir_file_list}
-    # st.markdown(f'')
-    vid = st.selectbox(f"Total videos found: {len(videos_dict)}", list(videos_dict.keys()))  # TODO: low: add key?
+
+    vid = st.selectbox(label=f"Total videos found: {len(videos_dict)}",
+                       options=list(videos_dict.keys()))  # TODO: low: add key?
     try:
         st.video(get_example_vid(videos_dict[vid]))
-        # with open(videos_dict[vid], 'rb') as video_file:
-        #     video_bytes = video_file.read()
-        #     st.video(video_bytes)
     except FileNotFoundError:
         st.error(f'No example behaviour videos were found at this time. Try generating them at check back again after. '
                  f'// DEBUG INFO: path checked: {config.EXAMPLE_VIDEOS_OUTPUT_PATH}')
@@ -319,12 +303,12 @@ def show_actions(p: pipeline.PipelinePrime):
 
 # Accessory functions #
 
-def get_3d_plot(p, **kwargs):
-    return p.plot_assignments_in_3d(**kwargs)
-
-
 def line_break():
     st.markdown('---')
+
+
+def get_3d_plot(p, **kwargs):
+    return p.plot_assignments_in_3d(**kwargs)
 
 
 # @st.cache  # TODO: will st.cache benefit this part?
@@ -340,107 +324,6 @@ def flip_button_state(button_key: str):
     # NOTE: LIKELY DOES NOT WORK!
     file_session[key_button_see_rebuild_options] = not file_session[key_button_see_rebuild_options]
     pass
-
-
-# # SessionState: attempting to use the hack for saving session state.
-#
-# class SessionState(object):
-#     def __init__(self, **kwargs):
-#         """A new SessionState object.
-#
-#         Parameters
-#         ----------
-#         **kwargs : any
-#             Default values for the session state.
-#
-#         Example
-#         -------
-#         >>> session_state = SessionState(user_name='', favorite_color='black')
-#         >>> session_state.user_name = 'Mary'
-#         ''
-#         >>> session_state.favorite_color
-#         'black'
-#
-#         """
-#         for key, val in kwargs.items():
-#             setattr(self, key, val)
-#
-#     def __getitem__(self, item):
-#         try:
-#             return getattr(self, item)
-#         except Exception as e:
-#             logger.error(f'Unexpected error: {repr(e)}')
-#             raise e
-#
-#     def __setitem__(self, key, value):
-#         setattr(self, key, value)
-#
-#
-# def get(**kwargs):
-#     """Gets a SessionState object for the current session.
-#
-#     Creates a new object if necessary.
-#
-#     Parameters
-#     ----------
-#     **kwargs : any
-#         Default values you want to add to the session state, if we're creating a
-#         new one.
-#
-#     Example
-#     -------
-#     >>> session_state = get(user_name='', favorite_color='black')
-#     >>> session_state.user_name
-#     ''
-#     >>> session_state.user_name = 'Mary'
-#     >>> session_state.favorite_color
-#     'black'
-#
-#     Since you set user_name above, next time your script runs this will be the
-#     result:
-#     >>> session_state = get(user_name='', favorite_color='black')
-#     >>> session_state.user_name
-#     'Mary'
-#
-#     """
-#     # Hack to get the session object from Streamlit.
-#
-#     ctx = ReportThread.get_report_ctx()
-#
-#     this_session = None
-#
-#     current_server = Server.get_current()
-#     if hasattr(current_server, '_session_infos'):
-#         # Streamlit < 0.56
-#         session_infos = Server.get_current().session_infos.values()
-#     else:
-#         session_infos = Server.get_current()._session_info_by_id.values()
-#
-#     for session_info in session_infos:
-#         s = session_info.session
-#         if (
-#             # Streamlit < 0.54.0
-#             (hasattr(s, '_main_dg') and s._main_dg == ctx.main_dg)
-#             or
-#             # Streamlit >= 0.54.0
-#             (not hasattr(s, '_main_dg') and s.enqueue == ctx.enqueue)
-#             or
-#             # Streamlit >= 0.65.2
-#             (not hasattr(s, '_main_dg') and s._uploaded_file_mgr == ctx.uploaded_file_mgr)
-#         ):
-#             this_session = s
-#
-#     if this_session is None:
-#         raise RuntimeError(
-#             "Oh noes. Couldn't get your Streamlit Session object. "
-#             'Are you doing something fancy with threads?')
-#
-#     # Got the session object! Now let's attach some state into it.
-#
-#     if not hasattr(this_session, '_custom_session_state'):
-#         this_session._custom_session_state = SessionState(**kwargs)
-#
-#     return this_session._custom_session_state
 
 
 # Misc
