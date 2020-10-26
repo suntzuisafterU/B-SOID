@@ -641,9 +641,9 @@ class BasePipeline(PipelineAttributeHolder):
         # Video1DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000.csv
         file_name_prefix = 'TestExample6'
         text_bgr = (255, 255, 255)
-        index_leadup = 12
-        max_examples = 3
 
+        num_frames_leadup = 12
+        max_examples = 3
 
         if data_source in np.unique(self.df_features_train_scaled['data_source'].values):
             df = self.df_features_train_scaled
@@ -671,7 +671,7 @@ class BasePipeline(PipelineAttributeHolder):
         # Roll up same values into a dict. Keys are labels, values are lists of [index, additional length]
         maxx = 100_000_000
         jj = 0
-        min_rows_to_include = 12
+        min_rows_to_include = 12  ### *** This is the minimum duration for behaviour *** ### <-=------ ******************   #TODO: high: create analysis for min and max durations of all behaviours? USEFUL!!!
         rle_by = {}
         for label, idx, add_length in rle_filt:
             rle_by[label] = []
@@ -689,21 +689,22 @@ class BasePipeline(PipelineAttributeHolder):
         for key, values_list in rle_by.items():
             #     print(key, values_list[:5])
             # Loop over examples
-            for i in range(min(max_examples, len(values_list))):
-                prefix = f'Aim: {key} / '
+            num_examples = min(max_examples, len(values_list))
+            for i in range(num_examples):
+                frame_text_prefix = f'Target: {key} / '
                 idx, add_length = values_list[i]
                 #         print(idx, add_length)
-                lower_bound_row_idx = max(0, int(idx) - index_leadup)
-                upper_bound_row_idx = min(len(df) - 1, idx + add_length + 1 + index_leadup)
+                lower_bound_row_idx = max(0, int(idx) - num_frames_leadup)
+                upper_bound_row_idx = min(len(df)-1, idx + add_length + 1 + num_frames_leadup)
                 #         print(lower_bound_row_idx, upper_bound_row_idx)
                 df_selection = df.iloc[lower_bound_row_idx:upper_bound_row_idx, :]
 
                 labels_list = df_selection[p.svm_assignment_col_name].values
                 frames_indices_list = df_selection['frame'].values
-                output_file_name = f'{file_name_prefix}_Example__label_{key}__example_{i}'
+                output_file_name = f'{file_name_prefix}_Example__label_{key}__example_{i+1}_of_{num_examples}'
 
                 videoprocessing.make_ex_vid(labels_list, frames_indices_list, output_file_name, video_file_path,
-                                            prefix=prefix, text_bgr=text_bgr)
+                                            prefix=frame_text_prefix, text_bgr=text_bgr)
 
         return self
 
