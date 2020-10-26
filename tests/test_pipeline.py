@@ -10,8 +10,8 @@ import pandas as pd
 
 import bsoid
 
-test_file_name = bsoid.config.DEFAULT_CSV_TEST_FILE
-assert os.path.isfile(test_file_name)
+csv_test_file_name = bsoid.config.DEFAULT_CSV_TEST_FILE
+assert os.path.isfile(csv_test_file_name)
 
 
 class TestPipeline(TestCase):
@@ -22,7 +22,7 @@ class TestPipeline(TestCase):
 
         """
         # Arrange
-        p = bsoid.pipeline.PipelinePrime('TestPipeline').add_predict_data_source(test_file_name).build(True)
+        p = bsoid.pipeline.PipelinePrime('TestPipeline').add_predict_data_source(csv_test_file_name).build(True)
 
         # Act
         p = p.scale_transform_train_data()
@@ -47,7 +47,7 @@ Symmetric diff = {unscaled_features_cols.symmetric_difference(scaled_features_co
     def test__pipeline_adding_train_data_file_source__should____(self):  # TODO: low: add should RE: increment
         """"""
         # Arrange
-        data_source_file_path = test_file_name
+        data_source_file_path = csv_test_file_name
         p = bsoid.pipeline.PipelinePrime('Test')
         list_of_sources_before_addition: int = len(p._dfs_list_raw_train_data)
 
@@ -88,7 +88,7 @@ dfs = {[x.to_string() for x in pipeline_65465465465._dfs_list_raw_train_data]}
         """"""
         # Arrange
         p = bsoid.pipeline.PipelinePrime('Test123123123')
-        data_source_file_path = test_file_name
+        data_source_file_path = csv_test_file_name
         self.assertTrue(data_source_file_path not in p.train_data_files_paths)
 
         # Act
@@ -101,18 +101,25 @@ p.train_data_files_paths = {p.train_data_files_paths}
 """.strip()
         self.assertTrue(is_path_now_in_list_of_paths, err_msg)
 
-
-    @skip
     def test__pipeline_add_train_data__(self):  # TODO: add should/when
         """
 
         """
         # Arrange
+        p = bsoid.pipeline.PipelinePrime('Test_65465465465asdfasdfde34asdf')
+        num_sources_before_adding_any = len(p.train_data_files_paths)
 
         # Act
-        is_equal = 1 + 1 == 2
+        p = p.add_train_data_source(csv_test_file_name)
+        num_sources_after_adding_sources = len(p.train_data_files_paths)
+
+        is_equal = num_sources_before_adding_any + 1 == num_sources_after_adding_sources
         # Assert
-        self.assertTrue(is_equal)
+        err_msg = f"""
+
+"""
+        self.assertTrue(is_equal, err_msg)
+
     @skip
     def test__stub2(self):
         """

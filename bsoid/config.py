@@ -266,6 +266,8 @@ TSNE_SKLEARN_PARAMS = {  # TODO: low: deprecate? This was the old, opaque way of
     'early_exaggeration': TSNE_EARLY_EXAGGERATION,
 }
 
+assert isinstance(TSNE_N_ITER, int) and TSNE_N_ITER >= 250, \
+    f'TSNE_N_ITER should be an integer above 250 but was found to be: {TSNE_N_ITER}'
 
 ########################################################################################################################
 # TODO: below under construction
@@ -275,7 +277,6 @@ TSNE_SKLEARN_PARAMS = {  # TODO: low: deprecate? This was the old, opaque way of
 TRAIN_DATA_FOLDER_PATH = os.path.abspath(configuration.get('PATH', 'TRAIN_DATA_FOLDER_PATH'))
 
 PREDICT_DATA_FOLDER_PATH = configuration.get('PATH', 'PREDICT_DATA_FOLDER_PATH')
-
 
 
 TRAIN_FOLDERS_IN_DLC_PROJECT_toBeDeprecated = [  # TODO: DEPREC
