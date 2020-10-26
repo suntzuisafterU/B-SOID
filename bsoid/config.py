@@ -12,7 +12,7 @@ Reading the key/value pair from the config object requires you to first index th
     e.g.: input: config['SectionOfInterest']['KeyOfInterest'] -> output: 'value of interest'
 Another way to od it is using the object method:
     e.g.: input: config.get('section', 'key') -> output: 'value of interest'
-All values read from the config.ini file are string so type conversion must be made for non-string information.
+
 """
 ### Imports
 from ast import literal_eval
@@ -46,7 +46,7 @@ BSOID_BASE_PROJECT_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file
 # Output directory to where you want the analysis to be stored
 default_output_path = os.path.join(BSOID_BASE_PROJECT_PATH, 'output')
 # Set runtime string for consistency
-runtime_timestr = time.strftime("%Y-%m-%d_%HH%MM")
+runtime_timestr: str = time.strftime("%Y-%m-%d_%HH%MM")
 # Set loggers default vars
 default_log_folder_path = Path(BSOID_BASE_PROJECT_PATH, 'logs').absolute()
 default_log_file_name = 'default.log'
@@ -57,7 +57,9 @@ config_file_name = 'config.ini'
 configuration = configparser.ConfigParser()
 configuration.read(os.path.join(BSOID_BASE_PROJECT_PATH, config_file_name))
 
-########################################################################################################################
+# Default variables asserts
+
+
 ### PATH ################################################################################
 DLC_PROJECT_PATH = configuration.get('PATH', 'DLC_PROJECT_PATH')
 OUTPUT_PATH = config_output_path = configuration.get('PATH', 'OUTPUT_PATH').strip() \
@@ -144,9 +146,8 @@ deco__log_entry_exit: callable = logging_bsoid.log_entry_exit  # TODO: temporary
 config_log_file_folder_path = configuration.get('LOGGING', 'LOG_FILE_FOLDER_PATH')
 log_file_folder_path = config_log_file_folder_path if config_log_file_folder_path else default_log_folder_path
 
-config_file_name = configuration.get('LOGGING', 'LOG_FILE_NAME', fallback=default_log_file_name)
-
 # Get logger variables
+config_file_name = configuration.get('LOGGING', 'LOG_FILE_NAME', fallback=default_log_file_name)
 logger_name = configuration.get('LOGGING', 'DEFAULT_LOGGER_NAME')
 log_format = configuration.get('LOGGING', 'LOG_FORMAT', raw=True)
 stdout_log_level = configuration.get('LOGGING', 'STREAM_LOG_LEVEL', fallback=None)
@@ -178,8 +179,8 @@ max_rows_to_read_in_from_csv: int = configuration.getint('TESTING', 'max_rows_to
     if configuration.get('TESTING', 'max_rows_to_read_in_from_csv') else sys.maxsize  # TODO: potentially remove this variable. When comparing pd.read_csv and bsoid.read_csv, they dont match
 
 
-assert os.path.isfile(DEFAULT_CSV_TEST_FILE), f'Test file was not found: {DEFAULT_CSV_TEST_FILE}'
-assert DEFAULT_H5_TEST_FILE or os.path.isfile(DEFAULT_H5_TEST_FILE), f'Test file was not found: {DEFAULT_H5_TEST_FILE}'  # TODO: remove first component in AND
+assert os.path.isfile(DEFAULT_CSV_TEST_FILE), f'CSV test file was not found: {DEFAULT_CSV_TEST_FILE}'
+assert os.path.isfile(DEFAULT_H5_TEST_FILE), f'h5 test file was not found: {DEFAULT_H5_TEST_FILE}'
 
 
 ### EMGMM ########################################
@@ -275,7 +276,6 @@ TRAIN_DATA_FOLDER_PATH = os.path.abspath(configuration.get('PATH', 'TRAIN_DATA_F
 
 PREDICT_DATA_FOLDER_PATH = configuration.get('PATH', 'PREDICT_DATA_FOLDER_PATH')
 
-assert os.path.isabs(TRAIN_DATA_FOLDER_PATH), f'TODO, NOT AN ABS PATH review me! {__file__}'
 
 
 TRAIN_FOLDERS_IN_DLC_PROJECT_toBeDeprecated = [  # TODO: DEPREC
@@ -314,6 +314,8 @@ FRAMES_OUTPUT_PATH = config_value_alternate_output_path_for_annotated_frames = \
 #                                        f'Prediction folder does not exist: {folder_path}'
 #     assert os.path.isabs(folder_path), f'(ToBeDeprecated): PREDICT_FOLDERS_PATH: ' \
 #                                        f'Predict folder PATH is not absolute and should be: {folder_path}'
+
+assert os.path.isabs(TRAIN_DATA_FOLDER_PATH), f'TODO, NOT AN ABS PATH review me! {__file__}'
 
 assert os.path.isdir(config_value_alternate_output_path_for_annotated_frames), \
     f'config_value_alternate_output_path_for_annotated_frames does not exist. ' \
