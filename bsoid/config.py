@@ -14,7 +14,7 @@ Another way to od it is using the object method:
     e.g.: input: config.get('section', 'key') -> output: 'value of interest'
 All values read from the config.ini file are string so type conversion must be made for non-string information.
 """
-
+### Imports
 from ast import literal_eval
 from pathlib import Path
 from typing import List
@@ -30,15 +30,12 @@ import time
 from bsoid import logging_bsoid
 
 
-# Debug opts
+### Debug options
 pd.set_option('display.max_rows', None)
 pd.set_option('display.max_columns', None)
 pd.set_option('display.width', None)
 pd.set_option('display.max_colwidth', None)
 np.set_printoptions(threshold=1_000)
-
-
-deco__log_entry_exit: callable = logging_bsoid.log_entry_exit  # TODO: temporary measure to enable logging when entering/exiting functions
 
 
 ########################################################################################################################
@@ -55,14 +52,13 @@ default_log_folder_path = Path(BSOID_BASE_PROJECT_PATH, 'logs').absolute()
 default_log_file_name = 'default.log'
 # set default config file name
 config_file_name = 'config.ini'
+
 # Load up config file
 configuration = configparser.ConfigParser()
 configuration.read(os.path.join(BSOID_BASE_PROJECT_PATH, config_file_name))
 
-
-##### READ CONFIG FOR RUNTIME VARIABLES ################################################################################
-
-# PATH
+########################################################################################################################
+### PATH ################################################################################
 DLC_PROJECT_PATH = configuration.get('PATH', 'DLC_PROJECT_PATH')
 OUTPUT_PATH = config_output_path = configuration.get('PATH', 'OUTPUT_PATH').strip() \
     if configuration.get('PATH', 'OUTPUT_PATH').strip() else default_output_path
@@ -72,109 +68,81 @@ GRAPH_OUTPUT_PATH = os.path.join(OUTPUT_PATH, 'graphs')
 FRAMES_OUTPUT_PATH = os.path.join(OUTPUT_PATH, 'frames')
 EXAMPLE_VIDEOS_OUTPUT_PATH = os.path.join(OUTPUT_PATH, 'example_videos')
 
-# APP: Resolve runtime application settings
+# PATH asserts
+assert not DLC_PROJECT_PATH or os.path.isdir(DLC_PROJECT_PATH),\
+    f'DLC_PROJECT_PATH SPECIFIED DOES NOT EXIST: {DLC_PROJECT_PATH}'
+assert os.path.isdir(OUTPUT_PATH), f'SPECIFIED OUTPUT PATH INVALID/DOES NOT EXIST: {OUTPUT_PATH}'
+assert os.path.isdir(VIDEO_OUTPUT_FOLDER_PATH), \
+    f'`short_video_output_directory` dir. (value={VIDEO_OUTPUT_FOLDER_PATH}) must exist for runtime but does not.'
+
+
+### APP #######################################################
 MODEL_NAME = configuration.get('APP', 'OUTPUT_MODEL_NAME')  # Machine learning model name?
-MODEL_FILENAME = f'bsoid_model__{MODEL_NAME}.sav'
 PIPELINE_NAME = configuration.get('APP', 'PIPELINE_NAME')
-PIPELINE_FILENAME = f'bsoid_pipeline__{PIPELINE_NAME}.sav'
-RANDOM_STATE: int = configuration.getint('MODEL', 'RANDOM_STATE', fallback=random.randint(1, 100_000_000))
-HOLDOUT_PERCENT: float = configuration.getfloat('MODEL', 'HOLDOUT_TEST_PCT')
-CROSSVALIDATION_K: int = configuration.getint('MODEL', 'CROSS_VALIDATION_K')  # Number of iterations for cross-validation to show it's not over-fitting.
-CROSSVALIDATION_N_JOBS: int = configuration.getint('MODEL', 'CROSS_VALIDATION_N_JOBS')
+VIDEO_TO_LABEL_PATH: str = configuration.get('APP', 'VIDEO_TO_LABEL_PATH')  # Now, pick an example video that corresponds to one of the csv files from the PREDICT_FOLDERS  # TODO: ************* This note from the original author implies that VID_NAME must be a video that corresponds to a csv from PREDICT_FOLDERS
 VIDEO_FPS: int = configuration.getint('APP', 'VIDEO_FRAME_RATE')
-COMPILE_CSVS_FOR_TRAINING: int = configuration.getint('APP', 'COMPILE_CSVS_FOR_TRAINING')  # COMP = 1: Train one classifier for all CSV files; COMP = 0: Classifier/CSV file.
-N_JOBS = configuration.getint('APP', 'N_JOBS')
+COMPILE_CSVS_FOR_TRAINING: int = configuration.getint('APP', 'COMPILE_CSVS_FOR_TRAINING')  # COMP = 1: Train one classifier for all CSV files; COMP = 0: Classifier/CSV file.  # TODO: low: remove? re-evaluate
 PLOT_GRAPHS: bool = configuration.getboolean('APP', 'PLOT_GRAPHS')
 SAVE_GRAPHS_TO_FILE: bool = configuration.getboolean('APP', 'SAVE_GRAPHS_TO_FILE')
+GENERATE_VIDEOS: bool = configuration.getboolean('APP', 'GENERATE_VIDEOS')
 FRAMES_OUTPUT_FORMAT: str = configuration.get('APP', 'FRAMES_OUTPUT_FORMAT')
 DEFAULT_SAVED_GRAPH_FILE_FORMAT: str = configuration.get('APP', 'DEFAULT_SAVED_GRAPH_FILE_FORMAT')
-GENERATE_VIDEOS: bool = configuration.getboolean('APP', 'GENERATE_VIDEOS')
 PERCENT_FRAMES_TO_LABEL: float = configuration.getfloat('APP', 'PERCENT_FRAMES_TO_LABEL')
-# TODO: HIGH: add asserts below for PERCENT_FRAMES_TO_LABEL so that a valid number between 0. and 1. is ensured.
-DEFAULT_TEST_FILE: str = os.path.join(BSOID_BASE_PROJECT_PATH, 'tests', 'test_data',
-                                      configuration.get('TESTING', 'DEFAULT_TEST_FILE'))
+N_JOBS = configuration.getint('APP', 'N_JOBS')
+IDENTIFICATION_ORDER: int = configuration.getint('APP', 'FILE_IDENTIFICATION_ORDER_LEGACY')  # TODO: low: deprecate
+
+# App meta-variables which help standardize things
+PIPELINE_FILENAME = f'bsoid_pipeline__{PIPELINE_NAME}.sav'
+MODEL_FILENAME = f'bsoid_model__{MODEL_NAME}.sav'
+
+# OUTPUT_VIDEO_FPS: an attempt at keeping output video fps consistent to input fps relative to PERCENT_FRAMES_TO_LABEL
 OUTPUT_VIDEO_FPS = configuration.getint('APP', 'OUTPUT_VIDEO_FPS') \
     if configuration.get('APP', 'OUTPUT_VIDEO_FPS').isnumeric() \
     else int(VIDEO_FPS * PERCENT_FRAMES_TO_LABEL)
-IDENTIFICATION_ORDER: int = configuration.getint('APP', 'FILE_IDENTIFICATION_ORDER_LEGACY')  # TODO: low: deprecate
 
 
-# Now, pick an example video that corresponds to one of the csv files from the PREDICT_FOLDERS  # TODO: ************* This note from the original author implies that VID_NAME must be a video that corresponds to a csv from PREDICT_FOLDERS
-# VID_NAME = os.path.join(OST_BASE_PROJECT_PATH, 'GUI_projects', 'labelled_videos', '002_ratA_inc2_above.mp4')  # '/home/aaron/Documents/OST-with-DLC/GUI_projects/labelled_videos/002_ratA_inc2_above.mp4'
-VIDEO_TO_LABEL_PATH: str = configuration.get('APP', 'VIDEO_TO_LABEL_PATH')
-
-
-# Assertions to ensure that, before runtime, the config variables are valid.
-assert not DLC_PROJECT_PATH or os.path.isdir(DLC_PROJECT_PATH), f'DLC_PROJECT_PATH DOES NOT EXIST: {DLC_PROJECT_PATH}'
-assert os.path.isdir(OUTPUT_PATH), f'OUTPUT PATH INVALID/DOES NOT EXIST: {OUTPUT_PATH}'
-assert os.path.isfile(DEFAULT_TEST_FILE), f'Test file was not found: {DEFAULT_TEST_FILE}'
-assert COMPILE_CSVS_FOR_TRAINING in {0, 1}, f'Invalid COMP value detected: {COMPILE_CSVS_FOR_TRAINING}.'
-assert isinstance(IDENTIFICATION_ORDER, int), f'check IDENTIFICATION_ORDER for type validity'
-assert os.path.isdir(VIDEO_OUTPUT_FOLDER_PATH), \
-    f'`short_video_output_directory` dir. (value={VIDEO_OUTPUT_FOLDER_PATH}) must exist for runtime but does not.'
+# APP asserts
 assert not VIDEO_TO_LABEL_PATH or os.path.isfile(VIDEO_TO_LABEL_PATH), \
     f'Video does not exist: {VIDEO_TO_LABEL_PATH}. Check pathing in config.ini file.'
+assert COMPILE_CSVS_FOR_TRAINING in {0, 1}, f'Invalid COMP value detected: {COMPILE_CSVS_FOR_TRAINING}.'
+assert isinstance(PERCENT_FRAMES_TO_LABEL, float) and 0. < PERCENT_FRAMES_TO_LABEL < 1., \
+    f'PERCENT_FRAMES_TO_LABEL is invalid. Value = {PERCENT_FRAMES_TO_LABEL}, type = {type(PERCENT_FRAMES_TO_LABEL)}.'
+assert isinstance(IDENTIFICATION_ORDER, int), f'check IDENTIFICATION_ORDER for type validity'
 
 
-########################################################################################################################
-# TODO: under construction
-##### TRAIN_FOLDERS, PREDICT_FOLDERS
-# TRAIN_FOLDERS & PREDICT_FOLDERS are lists of folders that are implicitly understood to exist within BASE_PATH
+### STREAMLIT ###################################################
+default_pipeline_file_path = configuration.get('STREAMLIT', 'default_pipeline_location')
 
-TRAIN_DATA_FOLDER_PATH = os.path.abspath(configuration.get('PATH', 'TRAIN_DATA_FOLDER_PATH'))
-
-PREDICT_DATA_FOLDER_PATH = configuration.get('PATH', 'PREDICT_DATA_FOLDER_PATH')
-
-assert os.path.isabs(TRAIN_DATA_FOLDER_PATH), f'TODO, NOT AN ABS PATH review me! {__file__}'
+if default_pipeline_file_path:
+    assert os.path.isfile(default_pipeline_file_path)
 
 
-TRAIN_FOLDERS_IN_DLC_PROJECT_toBeDeprecated = [  # TODO: DEPREC
-    'sample_train_data_folder',
-]
-PREDICT_FOLDERS_IN_DLC_PROJECT_toBeDeprecated: List[str] = [  # TODO: DEPREC
-    'sample_predic_data_folder',
-]
+### DLC_FEATURES #########################################################
+def get_part(part) -> str:
+    """
+    For some DLC projects, there are different naming conventions for body parts and their associated
+    column names in the DLC output. This function resolves that name aliasing by actively
+    checking the configuration file to find the true name that is expected for the given bodypart.
+    Get the actual body part name as per the DLC data.
+    """
+    return configuration['DLC_FEATURES'][part]
 
-TRAIN_FOLDERS_PATHS_toBeDeprecated = [os.path.join(DLC_PROJECT_PATH, folder)
-                                      for folder in TRAIN_FOLDERS_IN_DLC_PROJECT_toBeDeprecated
-                                      if not os.path.isdir(folder)]  # TODO: why the if statement?
-
-PREDICT_FOLDERS_PATHS_toBeDeprecated = [os.path.join(DLC_PROJECT_PATH, folder)
-                                        for folder in PREDICT_FOLDERS_IN_DLC_PROJECT_toBeDeprecated]
-
-### Create a folder to store extracted images.
-config_value_alternate_output_path_for_annotated_frames = configuration.get(  # TODO:low:address.deleteable?duplicate?
-    'PATH', 'ALTERNATE_OUTPUT_PATH_FOR_ANNOTATED_FRAMES')
-
-FRAMES_OUTPUT_PATH = config_value_alternate_output_path_for_annotated_frames = \
-    configuration.get('PATH', 'ALTERNATE_OUTPUT_PATH_FOR_ANNOTATED_FRAMES') \
-    if configuration.get('PATH', 'ALTERNATE_OUTPUT_PATH_FOR_ANNOTATED_FRAMES') \
-    else FRAMES_OUTPUT_PATH  # '/home/aaron/Documents/OST-with-DLC/B-SOID/OUTPUT/frames'
+# TODO: add literals?
 
 
-# Asserts  # TODO: delete or rework these asserts below
+### MODEL ################################################
+RANDOM_STATE: int = configuration.getint('MODEL', 'RANDOM_STATE', fallback=random.randint(1, 100_000_000))
+HOLDOUT_PERCENT: float = configuration.getfloat('MODEL', 'HOLDOUT_TEST_PCT')
+CROSSVALIDATION_K: int = configuration.getint('MODEL', 'CROSS_VALIDATION_K')
+CROSSVALIDATION_N_JOBS: int = configuration.getint('MODEL', 'CROSS_VALIDATION_N_JOBS')
 
-# for folder_path in TRAIN_FOLDERS_PATHS_toBeDeprecated:
-#     assert os.path.isdir(folder_path), f'(ToBeDeprecated): TRAIN_FOLDERS_PATH: ' \
-#                                        f'Training folder does not exist: {folder_path}'
-#     assert os.path.isabs(folder_path), f'(ToBeDeprecated): TRAIN_FOLDERS_PATH: ' \
-#                                        f'Predict folder PATH is not absolute and should be: {folder_path}'
 
-# for folder_path in PREDICT_FOLDERS_PATHS_toBeDeprecated:
-#     assert os.path.isdir(folder_path), f'(ToBeDeprecated): PREDICT_FOLDERS_PATH: ' \
-#                                        f'Prediction folder does not exist: {folder_path}'
-#     assert os.path.isabs(folder_path), f'(ToBeDeprecated): PREDICT_FOLDERS_PATH: ' \
-#                                        f'Predict folder PATH is not absolute and should be: {folder_path}'
+### LOGGING ######################################################
 
-assert os.path.isdir(config_value_alternate_output_path_for_annotated_frames), \
-    f'config_value_alternate_output_path_for_annotated_frames does not exist. ' \
-    f'config_value_alternate_output_path_for_annotated_frames = ' \
-    f'\'{config_value_alternate_output_path_for_annotated_frames}\'. Check config.ini pathing.'
+deco__log_entry_exit: callable = logging_bsoid.log_entry_exit  # TODO: temporary measure to enable logging when entering/exiting functions
 
-### LOGGER INSTANTIATION ###############################################################################################
-
-config_file_log_folder_path = configuration.get('LOGGING', 'LOG_FILE_FOLDER_PATH')
-config_file_log_folder_path = config_file_log_folder_path if config_file_log_folder_path else default_log_folder_path
+config_log_file_folder_path = configuration.get('LOGGING', 'LOG_FILE_FOLDER_PATH')
+log_file_folder_path = config_log_file_folder_path if config_log_file_folder_path else default_log_folder_path
 
 config_file_name = configuration.get('LOGGING', 'LOG_FILE_NAME', fallback=default_log_file_name)
 
@@ -183,31 +151,39 @@ logger_name = configuration.get('LOGGING', 'DEFAULT_LOGGER_NAME')
 log_format = configuration.get('LOGGING', 'LOG_FORMAT', raw=True)
 stdout_log_level = configuration.get('LOGGING', 'STREAM_LOG_LEVEL', fallback=None)
 file_log_level = configuration.get('LOGGING', 'FILE_LOG_LEVEL', fallback=None)
-log_file_file_path = str(Path(config_file_log_folder_path, config_file_name).absolute())
+log_file_file_path = str(Path(log_file_folder_path, config_file_name).absolute())
 
 
 # Instantiate file-specific logger. Use at top of file as: "logger = bsoid.config.initialize_logger(__file__)"
 initialize_logger: callable = logging_bsoid.preload_logger_with_config_vars(
     logger_name, log_format, stdout_log_level, file_log_level, log_file_file_path)
 
-assert os.path.isdir(config_file_log_folder_path), f'Path does not exist: {config_file_log_folder_path}'
+# Logging asserts
+assert os.path.isdir(log_file_folder_path), f'Path does not exist: {log_file_folder_path}'
 
-########################################################################################################################
-##### MODEL PARAMETERS #####
 
-UMAP_PARAMS = {
-    'n_neighbors': configuration.getint('UMAP', 'n_neighbors'),
-    'n_components': configuration.getint('UMAP', 'n_components'),
-    'min_dist': configuration.getfloat('UMAP', 'min_dist'),
-    'random_state': RANDOM_STATE,
-}
+##### TESTING VARIABLES ################################################################################################
 
-# HDBSCAN params, density based clustering
-HDBSCAN_PARAMS = {
-    'min_samples': configuration.getint('HDBSCAN', 'min_samples'),  # small value
-}
+DEFAULT_CSV_TEST_FILE: str = os.path.join(
+    BSOID_BASE_PROJECT_PATH, 'tests', 'test_data', configuration.get('TESTING', 'DEFAULT_CSV_TEST_FILE'))
+DEFAULT_H5_TEST_FILE: str = os.path.join(
+    BSOID_BASE_PROJECT_PATH, 'tests', 'test_data', configuration.get('TESTING', 'DEFAULT_H5_TEST_FILE'))
 
-# EM_GMM parameters
+## TODO: low: address comments below
+# try:
+#     max_rows_to_read_in_from_csv = configuration.getint('TESTING', 'MAX_ROWS_TO_READ_IN_FROM_CSV')
+# except ValueError:  # In the case that the value is empty (since it is optional), assign max possible size to read in
+#     max_rows_to_read_in_from_csv = sys.maxsize
+max_rows_to_read_in_from_csv: int = configuration.getint('TESTING', 'max_rows_to_read_in_from_csv') \
+    if configuration.get('TESTING', 'max_rows_to_read_in_from_csv') else sys.maxsize  # TODO: potentially remove this variable. When comparing pd.read_csv and bsoid.read_csv, they dont match
+
+
+assert os.path.isfile(DEFAULT_CSV_TEST_FILE), f'Test file was not found: {DEFAULT_CSV_TEST_FILE}'
+assert DEFAULT_H5_TEST_FILE or os.path.isfile(DEFAULT_H5_TEST_FILE), f'Test file was not found: {DEFAULT_H5_TEST_FILE}'  # TODO: remove first component in AND
+
+
+### EMGMM ########################################
+
 gmm_n_components = configuration.getint('EM/GMM', 'n_components')
 gmm_covariance_type = configuration.get('EM/GMM', 'covariance_type')
 gmm_tol = configuration.getfloat('EM/GMM', 'tol')
@@ -228,7 +204,14 @@ EMGMM_PARAMS = {
     'random_state': RANDOM_STATE,
 }
 
-# Feedforward neural network (MLP) params
+### HDBSCAN -- Density-based clustering ########################################
+hdbscan_min_samples: int = configuration.getint('HDBSCAN', 'min_samples')
+HDBSCAN_PARAMS = {
+    'min_samples': hdbscan_min_samples,
+}
+
+
+### MLP -- Feedforward neural network (MLP) params ########################################
 MLP_PARAMS = {
     'hidden_layer_sizes': literal_eval(configuration.get('MLP', 'hidden_layer_sizes')),
     'activation': configuration.get('MLP', 'activation'),
@@ -241,23 +224,28 @@ MLP_PARAMS = {
     'verbose': configuration.getint('MLP', 'verbose'),
 }
 
-# Multi-class support vector machine classifier params
+### SVM ################################################################################
 svm_c = configuration.getfloat('SVM', 'C')
 svm_gamma = configuration.getfloat('SVM', 'gamma')
 svm_probability = configuration.getboolean('SVM', 'probability')
 svm_verbose = configuration.getint('SVM', 'verbose')
-svm_random_state = RANDOM_STATE
 SVM_PARAMS = {
     'C': svm_c,
     'gamma': svm_gamma,
     'probability': svm_probability,
     'verbose': svm_verbose,
-    'random_state': svm_random_state,
+    'random_state': RANDOM_STATE,
 }
 
+### UMAP ################################################################################
+UMAP_PARAMS = {
+    'n_neighbors': configuration.getint('UMAP', 'n_neighbors'),
+    'n_components': configuration.getint('UMAP', 'n_components'),
+    'min_dist': configuration.getfloat('UMAP', 'min_dist'),
+    'random_state': RANDOM_STATE,
+}
 
-########################################################################################################################
-##### BSOID VOC #####
+### TSNE (BSOID VOC) ################################################################################
 # TSNE parameters, can tweak if you are getting undersplit/oversplit behaviors
 # the missing perplexity is scaled with data size (1% of data for nearest neighbors)
 
@@ -278,23 +266,62 @@ TSNE_SKLEARN_PARAMS = {  # TODO: low: deprecate? This was the old, opaque way of
 }
 
 
-##### STREAMLIT VARIABLES ##############################################################################################
-default_pipeline_file_path = configuration.get('STREAMLIT', 'default_pipeline_location')
-
-if default_pipeline_file_path:
-    assert os.path.isfile(default_pipeline_file_path)
-
-##### TESTING VARIABLES ################################################################################################
-# try:
-#     max_rows_to_read_in_from_csv = configuration.getint('TESTING', 'MAX_ROWS_TO_READ_IN_FROM_CSV')
-# except ValueError:  # In the case that the value is empty (since it is optional), assign max possible size to read in
-#     max_rows_to_read_in_from_csv = sys.maxsize
-max_rows_to_read_in_from_csv: int = configuration.getint('TESTING', 'max_rows_to_read_in_from_csv') \
-    if configuration.get('TESTING', 'max_rows_to_read_in_from_csv') else sys.maxsize  # TODO: potentially remove this variable. When comparing pd.read_csv and bsoid.read_csv, they dont match
-
-
 ########################################################################################################################
-##### LEGACY VARIABLES #####
+# TODO: below under construction
+##### TRAIN_FOLDERS, PREDICT_FOLDERS
+# TRAIN_FOLDERS & PREDICT_FOLDERS are lists of folders that are implicitly understood to exist within BASE_PATH
+
+TRAIN_DATA_FOLDER_PATH = os.path.abspath(configuration.get('PATH', 'TRAIN_DATA_FOLDER_PATH'))
+
+PREDICT_DATA_FOLDER_PATH = configuration.get('PATH', 'PREDICT_DATA_FOLDER_PATH')
+
+assert os.path.isabs(TRAIN_DATA_FOLDER_PATH), f'TODO, NOT AN ABS PATH review me! {__file__}'
+
+
+TRAIN_FOLDERS_IN_DLC_PROJECT_toBeDeprecated = [  # TODO: DEPREC
+    'sample_train_data_folder',
+]
+PREDICT_FOLDERS_IN_DLC_PROJECT_toBeDeprecated: List[str] = [  # TODO: DEPREC
+    'sample_predic_data_folder',
+]
+
+TRAIN_FOLDERS_PATHS_toBeDeprecated = [os.path.join(DLC_PROJECT_PATH, folder)
+                                      for folder in TRAIN_FOLDERS_IN_DLC_PROJECT_toBeDeprecated
+                                      if not os.path.isdir(folder)]  # TODO: why the if statement?
+PREDICT_FOLDERS_PATHS_toBeDeprecated = [os.path.join(DLC_PROJECT_PATH, folder)
+                                        for folder in PREDICT_FOLDERS_IN_DLC_PROJECT_toBeDeprecated]
+
+### Create a folder to store extracted images.
+config_value_alternate_output_path_for_annotated_frames = configuration.get(  # TODO:low:address.deleteable?duplicate?
+    'PATH', 'ALTERNATE_OUTPUT_PATH_FOR_ANNOTATED_FRAMES')
+
+FRAMES_OUTPUT_PATH = config_value_alternate_output_path_for_annotated_frames = \
+    configuration.get('PATH', 'ALTERNATE_OUTPUT_PATH_FOR_ANNOTATED_FRAMES') \
+    if configuration.get('PATH', 'ALTERNATE_OUTPUT_PATH_FOR_ANNOTATED_FRAMES') \
+    else FRAMES_OUTPUT_PATH  # '/home/aaron/Documents/OST-with-DLC/B-SOID/OUTPUT/frames'
+
+
+# Asserts  # TODO: delete or rework these asserts below for legacy variables
+
+# for folder_path in TRAIN_FOLDERS_PATHS_toBeDeprecated:
+#     assert os.path.isdir(folder_path), f'(ToBeDeprecated): TRAIN_FOLDERS_PATH: ' \
+#                                        f'Training folder does not exist: {folder_path}'
+#     assert os.path.isabs(folder_path), f'(ToBeDeprecated): TRAIN_FOLDERS_PATH: ' \
+#                                        f'Predict folder PATH is not absolute and should be: {folder_path}'
+
+# for folder_path in PREDICT_FOLDERS_PATHS_toBeDeprecated:
+#     assert os.path.isdir(folder_path), f'(ToBeDeprecated): PREDICT_FOLDERS_PATH: ' \
+#                                        f'Prediction folder does not exist: {folder_path}'
+#     assert os.path.isabs(folder_path), f'(ToBeDeprecated): PREDICT_FOLDERS_PATH: ' \
+#                                        f'Predict folder PATH is not absolute and should be: {folder_path}'
+
+assert os.path.isdir(config_value_alternate_output_path_for_annotated_frames), \
+    f'config_value_alternate_output_path_for_annotated_frames does not exist. ' \
+    f'config_value_alternate_output_path_for_annotated_frames = ' \
+    f'\'{config_value_alternate_output_path_for_annotated_frames}\'. Check config.ini pathing.'
+
+
+##### LEGACY VARIABLES #################################################################################################
 # This version requires the six body parts Snout/Head, Forepaws/Shoulders, Hindpaws/Hips, Tailbase.
 #   It appears as though the names correlate to the expected index of the feature when in Numpy array form.
 #   (The body parts are numbered in their respective orders)
@@ -324,15 +351,7 @@ BODYPARTS_VOC_LEGACY = {
 }
 
 
-def get_part(part) -> str:
-    """
-    For some DLC projects, there are different naming conventions for body parts and their associated
-    column names in the DLC output. This function resolves that name aliasing by actively
-    checking the configuration file to find the true name that is expected for the given bodypart.
-    Get the actual body part name
-    """
-    return configuration['DLC_FEATURES'][part]
-
+########################################################################################################################
 
 bodyparts = {key: configuration['DLC_FEATURES'][key] for key in configuration['DLC_FEATURES']}
 
@@ -397,7 +416,7 @@ More example videos are in [this](../examples) directory .
 """
 
 
-# Debugging efforts below. __main__ not integral to package, can delete.
+### Debugging efforts below. __main__ not integral to file, can delete later. ########################################
 
 if __name__ == '__main__':
     # print(get_config_str())
@@ -406,7 +425,7 @@ if __name__ == '__main__':
     # print(f'max_rows_to_read_in_from_csv = {max_rows_to_read_in_from_csv}')
     # print(f'VIDEO_FPS = {VIDEO_FPS}')
     # print(f'runtime_timestr = {runtime_timestr}')
-    # print(f'config_file_log_folder_path = {config_file_log_folder_path}')
+    # print(f'log_file_folder_path = {log_file_folder_path}')
     # print(type(RANDOM_STATE))
     # print(VIDEO_TO_LABEL_PATH)
     # print('OUTPUT_VIDEO_FPS', OUTPUT_VIDEO_FPS)

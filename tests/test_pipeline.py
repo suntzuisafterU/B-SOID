@@ -10,7 +10,7 @@ import pandas as pd
 
 import bsoid
 
-test_file_name = bsoid.config.DEFAULT_TEST_FILE
+test_file_name = bsoid.config.DEFAULT_CSV_TEST_FILE
 assert os.path.isfile(test_file_name)
 
 
