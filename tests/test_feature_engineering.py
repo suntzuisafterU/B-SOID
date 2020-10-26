@@ -26,7 +26,6 @@ class TestFeatureEngineering(TestCase):
 
         # Act
 
-
         # Assert
 
         self.assertEqual()
@@ -56,7 +55,7 @@ TODO: improve error message
         new_feature_engineer: callable = bsoid.feature_engineering.engineer_7_features_dataframe
         # Read in data
         df_input_data_original = pd.read_csv(single_test_file_location, nrows=bsoid.config.max_rows_to_read_in_from_csv)
-        arr_input_data_original_filtered, _ = bsoid.util.likelihoodprocessing.process_raw_data_and_filter_adaptively(
+        arr_input_data_original_filtered, _ = bsoid.feature_engineering.process_raw_data_and_filter_adaptively(
             df_input_data_original)
         # input_data_original_ready: List[np.ndarray] = bsoid.feature_engineering.extract_7_features_bsoid_tsne_py(
         #     [arr_input_data_original_filtered, ])
@@ -112,7 +111,7 @@ DIFF:
                                               nrows=bsoid.config.max_rows_to_read_in_from_csv)
 
         # prep functions
-        original_adaptive_filter: callable = bsoid.util.likelihoodprocessing.process_raw_data_and_filter_adaptively
+        original_adaptive_filter: callable = bsoid.feature_engineering.process_raw_data_and_filter_adaptively
         new_adaptive_filter: callable = bsoid.feature_engineering.adaptively_filter_dlc_output
 
         # Act

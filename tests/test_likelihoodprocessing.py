@@ -17,8 +17,8 @@ class test__likelihoodprocessing_functions(TestCase):
         # Arrange
         df_input_data = pd.read_csv(test_file_name, nrows=bsoid.config.max_rows_to_read_in_from_csv)
 
-        original_datapreprocess_function_ADAPTIVE_FILTER = bsoid.util.likelihoodprocessing.adaptive_filter_LEGACY
-        new_datapreprocess_function = bsoid.util.likelihoodprocessing.process_raw_data_and_filter_adaptively
+        original_datapreprocess_function_ADAPTIVE_FILTER = bsoid.feature_engineering.adaptive_filter_LEGACY
+        new_datapreprocess_function = bsoid.feature_engineering.process_raw_data_and_filter_adaptively
 
         # Act
         original_array_output, _ = original_datapreprocess_function_ADAPTIVE_FILTER(df_input_data)

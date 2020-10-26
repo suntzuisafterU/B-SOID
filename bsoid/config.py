@@ -52,7 +52,7 @@ default_log_folder_path = Path(BSOID_BASE_PROJECT_PATH, 'logs').absolute()
 default_log_file_name = 'default.log'
 # set default config file name
 config_file_name = 'config.ini'
-
+valid_dlc_output_extensions = {'csv', 'h5'}
 # Load up config file
 configuration = configparser.ConfigParser()
 configuration.read(os.path.join(BSOID_BASE_PROJECT_PATH, config_file_name))

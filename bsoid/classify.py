@@ -15,8 +15,7 @@ import numpy as np
 import os
 
 # # # B-SOiD imports # # #
-from . import classify_LEGACY, config, feature_engineering, videoprocessing, visuals
-from .util import likelihoodprocessing
+from . import classify_LEGACY, config, feature_engineering, io, logging_bsoid, statistics, videoprocessing, visuals
 
 logger = config.initialize_logger(__name__)
 
@@ -54,7 +53,7 @@ def bsoid_extract_app(data, fps) -> List:
         dxy_smth = []
         ang_smth = []
         for l in range(dis_r.shape[1]):
-            dis_smth.append(likelihoodprocessing.boxcar_center(dis_r[:, l], win_len))
+            dis_smth.append(statistics.boxcar_center(dis_r[:, l], win_len))
         for k in range(dxy_r.shape[1]):
             for kk in range(data_range):
                 dxy_eu[kk, k] = np.linalg.norm(dxy_r[kk, k, :])
@@ -63,8 +62,8 @@ def bsoid_extract_app(data, fps) -> List:
                     a_3d = np.hstack([dxy_r[kk, k, :], 0])
                     c = np.cross(b_3d, a_3d)
                     ang[kk, k] = np.dot(np.dot(np.sign(c[2]), 180) / np.pi, math.atan2(np.linalg.norm(c), np.dot(dxy_r[kk, k, :], dxy_r[kk + 1, k, :])))
-            dxy_smth.append(likelihoodprocessing.boxcar_center(dxy_eu[:, k], win_len))
-            ang_smth.append(likelihoodprocessing.boxcar_center(ang[:, k], win_len))
+            dxy_smth.append(statistics.boxcar_center(dxy_eu[:, k], win_len))
+            ang_smth.append(statistics.boxcar_center(ang[:, k], win_len))
         dis_smth = np.array(dis_smth)
         dxy_smth = np.array(dxy_smth)
         ang_smth = np.array(ang_smth)
@@ -181,7 +180,7 @@ def bsoid_frameshift_py(data_new, scaler, fps: int, clf_SVM) -> List[np.ndarray]
         for z in range(math.floor(fps / 10)):
             labels_fs2.append(labels_fs_x[z])
         labels_frameshifted_high.append(np.array(labels_fs2).flatten('F'))
-    logger.debug(f'{likelihoodprocessing.get_current_function()}: '
+    logger.debug(f'{logging_bsoid.get_current_function()}: '
                  f'Done frameshift-predicting a total of {len(data_new)} files.')
     return labels_frameshifted_high
 
@@ -200,8 +199,7 @@ def main_py(predict_folders: List[str], scaler, fps, svm_classifier__behavioural
         labels_fshigh, 1D array, label/frame
     """
     # Import preprocessed data
-    filenames, data_new, _perc_rect = likelihoodprocessing.\
-        import_csvs_data_from_folders_in_PROJECTPATH_and_process_data(predict_folders)
+    filenames, data_new, _perc_rect = io.import_csvs_data_from_folders_in_PROJECTPATH_and_process_data(predict_folders)
     # Extract features (without 100ms bin integration)
     # features_new = bsoid_extract_py(data_new)  # Implied 100ms bin integration
     features: List[np.ndarray] = feature_engineering.extract_7_features_bsoid_tsne_py(data_new)
@@ -306,10 +304,10 @@ def bsoid_extract_py(data, bodyparts: dict = config.BODYPARTS_PY_LEGACY, fps: in
             cfp_pt_norm[i] = np.linalg.norm(cfp_pt[i, :])
             chp_pt_norm[i] = np.linalg.norm(chp_pt[i, :])
             sn_pt_norm[i] = np.linalg.norm(sn_pt[i, :])
-        fpd_norm_smth = likelihoodprocessing.boxcar_center(fpd_norm, win_len)
-        sn_cfp_norm_smth = likelihoodprocessing.boxcar_center(sn_pt_norm - cfp_pt_norm, win_len)
-        sn_chp_norm_smth = likelihoodprocessing.boxcar_center(sn_pt_norm - chp_pt_norm, win_len)
-        sn_pt_norm_smth = likelihoodprocessing.boxcar_center(sn_pt_norm, win_len)
+        fpd_norm_smth = statistics.boxcar_center(fpd_norm, win_len)
+        sn_cfp_norm_smth = statistics.boxcar_center(sn_pt_norm - cfp_pt_norm, win_len)
+        sn_chp_norm_smth = statistics.boxcar_center(sn_pt_norm - chp_pt_norm, win_len)
+        sn_pt_norm_smth = statistics.boxcar_center(sn_pt_norm, win_len)
 
         sn_pt_ang = np.zeros(data_range - 1)
         sn_disp = np.zeros(data_range - 1)
@@ -322,9 +320,9 @@ def bsoid_extract_py(data, bodyparts: dict = config.BODYPARTS_PY_LEGACY, fps: in
                                   math.atan2(np.linalg.norm(c), np.dot(sn_pt[k, :], sn_pt[k + 1, :])))
             sn_disp[k] = np.linalg.norm(data_array[k + 1, 2 * bodyparts.get('Snout/Head'):2 * bodyparts.get('Snout/Head') + 1] - data_array[k, 2 * bodyparts.get('Snout/Head'):2 * bodyparts.get('Snout/Head') + 1])
             pt_disp[k] = np.linalg.norm(data_array[k + 1, 2 * bodyparts.get('Tailbase'):2 * bodyparts.get('Tailbase') + 1] - data_array[k, 2 * bodyparts.get('Tailbase'):2 * bodyparts.get('Tailbase') + 1])
-        sn_pt_ang_smth = likelihoodprocessing.boxcar_center(sn_pt_ang, win_len)
-        sn_disp_smth = likelihoodprocessing.boxcar_center(sn_disp, win_len)
-        pt_disp_smth = likelihoodprocessing.boxcar_center(pt_disp, win_len)
+        sn_pt_ang_smth = statistics.boxcar_center(sn_pt_ang, win_len)
+        sn_disp_smth = statistics.boxcar_center(sn_disp, win_len)
+        pt_disp_smth = statistics.boxcar_center(pt_disp, win_len)
         features.append(np.vstack((sn_cfp_norm_smth[1:], sn_chp_norm_smth[1:], fpd_norm_smth[1:],
                                    sn_pt_norm_smth[1:], sn_pt_ang_smth[:], sn_disp_smth[:], pt_disp_smth[:])))
     logger.info(f'{inspect.stack()[0][3]}(): Done extracting features from a total of {len(data)} training CSV files.')
