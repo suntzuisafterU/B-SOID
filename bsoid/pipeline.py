@@ -310,12 +310,7 @@ class BasePipeline(PipelineAttributeHolder):
             self._source_folder = config.OUTPUT_PATH
         if self.test_train_split_pct is None:
             self.test_train_split_pct = config.HOLDOUT_PERCENT
-        if len(self.SKLEARN_TSNE_PARAMS) == 0:
-            self.SKLEARN_TSNE_PARAMS = config.TSNE_SKLEARN_PARAMS
-        if len(self.SKLEARN_EMGMM_PARAMS) == 0:
-            self.SKLEARN_EMGMM_PARAMS = config.EMGMM_PARAMS
-        if len(self.SKLEARN_SVM_PARAMS) == 0:
-            self.SKLEARN_SVM_PARAMS = config.SVM_PARAMS
+
     # Read/delete data
     def add_train_data_source(self, *train_data_args):
         """
@@ -728,7 +723,7 @@ len(self._dfs_list_raw_train_data): {len(self._dfs_list_raw_train_data)}
 self.train_data_files_paths: {self.train_data_files_paths}
 """.strip()
         return diag
-    def plot_assignments_in_3d(self, show_now=False, save_to_file=False, azim_elev: Tuple[int, int] = (70, 135)):
+    def plot_assignments_in_3d(self, show_now=False, save_to_file=False, azim_elev: Tuple[int, int] = (70, 135), **kwargs) -> Tuple[object, object]:
         """
 
         :param show_now:
@@ -736,7 +731,7 @@ self.train_data_files_paths: {self.train_data_files_paths}
         :param azim_elev:
         :return:
         """
-        logger.error(f'ERROR: {inspect.stack()[0][3]}(): TODO: IMPLEMENT.')
+        # logger.error(f'ERROR: {inspect.stack()[0][3]}(): TODO: IMPLEMENT.')
         # TODO: low: check for other runtiem vars
         if not self.is_built:  # or not self._has_unused_raw_data:
             e = f'Classifiers have not been built. Nothing to graph.'
@@ -749,8 +744,9 @@ self.train_data_files_paths: {self.train_data_files_paths}
             save_to_file,
             show_now=show_now,
             azim_elev=azim_elev,
+            **kwargs
         )
-        return fig  # self.fig_gm_assignments_3d
+        return fig, ax  # self.fig_gm_assignments_3d
     def plot_cross_val_scoring(self):
         not_implemented = f''
         logger.error(not_implemented)
