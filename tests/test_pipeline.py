@@ -12,7 +12,8 @@ import pandas as pd
 
 import bsoid
 
-csv_test_file_path = bsoid.config.DEFAULT_CSV_TEST_FILE
+long_csv_test_file_path = "FullSample_Video1DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000.csv"
+csv_test_file_path = os.path.join(bsoid.config.BSOID_BASE_PROJECT_PATH, 'tests', 'test_data', long_csv_test_file_path)
 assert os.path.isfile(csv_test_file_path)
 
 
@@ -119,17 +120,24 @@ p.train_data_files_paths = {p.train_data_files_paths}
 """
         self.assertTrue(is_equal, err_msg)
 
-    @skip
-    def test__stub2(self):
+    # @skip
+    def test__add_train_data_AND_build__shouldHaveSameNumRowsInRawDataAsBuiltData__whenRawDataBuilt(self):
         """
-
+        After adding just 1 train data source,
         """
         # Arrange
+        p = bsoid.pipeline.PipelinePrime()
+        p = p.add_train_data_source(csv_test_file_path)
+        original_number_of_data_rows = len(bsoid.read_csv(csv_test_file_path))
 
         # Act
-        is_equal = 1 + 1 == 2
+        p = p.build_classifier()
+        actual_total_rows_after_feature_engineering = len(p.df_features_train)
+
         # Assert
-        self.assertTrue(is_equal)
+        err_msg = f'TODO: err msg'
+        self.assertEqual(original_number_of_data_rows, actual_total_rows_after_feature_engineering, err_msg)
+
     @skip
     def test__stub3(self):
         """
