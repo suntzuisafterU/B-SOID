@@ -20,7 +20,8 @@ logger = config.initialize_logger(__name__)
 
 
 # Command-line functions
-def clear_output_folders() -> None:
+
+def clear_output_folders(*args, **kwargs) -> None:
     """
     For each folder specified below (magic variables be damned),
         delete everything in that folder except for the .placeholder file and any sub-folders there-in.
@@ -53,15 +54,15 @@ def clear_output_folders() -> None:
     return None
 
 
-def streamlit() -> None:
+def streamlit(*args, **kwargs) -> None:
     """ Streamlit code here. Currently this is the first and only iteration of streamlit apps, but
     who knows how many will be created in the future. """
-    streamlit_bsoid.home()
+    streamlit_bsoid.home(*args, **kwargs)
 
 
 # Trying to emulate previous pipelines
 
-def build_and_run_new_pipeline():
+def build_and_run_new_pipeline(*args, **kwargs):
     """ Combines the new pipeline build and new pipeline run into one func to see if
     they can run successfully in succession"""
     build_classifier_new_pipeline()
@@ -69,7 +70,7 @@ def build_and_run_new_pipeline():
     return
 
 
-def build_classifier_new_pipeline(train_folders: List[str] = config.TRAIN_DATA_FOLDER_PATH) -> None:
+def build_classifier_new_pipeline(train_folders: List[str] = config.TRAIN_DATA_FOLDER_PATH, *args, **kwargs) -> None:
     """
     Testing out building new pipeline with dataframes
     new build_py implementation for new pipeline -- TEST
@@ -205,7 +206,7 @@ def build_classifier_new_pipeline(train_folders: List[str] = config.TRAIN_DATA_F
     return
 
 
-def run_classifier_new_pipeline() -> None:
+def run_classifier_new_pipeline(*args, **kwargs) -> None:
     """
     Trying to rework the old classify.py/main() to work with new dataframes approach.
     """
