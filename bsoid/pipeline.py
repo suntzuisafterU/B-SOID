@@ -41,7 +41,7 @@ class PipelineAttributeHolder:
     Implement setters and getters.
     """
     # Base information
-    _name, _description = 'DefaultPipelineName', 'Default pipeline description'
+    _name, _description = 'DefaultPipelineName', '(Default pipeline description)'
     _source_folder: str = config.OUTPUT_PATH  # Folder in which this pipeline resides. OUTPUT_PATH is default.
     data_ext: str = 'csv'  # Extension which data is read from
     dims_cols_names: Union[List[str], Tuple[str]] = None
@@ -87,30 +87,20 @@ class PipelineAttributeHolder:
     tsne_n_jobs: int = None  # n cores used during process
     tsne_verbose: int = None
     # GMM
-    gmm_n_components: int = None
-    gmm_covariance_type = None
-    gmm_tol: float = None
-    gmm_reg_covar = None
-    gmm_max_iter = None
-    gmm_n_init = None
-    gmm_init_params = None
-    gmm_verbose = None
+    gmm_n_components, gmm_covariance_type, gmm_tol, gmm_reg_covar = None,  None, None, None
+    gmm_max_iter, gmm_n_init, gmm_init_params, gmm_verbose = None, None, None, None
     # SVM
-    svm_c: float = None
-    svm_gamma: float = None
-    svm_probability: bool = None
-    svm_verbose: int = None
+    svm_c, svm_gamma, svm_probability, svm_verbose = None, None, None, None
 
-    # Misc attributes
-    gmm_assignment_col_name = 'gmm_assignment'
-    svm_assignment_col_name = 'svm_assignment'
+    # Column names
+    gmm_assignment_col_name, svm_assignment_col_name = 'gmm_assignment', 'svm_assignment'
     features_which_average_by_mean = ['DistFrontPawsTailbaseRelativeBodyLength',
                                       'DistBackPawsBaseTailRelativeBodyLength', 'InterforepawDistance', 'BodyLength', ]
     features_which_average_by_sum = ['SnoutToTailbaseChangeInAngle', 'SnoutSpeed', 'TailbaseSpeed']
     features_names_7 = features_which_average_by_mean + features_which_average_by_sum
     test_col_name = 'is_test_data'
 
-    #
+    # Misc acctributes
     kwargs: dict = {}
 
     # SORT ME
@@ -193,7 +183,6 @@ class BasePipeline(PipelineAttributeHolder):
             sklearn explanation goes here
         'bhtsne'
             bhtsne explanation goes here
-
 
 
     """
@@ -546,9 +535,7 @@ class BasePipeline(PipelineAttributeHolder):
             probability=self.svm_probability,
             verbose=self.svm_verbose,
             random_state=self.random_state,
-            
-            # **self.SKLEARN_SVM_PARAMS
-        )  # TODO: HIGH: manually input SVM params instead of dict
+        )
         self._clf_svm.fit(
             X=df.loc[~df[self.test_col_name]][self.features_names_7],
             y=df.loc[~df[self.test_col_name]][self.gmm_assignment_col_name],
