@@ -6,9 +6,7 @@ TODO: Commands to implement:
     - clear logs
     - clear output folder (+ prompt for confirm)
 """
-from typing import List
 import argparse
-import os
 import sys
 
 import bsoid
@@ -107,12 +105,7 @@ def do_command_from_sysargv_parse(args: List[str]) -> None:
 
 def main():
     ### Parse args
-    # import streamlit as st
-    # try:
     args = parse_args()
-    # except Exception as e:
-    #     logger.error(e)
-    #     st.error(e)
     # args = parse_args_using_sysargv()
 
     ### Do command
