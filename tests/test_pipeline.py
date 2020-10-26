@@ -1,17 +1,19 @@
 """
 
 """
-from typing import List
+
 from unittest import TestCase, skip
+import os
+
+from typing import Any, Dict, List
 import itertools
 import numpy as np
-import os
 import pandas as pd
 
 import bsoid
 
-csv_test_file_name = bsoid.config.DEFAULT_CSV_TEST_FILE
-assert os.path.isfile(csv_test_file_name)
+csv_test_file_path = bsoid.config.DEFAULT_CSV_TEST_FILE
+assert os.path.isfile(csv_test_file_path)
 
 
 class TestPipeline(TestCase):
@@ -22,7 +24,7 @@ class TestPipeline(TestCase):
 
         """
         # Arrange
-        p = bsoid.pipeline.PipelinePrime('TestPipeline').add_predict_data_source(csv_test_file_name).build(True)
+        p = bsoid.pipeline.PipelinePrime('TestPipeline').add_predict_data_source(csv_test_file_path).build(True)
 
         # Act
         p = p.scale_transform_train_data()
@@ -47,7 +49,7 @@ Symmetric diff = {unscaled_features_cols.symmetric_difference(scaled_features_co
     def test__pipeline_adding_train_data_file_source__should____(self):  # TODO: low: add should RE: increment
         """"""
         # Arrange
-        data_source_file_path = csv_test_file_name
+        data_source_file_path = csv_test_file_path
         p = bsoid.pipeline.PipelinePrime('Test')
         list_of_sources_before_addition: int = len(p._dfs_list_raw_train_data)
 
@@ -56,31 +58,28 @@ Symmetric diff = {unscaled_features_cols.symmetric_difference(scaled_features_co
         list_of_sources_after_addition: int = len(p._dfs_list_raw_train_data)
 
         # Assert
-        is_file_list_incremented_by_one_after_adding_new_source = \
-            list_of_sources_before_addition + 1 == list_of_sources_after_addition
 
         err_msg = f"""
 list_of_sources_before_addition = {list_of_sources_before_addition}
 list_of_sources_after_addition = {list_of_sources_after_addition}
 """
-        self.assertTrue(isinstance(p, bsoid.pipeline.BasePipeline))
-        self.assertTrue(is_file_list_incremented_by_one_after_adding_new_source, err_msg)
+        self.assertEqual(list_of_sources_before_addition + 1, list_of_sources_after_addition, err_msg)
 
     def test__pipeline_adding_train_data_file_source__shouldBeZeroToStart(self):  # TODO: low: add should RE: increment
         """"""
         # Arrange
+        p1 = bsoid.pipeline.PipelinePrime('Test_65465465465')
+        expected_amount_of_dataframes = 0
 
         # Act
-        pipeline_65465465465 = bsoid.pipeline.PipelinePrime('Test_65465465465')
+        actual_amount_of_dataframes = len(p1._dfs_list_raw_train_data)
 
         # Assert
-        expected_amount_of_dataframes = 0
-        actual_amount_of_dataframes = len(pipeline_65465465465._dfs_list_raw_train_data)
         err_msg = f"""
 expected_amount_of_dataframes = {expected_amount_of_dataframes}
 actual_amount_of_dataframes = {actual_amount_of_dataframes}
-dfs = {[x.to_string() for x in pipeline_65465465465._dfs_list_raw_train_data]}
-"""
+
+"""  # dfs = {[x.to_string() for x in pipeline_65465465465._dfs_list_raw_train_data]}
         self.assertEqual(expected_amount_of_dataframes, actual_amount_of_dataframes, err_msg)
 
     @skip  # TODO: review if test completely built
@@ -88,7 +87,7 @@ dfs = {[x.to_string() for x in pipeline_65465465465._dfs_list_raw_train_data]}
         """"""
         # Arrange
         p = bsoid.pipeline.PipelinePrime('Test123123123')
-        data_source_file_path = csv_test_file_name
+        data_source_file_path = csv_test_file_path
         self.assertTrue(data_source_file_path not in p.train_data_files_paths)
 
         # Act
@@ -110,7 +109,7 @@ p.train_data_files_paths = {p.train_data_files_paths}
         num_sources_before_adding_any = len(p.train_data_files_paths)
 
         # Act
-        p = p.add_train_data_source(csv_test_file_name)
+        p = p.add_train_data_source(csv_test_file_path)
         num_sources_after_adding_sources = len(p.train_data_files_paths)
 
         is_equal = num_sources_before_adding_any + 1 == num_sources_after_adding_sources

@@ -88,8 +88,8 @@ def plot_assignment_distribution_histogram(assignments: Collection, **kwargs) ->
 
     fig = plt.figure()
     ax = fig.add_subplot(111)
-    for i, g in enumerate(unique_assignments):
-        idx = np.where(assignments == g)
+    for i, assignment in enumerate(unique_assignments):
+        idx = np.where(assignments == assignment)
         plt.hist(assignments[idx], histtype=histtype, color=colormap[i])
 
     return fig, ax
