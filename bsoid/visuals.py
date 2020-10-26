@@ -346,11 +346,11 @@ def plot_GM_assignments_in_3d_tuple(data: np.ndarray, assignments, save_fig_to_f
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     # Loop over assignments
-    for i, g in enumerate(unique_assignments):
+    for i, assignment in enumerate(unique_assignments):
         # Select data for only assignment i
-        idx = np.where(assignments == g)
+        idx = np.where(assignments == assignment)
         # Assign to colour and plot
-        ax.scatter(tsne_x[idx], tsne_y[idx], tsne_z[idx], c=colormap[i], label=g, s=s, marker=marker, alpha=alpha)
+        ax.scatter(tsne_x[idx], tsne_y[idx], tsne_z[idx], c=colormap[i], label=assignment, s=s, marker=marker, alpha=alpha)
     ax.set_xlabel('Dim. 1')
     ax.set_ylabel('Dim. 2')
     ax.set_zlabel('Dim. 3')
