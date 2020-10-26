@@ -18,6 +18,7 @@ assert os.path.isfile(h5_test_file_path)
 class TestIO(TestCase):
 
     # Reading data
+    @skip  # TODO: ensure that bsoid.io.read_h5 is implemented before removing this @skip annotation
     def test__read_h5_read_csv__shouldReturnTheSameOutput__whenBaseDataIsSameButExtensionIsTheOnlyDifference(self):
         """
 
