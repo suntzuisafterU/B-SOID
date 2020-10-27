@@ -144,8 +144,61 @@ p.train_data_files_paths = {p.train_data_files_paths}
         err_msg = f'TODO: err msg'
         self.assertEqual(original_number_of_data_rows, actual_total_rows_after_feature_engineering, err_msg)
 
-    @skip
     def test__stub3(self):
+        """
+        Test to see if output is None if no assignment label found
+        """
+        # Arrange
+        p = bsoid.pipeline.PipelinePrime('APipelineName_asdffdfsdf123987')
+        expected_label = None
+        # Act
+        actual_label = p.get_assignment_label(1)
+        # Assert
+        self.assertEqual(expected_label, actual_label)
+
+    def test__updatingAssignmentActuallyworks(self):
+        """
+
+        """
+        # Arrange
+        p = bsoid.pipeline.PipelinePrime('APipelineName12398asdfasdfaasdfdf989dsdf7')
+        assignment, input_label = 1, 'Behaviour1'
+
+        # Act
+        p = p.update_assignment_label(assignment, input_label)
+
+        actual_label = p.get_assignment_label(assignment)
+        # Assert
+        self.assertEqual(input_label, actual_label)
+
+    def test__updatingAssignment__shouldSaveLabel__whenSavedAndRereadIn(self):
+        """  """
+        # Arrange
+        name = 'DELETE_ME_APipelineName12398asdfasdfaasdfasdfsdf7_aasdf'
+        p_write = bsoid.pipeline.PipelinePrime(name)
+        assignment, input_label = 1, 'Behaviour1'
+
+        # Act
+        p_write = p_write.update_assignment_label(assignment, input_label)
+        p_write.save()
+        p_read = bsoid.read_pipeline(os.path.join(
+            bsoid.config.OUTPUT_PATH,
+            bsoid.pipeline.generate_pipeline_filename(name),
+        ))
+
+        actual_label = p_read.get_assignment_label(assignment)
+        # Assert
+        err = f"""
+Expected label: {input_label}
+
+Actual label: {actual_label}
+
+All labels map: {p_read._map_assignment_to_behaviour}
+"""
+        self.assertEqual(input_label, actual_label, err)
+
+    @skip
+    def test__stub6(self):
         """
 
         """
@@ -155,4 +208,28 @@ p.train_data_files_paths = {p.train_data_files_paths}
         is_equal = 1 + 1 == 2
         # Assert
         self.assertTrue(is_equal)
+
+    @skip
+    def test__stub7(self):
+        """
+
+        """
+        # Arrange
+
+        # Act
+        is_equal = 1 + 1 == 2
+        # Assert
+        self.assertTrue(is_equal)
+    @skip
+    def test__stub8(self):
+        """
+
+        """
+        # Arrange
+
+        # Act
+        is_equal = 1 + 1 == 2
+        # Assert
+        self.assertTrue(is_equal)
+
 
