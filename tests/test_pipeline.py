@@ -120,10 +120,13 @@ p.train_data_files_paths = {p.train_data_files_paths}
 """
         self.assertTrue(is_equal, err_msg)
 
-    # @skip
+    @skip
     def test__add_train_data_AND_build__shouldHaveSameNumRowsInRawDataAsBuiltData__whenRawDataBuilt(self):
         """
         After adding just 1 train data source,
+
+        *** NOTE: This test usually takes a while since it builds the entire model as part of the test ***
+
         """
         # Arrange
         p = bsoid.pipeline.PipelinePrime()
