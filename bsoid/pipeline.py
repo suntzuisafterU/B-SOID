@@ -107,7 +107,7 @@ class PipelineAttributeHolder:
 
     # SORT ME
     _acc_score: float = None
-    cross_val_scores: Collection[float] = None
+    cross_val_scores: Collection[float] = []
     seconds_to_engineer_train_features: float = None
 
     # Getters/Properties

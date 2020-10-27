@@ -48,6 +48,7 @@ key_button_update_description = 'key_key_button_update_description'
 key_button_add_train_data_source = 'key_button_add_train_data_source'
 key_button_add_predict_data_source = 'key_button_add_predict_data_source'
 key_button_update_assignments = 'key_button_update_assignments'
+key_button_view_assignments_distribution = 'key_button_view_assignments_distribution'
 # key_button_review_behaviours = 'key_button_review_behaviours'
 current_assignment = 'current_assignment'
 TestButton1, testbutton2 = 'TestButton1', 'Testbutton2'
@@ -63,6 +64,7 @@ streamlit_variables_dict = {  # Instantiate default variable values here
     key_button_add_predict_data_source: False,
     key_button_update_description: False,
     key_button_update_assignments: False,
+    key_button_view_assignments_distribution: False,
     current_assignment: '',
     TestButton1: False, testbutton2: False,
 }
@@ -189,18 +191,28 @@ def show_pipeline_info(p: pipeline.PipelinePrime, *args, **kwargs):
     st.markdown(f'- Name: **{p.name}**')
     st.markdown(f'- Description: **{p.description}**')
     st.markdown(f'- Local file location: **{p.file_path}**')
-    st.markdown(f'- Training data sources list: '
-                f'{None if len(p.training_data_sources) == 0 else ",".join(p.training_data_sources)}')
+    st.markdown(f'- Training data sources:')
+    if len(p.training_data_sources) > 0:
+        for s in p.training_data_sources:
+            st.markdown(f'- - {s}')
+    else:
+        st.markdown(f'- - **None**')
+    st.markdown(f'- Predict data sources:')
+    if len(p.predict_data_sources) > 0:
+        for s in p.predict_data_sources:
+            st.markdown(f'- - {s}')
+    else:
+        st.markdown(f'- - **None**')
     st.markdown(f'- Test data sources: ')
     st.markdown(f'- Is the model built: **{p.is_built}**')
     st.markdown(f'- - Number of data points in training data set: '
                 f'**{len(p.df_features_train) if p.df_features_train is not None else None}**')
     st.markdown(f'- - Total unique behaviours clusters: **{len(p.unique_assignments)}**')
-    if p.cross_val_scores is not None:
-        cross_val_score_text = f'- Median cross validation score: **{round(np.median(p.cross_val_scores), 2)}** ' \
+    if len(p.cross_val_scores) > 0:
+        cross_val_score_text = f'- - Median cross validation score: **{round(np.median(p.cross_val_scores), 2)}** ' \
                                f'(scores: {[round(x, 3) for x in list(p.cross_val_scores)]})'
     else:
-        cross_val_score_text = f'- Cross validation score not available'
+        cross_val_score_text = f'- - Cross validation score not available'
     st.markdown(f'{cross_val_score_text}')
     # st.markdown(f'- Raw assignment values: **{p.unique_assignments}**')
 
@@ -307,10 +319,12 @@ def show_actions(p: pipeline.PipelinePrime):
 
     ######################################### MODEL DIAGNOSTICS ########################################################
     st.markdown(f'### Model Diagnostics')
-    st.markdown(f'See GMM distributions according to TSNE-reduced feature dimensions // TODO: make this shorter.')
-    st.markdown(f'View distribution of assignments')
+    # st.markdown(f'See GMM distributions according to TSNE-reduced feature dimensions // TODO: make this shorter.')
+    # st.markdown(f'View distribution of assignments')
     view = st.button(f'View assignment distribution')
     if view:
+        file_session[key_button_view_assignments_distribution] = not file_session[key_button_view_assignments_distribution]
+    if file_session[key_button_view_assignments_distribution]:
         fig, ax = p.get_plot_svm_assignments_distribution()
         st.pyplot(fig)
     gmm_button = st.button('Pop out window of GMM distribution')  # TODO: low: phrase this button better?
