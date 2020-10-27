@@ -37,14 +37,12 @@ TODO: med: Usage instructions go here
 
 To run normally: `streamlit run main.py streamlit`
 
-To run the Streamlit app with an existing Pipeline file
+To run the Streamlit app with an existing Pipeline file, run:
 
-  - Linux: `streamlit run main.py streamlit -- -p /path/to/existing.pipeline`
-     
-  - Windows: `streamlit run main.py streamlit -- -p 'C:\Path\to\existing.pipeline'`
-    - The single quotes are required on Windows because of backslash evaluation problems
-    
-
+  - `streamlit run main.py streamlit -- -p '/path/to/existing.pipeline'`
+    - This works with Linux and Windows systems so long as the path is absolute
+    - Ensure that the path to the pipeline is in single quotes so that it is evaluated as raw (or else you 
+    could have problems with backslashes and other weird characters)
 
 
 
