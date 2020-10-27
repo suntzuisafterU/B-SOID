@@ -58,6 +58,10 @@ def make_ex_vid(labels_list: Union[List, Tuple], frames_indices_list: Union[List
     check_arg.ensure_type(text_colour_bgr_white, tuple)
     prefix = kwargs.get('prefix', '')
     check_arg.ensure_type(prefix, str)
+    text_offset_x = kwargs.get('text_offset_x', 50)
+    text_offset_y = kwargs.get('text_offset_y', 125)
+    check_arg.ensure_type(text_offset_x, int)
+    check_arg.ensure_type(text_offset_y, int)
     # Do
     font: int = cv2.FONT_HERSHEY_COMPLEX
     four_character_code = cv2.VideoWriter_fourcc(*fourcc)
@@ -77,8 +81,8 @@ def make_ex_vid(labels_list: Union[List, Tuple], frames_indices_list: Union[List
                            f'video: {int(cv2_video_object.get(cv2.CAP_PROP_FRAME_COUNT))}'
             raise Exception(no_frame_err)
 
-        text_for_frame = f'{prefix}Label assigned: {label}'
-        text_offset_x, text_offset_y = 50, 50  # TODO: med/low: address magic variables later
+        text_for_frame = f'{prefix}Current Assignment: {label}'
+          # TODO: med/low: address magic variables later
 
         text_width, text_height = cv2.getTextSize(text_for_frame, font, fontScale=font_scale, thickness=1)[0]
         box_top_left, box_top_right = (
