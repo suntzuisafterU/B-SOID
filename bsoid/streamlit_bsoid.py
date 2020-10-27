@@ -5,12 +5,12 @@ streamlit api: https://docs.streamlit.io/en/stable/api.html
 from matplotlib.axes._axes import _log as matplotlib_axes_logger
 from mpl_toolkits.mplot3d import Axes3D  # Despite being "unused", this import MUST stay for 3d plotting to work. PLO!
 import matplotlib
-import matplotlib.pyplot as plt
 import numpy as np
 import os
-import pandas as pd
 import streamlit as st
 import sys
+import matplotlib.pyplot as plt
+import pandas as pd
 import time
 import tkinter
 import traceback
@@ -18,18 +18,6 @@ import traceback
 from bsoid import app, check_arg, config, io, pipeline, streamlit_session_state
 
 logger = config.initialize_logger(__file__)
-
-
-# Streamlit hack. TODO: low: organize
-try:
-    import streamlit.ReportThread as ReportThread
-    from streamlit.server.Server import Server
-except ImportError:
-    # Streamlit >= 0.65.0
-    import streamlit.report_thread as ReportThread
-    from streamlit.server.server import Server
-
-# __all__ = ['get']
 
 
 ### Instantiate names for buttons, options that can be changed on the fly but logic below stays the same
@@ -46,7 +34,7 @@ key_button_change_info = 'key_button_change_info'
 key_button_rebuild_model = 'key_button_rebuild_model'
 key_button_rebuild_model_confirmation = 'key_button_rebuild_model_confirmation'
 key_button_add_new_data = 'key_button_add_new_data'
-key_button_update_description = 'key_key_button_update_description'
+key_button_update_description = 'key_button_update_description'
 key_button_add_train_data_source = 'key_button_add_train_data_source'
 key_button_add_predict_data_source = 'key_button_add_predict_data_source'
 key_button_update_assignments = 'key_button_update_assignments'
@@ -309,14 +297,65 @@ def show_actions(p: pipeline.PipelinePrime):
         st.markdown('')
 
     # Menu: rebuilding classifier
-    button_see_rebuild_options = st.button('Rebuild model (WIP)', key_button_see_rebuild_options)
+    button_see_rebuild_options = st.button('Expand/Collapse Model Parameters (WIP)', key_button_see_rebuild_options)
     if button_see_rebuild_options:  # Click button, flip state
         file_session[key_button_see_rebuild_options] = not file_session[key_button_see_rebuild_options]
     if file_session[key_button_see_rebuild_options]:  # Now check on value and display accordingly
         st.markdown('')
-        slider_gmm_n_components = st.slider(f'GMM Components (currently set at: {p.gmm_n_components})', 2, 40, p.gmm_n_components)
+        st.markdown(f'- **(WIP) This section is a work-in-progress!**')
+        st.markdown(f'## TSNE Parameters')
+        # [TSNE]
+        # # early_exaggeration (float, required):
+        # early_exaggeration = 16
+        input_tsne_early_exaggeration = st.number_input(f'TSNE: early exaggeration (current model value set at: {p.tsne_early_exaggeration})', min_value=0., max_value=100., value=p.tsne_early_exaggeration, step=0.1, format='%f')
+
+        input_tsne_n_components = st.slider(f'TSNE: n components (current value: {p.tsne_dimensions})', min_value=1, max_value=10, value=p.tsne_dimensions)
+
+        # # n_iter (required, int): 250 is the minimum value...previous n_iter was set to 1,000
+        # n_iter = 250
+        # # n_jobs: n_jobs=-1: all cores being used, set to -2 for all cores but one.
+        # n_jobs = -2
+        # # theta (float, required):
+        # theta = 0.5
+        # # verbose: (original note: verbose=2 shows check points)
+        # verbose = 0
+        x = """
+            def number_input(
+        dg,
+        label,
+        min_value=None,
+        max_value=None,
+        value=NoValue(),
+        step=None,
+        format=None,
+        key=None,
+        """
+        st.markdown('## GMM Parameters')
+        # n_components = 16
+        slider_gmm_n_components = st.slider(
+            f'GMM Components (currently set at: {p.gmm_n_components})', 2, 40, p.gmm_n_components)
+        # reg_covar = 1e-02
+        # tol = 0.1
         input_gmm_tolerance = st.number_input(f'gmm tolerance (currently set at: {p.gmm_tol}): TODO: clean up this line', 1e-10, 50., p.gmm_tol, 0.1, format='%f')
+        # max_iter = 100
+        input_gmm_max_iter = st.number_input(
+            f'GMM max iter (currently set at: {p.gmm_max_iter})', 1, 100, p.gmm_max_iter, 1)
+        # n_init = 20
+        input_gmm_n_init = st.number_input(f'GMM n_init (currently set at: {p.gmm_n_init}). We recommend you use a value of 20', 1, 20, p.gmm_n_init)
+
+        st.markdown('## SVM Parameters')
+        ### SVM ###
+        # C = 10
+        input_svm_c = st.number_input(f'SVM C (Pipeline C value currently set at: {p.svm_c})', p.svm_c)
+        # gamma = 0.5
+        input_svm_gamma = st.number_input(f'SVM gamma (Currently model value: {p.svm_gamma})', p.svm_gamma)
+
+        # probability = True
+
+        # n_jobs = -2
+
         st.markdown('')
+        st.markdown('## Rebuild model?')
         button_rebuild_model = st.button('Re-build model (WIP)', key_button_rebuild_model)
         if button_rebuild_model:
             file_session[key_button_rebuild_model] = not file_session[key_button_rebuild_model]
@@ -391,6 +430,7 @@ def show_actions(p: pipeline.PipelinePrime):
             # st.success(f'Added new label')
             # file_session[key_button_update_assignments] = False
     return make_videos(p)
+
 
 def make_videos(p):
 
