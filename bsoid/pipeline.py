@@ -16,7 +16,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 from sklearn.utils import shuffle
 from tqdm import tqdm
-from typing import Any, Collection, List, Optional, Tuple, Union
+from typing import Any, Collection, Dict, List, Optional, Tuple, Union
 import inspect
 import joblib
 import numpy as np
@@ -78,7 +78,7 @@ class PipelineAttributeHolder:
     test_train_split_pct: float = None
 
     # TSNE
-    tsne_dimensions: int = None  # Functions in as `n_components` for final dims reducedTODO: low: add to kwargs
+    tsne_dimensions: int = None  # Functions in as `n_components` for final dims reduced  TODO: low: add to kwargs + address
     tsne_n_iter: int = None
     tsne_early_exaggeration: float = None
     tsne_n_jobs: int = None  # n cores used during process
@@ -455,7 +455,8 @@ class BasePipeline(PipelineAttributeHolder):
 
         :param features:
         :param create_new_scaler:
-        :return:
+
+        :return: self
         """
         # Queue up data to use
         if features is None: features = self.features_names_7
@@ -662,9 +663,21 @@ class BasePipeline(PipelineAttributeHolder):
 
         return self
 
-    def make_behaviour_example_videos(self, data_source: str, video_file_path: str, file_name_prefix=None, min_frames = 12, max_examples=3):
-        """  """
-        # Video1DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000.csv
+    def make_behaviour_example_videos(self, data_source: str, video_file_path: str, file_name_prefix=None, min_rows_of_behaviour=1, max_examples=3, num_frames_leadup=0):
+        """
+        Create video clips of behaviours
+
+        :param data_source:
+        :param video_file_path:
+        :param file_name_prefix:
+        :param min_frames:
+        :param max_examples:
+        :return:
+        """
+        text_bgr = (255, 255, 255)
+        # Args checking
+        check_arg.ensure_type(num_frames_leadup, int)
+
         if file_name_prefix is None:
             file_name_prefix = ''
         else:
@@ -672,11 +685,6 @@ class BasePipeline(PipelineAttributeHolder):
             check_arg.ensure_has_valid_chars_for_path(file_name_prefix)
             file_name_prefix += '__'
 
-        text_bgr = (255, 255, 255)
-        num_frames_leadup = 0
-        min_rows_to_include = min_frames  ### *** This is the minimum duration for behaviour *** ### <-=------ ******************   #TODO: high: create analysis for min and max durations of all behaviours? USEFUL!!!
-
-        # Do
         if data_source in np.unique(self.df_features_train_scaled['data_source'].values):
             df = self.df_features_train_scaled
         elif data_source in np.unique(self.df_features_predict_scaled['data_source'].values):
@@ -685,47 +693,49 @@ class BasePipeline(PipelineAttributeHolder):
             err = f'Data source not found: {data_source}'
             logger.error(err)
             raise ValueError(err)
-        logger.debug(f'Total records: {len(df)}')
+        logger.debug(f'{logging_bsoid.get_current_function()}(): Total records: {len(df)}')
 
+        # Do
+        # Get data, organize appropriately
         df = df.loc[df["data_source"] == data_source].sort_values('frame')
 
-        # Get RLE
+        # Get Run-Length Encoding
         assignments = df[self.svm_assignment_col_name].values
-
-        rle_out: Tuple[List, List, List] = statistics.augmented_runlength_encoding(assignments)
+        rle: Tuple[List, List, List] = statistics.augmented_runlength_encoding(assignments)
 
         # Zip RLE according to order
         # First index is value, second is index, third is additional length
-        rle_filt = []
-        for ii in zip(*rle_out): rle_filt.append(list(ii))
+        rle_zipped_by_entry = []
+        for row__assignment_idx_addedLength in zip(*rle):
+            rle_zipped_by_entry.append(list(row__assignment_idx_addedLength))
 
-        # Roll up same values into a dict. Keys are labels, values are lists of [index, additional length]
-        rle_by = {}
-        for label, idx, add_length in rle_filt:
-            rle_by[label] = []
-            if add_length >= min_rows_to_include:
-                rle_by[label].append([idx, add_length])
+        # Roll up assignments into a dict. Keys are labels, values are lists of [index, additional length]
+        rle_by_assignment: Dict[Any: List[int, int]] = {}
+        for label, idx, add_length in rle_zipped_by_entry:
+            rle_by_assignment[label] = []
+            if add_length >= min_rows_of_behaviour:
+                rle_by_assignment[label].append([idx, add_length])
 
-        ### Finally: making video clips
+        ### Finally: make video clips
         # Loop over assignments
-        for key, values_list in rle_by.items():
+        for key, values_list in rle_by_assignment.items():
             # Loop over examples
             num_examples = min(max_examples, len(values_list))
             for i in range(num_examples):
                 frame_text_prefix = f'Target: {key} / '
                 idx, add_length = values_list[i]
-                #         print(idx, add_length)
+
                 lower_bound_row_idx = max(0, int(idx) - num_frames_leadup)
                 upper_bound_row_idx = min(len(df)-1, idx + add_length + 1 + num_frames_leadup)
-                #         print(lower_bound_row_idx, upper_bound_row_idx)
+
                 df_selection = df.iloc[lower_bound_row_idx:upper_bound_row_idx, :]
 
                 labels_list = df_selection[self.svm_assignment_col_name].values
                 frames_indices_list = df_selection['frame'].values
                 output_file_name = f'{file_name_prefix}Example__label_{key}__example_{i+1}_of_{num_examples}'
 
-                videoprocessing.make_ex_vid(labels_list, frames_indices_list, output_file_name, video_file_path,
-                                            prefix=frame_text_prefix, text_bgr=text_bgr)
+                videoprocessing.make_video_clip_from_video(
+                    labels_list, frames_indices_list, output_file_name, video_file_path, prefix=frame_text_prefix, text_bgr=text_bgr)
 
         return self
 
@@ -827,12 +837,13 @@ class PipelinePrime(BasePipeline):
     @config.deco__log_entry_exit(logger)
     def build_predict_data(self):
         if not self.is_built:
-            self.build_classifier()
+            self.build_model()
         # Engineer predict features
         if self._has_unengineered_predict_data:
             self.engineer_features_predict()
         # Scale
         # TODO: scale data
+        self.scale_transform_train_data()
 
         return self
 
@@ -937,7 +948,7 @@ class PipelinePrime(BasePipeline):
             self.engineer_features_train()
 
         # Scale data
-        self.scale_transform_train_data(create_new_scaler=True)  # Optional kwarg specified for clarity
+        self.scale_transform_train_data(create_new_scaler=True)  # Optional kwarg specified for clarity  # TODO: review
 
         # TSNE -- create new dimensionally reduced data
         self.tsne_reduce_df_features_train()
@@ -986,7 +997,7 @@ class PipelinePrime(BasePipeline):
 
         # Check that classifiers are built on the training data
         if not self.is_built or reengineer_train_data_features or self._has_unengineered_training_data:
-            self.build_classifier()
+            self.build_model()
 
         # Check if predict features have been engineered
         if reengineer_predict_features or self._has_unengineered_predict_data:
@@ -1005,7 +1016,7 @@ class PipelinePrime(BasePipeline):
         Build all classifiers and get predictions from predict data
         """
         # Build model
-        self.build_classifier(reengineer_train_features=reengineer_train_features)
+        self.build_model(reengineer_train_features=reengineer_train_features)
         # Get predict data
         self.generate_predict_data_assignments(reengineer_predict_features=reengineer_predict_features)
         return self
