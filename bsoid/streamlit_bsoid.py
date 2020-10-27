@@ -38,7 +38,9 @@ title = f'B-SOiD Streamlit app'
 valid_video_extensions = {'avi', 'mp4', }
 # Variables for buttons, drop-down menus, and other things
 start_new_project_option_text, load_existing_project_option_text = 'Start new', 'Load existing'
+iteration = 'iter'
 # Set keys for objects
+key_button_show_pipeline_information = 'key_button_show_more_pipeline_information'
 key_button_see_rebuild_options = 'key_button_see_model_options'
 key_button_change_info = 'key_button_change_info'
 key_button_rebuild_model = 'key_button_rebuild_model'
@@ -55,6 +57,8 @@ TestButton1, testbutton2 = 'TestButton1', 'Testbutton2'
 ### Page variables data ###
 
 streamlit_variables_dict = {  # Instantiate default variable values here
+    iteration: 0,
+    key_button_show_pipeline_information: False,
     key_button_see_rebuild_options: False,
     key_button_change_info: False,
     key_button_rebuild_model: False,
@@ -65,7 +69,8 @@ streamlit_variables_dict = {  # Instantiate default variable values here
     key_button_update_description: False,
     key_button_update_assignments: False,
     key_button_view_assignments_distribution: False,
-    current_assignment: '',
+
+    current_assignment: '',  # TODO: low: remove?
     TestButton1: False, testbutton2: False,
 }
 
@@ -88,12 +93,15 @@ def home(*args, **kwargs):
         up to the user to fill out.
 
     """
+
     ### Set up initial variables
     global file_session
     file_session = streamlit_session_state.get(**streamlit_variables_dict)
     matplotlib.use('TkAgg')  # For allowing graphs to pop out as separate windows
+    file_session[iteration] = file_session[iteration] + 1
     is_pipeline_loaded = False
 
+    st.sidebar.title(f'Iteration: {file_session[iteration]}')
     # Load up pipeline if specified on command line
     pipeline_file_path = kwargs.get('pipeline', '')
     if not pipeline_file_path:  # If not specified on command line, use config.ini path as default if possible.
@@ -107,7 +115,7 @@ def home(*args, **kwargs):
     st.markdown(f'# {title}')
     st.markdown('------------------------------------------------------------------------------------------------')
 
-    # Start/open project using drop-down menu
+    ## Start/open project using drop-down menu ##
     st.markdown('## Open project')
     start_new_opt = st.selectbox(
         label='Start a new project or load an existing one?',
@@ -134,7 +142,7 @@ def home(*args, **kwargs):
                     raise NotADirectoryError(f'The following (in double quotes) is not a '
                                              f'valid directory: "{path_to_project_dir}". TODO: elaborate on error')
                 # If OK: create default pipeline, save, continue
-                p: pipeline.BasePipeline = pipeline.PipelinePrime(name=new_project_name).save(path_to_project_dir)
+                p: pipeline.BasePipeline = pipeline.PipelinePrime(new_project_name).save(path_to_project_dir)
                 st.success('New project pipeline saved to disk')
                 is_pipeline_loaded = True
         # Option: Load existing project
@@ -191,30 +199,38 @@ def show_pipeline_info(p: pipeline.PipelinePrime, *args, **kwargs):
     st.markdown(f'- Name: **{p.name}**')
     st.markdown(f'- Description: **{p.description}**')
     st.markdown(f'- Local file location: **{p.file_path}**')
-    st.markdown(f'- Training data sources:')
-    if len(p.training_data_sources) > 0:
-        for s in p.training_data_sources:
-            st.markdown(f'- - {s}')
-    else:
-        st.markdown(f'- - **None**')
-    st.markdown(f'- Predict data sources:')
-    if len(p.predict_data_sources) > 0:
-        for s in p.predict_data_sources:
-            st.markdown(f'- - {s}')
-    else:
-        st.markdown(f'- - **None**')
-    st.markdown(f'- Test data sources: ')
-    st.markdown(f'- Is the model built: **{p.is_built}**')
-    st.markdown(f'- - Number of data points in training data set: '
-                f'**{len(p.df_features_train) if p.df_features_train is not None else None}**')
-    st.markdown(f'- - Total unique behaviours clusters: **{len(p.unique_assignments)}**')
-    if len(p.cross_val_scores) > 0:
-        cross_val_score_text = f'- - Median cross validation score: **{round(np.median(p.cross_val_scores), 2)}** ' \
-                               f'(scores: {[round(x, 3) for x in list(p.cross_val_scores)]})'
-    else:
-        cross_val_score_text = f'- - Cross validation score not available'
-    st.markdown(f'{cross_val_score_text}')
-    # st.markdown(f'- Raw assignment values: **{p.unique_assignments}**')
+    show_advanced_pipeline_information = st.button(f'Expand/collapse pipeline info',
+                                                   key=key_button_show_pipeline_information)
+    if show_advanced_pipeline_information:
+        file_session[key_button_show_pipeline_information] = not file_session[key_button_show_pipeline_information]
+    if file_session[key_button_show_pipeline_information]:
+
+        st.markdown(f'- Training data sources:')
+        if len(p.training_data_sources) > 0:
+            for s in p.training_data_sources:
+                st.markdown(f'- - **{s}**')
+        else:
+            st.markdown(f'- - **None**')
+        st.markdown(f'- Predict data sources:')
+        if len(p.predict_data_sources) > 0:
+            for s in p.predict_data_sources:
+                st.markdown(f'- - **{s}**')
+        else:
+            st.markdown(f'- - **None**')
+        st.markdown(f'- Test data sources: ')
+        st.markdown(f'- Is the model built: **{p.is_built}**')
+        st.markdown(f'- - Number of data points in training data set: '
+                    f'**{len(p.df_features_train) if p.df_features_train is not None else None}**')
+        st.markdown(f'- - Total unique behaviours clusters: **{len(p.unique_assignments)}**')
+        if len(p.cross_val_scores) > 0:
+            decimals_round = 3
+            cross_val_score_text = \
+                f'- - Median cross validation score: **{round(np.median(p.cross_val_scores), decimals_round)}** ' \
+                f'(literal scores: {sorted([round(x, decimals_round) for x in list(p.cross_val_scores)])})'
+        else:
+            cross_val_score_text = f'- - Cross validation score not available'
+        st.markdown(f'{cross_val_score_text}')
+        # st.markdown(f'- Raw assignment values: **{p.unique_assignments}**')
 
     st.markdown('------------------------------------------------------------------------------------------------')
 
@@ -232,9 +248,9 @@ def show_actions(p: pipeline.PipelinePrime):
     ### Main
     st.markdown(f'## Actions')
 
-    ## Modify basic pipeline info here ##
-    st.markdown(f'### Modify pipeline info')
-    button_update_description = st.button(f'TODO: Change description', key_button_update_description)
+    ################################# Modify pipeline information ###############################################
+    st.markdown(f'### Pipeline information')
+    button_update_description = st.button(f'Change description (WIP)', key_button_update_description)
     if button_update_description:
         file_session[key_button_update_description] = not file_session[key_button_update_description]
     if file_session[key_button_update_description]:
@@ -244,7 +260,7 @@ def show_actions(p: pipeline.PipelinePrime):
             st.success(f'Pipeline description was changed! Refresh the page (or press "R") to see changes.')
     # TODO: low: add a "change save location" option?
 
-    ########################################### MODEL BUILDING ##########################################
+    ####################################### MODEL BUILDING #############################################
     st.markdown(f'### Model building')
     button_add_new_data = st.button('Add new data source to model (WIP)', key_button_add_new_data)
     if button_add_new_data:  # Click button, flip state
@@ -374,12 +390,14 @@ def show_actions(p: pipeline.PipelinePrime):
             p = p.update_assignment_label(assignment, text_input_behaviour).save()
             # st.success(f'Added new label')
             # file_session[key_button_update_assignments] = False
+    return make_videos(p)
+
+def make_videos(p):
+
+    return review_videos(p)
 
 
 def review_videos(p):
-
-
-
 
     return
 
