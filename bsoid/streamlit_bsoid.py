@@ -5,14 +5,14 @@ streamlit api: https://docs.streamlit.io/en/stable/api.html
 from matplotlib.axes._axes import _log as matplotlib_axes_logger
 from mpl_toolkits.mplot3d import Axes3D  # Despite being "unused", this import MUST stay for 3d plotting to work. PLO!
 import matplotlib
-# import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 import numpy as np
 import os
-# import pandas as pd
+import pandas as pd
 import streamlit as st
 import sys
-# import time
-# import tkinter
+import time
+import tkinter
 import traceback
 
 from bsoid import app, check_arg, config, io, pipeline, streamlit_session_state
@@ -39,7 +39,7 @@ valid_video_extensions = {'avi', 'mp4', }
 # Variables for buttons, drop-down menus, and other things
 start_new_project_option_text, load_existing_project_option_text = 'Start new', 'Load existing'
 # Set keys for objects
-key_button_see_rebuild_options = 'key_button_see_classifier_options'
+key_button_see_rebuild_options = 'key_button_see_model_options'
 key_button_change_info = 'key_button_change_info'
 key_button_rebuild_model = 'key_button_rebuild_model'
 key_button_rebuild_model_confirmation = 'key_button_rebuild_model_confirmation'
@@ -172,7 +172,7 @@ def home(*args, **kwargs):
     return
 
 
-def show_pipeline_info(p: pipeline.PipelinePrime, session=None, **kwargs):
+def show_pipeline_info(p: pipeline.PipelinePrime, *args, **kwargs):
     """"""
     ### SIDEBAR INFORMATION
     # st.sidebar.markdown(f'gmm_n_components = {p.gmm_n_components}')
@@ -189,19 +189,19 @@ def show_pipeline_info(p: pipeline.PipelinePrime, session=None, **kwargs):
     st.markdown(f'- Name: **{p.name}**')
     st.markdown(f'- Description: **{p.description}**')
     st.markdown(f'- Local file location: **{p.file_path}**')
-    # st.markdown(f'- TODO: FIX THIS: Data sources: {len(p.train_data_files_paths)}') #?
-    # for loc in p.train_data_files_paths:
-    #     st.markdown(f'- - {loc}')
+    st.markdown(f'- Training data sources list: '
+                f'{None if len(p.training_data_sources) == 0 else ",".join(p.training_data_sources)}')
+    st.markdown(f'- Test data sources: ')
     st.markdown(f'- Is the model built: **{p.is_built}**')
-    st.markdown(f'- Number of data points in df_features: '
+    st.markdown(f'- - Number of data points in training data set: '
                 f'**{len(p.df_features_train) if p.df_features_train is not None else None}**')
+    st.markdown(f'- - Total unique behaviours clusters: **{len(p.unique_assignments)}**')
     if p.cross_val_scores is not None:
-        st.markdown(f'- Median cross validation score: **{round(np.median(p.cross_val_scores), 2)}** '
-                    f'(scores: {[round(x, 3) for x in list(p.cross_val_scores)]})')
+        cross_val_score_text = f'- Median cross validation score: **{round(np.median(p.cross_val_scores), 2)}** ' \
+                               f'(scores: {[round(x, 3) for x in list(p.cross_val_scores)]})'
     else:
-        st.markdown(f'- Cross validation score not available')
-    if p.is_built:
-        st.markdown(f'- Total unique behaviours clusters: **{len(p.unique_assignments)}**')
+        cross_val_score_text = f'- Cross validation score not available'
+    st.markdown(f'{cross_val_score_text}')
     # st.markdown(f'- Raw assignment values: **{p.unique_assignments}**')
 
     st.markdown('------------------------------------------------------------------------------------------------')
@@ -226,14 +226,13 @@ def show_actions(p: pipeline.PipelinePrime):
     if button_update_description:
         file_session[key_button_update_description] = not file_session[key_button_update_description]
     if file_session[key_button_update_description]:
-        text_input_change_desc = st.text_area(f'WORK IN PROGRESS, not yet functional: Change project description here')
+        text_input_change_desc = st.text_input(f'WORK IN PROGRESS, not yet functional: Change project description here')
         if text_input_change_desc:
-            p = p.set_description(text_input_change_desc).save()
+            p.set_description(text_input_change_desc).save()
+            st.success(f'Pipeline description was changed! Refresh the page (or press "R") to see changes.')
     # TODO: low: add a "change save location" option?
 
-    ## Add/remove data ##
-    if not file_session[key_button_add_new_data]:
-        line_break()
+    ########################################### MODEL BUILDING ##########################################
     st.markdown(f'### Model building')
     button_add_new_data = st.button('Add new data source to model (WIP)', key_button_add_new_data)
     if button_add_new_data:  # Click button, flip state
@@ -282,7 +281,7 @@ def show_actions(p: pipeline.PipelinePrime):
         st.markdown('')
 
     # Menu: rebuilding classifier
-    button_see_rebuild_options = st.button('Rebuild classifier (WIP)', key_button_see_rebuild_options)
+    button_see_rebuild_options = st.button('Rebuild model (WIP)', key_button_see_rebuild_options)
     if button_see_rebuild_options:  # Click button, flip state
         file_session[key_button_see_rebuild_options] = not file_session[key_button_see_rebuild_options]
     if file_session[key_button_see_rebuild_options]:  # Now check on value and display accordingly
@@ -299,23 +298,28 @@ def show_actions(p: pipeline.PipelinePrime):
                 file_session[key_button_rebuild_model_confirmation] = True
             if file_session[key_button_rebuild_model_confirmation]:
                 with st.spinner('Rebuilding model...'):
-                    p = p.build(True, True).save()
                     # app.sample_runtime_function()
+                    p = p.build(True, True).save()
                 st.success(f'Model was successfully re-built!')
                 file_session[key_button_rebuild_model_confirmation] = False
+        st.markdown('----------------------------------------------------------------------------------------------')
+    st.markdown('--------------------------------------------------------------------------------------------------')
 
-    st.markdown('-----------------------------------------------------------------------------------------------------')
-
-    ### MODEL DIAGNOSTICS ###
+    ######################################### MODEL DIAGNOSTICS ########################################################
     st.markdown(f'### Model Diagnostics')
     st.markdown(f'See GMM distributions according to TSNE-reduced feature dimensions // TODO: make this shorter.')
-    gmm_button = st.button('Pop out window of GMM distribution. // TODO: phrase this better')
+    st.markdown(f'View distribution of assignments')
+    view = st.button(f'View assignment distribution')
+    if view:
+        fig, ax = p.get_plot_svm_assignments_distribution()
+        st.pyplot(fig)
+    gmm_button = st.button('Pop out window of GMM distribution')  # TODO: low: phrase this button better?
     if gmm_button:
         p.plot_assignments_in_3d(show_now=True)
 
     st.markdown('-----------------------------------------------------------------------------------------------------')
 
-    ### VIEWING SAMPLE VIDEOS OF BEHAVIOURS ###
+    ############################## VIEWING SAMPLE VIDEOS OF BEHAVIOURS #################################################
     st.markdown('')
     st.markdown(f'### Reviewing example videos of behaviours')
     # button_review_behaviours = st.button('Review assignments labels', key_button_review_behaviours)
@@ -334,7 +338,6 @@ def show_actions(p: pipeline.PipelinePrime):
     vid = st.selectbox(label=f"Total videos found: {len(videos_dict)}",
                        options=list(videos_dict.keys()))  # TODO: low: add key?
     try:
-        st.sidebar.video(get_example_vid(videos_dict[vid]))
         st.video(get_example_vid(videos_dict[vid]))
     except FileNotFoundError:
         st.error(FileNotFoundError(f'No example behaviour videos were found at this time. '
@@ -357,6 +360,7 @@ def show_actions(p: pipeline.PipelinePrime):
             p = p.update_assignment_label(assignment, text_input_behaviour).save()
             # st.success(f'Added new label')
             # file_session[key_button_update_assignments] = False
+
 
 def review_videos(p):
 

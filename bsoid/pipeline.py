@@ -46,7 +46,7 @@ class PipelineAttributeHolder:
     data_ext: str = 'csv'  # Extension which data is read from
     dims_cols_names: Union[List[str], Tuple[str]] = None
     valid_tsne_sources: set = {'bhtsne', 'sklearn', }
-
+    gmm_assignment_col_name, svm_assignment_col_name = 'gmm_assignment', 'svm_assignment'
     # Tracking vars
     _is_built = False  # Is False until the classifiers are built then changes to True
     _has_unengineered_training_data: bool = False   # Changes to True if new training data
@@ -62,10 +62,11 @@ class PipelineAttributeHolder:
     _dfs_list_raw_train_data: List[pd.DataFrame] = []  # Raw data frames kept right after read_data() function called
     _dfs_list_raw_predict_data: List[pd.DataFrame] = []
 
-    df_features_train: pd.DataFrame = None
-    df_features_train_scaled: pd.DataFrame = None
-    df_features_predict: pd.DataFrame = None
-    df_features_predict_scaled: pd.DataFrame = None
+    default_cols = ['data_source', 'file_source', svm_assignment_col_name]
+    df_features_train = pd.DataFrame(columns=default_cols)
+    df_features_train_scaled = pd.DataFrame(columns=default_cols)
+    df_features_predict = pd.DataFrame(columns=default_cols)
+    df_features_predict_scaled = pd.DataFrame(columns=default_cols)
 
     # Test/train split data
     # features_train, features_test, labels_train, labels_test = None, None, None, None
@@ -94,7 +95,7 @@ class PipelineAttributeHolder:
     _map_assignment_to_behaviour = {}
 
     # Column names
-    gmm_assignment_col_name, svm_assignment_col_name = 'gmm_assignment', 'svm_assignment'
+
     features_which_average_by_mean = ['DistFrontPawsTailbaseRelativeBodyLength',
                                       'DistBackPawsBaseTailRelativeBodyLength', 'InterforepawDistance', 'BodyLength', ]
     features_which_average_by_sum = ['SnoutToTailbaseChangeInAngle', 'SnoutSpeed', 'TailbaseSpeed']
@@ -110,6 +111,7 @@ class PipelineAttributeHolder:
     seconds_to_engineer_train_features: float = None
 
     # Getters/Properties
+
     @property
     def name(self): return self._name
     @property
@@ -133,14 +135,21 @@ class PipelineAttributeHolder:
     def svm_col(self) -> str: return self.svm_assignment_col_name
     @property
     def svm_assignment(self) -> str: return self.svm_assignment_col_name
+
+    @property
+    def training_data_sources(self) -> List[str]:
+        return list(np.unique(self.df_features_train_scaled['data_source'].values))
+    @property
+    def predict_data_sources(self) -> List[str]:
+        return list(np.unique(self.df_features_predict_scaled['data_source'].values))
     @property
     def raw_assignments(self) -> List[str]:
         return self.raw_assignments
-
     @property
-    def unique_assignments(self):
-
-        return list(np.unique(self.df_features_train_scaled[self.svm_col].values))
+    def unique_assignments(self) -> List[any]:
+        if len(self.df_features_train_scaled) > 0:
+            return list(np.unique(self.df_features_train_scaled[self.svm_col].values))
+        return []
     @property
     def file_path(self) -> Optional[str]:  # TODO: low: review
         return os.path.join(self._source_folder, generate_pipeline_filename(self.name))
@@ -150,6 +159,7 @@ class PipelineAttributeHolder:
             return None
         else:
             return self._map_assignment_to_behaviour[assignment]
+
     # Setters
     def set_name(self, name: str):
         # TODO: will this cause problems later with naming convention?
@@ -251,7 +261,6 @@ class BasePipeline(PipelineAttributeHolder):
 
         # Final setup
         self.__read_in_kwargs(**kwargs)
-        # self.__read_in_config_file_vars()
         self.dims_cols_names = [f'dim{d + 1}' for d in range(self.tsne_dimensions)]  # TODO: low: encapsulate elsewhere
         self.kwargs = kwargs
 
@@ -325,15 +334,6 @@ class BasePipeline(PipelineAttributeHolder):
         if self.test_train_split_pct is None:
             self.test_train_split_pct = config.HOLDOUT_PERCENT
 
-
-    def __read_in_config_file_vars(self):
-        """
-            Check if config variables are inserted. If they are not manually inserted on
-        Pipeline instantiation, insert config vars from config.ini.
-        """
-        pass
-
-
     # Add & delete data
     def add_train_data_source(self, *train_data_args):
         """
@@ -386,7 +386,6 @@ class BasePipeline(PipelineAttributeHolder):
         """
         # Type-checking first. If *args is None or empty collection, raise error.
         if not predict_data_args:
-            logger.warning(f'Trying to add in an invalid set of items: {predict_data_args}')
             return self
 
         path = predict_data_args[0]
@@ -450,6 +449,7 @@ class BasePipeline(PipelineAttributeHolder):
             if col not in set(df_scaled_data.columns):
                 df_scaled_data[col] = df[col].values
         return df_scaled_data
+
     def scale_transform_train_data(self, features: Optional[List[str]] = None, create_new_scaler=True):
         """
         Scales training data. By default, creates new scaler according to train
@@ -472,6 +472,7 @@ class BasePipeline(PipelineAttributeHolder):
         # Save data. Return.
         self.df_features_train_scaled = df_scaled_data
         return self
+
     def scale_transform_predict_data(self, features: Optional[List[str]] = None):
         """
         Scales prediction data. Utilizes existing scaler.
@@ -904,10 +905,11 @@ class PipelinePrime(BasePipeline):
         list_dfs_raw_data: List[pd.DataFrame] = self._dfs_list_raw_train_data
         # Call engineering function
         df_features = self.engineer_features(list_dfs_raw_data)
-        # Save data, return
+        # Save data
         self.df_features_train = df_features
-        self._has_unengineered_training_data = False
+        # Wrap up
         end = time.perf_counter()
+        self._has_unengineered_training_data = False
         self.seconds_to_engineer_train_features = round(end-start, 1)
         return self
 
@@ -924,9 +926,9 @@ class PipelinePrime(BasePipeline):
         self._has_unengineered_predict_data = False
         return self
 
-    # Build classifier
+    # Build model
     @config.deco__log_entry_exit(logger)
-    def build_classifier(self, reengineer_train_features: bool = False) -> BasePipeline:
+    def build_model(self, reengineer_train_features: bool = False) -> BasePipeline:
         """
         Builds the model for predicting behaviours.
         TODO: low: elaborate further.
@@ -974,6 +976,10 @@ class PipelinePrime(BasePipeline):
         logger.debug(f'All done with building classifiers!')
         return self
 
+    def build_classifier(self, reengineer_train_features: bool = False) -> BasePipeline:
+        """ This is the legacy naming. Method kept for backwards compatability. THis function will be delted later. """
+        return self.build_model(reengineer_train_features=reengineer_train_features)
+
     # Generating predict data
     @config.deco__log_entry_exit(logger)
     def generate_predict_data_assignments(self, reengineer_train_data_features: bool = False, reengineer_predict_features = False) -> BasePipeline:  # TODO: low: rename?
@@ -1001,7 +1007,7 @@ class PipelinePrime(BasePipeline):
         Build all classifiers and get predictions from predict data
         """
         # Build model
-        self.build_classifier(reengineer_features=reengineer_train_features)
+        self.build_classifier(reengineer_train_features=reengineer_train_features)
         # Get predict data
         self.generate_predict_data_assignments(reengineer_predict_features=reengineer_predict_features)
         return self
@@ -1035,7 +1041,7 @@ if __name__ == '__main__':
     run = True
     if run:
         # Test build
-        nom = 'Deleteme2'
+        nom = 'videoTest3'
         loc = 'C:\\Users\\killian\\Pictures'
         full_loc = os.path.join(loc, f'{nom}.pipeline')
         actual_save_loc = f'C:\\{nom}.pipeline'
@@ -1046,6 +1052,7 @@ if __name__ == '__main__':
             p = PipelinePrime(name=nom)
             p = p.add_train_data_source(test_file_1)
             p = p.add_predict_data_source(test_file_2)
+            p.average_over_n_frames = 5
             p = p.build_classifier()
             p = p.generate_predict_data_assignments()
             if save_new:
