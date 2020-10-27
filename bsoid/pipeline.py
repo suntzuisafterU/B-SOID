@@ -62,14 +62,11 @@ class PipelineAttributeHolder:
     _dfs_list_raw_train_data: List[pd.DataFrame] = []  # Raw data frames kept right after read_data() function called
     _dfs_list_raw_predict_data: List[pd.DataFrame] = []
 
-    default_cols = ['data_source', 'file_source', svm_assignment_col_name]
+    default_cols = ['data_source', 'file_source', svm_assignment_col_name, gmm_assignment_col_name]
     df_features_train = pd.DataFrame(columns=default_cols)
     df_features_train_scaled = pd.DataFrame(columns=default_cols)
     df_features_predict = pd.DataFrame(columns=default_cols)
     df_features_predict_scaled = pd.DataFrame(columns=default_cols)
-
-    # Test/train split data
-    # features_train, features_test, labels_train, labels_test = None, None, None, None
 
     # Model objects
     _scaler = None
@@ -107,11 +104,10 @@ class PipelineAttributeHolder:
 
     # SORT ME
     _acc_score: float = None
-    cross_val_scores: Collection[float] = []
+    _cross_val_scores = []
     seconds_to_engineer_train_features: float = None
 
     # Getters/Properties
-
     @property
     def name(self): return self._name
     @property
@@ -135,7 +131,9 @@ class PipelineAttributeHolder:
     def svm_col(self) -> str: return self.svm_assignment_col_name
     @property
     def svm_assignment(self) -> str: return self.svm_assignment_col_name
-
+    @property
+    def cross_val_scores(self) -> Union[List, np.ndarray]:
+        return self._cross_val_scores
     @property
     def training_data_sources(self) -> List[str]:
         return list(np.unique(self.df_features_train_scaled['data_source'].values))
@@ -813,8 +811,8 @@ class PipelinePrime(BasePipeline):
 
     For a list of valid kwarg parameters, check parent object, "BasePipeline".
     """
-    def __init__(self, name=None, tsne_source: str = 'sklearn', data_ext=None, **kwargs):
-        super().__init__(name=name, tsne_source=tsne_source, data_ext=data_ext, **kwargs)
+    def __init__(self, name=None, save_folder: str = None, tsne_source: str = 'sklearn', data_ext=None, **kwargs):
+        super().__init__(name=name, save_folder=save_folder, tsne_source=tsne_source, data_ext=data_ext, **kwargs)
 
     # Higher level data processing functions
     def tsne_reduce_df_features_train(self):
@@ -959,7 +957,7 @@ class PipelinePrime(BasePipeline):
             self.df_features_train_scaled[self.features_names_7].values)
 
         # # Get cross-val accuracy scores
-        self.cross_val_scores = cross_val_score(
+        self._cross_val_scores = cross_val_score(
             self.clf_svm,
             self.df_features_train_scaled[self.features_names_7],
             self.df_features_train_scaled[self.svm_assignment_col_name],
@@ -1057,7 +1055,7 @@ if __name__ == '__main__':
             p = p.generate_predict_data_assignments()
             if save_new:
                 p = p.save(loc)
-            print(f'cross_val_scores: {p.cross_val_scores}')
+            print(f'cross_val_scores: {p._cross_val_scores}')
 
         read_existing = False
         if read_existing:
