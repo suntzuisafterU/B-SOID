@@ -1,11 +1,10 @@
 """
 
 """
-
+from typing import Any, Dict, List, Set
 from unittest import TestCase, skip
 import os
 
-from typing import Any, Dict, List
 import itertools
 import numpy as np
 import pandas as pd
@@ -30,8 +29,8 @@ class TestPipeline(TestCase):
         # Act
         p = p.scale_transform_train_data()
 
-        unscaled_features_cols = set(p.df_features_train.columns)
-        scaled_features_cols = set(p.df_features_train_scaled.columns)
+        unscaled_features_cols: Set[str] = set(p.df_features_train.columns)
+        scaled_features_cols: Set[str] = set(p.df_features_train_scaled.columns)
         is_equal = unscaled_features_cols == scaled_features_cols
 
         # Assert
@@ -46,34 +45,38 @@ Symmetric diff = {unscaled_features_cols.symmetric_difference(scaled_features_co
 """.strip()
         self.assertTrue(is_equal, err_message)
 
-    # ADDING NEW TRAIN DATA SOURCES
-    def test__pipeline_adding_train_data_file_source__should____(self):  # TODO: low: add should RE: increment
+    # Adding new training data sources
+    def test__pipeline_adding_train_data_file_source__should____(self):
         """"""
         # Arrange
         data_source_file_path = csv_test_file_path
-        p = bsoid.pipeline.PipelinePrime('Test')
-        list_of_sources_before_addition: int = len(p._dfs_list_raw_train_data)
+        p = bsoid.pipeline.PipelinePrime('TestPipeline_asdf')
+        num_of_sources_before_addition: int = len(p._dfs_list_raw_train_data)
+        num_of_sources_should_be_this_after_addition = num_of_sources_before_addition + 1
 
         # Act
         p = p.add_train_data_source(data_source_file_path)
-        list_of_sources_after_addition: int = len(p._dfs_list_raw_train_data)
+        num_of_sources_actually_this_after_addition: int = len(p._dfs_list_raw_train_data)
 
         # Assert
 
         err_msg = f"""
-list_of_sources_before_addition = {list_of_sources_before_addition}
-list_of_sources_after_addition = {list_of_sources_after_addition}
-"""
-        self.assertEqual(list_of_sources_before_addition + 1, list_of_sources_after_addition, err_msg)
+list_of_sources_before_addition = {num_of_sources_before_addition}
+num_of_sources_should_be_this_after_addition = {num_of_sources_should_be_this_after_addition}
 
-    def test__pipeline_adding_train_data_file_source__shouldBeZeroToStart(self):  # TODO: low: add should RE: increment
+list_of_sources_after_addition = {num_of_sources_actually_this_after_addition}
+"""
+        self.assertEqual(num_of_sources_should_be_this_after_addition, num_of_sources_actually_this_after_addition,
+                         err_msg)
+
+    def test__pipeline_adding_train_data_file_source__shouldBeZeroToStart(self):
         """"""
         # Arrange
-        p1 = bsoid.pipeline.PipelinePrime('Test_65465465465')
+        p = bsoid.pipeline.PipelinePrime('Test_65465465465')
         expected_amount_of_dataframes = 0
 
         # Act
-        actual_amount_of_dataframes = len(p1._dfs_list_raw_train_data)
+        actual_amount_of_dataframes = len(p._dfs_list_raw_train_data)
 
         # Assert
         err_msg = f"""
