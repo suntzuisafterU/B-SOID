@@ -1,5 +1,6 @@
 bhtsne>=0.1.9
 ffmpeg
+future
 hdbscan>=0.8.26
 joblib>=0.14.1
 matplotlib>=3.0.3
