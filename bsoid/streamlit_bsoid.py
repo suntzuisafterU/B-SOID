@@ -6,7 +6,7 @@ from matplotlib.axes._axes import _log as matplotlib_axes_logger
 from mpl_toolkits.mplot3d import Axes3D  # Despite being "unused", this import MUST stay for 3d plotting to work. PLO!
 import matplotlib
 # import matplotlib.pyplot as plt
-# import numpy as np
+import numpy as np
 import os
 # import pandas as pd
 import streamlit as st
@@ -47,7 +47,10 @@ key_button_add_new_data = 'key_button_add_new_data'
 key_button_update_description = 'key_key_button_update_description'
 key_button_add_train_data_source = 'key_button_add_train_data_source'
 key_button_add_predict_data_source = 'key_button_add_predict_data_source'
-testbutton1, testbutton2 = 'Testbutton1', 'Testbutton2'
+key_button_update_assignments = 'key_button_update_assignments'
+# key_button_review_behaviours = 'key_button_review_behaviours'
+current_assignment = 'current_assignment'
+TestButton1, testbutton2 = 'TestButton1', 'Testbutton2'
 ### Page variables data ###
 
 streamlit_variables_dict = {  # Instantiate default variable values here
@@ -59,7 +62,9 @@ streamlit_variables_dict = {  # Instantiate default variable values here
     key_button_add_train_data_source: False,
     key_button_add_predict_data_source: False,
     key_button_update_description: False,
-    testbutton1: False, testbutton2: False,
+    key_button_update_assignments: False,
+    current_assignment: '',
+    TestButton1: False, testbutton2: False,
 }
 
 
@@ -67,7 +72,19 @@ streamlit_variables_dict = {  # Instantiate default variable values here
 
 def home(*args, **kwargs):
     """
-    Designated home page/entry point when Streamlit is used for B-SOiD
+    The designated home page/entry point when Streamlit is used for B-SOiD.
+
+    -------------
+    kwargs
+
+        pipeline : str
+        A path to an existing pipeline file which will be loaded by default
+        on page load. If the pipeline kwarg is not specified, the config.ini
+        value will be checked (via bsoid.config), and that file path, if
+        present, will be used. If that config.ini key/value pair is not in
+        use, then no default path will be specified and it will be entirely
+        up to the user to fill out.
+
     """
     ### Set up initial variables
     global file_session
@@ -75,11 +92,18 @@ def home(*args, **kwargs):
     matplotlib.use('TkAgg')  # For allowing graphs to pop out as separate windows
     is_pipeline_loaded = False
 
+    # Load up pipeline if specified on command line
+    pipeline_file_path = kwargs.get('pipeline', '')
+    if not pipeline_file_path:  # If not specified on command line, use config.ini path as default if possible.
+        if config.default_pipeline_file_path and os.path.isfile(config.default_pipeline_file_path):
+            pipeline_file_path = config.default_pipeline_file_path
+        # If no config.ini path, then let user choose on page
+
     ### Sidebar ###
 
     ### Main Page ###
     st.markdown(f'# {title}')
-    line_break()
+    st.markdown('------------------------------------------------------------------------------------------------')
 
     # Start/open project using drop-down menu
     st.markdown('## Open project')
@@ -116,7 +140,7 @@ def home(*args, **kwargs):
             st.write('Load existing project pipeline')
             path_to_project_file = st.text_input(
                 'Enter full path to existing project pipeline file',
-                value=config.default_pipeline_file_path if os.path.isfile(config.default_pipeline_file_path) else '',  # TODO: remove this line later, or change to a config default?
+                value=pipeline_file_path,  # TODO: remove this line later, or change to a config default?
                 key='text_input_load_existing_pipeline'
             )
             # Do checks
@@ -124,7 +148,7 @@ def home(*args, **kwargs):
                 # Error checking first
                 if not os.path.isfile(path_to_project_file) or not path_to_project_file.endswith('.pipeline'):
                     raise FileNotFoundError(f'Path to valid BSOID pipeline file was not found. '
-                                            f'User submitted: {path_to_project_file}')
+                                            f'User submitted path: {path_to_project_file}')
                 # If OK: load project, continue
                 logger.debug(f'Attempting to open: {path_to_project_file}')
                 p: pipeline.BasePipeline = io.read_pipeline(path_to_project_file)
@@ -136,14 +160,13 @@ def home(*args, **kwargs):
             return
     except Exception as e:
         # In case of error, show error and do not continue
-        st.error(f'{repr(e)}')
-        st.markdown(f'Stack trace for error: {traceback.extract_stack()}')
+        st.markdown('')
+        st.error(e)
+        # st.markdown(f'Stack trace for error: {traceback.extract_stack()}')
         return
-    finally:
-        st.markdown(f'---')
 
     if is_pipeline_loaded:
-        # current_pipeline_name_empty.markdown(f'Pipeline name: __{p.name}__')
+        st.markdown('------------------------------------------------------------------------------------------------')
         show_pipeline_info(p)
 
     return
@@ -163,55 +186,64 @@ def show_pipeline_info(p: pipeline.PipelinePrime, session=None, **kwargs):
 
     ### MAIN PAGE INFORMATION ###
     st.markdown(f'## Pipeline basic information')
-    st.markdown(f'- Name: {p.name}')
-    st.markdown(f'- Description: {p.description}')
-    st.markdown(f'- Local file location: {p.file_path}')
+    st.markdown(f'- Name: **{p.name}**')
+    st.markdown(f'- Description: **{p.description}**')
+    st.markdown(f'- Local file location: **{p.file_path}**')
     # st.markdown(f'- TODO: FIX THIS: Data sources: {len(p.train_data_files_paths)}') #?
     # for loc in p.train_data_files_paths:
     #     st.markdown(f'- - {loc}')
-    st.markdown(f'- Are the classifiers built: {p.is_built}')
+    st.markdown(f'- Is the model built: **{p.is_built}**')
     st.markdown(f'- Number of data points in df_features: '
-                f'{len(p.df_features_train) if p.df_features_train is not None else None}')
+                f'**{len(p.df_features_train) if p.df_features_train is not None else None}**')
+    if p.cross_val_scores is not None:
+        st.markdown(f'- Median cross validation score: **{round(np.median(p.cross_val_scores), 2)}** '
+                    f'(scores: {[round(x, 3) for x in list(p.cross_val_scores)]})')
+    else:
+        st.markdown(f'- Cross validation score not available')
+    if p.is_built:
+        st.markdown(f'- Total unique behaviours clusters: **{len(p.unique_assignments)}**')
+    # st.markdown(f'- Raw assignment values: **{p.unique_assignments}**')
 
-    st.markdown('TODO: Model information')
-    # st.markdown('TODO: SVM Information')
-
-    line_break()
+    st.markdown('------------------------------------------------------------------------------------------------')
 
     return show_actions(p)
 
 
 def show_actions(p: pipeline.PipelinePrime):
-    # Rebuild classifiers TODO?
+    """"""
 
     ### Sidebar
-    # azim = st.sidebar.slider("azimuth (camera angle rotation about the Y-axis)", 0, 90, 20, 5)
-    # elev = st.sidebar.slider("elevation (camera rotation about the Z-axis)", 0, 180, 110, 5)
-    # st.sidebar.markdown(f'---')
+    for a in p.unique_assignments:
+        behaviour = p.get_assignment_label(a)
+        st.sidebar.markdown(f'Assignment {a}: Behaviour = {behaviour}')
 
     ### Main
     st.markdown(f'## Actions')
 
-    # Modify basic pipeline info here
+    ## Modify basic pipeline info here ##
     st.markdown(f'### Modify pipeline info')
     button_update_description = st.button(f'TODO: Change description', key_button_update_description)
     if button_update_description:
         file_session[key_button_update_description] = not file_session[key_button_update_description]
     if file_session[key_button_update_description]:
-        x = st.text_input(f'WORK IN PROGRESS: Change project description here')
+        text_input_change_desc = st.text_area(f'WORK IN PROGRESS, not yet functional: Change project description here')
+        if text_input_change_desc:
+            p = p.set_description(text_input_change_desc).save()
     # TODO: low: add a "change save location" option?
 
-    # Menu: adding new training data or data to be predicted
+    ## Add/remove data ##
     if not file_session[key_button_add_new_data]:
         line_break()
     st.markdown(f'### Model building')
-    button_add_new_data = st.button('Add new data source to model', key_button_add_new_data)
+    button_add_new_data = st.button('Add new data source to model (WIP)', key_button_add_new_data)
     if button_add_new_data:  # Click button, flip state
         file_session[key_button_add_new_data] = not file_session[key_button_add_new_data]
     if file_session[key_button_add_new_data]:  # Now check on value and display accordingly
-        st.markdown(f'### Do you want to add data that will be used to train the model, or data that the model will evaluate?')
+        st.markdown(f'### Do you want to add data that will be used to train the model, or '
+                    f'data that the model will evaluate?')
         # 1/2: Button for adding data to training data set
-        button_add_train_data_source = st.button('-> Add new data for model training', key=key_button_add_train_data_source)  # TODO: low: review button text
+        button_add_train_data_source = st.button('-> Add new data for model training',
+                                                 key=key_button_add_train_data_source)  # TODO: low: review button text
         if button_add_train_data_source:
             file_session[key_button_add_train_data_source] = not file_session[key_button_add_train_data_source]
             file_session[key_button_add_predict_data_source] = False
@@ -246,22 +278,19 @@ def show_actions(p: pipeline.PipelinePrime):
                     p = p.add_predict_data_source(input_new_predict_data_source)
                     p = p.save()
                     st.success(f'TODO: New prediction data added to pipeline successfully! Pipeline has been saved.')
-        # line_break()
         st.markdown('')
         st.markdown('')
 
     # Menu: rebuilding classifier
-    button_see_rebuild_options = st.button('Rebuild classifier', key_button_see_rebuild_options)
+    button_see_rebuild_options = st.button('Rebuild classifier (WIP)', key_button_see_rebuild_options)
     if button_see_rebuild_options:  # Click button, flip state
         file_session[key_button_see_rebuild_options] = not file_session[key_button_see_rebuild_options]
     if file_session[key_button_see_rebuild_options]:  # Now check on value and display accordingly
-        # st.markdown(f'In button1: Button 1 session state: {session[key_button_rebuild]}')
-        st.markdown(f'')
-        slider_gmm_n_components = st.slider('GMM Components', 2, 40, p.gmm_n_components)
-        input_gmm_tolerance = st.number_input('gmm tol: TODO: replace this with somethign else', 1e-10, 50., p.gmm_tol, 0.1)
-        st.markdown(f'')
-
-        button_rebuild_model = st.button('Re-build model', key_button_rebuild_model)
+        st.markdown('')
+        slider_gmm_n_components = st.slider(f'GMM Components (currently set at: {p.gmm_n_components})', 2, 40, p.gmm_n_components)
+        input_gmm_tolerance = st.number_input(f'gmm tolerance (currently set at: {p.gmm_tol}): TODO: clean up this line', 1e-10, 50., p.gmm_tol, 0.1, format='%f')
+        st.markdown('')
+        button_rebuild_model = st.button('Re-build model (WIP)', key_button_rebuild_model)
         if button_rebuild_model:
             file_session[key_button_rebuild_model] = not file_session[key_button_rebuild_model]
         if file_session[key_button_rebuild_model]:
@@ -275,30 +304,66 @@ def show_actions(p: pipeline.PipelinePrime):
                 st.success(f'Model was successfully re-built!')
                 file_session[key_button_rebuild_model_confirmation] = False
 
-    line_break()
+    st.markdown('-----------------------------------------------------------------------------------------------------')
 
     ### MODEL DIAGNOSTICS ###
     st.markdown(f'### Model Diagnostics')
     st.markdown(f'See GMM distributions according to TSNE-reduced feature dimensions // TODO: make this shorter.')
-    gmm_button = st.button('Pop out window of GMM distrib. // TODO: phrase this better')
+    gmm_button = st.button('Pop out window of GMM distribution. // TODO: phrase this better')
     if gmm_button:
         p.plot_assignments_in_3d(show_now=True)
 
-    ### VIEWING SAMPLE VIDEOS OF BEHAVIOURS
-    line_break()
+    st.markdown('-----------------------------------------------------------------------------------------------------')
+
+    ### VIEWING SAMPLE VIDEOS OF BEHAVIOURS ###
+    st.markdown('')
     st.markdown(f'### Reviewing example videos of behaviours')
-    example_vids_dir_file_list = [x for x in os.listdir(config.EXAMPLE_VIDEOS_OUTPUT_PATH)  # TODO: add user intervention on default path to check?
-                                  if x.split('.')[-1] in valid_video_extensions]
+    # button_review_behaviours = st.button('Review assignments labels', key_button_review_behaviours)
+    # if button_review_behaviours:  # Click button, flip state
+    #     file_session[key_button_review_behaviours] = not file_session[key_button_review_behaviours]
+    # if file_session[key_button_review_behaviours]:  # Now check on value and display accordingly
+    #     for a in p.unique_assignments:
+    #         behaviour = p.get_assignment_label(a)
+    #         st.markdown(f'Assignment {a}: Behaviour = {behaviour}')
+
+    example_videos_dir_file_list = [x for x in os.listdir(config.EXAMPLE_VIDEOS_OUTPUT_PATH)  # TODO: add user intervention on default path to check?
+                                    if x.split('.')[-1] in valid_video_extensions]
     videos_dict = {k: os.path.join(config.EXAMPLE_VIDEOS_OUTPUT_PATH, k)
-                   for k in example_vids_dir_file_list}
+                   for k in example_videos_dir_file_list}
 
     vid = st.selectbox(label=f"Total videos found: {len(videos_dict)}",
                        options=list(videos_dict.keys()))  # TODO: low: add key?
     try:
+        st.sidebar.video(get_example_vid(videos_dict[vid]))
         st.video(get_example_vid(videos_dict[vid]))
     except FileNotFoundError:
-        st.error(f'No example behaviour videos were found at this time. Try generating them at check back again after. '
-                 f'// DEBUG INFO: path checked: {config.EXAMPLE_VIDEOS_OUTPUT_PATH}')
+        st.error(FileNotFoundError(f'No example behaviour videos were found at this time. '
+                                   f'Try generating them at check back again after. '
+                 f'// DEBUG INFO: path checked: {config.EXAMPLE_VIDEOS_OUTPUT_PATH}'))
+
+    # Line up names to behaviours
+    st.markdown('')
+    button_label_assignments = st.button('Review assignments labels', key_button_update_assignments)
+    if button_label_assignments:  # Click button, flip state
+        file_session[key_button_update_assignments] = not file_session[key_button_update_assignments]
+    if file_session[key_button_update_assignments]:  # Now check on value and display accordingly
+        # st.markdown('')
+        assignment = st.selectbox(label='Choose an assignment:',
+                                  options=['', ]+list(p.unique_assignments))
+
+        text_input_behaviour = st.text_input(f'WIP: Add label to assignment #{assignment}')
+        if text_input_behaviour and str(assignment):
+            # pass
+            p = p.update_assignment_label(assignment, text_input_behaviour).save()
+            # st.success(f'Added new label')
+            # file_session[key_button_update_assignments] = False
+
+def review_videos(p):
+
+
+
+
+    return
 
 
 # Accessory functions #
@@ -326,28 +391,28 @@ def flip_button_state(button_key: str):
     pass
 
 
-# Misc
+# Misc.
 
 def example_of_value_saving():
     session_state = streamlit_session_state.get(**streamlit_variables_dict)
 
     st.markdown("# [Title]")
-    button1 = st.button('Test Button 1', 'Testbutton1')
-    st.markdown(f'Pre button1: Button 1 session state: {session_state["Testbutton1"]}')
+    button1 = st.button('Test Button 1', 'TestButton1')
+    st.markdown(f'Pre button1: Button 1 session state: {session_state["TestButton1"]}')
     if button1:
-        session_state['Testbutton1'] = not session_state['Testbutton1']
-    if session_state['Testbutton1']:
+        session_state['TestButton1'] = not session_state['TestButton1']
+    if session_state['TestButton1']:
         line_break()
-        # session_state['Testbutton1'] = not session_state['Testbutton1']
+        # session_state['TestButton1'] = not session_state['TestButton1']
 
-        st.markdown(f'In button1: Button 1 session state: {session_state["Testbutton1"]}')
+        st.markdown(f'In button1: Button 1 session state: {session_state["TestButton1"]}')
 
-        button2 = st.button('Test Button 2', 'Testbutton2')
+        button2 = st.button('Test Button 2', 'TestButton2')
         if button2:
-            session_state['Testbutton2'] = not session_state['Testbutton2']
-        if session_state['Testbutton2']:
+            session_state['TestButton2'] = not session_state['TestButton2']
+        if session_state['TestButton2']:
             line_break()
-            session_state['Testbutton2'] = True
+            session_state['TestButton2'] = True
             st.markdown('button2 pressed')
 
     return
