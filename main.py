@@ -6,6 +6,9 @@ TODO: Commands to implement:
     - clear logs
     - clear output folder (+ prompt for confirm)
 """
+dev_debugging = False  # TODO: low: debugging effort
+
+
 import argparse
 import sys
 
@@ -47,9 +50,10 @@ def parse_args() -> argparse.Namespace:
 
     # Parse args, return
     args: argparse.Namespace = parser.parse_args()
-    logger.debug(f'ARGS: {args}')
-    logger.debug(f'args.command = {args.command}')
-    logger.debug(f'args.p = {args.p}')
+    if dev_debugging:
+        logger.debug(f'ARGS: {args}')
+        logger.debug(f'args.command = {args.command}')
+        logger.debug(f'args.p = {args.p}')
 
     return args
 
@@ -62,7 +66,8 @@ def do_command(args: argparse.Namespace) -> None:
     if args.p:
         kwargs['pipeline'] = args.p
 
-        logger.debug(f'arg.p parsed as: {args.p}')
+        if dev_debugging:
+            logger.debug(f'arg.p parsed as: {args.p}')
 
     return map_command_to_func[args.command](**kwargs)
 
