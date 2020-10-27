@@ -75,6 +75,7 @@ def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.Da
         : 1D array, percent filtered per BODYPART
 
     """
+    # TODO: HIGH: for this function that does not have expected cols (like 'scorer', etc.) it should not fail!
     # Checking args
     check_arg.ensure_type(in_df, pd.DataFrame)
     # Continue
@@ -84,12 +85,12 @@ def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.Da
         col_not_found_err = f'TODO: "scorer" col not found but should exist (as a result from bsoid.read_csv()) // ' \
                             f'All columns: {in_df.columns}'
         logger.error(col_not_found_err)
-        raise ValueError(col_not_found_err)
+        raise ValueError(col_not_found_err)  # TODO: should this raise an error?
     scorer_values = np.unique(in_df['scorer'])
     if len(scorer_values) != 1:
         err = f'TODO: there should be 1 unique scorer value. If there are more than 1, too many values. TODO '
         logger.error(err)
-        raise ValueError(err)
+        raise ValueError(err)  # TODO: should this raise an error?
     scorer_value: str = scorer_values[0]
     # # Source
     if 'source' in set_in_df_columns:
@@ -98,7 +99,7 @@ def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.Da
             err = f'TODO: there should be 1 unique source value. If there are more than 1, too many values, ' \
                   f'makes no sense to adaptively filter over different datasets.'
             logger.error(err)
-            raise ValueError(err)
+            raise ValueError(err)  # # TODO: should this raise an error?
         source = in_df['source'].values[0]
     else:
         source = None
@@ -241,13 +242,10 @@ def engineer_7_features_dataframe(df: pd.DataFrame, features_names_7: List[str] 
     :param copy:
     :return: (DataFrame)
     """
-    if win_len is None:
-        win_len = original_feature_extraction_win_len_formula(config.VIDEO_FPS)
-
-    ###
-
     # Args checks
     check_arg.ensure_type(df, pd.DataFrame)
+    if win_len is None:
+        win_len = original_feature_extraction_win_len_formula(config.VIDEO_FPS)
 
     # Check for required columns
     set_df_columns = set(df.columns)
