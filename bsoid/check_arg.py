@@ -70,6 +70,15 @@ def ensure_is_dir(path):
         raise NotADirectoryError(err)
 
 
+def ensure_is_valid_path(path):
+    if not is_pathname_valid(path):  # TODO:
+        err = f'TOOD: elaborate -- has INVALID chars in path: {path}'
+        logger.error(err)
+        raise ValueError(err)
+
+
+###
+
 def has_invalid_chars_in_name_for_a_file(file_name, additional_characters: Optional[Collection[str]] = None) -> bool:
     """
     Checks if an invalid characters have been included in a potential path. Useful for checking user
