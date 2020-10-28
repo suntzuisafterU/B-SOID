@@ -20,11 +20,8 @@ class TestPipeline(TestCase):
 
     # SCALING DATA
     def test__scale_data__shouldReturnDataFrameWithSameColumnNames__afterScalingData(self):
-        """
-
-        """
         # Arrange
-        p = bsoid.pipeline.PipelinePrime('TestPipeline').add_predict_data_source(csv_test_file_path).build(True)
+        p = bsoid.pipeline.PipelinePrime('TestPipeline6546546549879876546468').add_predict_data_source(csv_test_file_path).build(True)
 
         # Act
         p = p.scale_transform_train_data()
@@ -161,7 +158,7 @@ p.train_data_files_paths = {p.train_data_files_paths}
 
         """
         # Arrange
-        p = bsoid.pipeline.PipelinePrime('APipelineName12398asdfasdfaasdfdf989dsdf7')
+        p = bsoid.pipeline.PipelinePrime('DeleteMe___6APipelineName12398asdfasdfaasdfdf989dsdf7')
         assignment, input_label = 1, 'Behaviour1'
 
         # Act
@@ -174,9 +171,9 @@ p.train_data_files_paths = {p.train_data_files_paths}
     def test__updatingAssignment__shouldSaveLabel__whenSavedAndRereadIn(self):
         """  """
         # Arrange
-        name = 'DELETE_ME_APipelineName12398asdfasdfaasdfasdfsdf7_aasdf'
+        name = 'DELETE_ME__APipelineName12398asdfasdfaasd41614154fasdfsdf7_'
         p_write = bsoid.pipeline.PipelinePrime(name)
-        assignment, input_label = 1, 'Behaviour1'
+        assignment, input_label = 12, 'Behaviour12'
 
         # Act
         p_write = p_write.update_assignment_label(assignment, input_label)
