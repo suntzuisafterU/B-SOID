@@ -137,20 +137,40 @@ def read_dlc_data(data_file_path: str, **kwargs) -> pd.DataFrame:
         raise ValueError(invalid_ext_err)
 
 
-def read_pipeline(path_to_file: str) -> pipeline:
+def read_pipeline(path_to_file: str) -> pipeline.BasePipeline:
     """
     With a valid path, read in an existing pipeline
     :param path_to_file:
     :return:
     """
-    # TODO: do final checks on this funct
-    if not os.path.isfile(path_to_file):
-        invalid_file_err = f'Invalid path to pipeline: {path_to_file}. Cannot open file. '
-        logger.error(invalid_file_err)
-        raise ValueError(invalid_file_err)
+    # TODO: do final checks on this function
+    check_arg.ensure_is_file(path_to_file)
     with open(path_to_file, 'rb') as file:
         p = joblib.load(file)
+
     return p
+
+
+def save_pipeline(pipeline_obj, path_to_folder: str = config.OUTPUT_PATH) -> pipeline.BasePipeline:
+    """
+    With a valid path, save an existing pipeline
+    :param pipeline_obj:
+    :param path_to_folder:
+    :return:
+    """
+    # TODO: do final checks on this function   <---------------------------------------------------------------------------
+    # Arg checking
+    check_arg.ensure_type(path_to_folder, str)
+    # check_arg.ensure_is_valid_path(path_to_folder)
+
+    final_out_path = os.path.join(
+        path_to_folder,
+        pipeline.generate_pipeline_filename_from_pipeline(pipeline_obj)
+    )
+    with open(final_out_path, 'wb') as file:
+        joblib.dump(pipeline_obj, file)
+
+    return read_pipeline(final_out_path)
 
 
 ########################################################################################################################
