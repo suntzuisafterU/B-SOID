@@ -54,7 +54,7 @@ class PipelineAttributeHolder(object):
                                                     # is added and classifiers not rebuilt.
     _has_unengineered_predict_data: bool = False    # Changes to True if new predict data
                                                     # is added. Changes to False if features are engineered.
-    tsne_source: str = None
+    tsne_source: str = 'sklearn'
     # Sources
     train_data_files_paths: List[str] = []
     predict_data_files_paths: List[str] = []
@@ -621,23 +621,14 @@ class BasePipeline(PipelineAttributeHolder):
 
         logger.debug(f'{inspect.stack()[0][3]}(): Attempting to save pipeline to file: {final_out_path}.')
 
+        # Since successful, save
         # Write to file
         with open(final_out_path, 'wb') as model_file:
             joblib.dump(self, model_file)
         # joblib.dump(self, final_out_path)
 
-        # Since successful, save
-
         logger.debug(f'{inspect.stack()[0][3]}(): Pipeline ({self.name}) saved to: {final_out_path}')
         return io.read_pipeline(final_out_path)
-
-    def has_been_previously_saved(self) -> bool:
-        # TODO: high: re-evaluate correctness
-        if not self._source_folder:
-            return False
-        if not os.path.isfile(os.path.join(self._source_folder, generate_pipeline_filename(self.name))):
-            return False
-        return True
 
     # Video stuff
     def write_video_frames_to_disk(self, video_to_be_labeled=config.VIDEO_TO_LABEL_PATH):
@@ -675,6 +666,7 @@ class BasePipeline(PipelineAttributeHolder):
         :param max_examples:
         :return:
         """
+        # TODO: WIP
         text_bgr = (255, 255, 255)
         # Args checking
         check_arg.ensure_type(num_frames_leadup, int)
@@ -696,7 +688,6 @@ class BasePipeline(PipelineAttributeHolder):
             raise ValueError(err)
         logger.debug(f'{logging_bsoid.get_current_function()}(): Total records: {len(df)}')
 
-        # Do
         # Get data, organize appropriately
         df = df.loc[df["data_source"] == data_source].sort_values('frame')
 
@@ -711,7 +702,7 @@ class BasePipeline(PipelineAttributeHolder):
             rle_zipped_by_entry.append(list(row__assignment_idx_addedLength))
 
         # Roll up assignments into a dict. Keys are labels, values are lists of [index, additional length]
-        rle_by_assignment: dict = {}  # Dict[Any, List[str, str]]
+        rle_by_assignment: dict = {}  # Dict[Any: List[int, int]]
         for label, idx, add_length in rle_zipped_by_entry:
             rle_by_assignment[label] = []
             if add_length >= min_rows_of_behaviour:
@@ -720,6 +711,7 @@ class BasePipeline(PipelineAttributeHolder):
         ### Finally: make video clips
         # Loop over assignments
         for key, values_list in rle_by_assignment.items():
+            # TODO: HIGH: ensure that at least one of the examples for each behaviour is the MAX duration available
             # Loop over examples
             num_examples = min(max_examples, len(values_list))
             for i in range(num_examples):
@@ -736,7 +728,8 @@ class BasePipeline(PipelineAttributeHolder):
                 output_file_name = f'{file_name_prefix}Example__label_{key}__example_{i+1}_of_{num_examples}'
 
                 videoprocessing.make_video_clip_from_video(
-                    labels_list, frames_indices_list, output_file_name, video_file_path, prefix=frame_text_prefix, text_bgr=text_bgr)
+                    labels_list, frames_indices_list, output_file_name, video_file_path,
+                    prefix=frame_text_prefix, text_bgr=text_bgr)
 
         return self
 
@@ -792,19 +785,19 @@ self.train_data_files_paths: {self.train_data_files_paths}
 
     # Legacy stuff. Potential deprecation material.
     def read_in_predict_folder_data_file_paths_legacypathing(self) -> List[str]:  # TODO: deprecate/re-work
-        self.predict_data_files_paths = predict_data_files_paths = [os.path.join(config.PREDICT_DATA_FOLDER_PATH, x)
-                                                                    for x in os.listdir(config.PREDICT_DATA_FOLDER_PATH)
-                                                                    if x.split('.')[-1]
-                                                                    in config.valid_dlc_output_extensions].copy()
+        self.predict_data_files_paths = predict_data_files_paths = [
+            os.path.join(config.PREDICT_DATA_FOLDER_PATH, x)
+            for x in os.listdir(config.PREDICT_DATA_FOLDER_PATH)
+            if x.split('.')[-1] in config.valid_dlc_output_extensions].copy()
         if len(predict_data_files_paths) <= 0:
             err = f'Zero csv files found from: {config.PREDICT_DATA_FOLDER_PATH}'
             logger.error(err)
         return predict_data_files_paths
+
     def read_in_train_folder_data_file_paths_legacypathing(self) -> List[str]:  # TODO: deprecate/re-work
-        self.train_data_files_paths = predict_data_files_paths = [os.path.join(config.TRAIN_DATA_FOLDER_PATH, x)
-                                                                  for x in os.listdir(config.TRAIN_DATA_FOLDER_PATH)
-                                                                  if x.split('.')[-1]
-                                                                  in config.valid_dlc_output_extensions].copy()
+        self.train_data_files_paths = predict_data_files_paths = [
+            os.path.join(config.TRAIN_DATA_FOLDER_PATH, x) for x in os.listdir(config.TRAIN_DATA_FOLDER_PATH)
+            if x.split('.')[-1] in config.valid_dlc_output_extensions].copy()
         if len(predict_data_files_paths) <= 0:
             err = f'Zero csv files found from {config.TRAIN_DATA_FOLDER_PATH}'
             logger.error(err)
@@ -822,9 +815,8 @@ class PipelinePrime(BasePipeline):
 
     For a list of valid kwarg parameters, check parent object, "BasePipeline".
     """
-    def __init__(self, name=None, save_folder: str = None, tsne_source: str = 'sklearn', data_ext=None, **kwargs):
-        super().__init__(name=name, save_folder=save_folder, tsne_source=tsne_source, data_ext=data_ext, **kwargs)
-
+    def __init__(self, name, save_folder: str = None, **kwargs):
+        super().__init__(name=name, save_folder=save_folder, **kwargs)
 
     # Higher level data processing functions
     def tsne_reduce_df_features_train(self):
@@ -845,7 +837,7 @@ class PipelinePrime(BasePipeline):
             self.engineer_features_predict()
         # Scale
         # TODO: scale data
-        self.scale_transform_train_data()
+        self.scale_transform_predict_data()
 
         return self
 
