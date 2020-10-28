@@ -15,7 +15,7 @@ import sys
 from bsoid import check_arg, config, logging_bsoid, pipeline, statistics
 
 
-logger = config.initialize_logger(__name__)
+logger = config.initialize_logger(__file__)
 
 
 ########################################################################################################################
@@ -132,7 +132,8 @@ def read_dlc_data(data_file_path: str, **kwargs) -> pd.DataFrame:
     elif file_extension == 'h5':
         return read_h5(data_file_path)
     else:
-        invalid_ext_err = f'TODO: ELABORATE: invalid file trying to be read-in as DLC output'
+        invalid_ext_err = f'{logging_bsoid.get_current_function()}(): the input DLC data file had ' \
+                          f'an unexpected extension. Please check file path: {data_file_path}'
         logger.error(invalid_ext_err)
         raise ValueError(invalid_ext_err)
 
@@ -167,9 +168,15 @@ def save_pipeline(pipeline_obj, path_to_folder: str = config.OUTPUT_PATH) -> pip
         path_to_folder,
         pipeline.generate_pipeline_filename_from_pipeline(pipeline_obj)
     )
+    if os.path.isfile(final_out_path):
+        logger.debug(f'Removing file: {final_out_path}')
+        os.remove(final_out_path)
+        if os.path.isfile(final_out_path):
+            logger.error(f'os.remove DID NOT WORK TO REMOVE FILE!')
+
     with open(final_out_path, 'wb') as file:
         joblib.dump(pipeline_obj, file)
-
+    logger.debug(f'Pipeline saved to: {final_out_path}')
     return read_pipeline(final_out_path)
 
 
