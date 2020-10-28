@@ -1,4 +1,5 @@
 """
+Pipeline:
 
 
 Notes
@@ -35,7 +36,7 @@ logger = config.initialize_logger(__file__)
 
 # Base pipeline objects that outline the API
 
-class PipelineAttributeHolder:
+class PipelineAttributeHolder(object):
     """
     Helps hide params from base Pipeline object for API clarity
     Implement setters and getters.
@@ -89,10 +90,9 @@ class PipelineAttributeHolder:
     # SVM
     svm_c, svm_gamma, svm_probability, svm_verbose = None, None, None, None
     # Outcomes
-    _map_assignment_to_behaviour = {}
+    _map_assignment_to_behaviour = {k: '' for k in range(1, 30)}
 
     # Column names
-
     features_which_average_by_mean = ['DistFrontPawsTailbaseRelativeBodyLength',
                                       'DistBackPawsBaseTailRelativeBodyLength', 'InterforepawDistance', 'BodyLength', ]
     features_which_average_by_sum = ['SnoutToTailbaseChangeInAngle', 'SnoutSpeed', 'TailbaseSpeed']
@@ -107,6 +107,11 @@ class PipelineAttributeHolder:
     _cross_val_scores = []
     seconds_to_engineer_train_features: float = None
 
+    def get_map_of_labels(self) -> dict:
+        for a in self.unique_assignments:
+            if a not in self._map_assignment_to_behaviour:
+                self._map_assignment_to_behaviour[a] = None
+        return self._map_assignment_to_behaviour
     # Getters/Properties
     @property
     def name(self): return self._name
@@ -152,7 +157,7 @@ class PipelineAttributeHolder:
     def file_path(self) -> Optional[str]:  # TODO: low: review
         return os.path.join(self._source_folder, generate_pipeline_filename(self.name))
 
-    def get_assignment_label(self, assignment):
+    def get_assignment_label(self, assignment) -> Optional[str]:
         if assignment not in self._map_assignment_to_behaviour:
             return None
         else:
@@ -181,11 +186,12 @@ class PipelineAttributeHolder:
         :param label:
         :return:
         """
-        if assignment not in set(self.unique_assignments):
-            err = f'TODO: assignment "{assignment}" does not exist. Unique assignments = {self.unique_assignments}'
-            logger.error(err)
-            raise KeyError(err)
         check_arg.ensure_type(label, str)
+        try:
+            assignment = int(assignment)
+        except:
+            pass
+        logger.debug(f'{logging_bsoid.get_current_function()}():For assignment "{assignment}", label is now: "{label}"')
         self._map_assignment_to_behaviour[assignment] = label
         return self
 
@@ -225,28 +231,17 @@ class BasePipeline(PipelineAttributeHolder):
 
     """
     # Init
-    def __init__(self, name: str, save_folder: str = None, tsne_source=None, data_extension='csv', **kwargs):
+    def __init__(self, name: str, save_folder: str = None, data_extension='csv', **kwargs):
         # Pipeline name
-        if name is not None and not isinstance(name, str):
-            raise TypeError(f'name should be of type str but instead found type {type(name)}')
-        elif isinstance(name, str):
-            self.set_name(name)
+        check_arg.ensure_type(name, str)
+        self.set_name(name)
         # Save folder
-        if save_folder is not None:
-            check_arg.ensure_type(save_folder, str)
-            if save_folder:
-                check_arg.ensure_is_dir(save_folder)
-                self._source_folder = save_folder
+        check_arg.ensure_is_dir(save_folder)
+        self.set_save_location(save_folder)
         # TSNE source
-        if tsne_source is not None:
-            if not isinstance(tsne_source, str):
-                tsne_type_err = f'TODO: LOW: ELABORATE: bad type for tsne source ({type(tsne_source)}'
-                logger.error(tsne_type_err)
-                raise TypeError(tsne_type_err)
-            if tsne_source not in self.valid_tsne_sources:
-                tsne_err = f'TODO: LOW: ELABORATE: non-implemented tsne source: {tsne_source}'
-                logger.error(tsne_err)
-                raise ValueError(tsne_err)
+        tsne_source = kwargs.get('tsne_source', '')
+        check_arg.ensure_type(tsne_source, str)
+        if tsne_source in self.valid_tsne_sources:
             self.tsne_source = tsne_source
         # Validate data extension to be pulled from DLC output. Right now, only CSV and h5 supported by DLC to output.
         if data_extension is not None:
@@ -611,24 +606,30 @@ class BasePipeline(PipelineAttributeHolder):
             output_path_dir = config.OUTPUT_PATH if not self._source_folder else self._source_folder
         logger.debug(f'{inspect.stack()[0][3]}(): Attempting to save pipeline to the following folder: {output_path_dir}.')
         # Check if valid directory
-        if not os.path.isdir(output_path_dir):
-            raise ValueError(f'Invalid output path dir specified: {output_path_dir}')
+        check_arg.ensure_is_dir(output_path_dir)
+
         final_out_path = os.path.join(output_path_dir, generate_pipeline_filename(self._name))
 
         # Check if valid final path to be saved
-        if not check_arg.is_pathname_valid(final_out_path):
+        check_arg.ensure_is_valid_path(final_out_path)
+        if not check_arg.is_pathname_valid(final_out_path):  # TODO: review
             invalid_path_err = f'Invalid output path save: {final_out_path}'
             logger.error(invalid_path_err)
             raise ValueError(invalid_path_err)
 
+        self._source_folder = output_path_dir
+
+        logger.debug(f'{inspect.stack()[0][3]}(): Attempting to save pipeline to file: {final_out_path}.')
+
         # Write to file
         with open(final_out_path, 'wb') as model_file:
             joblib.dump(self, model_file)
-        # Since successful, save
-        self._source_folder = output_path_dir
+        # joblib.dump(self, final_out_path)
 
-        logger.debug(f'Pipeline ({self.name}) saved to: {final_out_path}')
-        return self
+        # Since successful, save
+
+        logger.debug(f'{inspect.stack()[0][3]}(): Pipeline ({self.name}) saved to: {final_out_path}')
+        return io.read_pipeline(final_out_path)
 
     def has_been_previously_saved(self) -> bool:
         # TODO: high: re-evaluate correctness
@@ -670,7 +671,7 @@ class BasePipeline(PipelineAttributeHolder):
         :param data_source:
         :param video_file_path:
         :param file_name_prefix:
-        :param min_frames:
+        :param min_rows_of_behaviour:
         :param max_examples:
         :return:
         """
@@ -710,7 +711,7 @@ class BasePipeline(PipelineAttributeHolder):
             rle_zipped_by_entry.append(list(row__assignment_idx_addedLength))
 
         # Roll up assignments into a dict. Keys are labels, values are lists of [index, additional length]
-        rle_by_assignment: Dict[Any: List[int, int]] = {}
+        rle_by_assignment: dict = {}  # Dict[Any, List[str, str]]
         for label, idx, add_length in rle_zipped_by_entry:
             rle_by_assignment[label] = []
             if add_length >= min_rows_of_behaviour:
@@ -823,6 +824,7 @@ class PipelinePrime(BasePipeline):
     """
     def __init__(self, name=None, save_folder: str = None, tsne_source: str = 'sklearn', data_ext=None, **kwargs):
         super().__init__(name=name, save_folder=save_folder, tsne_source=tsne_source, data_ext=data_ext, **kwargs)
+
 
     # Higher level data processing functions
     def tsne_reduce_df_features_train(self):
@@ -1024,13 +1026,18 @@ class PipelinePrime(BasePipeline):
 
 # Accessory functions
 
-def generate_pipeline_filename(name):
+def generate_pipeline_filename(name: str):
     """
     Generates a pipeline file name given its name.
 
     This is an effort to standardize naming for saving pipelines.
     """
     file_name = f'{name}.pipeline'
+    return file_name
+
+
+def generate_pipeline_filename_from_pipeline(pipeline_obj: BasePipeline) -> str:
+    file_name = f'{pipeline_obj.name}.pipeline'
     return file_name
 
 
