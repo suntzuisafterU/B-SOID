@@ -152,31 +152,35 @@ def read_pipeline(path_to_file: str) -> pipeline.BasePipeline:
     return p
 
 
-def save_pipeline(pipeline_obj, path_to_folder: str = config.OUTPUT_PATH) -> pipeline.BasePipeline:
+def save_pipeline(pipeline_obj, dir_path: str = config.OUTPUT_PATH) -> pipeline.BasePipeline:
     """
     With a valid path, save an existing pipeline
     :param pipeline_obj:
-    :param path_to_folder:
+    :param dir_path:
     :return:
     """
-    # TODO: do final checks on this function   <---------------------------------------------------------------------------
     # Arg checking
-    check_arg.ensure_type(path_to_folder, str)
-    # check_arg.ensure_is_valid_path(path_to_folder)
-
+    check_arg.ensure_type(dir_path, str)
+    check_arg.ensure_is_valid_path(dir_path)
+    did_not_delete_file = False
     final_out_path = os.path.join(
-        path_to_folder,
+        dir_path,
         pipeline.generate_pipeline_filename_from_pipeline(pipeline_obj)
     )
     if os.path.isfile(final_out_path):
         logger.debug(f'Removing file: {final_out_path}')
         os.remove(final_out_path)
         if os.path.isfile(final_out_path):
+            did_not_delete_file = True
             logger.error(f'os.remove DID NOT WORK TO REMOVE FILE!')
 
     with open(final_out_path, 'wb') as file:
         joblib.dump(pipeline_obj, file)
     logger.debug(f'Pipeline saved to: {final_out_path}')
+    if did_not_delete_file:
+        err = f'TODO: elaborate. After destroying file with os.remove, the file still existed. Not good!'
+        logger.error(err)
+        raise OSError(err)
     return read_pipeline(final_out_path)
 
 
