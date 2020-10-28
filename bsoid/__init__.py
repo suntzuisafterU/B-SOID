@@ -29,7 +29,9 @@ from . import (
 # user-facing io api
 from .io import (  # TODO: change to "from .io ..."
     read_csv,
+    read_dlc_data,
     read_pipeline,
+    save_pipeline,
 )
 
 # from .util import io
