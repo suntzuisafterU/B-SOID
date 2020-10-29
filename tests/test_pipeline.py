@@ -4,6 +4,7 @@
 from typing import Any, Dict, List, Set
 from unittest import TestCase, skip
 import os
+import time
 
 import itertools
 import numpy as np
@@ -19,7 +20,7 @@ assert os.path.isfile(csv_test_file_path)
 class TestPipeline(TestCase):
 
     # SCALING DATA
-    @skip   # Temporary skip since it takes forever
+    @skip   # Temporary skip since it takes forever to run this due to sample size
     def test__scale_data__shouldReturnDataFrameWithSameColumnNames__afterScalingData(self):
         # Arrange
         p = bsoid.pipeline.PipelinePrime('TestPipe987dfdp').add_train_data_source(csv_test_file_path).build(True)
@@ -173,13 +174,17 @@ p.train_data_files_paths = {p.train_data_files_paths}
     def test__updatingAssignment__shouldSaveLabel__whenSavedAndRereadIn(self):
         """  """
         # Arrange
-        name = 'DELETE_ME__APipelineName12398asdfasdfaasd41614154fasdfsdf7_'
+        name = 'DELETE_ME__APipelineName12398asdzzz1614154fasdfsdf7_'
         p_write = bsoid.pipeline.PipelinePrime(name)
         assignment, input_label = 12, 'Behaviour12'
 
         # Act
         p_write = p_write.update_assignment_label(assignment, input_label)
         p_write.save()
+        p_write = None
+        # del p_write
+        # time.sleep(1)
+
         p_read = bsoid.read_pipeline(os.path.join(
             bsoid.config.OUTPUT_PATH,
             bsoid.pipeline.generate_pipeline_filename(name),
