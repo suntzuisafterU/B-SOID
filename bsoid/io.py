@@ -146,9 +146,10 @@ def read_pipeline(path_to_file: str) -> pipeline.BasePipeline:
     """
     # TODO: do final checks on this function
     check_arg.ensure_is_file(path_to_file)
+    logger.debug(f'{logging_bsoid.get_current_function()}(): Trying to open: {path_to_file}')
     with open(path_to_file, 'rb') as file:
         p = joblib.load(file)
-
+    logger.debug(f'{logging_bsoid.get_current_function()}(): Pipeline at {path_to_file} opened successfully!')
     return p
 
 
@@ -167,12 +168,13 @@ def save_pipeline(pipeline_obj, dir_path: str = config.OUTPUT_PATH) -> pipeline.
         dir_path,
         pipeline.generate_pipeline_filename_from_pipeline(pipeline_obj)
     )
-    if os.path.isfile(final_out_path):
-        logger.debug(f'Removing file: {final_out_path}')
-        os.remove(final_out_path)
-        if os.path.isfile(final_out_path):
-            did_not_delete_file = True
-            logger.error(f'os.remove DID NOT WORK TO REMOVE FILE!')
+    # # TODO: high: check if its being overwritten without os.remove usage
+    # if os.path.isfile(final_out_path):
+    #     logger.debug(f'Removing file: {final_out_path}')
+    #     os.remove(final_out_path)
+    #     if os.path.isfile(final_out_path):
+    #         did_not_delete_file = True
+    #         logger.error(f'os.remove DID NOT WORK TO REMOVE FILE!')
 
     with open(final_out_path, 'wb') as file:
         joblib.dump(pipeline_obj, file)
