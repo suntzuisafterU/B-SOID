@@ -6,9 +6,8 @@ TODO: Commands to implement:
     - clear logs
     - clear output folder (+ prompt for confirm)
 """
-dev_debugging = False  # TODO: low: debugging effort
 
-
+from typing import Any, Dict, List, Tuple
 import argparse
 import sys
 
@@ -18,18 +17,21 @@ from bsoid.pipeline import *  # This line is required for Streamlit to load Pipe
 logger = bsoid.config.initialize_logger(__name__)
 
 
+dev_debugging = False  # TODO: low: debugging effort
+
+
 ########################################################################################################################
 
 bsoid_runtime_description = 'BSOID command line utility. Do BSOID stuff. Expand on this later.'
 
 map_command_to_func = {
 
-    'clean': bsoid.app.clear_output_folders,
-    'cleanoutput': bsoid.app.clear_output_folders,
+    # 'clean': bsoid.app.clear_output_folders,  # TODO: review clear output folders function for
+    # 'cleanoutput': bsoid.app.clear_output_folders,
     'buildandrunlegacy': bsoid.main_LEGACY.test_function_to_build_then_run_py,
     'newbuild': bsoid.app.build_classifier_new_pipeline,
     'streamlit': bsoid.streamlit_bsoid.home,
-    'test': lambda *args, **kwargs: print(args, kwargs)
+    'test': lambda *args, **kwargs: print(args, kwargs),
 }
 
 
@@ -44,7 +46,8 @@ def parse_args() -> argparse.Namespace:
     """
     # Instantiate parser, add arguments as expected on command-line
     parser = argparse.ArgumentParser(description=bsoid_runtime_description)
-    parser.add_argument('command', help=f'HELP: TODO: command')
+    parser.add_argument(f'command', help=f'HELP: TODO: command. Valid commands: '
+                                         f'{[""+x for x in list(map_command_to_func.keys())]}')
     parser.add_argument('-p', help=f'HELP: TODO: PIPELINE LOC')
     # TODO: add more commands, subcommands
 
@@ -111,14 +114,13 @@ def do_command_from_sysargv_parse(args: List[str]) -> None:
 def main():
     ### Parse args
     args = parse_args()
-    # args = parse_args_using_sysargv()
+
+    if dev_debugging:
+        print(f'args: {args}')
+        print(f'args.command: {args.command}')
 
     ### Do command
     do_command(args)
-    # do_command_from_sysargv_parse(args)
-
-    # print(f'args: {args}')
-    # print(f'args.command: {args.command}')
 
     ### End
     pass
