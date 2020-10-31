@@ -45,7 +45,7 @@ class PipelineAttributeHolder(object):
     _name, _description = 'DefaultPipelineName', '(Default pipeline description)'
     _source_folder: str = config.OUTPUT_PATH  # Folder in which this pipeline resides. OUTPUT_PATH is default.
     data_ext: str = 'csv'  # Extension which data is read from
-    dims_cols_names: Union[List[str], Tuple[str]] = None
+    dims_cols_names = None  # Union[List[str], Tuple[str]]
     valid_tsne_sources: set = {'bhtsne', 'sklearn', }
     gmm_assignment_col_name, svm_assignment_col_name = 'gmm_assignment', 'svm_assignment'
     # Tracking vars
@@ -55,13 +55,14 @@ class PipelineAttributeHolder(object):
     _has_unengineered_predict_data: bool = False    # Changes to True if new predict data
                                                     # is added. Changes to False if features are engineered.
     tsne_source: str = 'sklearn'
+    cross_validation_k = config.CROSSVALIDATION_K
     # Sources
-    train_data_files_paths: List[str] = []
-    predict_data_files_paths: List[str] = []
+    train_data_files_paths = []  # : List[str]  # TODO: med: deprecate. Not save-able
+    predict_data_files_paths = []  # List[str]  # TODO: med: deprecate. Not save-able
 
     # Data
-    _dfs_list_raw_train_data: List[pd.DataFrame] = []  # Raw data frames kept right after read_data() function called
-    _dfs_list_raw_predict_data: List[pd.DataFrame] = []
+    _dfs_list_raw_train_data = []  # Raw data frames kept right after read_data() function called  # List[pd.DataFrame]
+    _dfs_list_raw_predict_data = []  # List[pd.DataFrame]
 
     default_cols = ['data_source', 'file_source', svm_assignment_col_name, gmm_assignment_col_name]
     df_features_train = pd.DataFrame(columns=default_cols)
@@ -73,8 +74,10 @@ class PipelineAttributeHolder(object):
     _scaler = None
     _clf_gmm = None
     _clf_svm = None
-
-    _random_state: Optional[int] = None
+    label_1, label_2, label_3, label_4, label_5, label_6, label_7, label_8, label_9, label_10 = ["" for _ in range(10)]
+    label_11, label_12, label_13, label_14, label_15, label_16, label_17, label_18, label_19 = ["" for _ in range(9)]
+    label_20, label_21, label_22, label_23, label_24, label_25 = ["" for _ in range(6)]
+    _random_state: int = None
     average_over_n_frames: int = 3  # TODO: low: add to kwargs
     test_train_split_pct: float = None
 
@@ -90,13 +93,12 @@ class PipelineAttributeHolder(object):
     # SVM
     svm_c, svm_gamma, svm_probability, svm_verbose = None, None, None, None
     # Outcomes
-    _map_assignment_to_behaviour = {k: '' for k in range(1, 30)}
 
     # Column names
     features_which_average_by_mean = ['DistFrontPawsTailbaseRelativeBodyLength',
                                       'DistBackPawsBaseTailRelativeBodyLength', 'InterforepawDistance', 'BodyLength', ]
     features_which_average_by_sum = ['SnoutToTailbaseChangeInAngle', 'SnoutSpeed', 'TailbaseSpeed']
-    features_names_7: List[str] = features_which_average_by_mean + features_which_average_by_sum
+    features_names_7 = features_which_average_by_mean + features_which_average_by_sum  # List[str]
     test_col_name = 'is_test_data'
 
     # Misc attributes
@@ -107,12 +109,37 @@ class PipelineAttributeHolder(object):
     _cross_val_scores = []
     seconds_to_engineer_train_features: float = None
 
-    def get_map_of_labels(self) -> dict:
-        for a in self.unique_assignments:
-            if a not in self._map_assignment_to_behaviour:
-                self._map_assignment_to_behaviour[a] = None
-        return self._map_assignment_to_behaviour
-    # Getters/Properties
+
+    # TODO: high: evaluate
+    def get_assignment_label(self, assignment: int) -> str:  # Optional[str]
+        """ Get behavioural label according to assignment value (number) """
+        try:
+            assignment = int(assignment)
+        except ValueError as ve:
+            err = f'TODO: elaborate error: invalid assignment found: {assignment}'
+            logger.error(err)
+            raise ValueError(err)
+
+        try:
+            ret = getattr(self, f'label_{assignment}')
+        except Exception as e:
+            logger.error(f'{logging_bsoid.get_current_function()}(): unexpected exception '
+                         f'occurred! Please address. Label not found: label_{assignment}')
+            raise e
+
+        return ret
+
+    def set_label(self, assignment, label: str):
+        """ Set behavioural label for a given model assignment number/value """
+        setattr(self, f'label_{assignment}', label)
+        return self
+    def set_save_location(self, dir_path):
+        # TODO: verify
+        check_arg.ensure_type(dir_path, str)
+        check_arg.ensure_is_dir(dir_path)
+        self._source_folder = dir_path
+
+    # # # Getters/Properties
     @property
     def name(self): return self._name
     @property
@@ -137,31 +164,25 @@ class PipelineAttributeHolder(object):
     @property
     def svm_assignment(self) -> str: return self.svm_assignment_col_name
     @property
-    def cross_val_scores(self) -> Union[List, np.ndarray]:
+    def cross_val_scores(self):  # Union[List, np.ndarray]
         return self._cross_val_scores
     @property
-    def training_data_sources(self) -> List[str]:
+    def training_data_sources(self):  # List[str]
         return list(np.unique(self.df_features_train_scaled['data_source'].values))
     @property
-    def predict_data_sources(self) -> List[str]:
+    def predict_data_sources(self):  # List[str]
         return list(np.unique(self.df_features_predict_scaled['data_source'].values))
     @property
-    def raw_assignments(self) -> List[str]:
+    def raw_assignments(self):  # List[str]
         return self.raw_assignments
     @property
-    def unique_assignments(self) -> List[any]:
+    def unique_assignments(self):  # List[any]
         if len(self.df_features_train_scaled) > 0:
             return list(np.unique(self.df_features_train_scaled[self.svm_col].values))
         return []
     @property
-    def file_path(self) -> Optional[str]:  # TODO: low: review
+    def file_path(self):  # TODO: low: review   # Optional[str]
         return os.path.join(self._source_folder, generate_pipeline_filename(self.name))
-
-    def get_assignment_label(self, assignment) -> Optional[str]:
-        if assignment not in self._map_assignment_to_behaviour:
-            return None
-        else:
-            return self._map_assignment_to_behaviour[assignment]
 
     # Setters
     def set_name(self, name: str):
@@ -174,25 +195,6 @@ class PipelineAttributeHolder(object):
         """ Set a description of the pipeline. Include any notes you want to keep regarding the process used. """
         check_arg.ensure_type(description, str)
         self._description = description
-        return self
-
-    def set_save_location(self, dir_path):
-        raise NotImplementedError(f'TODO: implement. Change not-saved variable in obj?')
-
-    def update_assignment_label(self, assignment: int, label: str):
-        """
-
-        :param assignment:
-        :param label:
-        :return:
-        """
-        check_arg.ensure_type(label, str)
-        try:
-            assignment = int(assignment)
-        except:
-            pass
-        logger.debug(f'{logging_bsoid.get_current_function()}():For assignment "{assignment}", label is now: "{label}"')
-        self._map_assignment_to_behaviour[assignment] = label
         return self
 
 
@@ -209,11 +211,8 @@ class BasePipeline(PipelineAttributeHolder):
 
 
     kwargs
-        Kwargs default to pulling in data from config file unless overtly specified to override. See below specs.
+        Kwargs default to pulling in data from config file unless overtly specified to override. See below.
     ----------
-
-    data_extension : str
-        TODO: low: elaboration
 
     train_data_source : EITHER List[str] OR str, optional
         Specify a source or sources by which the pipeline reads in training data.
@@ -231,45 +230,35 @@ class BasePipeline(PipelineAttributeHolder):
 
     """
     # Init
-    def __init__(self, name: str, save_folder: str = None, data_extension='csv', **kwargs):
+    def __init__(self, name: str, save_folder: str = None, **kwargs):
         # Pipeline name
         check_arg.ensure_type(name, str)
         self.set_name(name)
         # Save folder
-        check_arg.ensure_is_dir(save_folder)
-        self.set_save_location(save_folder)
+        if save_folder is not None:
+            check_arg.ensure_type(save_folder, str)
+            check_arg.ensure_is_dir(save_folder)
+            self.set_save_location(save_folder)
         # TSNE source
         tsne_source = kwargs.get('tsne_source', '')
         check_arg.ensure_type(tsne_source, str)
         if tsne_source in self.valid_tsne_sources:
             self.tsne_source = tsne_source
-        # Validate data extension to be pulled from DLC output. Right now, only CSV and h5 supported by DLC to output.
-        if data_extension is not None:
-            if not isinstance(data_extension, str):
-                data_ext_type_err = f'Invalid type found for data ext: {type(data_extension)} /' \
-                                    f'TODO: clean up err message'
-                logger.error(data_ext_type_err)
-                raise TypeError(data_ext_type_err)
-            self.data_ext = data_extension
-
+        
+        self.kwargs = kwargs
         # Final setup
         self.__read_in_kwargs(**kwargs)
         self.dims_cols_names = [f'dim{d + 1}' for d in range(self.tsne_dimensions)]  # TODO: low: encapsulate elsewhere
-        self.kwargs = kwargs
 
     def __read_in_kwargs(self, **kwargs):
         """ Reads in kwargs else pull form config file """
         # TODO: ADD KWARGS OPTION FOR OVERRIDING VERBOSE in CONFIG.INI!!!!!!!! ****
         # TODO: LOW: add kwargs parsing for averaging over n-frames
         # TODO: low/med: add kwargs for parsing test/train split pct
-        # Read in training data source
-        train_data_source = kwargs.get('train_data_source')
-        if train_data_source is not None: self.add_train_data_source(train_data_source)
         # Random state  # TODO: low ensure random state correct
         random_state = kwargs.get('random_state', config.RANDOM_STATE)
-        if random_state is not None:
-            check_arg.ensure_type(random_state, int)
-            self._random_state = random_state
+        check_arg.ensure_type(random_state, int)
+        self._random_state = random_state
         ### TSNE ###
         ## SKLEARN ##
         tsne_n_components = kwargs.get('n_components', config.TSNE_N_COMPONENTS)  # TODO: low: shape up kwarg name for n components? See string name
@@ -321,9 +310,10 @@ class BasePipeline(PipelineAttributeHolder):
         self.svm_probability = svm_probability
         svm_verbose = kwargs.get('svm_verbose', config.svm_verbose)
         self.svm_verbose = svm_verbose
+        cross_validation_k = kwargs.get('cross_validation_k', config.CROSSVALIDATION_K)
+        check_arg.ensure_type(cross_validation_k, int)
+        self.cross_validation_k = cross_validation_k
 
-        if self._source_folder is None:
-            self._source_folder = config.OUTPUT_PATH
         if self.test_train_split_pct is None:
             self.test_train_split_pct = config.HOLDOUT_PERCENT
 
@@ -334,42 +324,34 @@ class BasePipeline(PipelineAttributeHolder):
         train_data_args: any number of args. Types submitted expected to be either List[str] or [str]
             In the case that an arg is List[str], the arg must be a list of strings that
         """
-        # Type-checking first. If *args is None or empty collection, raise error.
-        if not train_data_args:
-            # logger.warning(f'Trying to add in an invalid set of items: {train_data_args}')
-            return self
 
-        path = train_data_args[0]
-        if os.path.isdir(path):  # If path is to a directory: check directory for all file files of valid file ext
-            data_sources = [os.path.join(path, x) for x in os.listdir(path)
-                            if x.split('.')[-1] in config.valid_dlc_output_extensions
-                            and os.path.join(path, x) not in self.train_data_files_paths]
-            for file_path in data_sources:
-                df_i = io.read_csv(file_path)
-                self._dfs_list_raw_train_data.append(df_i)
-                self.train_data_files_paths.append(file_path)
-            self._has_unengineered_training_data = True
-            return self.add_train_data_source(*train_data_args[1:])
-        elif os.path.isfile(path):  # If path is to a file: read in file
-            ext = path.split('.')[-1]
-            if ext != self.data_ext:
-                invalid_data_source_err = f'Invalid data source submitted. Expected data type extension ' \
-                                          f'of {self.data_ext} but instead found: {ext} (path={path}).'
-                logger.error(invalid_data_source_err)
-                raise ValueError(invalid_data_source_err)
-            if path in self.train_data_files_paths:
-                return self.add_train_data_source(*train_data_args[1:])
-            df_file = io.read_csv(path)
-            self._dfs_list_raw_train_data.append(df_file)
-            self.train_data_files_paths.append(path)
-            self._has_unengineered_training_data = True
-            return self.add_train_data_source(*train_data_args[1:])
+        train_data_args = [p for p in train_data_args if p not in self.train_data_files_paths]  # train_data_args
+        for path in train_data_args:
+            if os.path.isfile(path):
+                # if path not in self.train_data_files_paths:
+                df_file = io.read_csv(path)
+                self._dfs_list_raw_train_data.append(df_file)
+                self.train_data_files_paths.append(path)
+                self._has_unengineered_training_data_data = True
+                logger.debug(f'Added file to train data: {path}')
+            elif os.path.isdir(path):
+                data_sources = [os.path.join(path, file_name) for file_name in os.listdir(path)
+                                if file_name.split('.')[-1] in config.valid_dlc_output_extensions
+                                and os.path.join(path, file_name) not in self.train_data_files_paths]
+                for file_path in data_sources:
+                    # if file_path not in self.train_data_files_paths:
+                    df_i = io.read_csv(file_path)
+                    self._dfs_list_raw_train_data.append(df_i)
+                    self.train_data_files_paths.append(file_path)
+                    logger.debug(f'Added file to train data: {file_path}')
+                    self._has_unengineered_training_data_data = True
+            else:
+                unusual_path_err = f'Unusual file/dir path submitted but not found: {path}. Is not a valid ' \
+                                   f'file and not a directory.'
+                logger.error(unusual_path_err)
+                raise ValueError(unusual_path_err)
 
-        else:
-            unusual_path_err = f'Unusual file/dir path submitted but not found: {path}. Is not a valid ' \
-                               f'file and not a directory.'
-            logger.error(unusual_path_err)
-            raise ValueError(unusual_path_err)
+        return
 
     def add_predict_data_source(self, *predict_data_args):
         """
@@ -377,50 +359,47 @@ class BasePipeline(PipelineAttributeHolder):
         predict_data_args: any number of args. Types submitted expected to be either List[str] or [str]
             In the case that an arg is List[str], the arg must be a list of strings that ___
         """
-        # Type-checking first. If *args is None or empty collection, raise error.
-        if not predict_data_args:
-            return self
+        predict_data_args = [x for x in predict_data_args if x not in self.predict_data_files_paths]
+        for path in predict_data_args:
+            if os.path.isfile(path):
+                df_file = io.read_csv(path)
+                self._dfs_list_raw_predict_data.append(df_file)
+                self.predict_data_files_paths.append(path)
+                self._has_unengineered_predict_data = True
+                logger.debug(f'Added file to predict data: {path}')
 
-        path = predict_data_args[0]
-        if os.path.isdir(path):  # If path is to a directory: check directory for all file files of valid file ext
-            data_sources = [os.path.join(path, x) for x in os.listdir(path)
-                            if x.split('.')[-1] in config.valid_dlc_output_extensions
-                            and os.path.join(path, x) not in self.predict_data_files_paths]
-            for file_path in data_sources:
-                df_i = io.read_csv(file_path)
-                self._dfs_list_raw_predict_data.append(df_i)
-                self.predict_data_files_paths.append(file_path)
-                logger.debug(f'Added file to predict data: {file_path}')
-            self._has_unengineered_predict_data = True
-            return self.add_predict_data_source(*predict_data_args[1:])
-        elif os.path.isfile(path):  # If path is to a file: read in file
-            ext = path.split('.')[-1]
-            if ext != self.data_ext:
-                invalid_data_source_err = f'Invalid data source submitted. Expected data type extension ' \
-                                          f'of {self.data_ext} but instead found: {ext} (path={path}).'
-                logger.error(invalid_data_source_err)
-                raise ValueError(invalid_data_source_err)
-            if path in self.predict_data_files_paths:
-                return self
-            df_file = io.read_csv(path)
-            self._dfs_list_raw_predict_data.append(df_file)
-            self.predict_data_files_paths.append(path)
-            self._has_unengineered_predict_data = True
-            logger.debug(f'Added file to predict data: {path}')
+            elif os.path.isdir(path):
+                data_sources = [os.path.join(path, file_name) for file_name in os.listdir(path)
+                                if file_name.split('.')[-1] in config.valid_dlc_output_extensions
+                                and os.path.join(path, file_name) not in self.predict_data_files_paths]
+                for file_path in data_sources:
+                    df_i = io.read_csv(file_path)
+                    self._dfs_list_raw_predict_data.append(df_i)
+                    self.predict_data_files_paths.append(file_path)
+                    logger.debug(f'Added file to predict data: {file_path}')
+            else:
+                unusual_path_err = f'Unusual file/dir path submitted but not found: {path}. Is not a valid ' \
+                                   f'file and not a directory.'  # TODO: low: improve error msg clarity
+                logger.error(unusual_path_err)
+                raise ValueError(unusual_path_err)
 
-            return self.add_predict_data_source(*predict_data_args[1:])
+        return self
 
-        else:
-            unusual_path_err = f'Unusual file/dir path submitted but not found: {path}. Is not a valid ' \
-                               f'file and not a directory.'  # TODO: low: improve error msg clarity
-            logger.error(unusual_path_err)
-            raise ValueError(unusual_path_err)
+    def remove_train_data_source(self, data_source: str):
+        # TODO: low: ensure function, add tests
+        check_arg.ensure_type(data_source, str)
+        self.df_features_train = self.df_features_train.loc[self.df_features_train['data_source'] != data_source]
+        self.df_features_train_scaled = self.df_features_train_scaled.loc[
+            self.df_features_train_scaled['data_source'] != data_source]
+        return self
 
-    def remove_predict_data_source(self, source: str):
-        raise NotImplementedError(f'TODO: Implement')
-
-    def remove_train_data_source(self, source: str):
-        raise NotImplementedError(f'TODO: implement')
+    def remove_predict_data_source(self, data_source: str):
+        # TODO: low: ensure function, add tests
+        check_arg.ensure_type(data_source, str)
+        self.df_features_predict = self.df_features_predict.loc[self.df_features_predict['data_source'] != data_source]
+        self.df_features_predict_scaled = self.df_features_predict_scaled.loc[
+            self.df_features_predict_scaled['data_source'] != data_source]
+        return self
 
     ## Scaling data
     def _create_scaled_data(self, df, features, create_new_scaler: bool = False) -> pd.DataFrame:
@@ -475,15 +454,18 @@ class BasePipeline(PipelineAttributeHolder):
         :return:
         """
         # Queue up data to use
-        if features is None: features = self.features_names_7
+        if features is None:
+            features = self.features_names_7
         df_features_predict = self.df_features_predict
         # Check args
         check_arg.ensure_type(features, list)
         check_arg.ensure_type(df_features_predict, pd.DataFrame)
         check_arg.ensure_columns_in_DataFrame(df_features_predict, features)
+
         # Get scaled data
         df_scaled_data: pd.DataFrame = self._create_scaled_data(df_features_predict, features, create_new_scaler=False)
         check_arg.ensure_type(df_scaled_data, pd.DataFrame)  # Debugging effort. Remove later.
+
         # Save data. Return.
         self.df_features_predict_scaled = df_scaled_data
         return self
@@ -499,7 +481,8 @@ class BasePipeline(PipelineAttributeHolder):
         """
         # Check args
         check_arg.ensure_type(data, pd.DataFrame)
-        #
+
+        # Do
         if self.tsne_source == 'bhtsne':
             arr_result = TSNE_bhtsne(
                 data[self.features_names_7],
@@ -525,6 +508,7 @@ class BasePipeline(PipelineAttributeHolder):
 
     def train_GMM(self, data: pd.DataFrame):
         """"""
+
         self._clf_gmm = GaussianMixture(
             n_components=self.gmm_n_components,
             covariance_type=self.gmm_covariance_type,
@@ -538,18 +522,7 @@ class BasePipeline(PipelineAttributeHolder):
         ).fit(data)
         return self
 
-    # @config.deco__log_entry_exit(logger)
-    # def train_gmm_and_get_labels(self, df: pd.DataFrame) -> np.ndarray:  # TODO: low: remove func?
-    #     """
-    #     Train GMM. Get associated labels. Save GMM. TODO: elaborate
-    #     :param df:
-    #     :return:
-    #     """
-    #     self.train_GMM(df)
-    #     assignments = self.clf_gmm.predict(df)
-    #     return assignments
-
-    def gmm_predict(self, data) -> Any:  # TODO: low: remove func?
+    def gmm_predict(self, data):  # TODO: low: remove func?  -> Any
         assignment = self.clf_gmm.predict(data)
         return assignment
 
@@ -605,14 +578,15 @@ class BasePipeline(PipelineAttributeHolder):
         if output_path_dir is None:
             output_path_dir = config.OUTPUT_PATH if not self._source_folder else self._source_folder
         logger.debug(f'{inspect.stack()[0][3]}(): Attempting to save pipeline to the following folder: {output_path_dir}.')
+
         # Check if valid directory
         check_arg.ensure_is_dir(output_path_dir)
 
+        # Do
         final_out_path = os.path.join(output_path_dir, generate_pipeline_filename(self._name))
-
         # Check if valid final path to be saved
         check_arg.ensure_is_valid_path(final_out_path)
-        if not check_arg.is_pathname_valid(final_out_path):  # TODO: review
+        if not check_arg.is_pathname_valid(final_out_path):  # TODO: low: review
             invalid_path_err = f'Invalid output path save: {final_out_path}'
             logger.error(invalid_path_err)
             raise ValueError(invalid_path_err)
@@ -625,7 +599,6 @@ class BasePipeline(PipelineAttributeHolder):
         # Write to file
         with open(final_out_path, 'wb') as model_file:
             joblib.dump(self, model_file)
-        # joblib.dump(self, final_out_path)
 
         logger.debug(f'{inspect.stack()[0][3]}(): Pipeline ({self.name}) saved to: {final_out_path}')
         return io.read_pipeline(final_out_path)
@@ -693,7 +666,8 @@ class BasePipeline(PipelineAttributeHolder):
 
         # Get Run-Length Encoding
         assignments = df[self.svm_assignment_col_name].values
-        rle: Tuple[List, List, List] = statistics.augmented_runlength_encoding(assignments)
+        rle = statistics.augmented_runlength_encoding(assignments)  # rle: Tuple[List, List, List] = statistics.augmented_runlength_encoding(assignments)
+
 
         # Zip RLE according to order
         # First index is value, second is index, third is additional length
@@ -734,7 +708,7 @@ class BasePipeline(PipelineAttributeHolder):
         return self
 
     # Diagnostics and graphs
-    def get_plot_svm_assignments_distribution(self) -> Tuple[object, object]:
+    def get_plot_svm_assignments_distribution(self):  #     def get_plot_svm_assignments_distribution(self) -> Tuple[object, object]:
         """
         Get a histogram of assignments in order to review their distribution in the TRAINING data
         """
@@ -753,7 +727,7 @@ len(self._dfs_list_raw_train_data): {len(self._dfs_list_raw_train_data)}
 self.train_data_files_paths: {self.train_data_files_paths}
 """.strip()
         return diag
-    def plot_assignments_in_3d(self, show_now=False, save_to_file=False, azim_elev: Tuple[int, int] = (70, 135), **kwargs) -> Tuple[object, object]:
+    def plot_assignments_in_3d(self, show_now=False, save_to_file=False, azim_elev = (70, 135), **kwargs):  #     def plot_assignments_in_3d(self, show_now=False, save_to_file=False, azim_elev: Tuple[int, int] = (70, 135), **kwargs) -> Tuple[object, object]:
         """
         TODO: expand
         :param show_now:
@@ -761,9 +735,9 @@ self.train_data_files_paths: {self.train_data_files_paths}
         :param azim_elev:
         :return:
         """
-        # TODO: low: check for other runtiem vars
+        # TODO: low: check for other runtime vars
         if not self.is_built:  # or not self._has_unused_raw_data:
-            e = f'Classifiers have not been built. Nothing to graph.'
+            e = f'{logging_bsoid.get_current_function()}(): The model has not been built. There is nothing to graph.'
             logger.warning(e)
             raise ValueError(e)
 
@@ -776,7 +750,7 @@ self.train_data_files_paths: {self.train_data_files_paths}
             **kwargs
         )
         return fig, ax
-    def plot_cross_val_scoring(self):
+    def get_plot_cross_val_scoring(self):
         not_implemented = f'NOT IMPLEMENTED'
         logger.error(not_implemented)
         # util.visuals.plot_accuracy_SVM(scores, fig_file_prefix='TODO__replaceThisFigFilePrefixToSayIfItsKFOLDAccuracyOrTestAccuracy')
@@ -784,7 +758,8 @@ self.train_data_files_paths: {self.train_data_files_paths}
         raise NotImplementedError(not_implemented)
 
     # Legacy stuff. Potential deprecation material.
-    def read_in_predict_folder_data_file_paths_legacypathing(self) -> List[str]:  # TODO: deprecate/re-work
+    def read_in_predict_folder_data_file_paths_legacypathing(self) -> list:  # TODO: deprecate/re-work
+        logger.warning(f'{inspect.stack()[0][3]}(): to be deprecated. Caller = {logging_bsoid.get_caller_function()}')
         self.predict_data_files_paths = predict_data_files_paths = [
             os.path.join(config.PREDICT_DATA_FOLDER_PATH, x)
             for x in os.listdir(config.PREDICT_DATA_FOLDER_PATH)
@@ -794,7 +769,8 @@ self.train_data_files_paths: {self.train_data_files_paths}
             logger.error(err)
         return predict_data_files_paths
 
-    def read_in_train_folder_data_file_paths_legacypathing(self) -> List[str]:  # TODO: deprecate/re-work
+    def read_in_train_folder_data_file_paths_legacypathing(self) -> list:  # TODO: deprecate/re-work
+        logger.warning(f'{inspect.stack()[0][3]}(): to be deprecated soon. Caller = {logging_bsoid.get_caller_function()}')
         self.train_data_files_paths = predict_data_files_paths = [
             os.path.join(config.TRAIN_DATA_FOLDER_PATH, x) for x in os.listdir(config.TRAIN_DATA_FOLDER_PATH)
             if x.split('.')[-1] in config.valid_dlc_output_extensions].copy()
@@ -842,7 +818,7 @@ class PipelinePrime(BasePipeline):
         return self
 
     # Engineering features
-    def engineer_features(self, dfs: List[pd.DataFrame]) -> pd.DataFrame:
+    def engineer_features(self, dfs) -> pd.DataFrame:  #     def engineer_features(self, dfs: List[pd.DataFrame]) -> pd.DataFrame:
         """
         The MAIN function that will build features for BOTH training and prediction data. This
         ensures that processed data for training and prediction are processed in the same way.
@@ -852,7 +828,7 @@ class PipelinePrime(BasePipeline):
         #  but that func can be amended later due to time constraints
         columns_to_save = ['scorer', 'source', 'file_source', 'data_source', 'frame']
 
-        list_dfs_raw_data: List[pd.DataFrame] = dfs
+        list_dfs_raw_data = dfs  #         list_dfs_raw_data: List[pd.DataFrame] = dfs
 
         # Reconcile args
         if isinstance(list_dfs_raw_data, pd.DataFrame):
@@ -861,11 +837,10 @@ class PipelinePrime(BasePipeline):
             raise TypeError(f'Invalid type found: {type(list_dfs_raw_data)} // TODO: elaborate')
 
         # Adaptively filter features
-        dfs_list_adaptively_filtered: List[Tuple[pd.DataFrame, List[float]]] = [
-            feature_engineering.adaptively_filter_dlc_output(df) for df in list_dfs_raw_data]
+        dfs_list_adaptively_filtered = [feature_engineering.adaptively_filter_dlc_output(df) for df in list_dfs_raw_data]  # dfs_list_adaptively_filtered: List[Tuple[pd.DataFrame, List[float]]] = [feature_engineering.adaptively_filter_dlc_output(df) for df in list_dfs_raw_data]
 
         # Engineer features as necessary
-        dfs_features: List[pd.DataFrame] = []
+        dfs_features = []  #         dfs_features: List[pd.DataFrame] = []
         for df_i, _ in tqdm(dfs_list_adaptively_filtered, desc='Engineering features...'):
             # Save scorer, source values because the current way of engineering features strips out that info.
             df_features_i = feature_engineering.engineer_7_features_dataframe_NOMISSINGDATA(
@@ -905,7 +880,7 @@ class PipelinePrime(BasePipeline):
         # TODO: low: save feature engineering time for train data
         start = time.perf_counter()
         # Queue data
-        list_dfs_raw_data: List[pd.DataFrame] = self._dfs_list_raw_train_data
+        list_dfs_raw_data = self._dfs_list_raw_train_data
         # Call engineering function
         df_features = self.engineer_features(list_dfs_raw_data)
         # Save data
@@ -921,7 +896,7 @@ class PipelinePrime(BasePipeline):
         """ TODO
         """
         # Queue data
-        list_dfs_raw_data: List[pd.DataFrame] = self._dfs_list_raw_predict_data
+        list_dfs_raw_data = self._dfs_list_raw_predict_data
         # Call engineering function
         df_features = self.engineer_features(list_dfs_raw_data)
         # Save data, return
@@ -966,7 +941,9 @@ class PipelinePrime(BasePipeline):
             self.clf_svm,
             self.df_features_train_scaled[self.features_names_7],
             self.df_features_train_scaled[self.svm_assignment_col_name],
+            cv=self.cross_validation_k,
         )
+
         df_features_train_scaled_test_data = self.df_features_train_scaled.loc[~self.df_features_train_scaled[self.test_col_name]]
         self._acc_score = accuracy_score(
             y_pred=self.clf_svm.predict(df_features_train_scaled_test_data[self.features_names_7]),
@@ -976,7 +953,8 @@ class PipelinePrime(BasePipeline):
         # Final touches. Save state of pipeline.
         self._is_built = True
         self._has_unengineered_training_data = False
-        logger.debug(f'All done with building classifiers!')
+        logger.debug(f'All done with building classifiers/model!')
+
         return self
 
     def build_classifier(self, reengineer_train_features: bool = False) -> BasePipeline:
@@ -1049,7 +1027,7 @@ if __name__ == '__main__':
     run = True
     if run:
         # Test build
-        nom = 'videoTest3'
+        nom = 'videoTest3asdfasdf'
         loc = 'C:\\Users\\killian\\Pictures'
         full_loc = os.path.join(loc, f'{nom}.pipeline')
         actual_save_loc = f'C:\\{nom}.pipeline'
@@ -1077,5 +1055,4 @@ if __name__ == '__main__':
         pass
 
 
-# C:\\Users\\killian\\projects\\OST-with-DLC\\bsoid_train_videos
-
+# C:\Users\killian\projects\B-SOID\output\videoTestAfterNoon1.pipeline
