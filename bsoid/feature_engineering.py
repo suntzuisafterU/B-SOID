@@ -92,6 +92,7 @@ def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.Da
         logger.error(err)
         raise ValueError(err)  # TODO: should this raise an error?
     scorer_value: str = scorer_values[0]
+
     # # Source
     if 'source' in set_in_df_columns:
         source_filenames_values = np.unique(in_df['source'])
@@ -168,7 +169,7 @@ def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.Da
     # Loop over data and do adaptive filtering.
     # logger.debug(f'{inspect.stack()[0][3]}: Loop over data and do adaptive filtering.')
     idx_col = 0
-    for idx_col_i in tqdm(range(data_likelihood.shape[1]), desc=f'{inspect.stack()[0][3]}(): Adaptively filtering DLC feature %d...' % idx_col):
+    for idx_col_i in tqdm(range(data_likelihood.shape[1]), desc=f'{inspect.stack()[0][3]}(): Adaptively filtering DLC feature %d...' % idx_col):  # TODO: remove TQDM or make optional? How do we make it  silence-able?
         # Get histogram of likelihood data in col_i (ignoring first row since its just labels (e.g.: [x  x  x  x ...]))
         histogram, bin_edges = np.histogram(data_likelihood[:, idx_col_i].astype(np.float))
         # Determine "rise".
