@@ -436,7 +436,45 @@ def plot_accuracy_MLP(scores, show_plot=config.PLOT_GRAPHS, save_fig_to_file=con
     return fig, plt
 
 
-@config.deco__log_entry_exit(logger)
+def plot_cross_validation_scores(scores, save_to_file=False, fig_file_prefix='classifier_accuracy_score', **kwargs):
+    """
+        TODO: elaborate
+    :param scores:
+    :param save_to_file:
+    :param fig_file_prefix:
+    :param kwargs:
+    :return:
+    """
+    # Parse kwargs
+    facecolor, edgecolor = kwargs.get('facecolor', 'w'), kwargs.get('edgecolor', 'k')
+    s, c, alpha = kwargs.get('s', 40), kwargs.get('c', 'r'), kwargs.get('alpha', 0.5)
+    xlabel, ylabel = kwargs.get('xlabel', 'SVM classifier'), kwargs.get('ylabel', 'Accuracy')
+    #
+    # TODO: decouple the fig saving and the plotting. Current state is due to legacy.
+    fig = plt.figure(facecolor=facecolor, edgecolor=edgecolor)
+    fig.suptitle(f"Performance on {config.HOLDOUT_PERCENT * 100} % data")
+    ax = fig.add_subplot(111)
+    ax.boxplot(scores, notch=None)
+    x = np.random.normal(1, 0.04, size=len(scores))
+    if len(x) != len(scores):
+        logger.error(f'len(x) does not equal len(scores). '
+                     f'If you see an error next, check the logs! x = {x} / scores = {scores}.')
+    if isinstance(x, np.ndarray) and isinstance(scores, np.ndarray):
+        logger.debug(f'{logging_bsoid.get_current_function()}: both inputs are arrays. '
+                     f'x.shape = {x.shape} // scores.shape = {scores.shape}')
+        if x.shape != scores.shape:
+            logger.error(f'{inspect.stack()[0][3]}(): x = {x} // scores = {scores}')
+    plt.scatter(x, scores, s=s, c=c, alpha=alpha)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    plt.show()
+    if save_to_file:
+        fig_file_name = f'{fig_file_prefix}_{config.runtime_timestr}'
+        save_graph_to_file(fig, fig_file_name)  # fig.savefig(os.path.join(config.OUTPUT_PATH, f'{fig_file_prefix}_{timestr}.svg'))
+
+    return fig, ax
+
+
 def plot_accuracy_SVM(scores, save_fig_to_file=config.SAVE_GRAPHS_TO_FILE,
                       fig_file_prefix='classifier_accuracy_score', **kwargs):
     """
@@ -771,7 +809,7 @@ def save_graph_to_file(figure: object, file_title: str, file_type_extension=conf
                                          f'repr(figure) = {repr(figure)}.'
         logger.error(cannot_save_input_figure_error)
         raise AttributeError(cannot_save_input_figure_error)
-    # After type checking: save fig to file
+    # After type checking, save fig to file
     figure.savefig(os.path.join(config.GRAPH_OUTPUT_PATH, f'{file_title}.{file_type_extension}'))
     return
 
