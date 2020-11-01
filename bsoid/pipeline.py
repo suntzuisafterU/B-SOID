@@ -58,7 +58,7 @@ class PipelineAttributeHolder(object):
     # Tracking vars
     _is_built = False  # Is False until the classifiers are built then changes to True
 
-    _has_unused_training_data_for_model: bool = False   # Changes to True if new training data is added and classifiers not rebuilt.
+    _is_training_data_set_different_from_model_input: bool = False  # Changes to True if new training data is added and classifiers not rebuilt.
     _has_unengineered_predict_data: bool = False    # Changes to True if new predict data is added. Changes to False if features are engineered.
 
     # Sources
@@ -86,9 +86,9 @@ class PipelineAttributeHolder(object):
     _clf_svm: SVC = None
     # TSNE
     tsne_source: str = 'sklearn'
-    tsne_dimensions: int = config.TSNE_N_COMPONENTS
-    tsne_n_iter: int = config.TSNE_N_ITER
-    tsne_early_exaggeration: float = config.TSNE_EARLY_EXAGGERATION
+    tsne_dimensions: int = None
+    tsne_n_iter: int = None
+    tsne_early_exaggeration: float = None  # Defaults to config.ini value if not specified in kwargs
     tsne_n_jobs: int = None  # n cores used during process
     tsne_verbose: int = None
     # GMM
@@ -101,12 +101,12 @@ class PipelineAttributeHolder(object):
     features_which_average_by_mean = ['DistFrontPawsTailbaseRelativeBodyLength',
                                       'DistBackPawsBaseTailRelativeBodyLength', 'InterforepawDistance', 'BodyLength', ]
     features_which_average_by_sum = ['SnoutToTailbaseChangeInAngle', 'SnoutSpeed', 'TailbaseSpeed']
-    features_names_7 = features_which_average_by_mean + features_which_average_by_sum  # List[str]
+    features_names_7: List[str] = features_which_average_by_mean + features_which_average_by_sum
     test_col_name = 'is_test_data'
 
     label_0, label_1, label_2, label_3, label_4, label_5, label_6, label_7, label_8, label_9 = ["" for _ in range(10)]
     label_10, label_11, label_12, label_13, label_14, label_15, label_16, label_17, label_18 = ["" for _ in range(9)]
-    label_19, label_20, label_21, label_22, label_23, label_24, label_25 = ["" for _ in range(7)]
+    label_19, label_20, label_21, label_22, label_23, label_24, label_25, label_26 = ["" for _ in range(8)]
 
     # Misc attributes
     kwargs: dict = {}
@@ -147,6 +147,13 @@ class PipelineAttributeHolder(object):
         self._source_folder = dir_path
 
     # # # Getters/Properties
+    @property
+    def is_in_inconsistent_state(self):
+        """
+        Useful for checking if training data has been added/removed from pipeline
+        relative to already-compiled model
+        """
+        return self._is_training_data_set_different_from_model_input
     @property
     def name(self): return self._name
     @property
@@ -190,7 +197,6 @@ class PipelineAttributeHolder(object):
     @property
     def file_path(self):  # TODO: low: review   # Optional[str]
         return os.path.join(self._source_folder, generate_pipeline_filename(self.name))
-
     # Setters
     def set_name(self, name: str):
         # TODO: will this cause problems later with naming convention?
@@ -202,6 +208,11 @@ class PipelineAttributeHolder(object):
         """ Set a description of the pipeline. Include any notes you want to keep regarding the process used. """
         check_arg.ensure_type(description, str)
         self._description = description
+        return self
+
+    def set_params(self, **kwargs):
+        raise NotImplementedError('')
+
         return self
 
 
@@ -338,7 +349,7 @@ class BasePipeline(PipelineAttributeHolder):
             if os.path.isfile(path):
                 df_new_data = io.read_csv(path)
                 self.df_features_train_raw = self.df_features_train_raw.append(df_new_data)
-                self._has_unused_training_data_for_model = True
+                self._is_training_data_set_different_from_model_input = True
                 logger.debug(f'Added file to train data: {path}')
             elif os.path.isdir(path):
                 logger.debug(f'Attempting to pull DLC files from {path}')
@@ -349,7 +360,7 @@ class BasePipeline(PipelineAttributeHolder):
                 for file_path in data_sources:
                     df_new_data_i = io.read_csv(file_path)
                     self.df_features_train_raw = self.df_features_train_raw.append(df_new_data_i)
-                    self._has_unused_training_data_for_model = True
+                    self._is_training_data_set_different_from_model_input = True
                     logger.debug(f'Added file to train data: {file_path}')
             else:
                 unusual_path_err = f'Unusual file/dir path submitted but not found: {path}. Is not a valid ' \
@@ -490,7 +501,7 @@ class BasePipeline(PipelineAttributeHolder):
         self.df_features_train = df_features
         # Wrap up
         end = time.perf_counter()
-        self._has_unused_training_data_for_model = False
+        self._is_training_data_set_different_from_model_input = False
         self.seconds_to_engineer_train_features = round(end-start, 1)
         return self
 
@@ -680,7 +691,7 @@ class BasePipeline(PipelineAttributeHolder):
         """
         # Engineer features
         logger.debug(f'{inspect.stack()[0][3]}(): Start engineering features')
-        if reengineer_train_features or self._has_unused_training_data_for_model:
+        if reengineer_train_features or self._is_training_data_set_different_from_model_input:
             self.engineer_features_train()
 
         # Scale data
@@ -719,7 +730,7 @@ class BasePipeline(PipelineAttributeHolder):
 
         # Final touches. Save state of pipeline.
         self._is_built = True
-        self._has_unused_training_data_for_model = False
+        self._is_training_data_set_different_from_model_input = False
         logger.debug(f'All done with building classifiers/model!')
 
         return self
@@ -734,7 +745,7 @@ class BasePipeline(PipelineAttributeHolder):
         # TODO: add arg checking for empty predict data?
 
         # Check that classifiers are built on the training data
-        if not self.is_built or reengineer_train_data_features or self._has_unused_training_data_for_model:
+        if not self.is_built or reengineer_train_data_features:
             self.build_model()
 
         # Check if predict features have been engineered
@@ -959,7 +970,7 @@ class BasePipeline(PipelineAttributeHolder):
 self.is_built: {self.is_built}
 unique sources in df_train GMM ASSIGNMENTS: {len(np.unique(self.df_features_train[self.gmm_assignment_col_name].values))}
 unique sources in df_train SVM ASSIGNMENTS: {len(np.unique(self.df_features_train[self.svm_assignment_col_name].values))}
-self._has_unused_training_data_for_model: {self._has_unused_training_data_for_model}
+self._is_training_data_set_different_from_model_input: {self._is_training_data_set_different_from_model_input}
 self.train_data_files_paths: {self.train_data_files_paths}
 """.strip()
         return diag
@@ -975,35 +986,36 @@ class PipelinePrime(BasePipeline):
 
     For a list of valid kwarg parameters, check parent object, "BasePipeline".
     """
-    # Engineering features
     def engineer_features(self, in_df) -> pd.DataFrame:
         """
 
         """
-        try:
-            columns_to_save = ['scorer', 'source', 'file_source', 'data_source', 'frame']
-            df = in_df.sort_values('frame').copy()
+        # try:
 
-            # Filter
-            df_filtered, _ = feature_engineering.adaptively_filter_dlc_output(df)
-            # Engineer features
-            df_features: pd.DataFrame = feature_engineering.engineer_7_features_dataframe_NOMISSINGDATA(df_filtered, features_names_7=self.features_names_7)
-            # Ensure columns don't get dropped by accident
-            for col in columns_to_save:
-                if col in in_df.columns and col not in df_features.columns:
-                    df_features[col] = df[col].values
+        columns_to_save = ['scorer', 'source', 'file_source', 'data_source', 'frame']
+        df = in_df.sort_values('frame').copy()
 
-            # Smooth over n-frame windows
-            for feature in self.features_which_average_by_mean:
-                df_features[feature] = feature_engineering.average_values_over_moving_window(
-                    df_features[feature].values, 'avg', self.average_over_n_frames)
-            # Sum
-            for feature in self.features_which_average_by_sum:
-                df_features[feature] = feature_engineering.average_values_over_moving_window(
-                    df_features[feature].values, 'sum', self.average_over_n_frames)
-        except Exception as e:
-            logger.error(f'{df_features.columns} // fail on feature: {feature} // {df_features.head(10).to_string()} //{repr(e)}')
-            raise e
+        # Filter
+        df_filtered, _ = feature_engineering.adaptively_filter_dlc_output(df)
+        # Engineer features
+        df_features: pd.DataFrame = feature_engineering.engineer_7_features_dataframe_NOMISSINGDATA(df_filtered, features_names_7=self.features_names_7)
+        # Ensure columns don't get dropped by accident
+        for col in columns_to_save:
+            if col in in_df.columns and col not in df_features.columns:
+                df_features[col] = df[col].values
+
+        # Smooth over n-frame windows
+        for feature in self.features_which_average_by_mean:
+            df_features[feature] = feature_engineering.average_values_over_moving_window(
+                df_features[feature].values, 'avg', self.average_over_n_frames)
+        # Sum
+        for feature in self.features_which_average_by_sum:
+            df_features[feature] = feature_engineering.average_values_over_moving_window(
+                df_features[feature].values, 'sum', self.average_over_n_frames)
+
+        # except Exception as e:
+        #     logger.error(f'{df_features.columns} // fail on feature: {feature} // {df_features.head(10).to_string()} //{repr(e)}')
+        #     raise e
 
         return df_features
 
