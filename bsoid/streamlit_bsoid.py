@@ -7,6 +7,7 @@ More on formatting: https://pyformat.info/
 """
 from matplotlib.axes._axes import _log as matplotlib_axes_logger
 from mpl_toolkits.mplot3d import Axes3D  # Despite being "unused", this import MUST stay for 3d plotting to work. PLO!
+from typing import Any, Dict, List, Union
 import matplotlib.pyplot as plt
 import matplotlib
 import numpy as np
@@ -43,11 +44,8 @@ key_button_add_predict_data_source = 'key_button_add_predict_data_source'
 key_button_review_assignments = 'key_button_update_assignments'
 key_button_view_assignments_distribution = 'key_button_view_assignments_distribution'
 key_button_save_assignment = 'key_button_save_assignment'
-key_input_behaviour_label = 'key_input_behaviour_label'
-
-key_text_assignment = 'key_text_assignment'
-key_textinput_new_behaviour_label = 'key_textinput_new_behaviour_label'
-
+key_button_show_example_videos_options = 'key_button_show_example_videos_options'
+key_button_create_new_example_videos = 'key_button_create_new_example_videos'
 TestButton1, testbutton2 = 'TestButton1', 'Testbutton2'
 ### Page variables data ###
 streamlit_variables_dict = {  # Instantiate default variable values here
@@ -64,8 +62,9 @@ streamlit_variables_dict = {  # Instantiate default variable values here
     key_button_review_assignments: False,
     key_button_view_assignments_distribution: False,
     key_button_save_assignment: False,
+    key_button_show_example_videos_options: False,
+    key_button_create_new_example_videos: False,
     TestButton1: False, testbutton2: False,
-    key_input_behaviour_label: '',
 }
 
 
@@ -190,7 +189,7 @@ def show_pipeline_info(p: pipeline.PipelinePrime, *args, **kwargs):
     st.markdown(f'- Description: **{p.description}**')
     st.markdown(f'- Local file location: **{p.file_path}**')
 
-    # Menu button: show more info
+    ### Menu button: show more info
     button_show_advanced_pipeline_information = st.button(
         f'Expand/collapse advanced info', key=key_button_show_pipeline_information)
     if button_show_advanced_pipeline_information:
@@ -220,6 +219,24 @@ def show_pipeline_info(p: pipeline.PipelinePrime, *args, **kwargs):
             cross_val_score_text = f'- - Cross validation score not available'
         st.markdown(f'{cross_val_score_text}')
         st.markdown(f'- Raw assignment values: **{p.unique_assignments}**')
+    ###
+
+    # Model check before displaying actions that could further change pipeline state.
+    if p.is_in_inconsistent_state:
+        st.info("""
+The pipeline was detected to be in an inconsistent state. 
+
+Some common causes include adding/deleting training data or changing model 
+parameters without subsequently rebuilding the model.
+
+We recommend that you rebuild the model to avoid future problems.
+
+        """)
+    button_rebuild_inconsistent_model = st.button('Rebuild model')
+    if button_rebuild_inconsistent_model:
+        with st.spinner('Rebuilding model...'):
+            p = p.build().save()
+        st.success(f'Model was re-built successfully! Refresh page to see changes.')
 
     st.markdown('------------------------------------------------------------------------------------------------')
 
@@ -255,7 +272,7 @@ def show_actions(p: pipeline.PipelinePrime):
         st.markdown(f'### Do you want to add data that will be used to train the model, or '
                     f'data that the model will evaluate?')
         # 1/2: Button for adding data to training data set
-        button_add_train_data_source = st.button('-> Add new data for model training', key=key_button_add_train_data_source)  # TODO: low: review button text
+        button_add_train_data_source = st.button('-> Add new data for model training', key=key_button_add_train_data_source)
         if button_add_train_data_source:
             file_session[key_button_add_train_data_source] = not file_session[key_button_add_train_data_source]
             file_session[key_button_add_predict_data_source] = False
@@ -289,6 +306,7 @@ def show_actions(p: pipeline.PipelinePrime):
                     st.success(f'TODO: New prediction data added to pipeline successfully! Pipeline has been saved.')
         st.markdown('')
         st.markdown('')
+    ###
 
     ### Menu button: rebuilding model ###
     button_see_rebuild_options = st.button('Expand/Collapse Model Parameters (WIP)', key_button_see_rebuild_options)
@@ -314,51 +332,44 @@ def show_actions(p: pipeline.PipelinePrime):
         # TODO: verbose: (original note: verbose=2 shows check points)
 
         st.markdown('### GMM Parameters')
-        slider_gmm_n_components = st.slider(f'GMM Components (currently set at: {p.gmm_n_components})',
-                                            2, 40, p.gmm_n_components, step=1, format='%i')
-
-        input_gmm_reg_covar = st.number_input(f'GMM "reg. covariance" (currently set at: {p.gmm_reg_covar})',
-                                              value=p.gmm_reg_covar, format='%f')
-        input_gmm_tolerance = st.number_input(f'gmm tolerance (currently set at: {p.gmm_tol}): TODO: clarify',
-                                              value=p.gmm_tol,
-                                              min_value=1e-10, max_value=50., step=0.1, format='%.2f')
-        input_gmm_max_iter = st.number_input(
-            f'GMM max iter (currently set at: {p.gmm_max_iter})', min_value=1, max_value=100_000, value=p.gmm_max_iter, step=1)
-        input_gmm_n_init = st.number_input(f'GMM n_init (currently set at: {p.gmm_n_init}). '
-                                           f'We recommend you use a value of 20', 1, 20, p.gmm_n_init,
-                                           step=1, format="%i")
+        slider_gmm_n_components = st.slider(f'GMM Components', value=p.gmm_n_components, min_value=2, max_value=40, step=1)
+        input_gmm_reg_covar = st.number_input(f'GMM "reg. covariance" ', value=p.gmm_reg_covar, format='%f')
+        input_gmm_tolerance = st.number_input(f'GMM tolerance', value=p.gmm_tol, min_value=1e-10, max_value=50., step=0.1, format='%.2f')
+        input_gmm_max_iter = st.number_input(f'GMM max iterations', min_value=1, max_value=100_000, value=p.gmm_max_iter, step=1)
+        input_gmm_n_init = st.number_input(f'GMM "n_init". It is recommended that you use a value of 20', value=p.gmm_n_init, step=1, format="%i")
 
         st.markdown('### SVM Parameters')
         ### SVM ###
-        input_svm_c = st.number_input(f'SVM C (Pipeline C value currently set at: {p.svm_c})',
-                                      value=p.svm_c, format='%.2f')
-        input_svm_gamma = st.number_input(f'SVM gamma (Currently model value: {p.svm_gamma})',
+        input_svm_c = st.number_input(f'SVM C', value=p.svm_c, format='%.2f')
+        input_svm_gamma = st.number_input(f'SVM gamma',
                                           value=p.svm_gamma, format='%.2f')
         # TODO: probability = True
         # TODO: n_jobs = -2
         ### Other model info ###
-        st.markdown('### Other info')
-        input_k_fold_cross_val = st.number_input(f'TODO: elaborate: kfold cross valid',
-                                                 value=int(p.cross_validation_k),
-                                                 min_value=2, max_value=5_000, format='%i'
-                                                 )
+        st.markdown('### Other model information')
+        input_k_fold_cross_val = st.number_input(f'Set K for K-fold cross validation', value=int(p.cross_validation_k), min_value=2, format='%i')  # TODO: low: add max_value= number of data points (for k=n)?
         st.markdown('')
 
-        st.markdown('## Rebuild model?')
-        button_rebuild_model = st.button('Rebuild model with new parameters (WIP)', key_button_rebuild_model)
+        st.markdown(f'Note: changing the above parameters without rebuilding the model will have no effect.')
+
+        # Save above info
+        st.markdown('## Rebuild model with new parameters above?')
+        button_rebuild_model = st.button('I want to rebuild model with new parameters', key_button_rebuild_model)
         if button_rebuild_model:
             file_session[key_button_rebuild_model] = not file_session[key_button_rebuild_model]
         if file_session[key_button_rebuild_model]:
+            st.markdown('Are you sure?')
             button_confirmation_of_rebuild = st.button('Confirm', key_button_rebuild_model_confirmation)
             if button_confirmation_of_rebuild:
                 file_session[key_button_rebuild_model_confirmation] = True
             if file_session[key_button_rebuild_model_confirmation]:
                 with st.spinner('Rebuilding model...'):
+                    # TODO: HIGH: make sure that model parameters are put into Pipeline before build() is called.
                     p = p.build(True, True).save()
-                    # p = p.save()
                 st.success(f'Model was successfully re-built!')
                 file_session[key_button_rebuild_model_confirmation] = False
         st.markdown('----------------------------------------------------------------------------------------------')
+    ###
 
     st.markdown('--------------------------------------------------------------------------------------------------')
 
@@ -370,6 +381,7 @@ def see_model_diagnostics(p):
     ######################################### MODEL DIAGNOSTICS ########################################################
     st.markdown(f'## Model Diagnostics')
     st.markdown(f'See GMM distributions according to TSNE-reduced feature dimensions // TODO: make this shorter.')
+    ### View Histogram for assignment distribution
     st.markdown(f'View distribution of assignments')
     button_view_assignments_distribution = st.button(f'View assignment distribution')
     if button_view_assignments_distribution:
@@ -377,14 +389,17 @@ def see_model_diagnostics(p):
     if file_session[key_button_view_assignments_distribution]:
         fig, ax = p.get_plot_svm_assignments_distribution()
         st.pyplot(fig)
+    ###
+
+    # View 3d Plot
     gmm_button = st.button('Pop out window of GMM distribution')  # TODO: low: phrase this button better?
     if gmm_button:
         try:
             p.plot_assignments_in_3d(show_now=True)
         except ValueError:
             st.error('Cannot plot cluster distribution since the model is not currently built.')
-
-    st.markdown('-----------------------------------------------------------------------------------------------------')
+    ###
+    st.markdown('--------------------------------------------------------------------------------------------------')
 
     return review_videos(p)
 
@@ -394,50 +409,89 @@ def review_videos(p):
     ### SIDEBAR
 
     ### MAIN
-    ## SEE VIDEOS ##
+    ## Review Videos ##
     st.markdown(f'## Behaviour clustering review')
 
-    example_videos_dir_file_list = [x for x in os.listdir(config.EXAMPLE_VIDEOS_OUTPUT_PATH)  # TODO: add user intervention on default path to check?
-                                    if x.split('.')[-1] in valid_video_extensions]
-    videos_dict = {**{'': ''}, **{k: os.path.join(config.EXAMPLE_VIDEOS_OUTPUT_PATH, k)
-                                  for k in example_videos_dir_file_list}}
+    example_videos_file_list: List[str] = [video_file_name for video_file_name in os.listdir(config.EXAMPLE_VIDEOS_OUTPUT_PATH) if video_file_name.split('.')[-1] in valid_video_extensions]  # # TODO: low/med: add user intervention on default path to check?
+    videos_dict: Dict[str: str] = {**{'': ''}, **{video_file_name: os.path.join(config.EXAMPLE_VIDEOS_OUTPUT_PATH, video_file_name) for video_file_name in example_videos_file_list}}
 
     video_selection: str = st.selectbox(label=f"Select video to view. Total videos found: {len(videos_dict)-1}", options=list(videos_dict.keys()))
-    try:
-        st.video(get_video_bytes(videos_dict[video_selection]))
-    except FileNotFoundError as fe:
-        if video_selection:
-            st.error(FileNotFoundError(f'No example behaviour videos were found at this time. Try generating them at check back again after. // DEBUG INFO: path checked: {config.EXAMPLE_VIDEOS_OUTPUT_PATH} // {repr(fe)}'))
+    if video_selection:
+        try:
+            st.video(get_video_bytes(videos_dict[video_selection]))
+        except FileNotFoundError as fe:
+            st.error(FileNotFoundError(f'No example behaviour videos were found at this time. Try '
+                                       f'generating them at check back again after. // DEBUG INFO: path checked: {config.EXAMPLE_VIDEOS_OUTPUT_PATH} // {repr(fe)}'))
+    ###
 
-    st.markdown('---')
     st.markdown('')
 
     ### Review labels for behaviours ###
-
-    button_review_assignments = st.button('Expand/collapse: review assignments labels', key_button_review_assignments)
-    if button_review_assignments:  # Click button, flip state
+    button_review_assignments_is_clicked = st.button('Expand/collapse: review assignments labels', key_button_review_assignments)
+    if button_review_assignments_is_clicked:  # Click button, flip state
         file_session[key_button_review_assignments] = not file_session[key_button_review_assignments]
-    if file_session[key_button_review_assignments]:
+    if file_session[key_button_review_assignments]:  # Depending on button click state, show below
         ### View all assignments
         st.markdown(f'#### All changes entered save automatically. After all changes, refresh page to see changes.')
         for a in p.unique_assignments:
             file_session[str(a)] = p.get_assignment_label(a)
-            behaviour = p.get_assignment_label(a)
-            behaviour = behaviour if behaviour is not None else '(No behaviour label assigned yet)'
-            new_assignment = st.text_input(f'Add behaviour label to assignment # {a}',
-                                           value=behaviour, key=key_input_behaviour_label+str(a))
-            if new_assignment != behaviour:
-                p = p.set_label(a, new_assignment).save()
+            existing_behaviour_label = p.get_assignment_label(a)
+            existing_behaviour_label = existing_behaviour_label if existing_behaviour_label is not None else '(No behaviour label assigned yet)'
+            text_input_new_label = st.text_input(f'Add behaviour label to assignment # {a}', value=existing_behaviour_label, key=f'key_input_new_behaviour_assignment_{a}')
+            if text_input_new_label != existing_behaviour_label:
+                p = p.set_label(a, text_input_new_label).save()
+    ###
 
+    ### Create new example videos
+    button_create_new_ex_videos = st.button(f'Expand/collapse: Create new example videos // TODO: elaborate', key=key_button_show_example_videos_options)
+    if button_create_new_ex_videos:
+        file_session[key_button_show_example_videos_options] = not file_session[key_button_show_example_videos_options]
+    if file_session[key_button_show_example_videos_options]:
+        st.markdown(f' TODO: make new example vids interface')
+        select_data_source = st.selectbox('Select a data source', options=['']+p.training_data_sources)  #     def selectbox(dg, label, options, index=0, format_func=str, key=None):
+        input_video = st.text_input(f'Input path to corresponding video relative to selected data source', value=config.BSOID_BASE_PROJECT_PATH)
+        file_name_prefix = st.text_input(f'File name prefix. This helps us differentiate between')
+        number_input_output_fps = st.number_input(f'Output FPS for example videos', value=15, min_value=1)
+        number_input_max_examples_of_each_behaviour = st.number_input(f'Maximum number of examples for each behaviour', value=3, min_value=1)
+        number_input_min_rows = st.number_input(f'Min # of data rows required for a detection to occur', value=3, min_value=1, max_value=10_000)
+        number_input_frames_leadup = st.number_input(f'min # of rows of data after/before behaviour has occurred that lead up // todo: precision', value=10, min_value=1, max_value=10_000)
+
+        st.markdown('')
+        button_create_new_ex_videos = st.button('Create new example videos', key=key_button_create_new_example_videos)
+        if button_create_new_ex_videos:
+            is_error_detected = False
+            ### Verify args
+            # File name prefix check
+            if check_arg.has_invalid_chars_in_name_for_a_file(file_name_prefix):
+                invalid_name_err_msg = f'Invalid file name submitted. Has invalid character.Prefix="{file_name_prefix}"'
+                st.error(ValueError(invalid_name_err_msg))
+                is_error_detected = True
+            # Input video check
+            if not os.path.isfile(input_video):
+                err_msg = f'Video file not found at path "{input_video}" '
+                st.error(FileNotFoundError(err_msg))
+                is_error_detected = True
+            # Continue if good.
+            if not is_error_detected:
+                with st.spinner('Creating new videos...'):
+                    p = p.make_behaviour_example_videos(
+                        select_data_source,
+                        input_video,
+                        file_name_prefix,
+                        min_rows_of_behaviour=number_input_min_rows,
+                        max_examples=number_input_max_examples_of_each_behaviour
+                    )
+    ###
 
     return display_footer(p)
 
 
 def display_footer(p):
     """ Footer of Streamlit page """
+
     st.markdown('------------------------------------------------------------------------------------------')
 
-    # save_dir = st.text_input(f'Input dir to save pipeline', )  # TODO: set value=p.save_location
+    # save_dir = st.text_input(f'Input dir to save pipeline', )  # TODO: lowest: implement. set value=p.save_location
     # save_all = st.button(f'Save pipeline')
     # if save_all:
     #     p = p.save(save_dir if save_dir else None)
@@ -452,7 +506,6 @@ def line_break():
     st.markdown('---')
 
 
-# @st.cache  # TODO: low: question: will st.cache benefit this part? or cause more problems?
 def get_video_bytes(path_to_video):
     """  """
     check_arg.ensure_is_file(path_to_video)
@@ -465,7 +518,7 @@ def get_video_bytes(path_to_video):
 
 def example_of_value_saving():
     session_state = streamlit_session_state.get(**streamlit_variables_dict)
-
+    key_state_button_1 = ''
     st.markdown("# [Title]")
     button1 = st.button('Test Button 1', 'TestButton1')
     st.markdown(f'Pre button1: Button 1 session state: {session_state["TestButton1"]}')
