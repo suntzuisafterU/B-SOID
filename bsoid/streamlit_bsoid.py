@@ -262,11 +262,12 @@ Some common causes include adding/deleting training data or changing model
 parameters without subsequently rebuilding the model.
 
 We recommend that you rebuild the model to avoid future problems. """.strip())
-    button_rebuild_inconsistent_model = st.button('Rebuild model')
+    button_rebuild_inconsistent_model = st.button('(WIP) Rebuild model')
     if button_rebuild_inconsistent_model:
         with st.spinner('Rebuilding model. This could take a couple minutes...'):
-            p = p.build()
-            p = p.save()
+            app.sample_runtime_function(3)
+            # p = p.build()
+            # p = p.save()
         st.success(f'Model was re-built successfully! Refresh page to see changes.')
 
     st.markdown('------------------------------------------------------------------------------------------------')
