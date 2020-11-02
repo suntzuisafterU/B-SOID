@@ -20,7 +20,7 @@ from sklearn.mixture import GaussianMixture
 from sklearn.model_selection import cross_val_score  # , train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
-from sklearn.utils import shuffle
+from sklearn.utils import shuffle as sklearn_shuffle_dataframe
 from tqdm import tqdm
 from typing import Any, Collection, Dict, List, Optional, Tuple, Union
 import inspect
@@ -53,8 +53,8 @@ class PipelineAttributeHolder(object):
     data_ext: str = 'csv'  # Extension which data is read from
     dims_cols_names = None  # Union[List[str], Tuple[str]]
     valid_tsne_sources: set = {'bhtsne', 'sklearn', }
-    gmm_assignment_col_name, svm_assignment_col_name = 'gmm_assignment', 'svm_assignment'
-
+    gmm_assignment_col_name, svm_assignment_col_name,  = 'gmm_assignment', 'svm_assignment'
+    behaviour_col_name = 'behaviour'
     # Tracking vars
     _is_built = False  # Is False until the classifiers are built then changes to True
 
@@ -181,11 +181,11 @@ class PipelineAttributeHolder(object):
     def cross_val_scores(self):  # Union[List, np.ndarray]
         return self._cross_val_scores
     @property
-    def training_data_sources(self):  # List[str]
-        return list(np.unique(self.df_features_train_scaled['data_source'].values))
+    def training_data_sources(self) -> List[str]:
+        return list(np.unique(self.df_features_train_raw['data_source'].values))
     @property
     def predict_data_sources(self):  # List[str]
-        return list(np.unique(self.df_features_predict_scaled['data_source'].values))
+        return list(np.unique(self.df_features_predict_raw['data_source'].values))
     @property
     def raw_assignments(self):  # List[str]
         return self.raw_assignments
@@ -451,6 +451,7 @@ class BasePipeline(PipelineAttributeHolder):
             df_engineered_features: pd.DataFrame = self.engineer_features(df)
             list_dfs_engineered_features.append(df_engineered_features)
 
+
         # # Adaptively filter features
         # dfs_list_adaptively_filtered: List[Tuple[pd.DataFrame, List[float]]] = [feature_engineering.adaptively_filter_dlc_output(df) for df in list_dfs_raw_data]
         #
@@ -474,6 +475,7 @@ class BasePipeline(PipelineAttributeHolder):
         #     for feature in self.features_which_average_by_sum:
         #         dfs_features[i][feature] = feature_engineering.average_values_over_moving_window(
         #             df[feature].values, 'sum', self.average_over_n_frames)
+
 
         # # Aggregate all data
         df_features = pd.concat(list_dfs_engineered_features)
@@ -713,6 +715,8 @@ class BasePipeline(PipelineAttributeHolder):
         self.train_SVM()
         self.df_features_train_scaled[self.svm_assignment_col_name] = self.clf_svm.predict(
             self.df_features_train_scaled[self.features_names_7].values)
+        self.df_features_train_scaled[self.svm_assignment_col_name] = self.df_features_train_scaled[
+            self.svm_assignment_col_name].astype(int)
 
         # # Get cross-val accuracy scores
         self._cross_val_scores = cross_val_score(
@@ -770,20 +774,22 @@ class BasePipeline(PipelineAttributeHolder):
         return self
     
     # More data transformations
-    def add_test_data_column_to_scaled_train_data(self, test_data_col_name: str = None):
+    def add_test_data_column_to_scaled_train_data(self):
         """
         Add boolean column to scaled training data DataFrame to assign train/test data
         """
-        if test_data_col_name is None:
-            test_data_col_name = self.test_col_name
+        test_data_col_name = self.test_col_name
         check_arg.ensure_type(test_data_col_name, str)
 
         df = self.df_features_train_scaled
-        df_shuffled = shuffle(df)  # Shuffles data, loses none in the process. Assign bool accordingly.
-        with warnings.catch_warnings():
-            warnings.filterwarnings('ignore', category=SettingWithCopyWarning)
-            df_shuffled[test_data_col_name] = False
-        df_shuffled.loc[:int(len(df) * self.test_train_split_pct), test_data_col_name] = True  # TODO: med/high: ensure that the holdout percent is pulled
+        df_shuffled = sklearn_shuffle_dataframe(df)  # Shuffles data, loses none in the process. Assign bool accordingly
+
+        # TODO: Use the following pattern to avoid SettingWithCopy error df.loc[mask, "z"] = 0 //   https://realpython.com/pandas-settingwithcopywarning/
+
+        # with warnings.catch_warnings():
+        #     warnings.filterwarnings('ignore', category=SettingWithCopyWarning)
+        df_shuffled[test_data_col_name] = False
+        df_shuffled.loc[:int(len(df) * self.test_train_split_pct), test_data_col_name] = True
 
         df_shuffled = df_shuffled.reset_index()
         self.df_features_train_scaled = df_shuffled
@@ -865,6 +871,7 @@ class BasePipeline(PipelineAttributeHolder):
         # Args checking
         check_arg.ensure_type(num_frames_leadup, int)
 
+        # Solve kwargs
         if file_name_prefix is None:
             file_name_prefix = ''
         else:
@@ -872,6 +879,7 @@ class BasePipeline(PipelineAttributeHolder):
             check_arg.ensure_has_valid_chars_for_path(file_name_prefix)
             file_name_prefix += '__'
 
+        # Get data
         if data_source in np.unique(self.df_features_train_scaled['data_source'].values):
             df = self.df_features_train_scaled
         elif data_source in np.unique(self.df_features_predict_scaled['data_source'].values):
@@ -879,15 +887,14 @@ class BasePipeline(PipelineAttributeHolder):
         else:
             err = f'Data source not found: {data_source}'
             logger.error(err)
-            raise ValueError(err)
+            raise KeyError(err)
         logger.debug(f'{logging_bsoid.get_current_function()}(): Total records: {len(df)}')
 
-        # Get data, organize appropriately
         df = df.loc[df["data_source"] == data_source].sort_values('frame')
 
-        # Get Run-Length Encoding
+        # Get Run-Length Encoding of assignments
         assignments = df[self.svm_assignment_col_name].values
-        rle = statistics.augmented_runlength_encoding(assignments)  # rle: Tuple[List, List, List] = statistics.augmented_runlength_encoding(assignments)
+        rle: Tuple[List, List, List] = statistics.augmented_runlength_encoding(assignments)
 
         # Zip RLE according to order
         # First index is value, second is index, third is additional length
@@ -896,34 +903,38 @@ class BasePipeline(PipelineAttributeHolder):
             rle_zipped_by_entry.append(list(row__assignment_idx_addedLength))
 
         # Roll up assignments into a dict. Keys are labels, values are lists of [index, additional length]
-        rle_by_assignment: dict = {}  # Dict[Any: List[int, int]]
-        for label, idx, add_length in rle_zipped_by_entry:
+        rle_by_assignment: Dict[Any: List[int, int]] = {}  # Dict[Any: List[int, int]]
+        for label, idx, additional_length in rle_zipped_by_entry:
             rle_by_assignment[label] = []
-            if add_length >= min_rows_of_behaviour:
-                rle_by_assignment[label].append([idx, add_length])
+            if additional_length >= min_rows_of_behaviour:
+                rle_by_assignment[label].append([idx, additional_length])
 
         ### Finally: make video clips
         # Loop over assignments
         for key, values_list in rle_by_assignment.items():
-            # TODO: HIGH: ensure that at least one of the examples for each behaviour is the MAX duration available
             # Loop over examples
             num_examples = min(max_examples, len(values_list))
-            for i in range(num_examples):
+            for i in range(num_examples):  # TODO: HIGH: this part dumbly loops over first n examples...In the future, it would be better to ensure that at least one of the examples has a long runtime for analysis
                 frame_text_prefix = f'Target: {key} / '
-                idx, add_length = values_list[i]
+                idx, additional_length_i = values_list[i]
 
                 lower_bound_row_idx = max(0, int(idx) - num_frames_leadup)
-                upper_bound_row_idx = min(len(df)-1, idx + add_length + 1 + num_frames_leadup)
+                upper_bound_row_idx = min(len(df)-1, idx + additional_length_i + 1 + num_frames_leadup)
 
                 df_selection = df.iloc[lower_bound_row_idx:upper_bound_row_idx, :]
 
                 labels_list = df_selection[self.svm_assignment_col_name].values
                 frames_indices_list = df_selection['frame'].values
-                output_file_name = f'{file_name_prefix}Example__label_{key}__example_{i+1}_of_{num_examples}'
+                output_file_name = f'{file_name_prefix}BehaviourExample__assignment_{key}__' \
+                                   f'example_{i+1}_of_{num_examples}'
 
                 videoprocessing.make_video_clip_from_video(
-                    labels_list, frames_indices_list, output_file_name, video_file_path,
-                    prefix=frame_text_prefix, text_bgr=text_bgr)
+                    labels_list,
+                    frames_indices_list,
+                    output_file_name,
+                    video_file_path,
+                    prefix=frame_text_prefix,
+                    text_bgr=text_bgr)
 
         return self
 
@@ -980,11 +991,8 @@ self.train_data_files_paths: {self.train_data_files_paths}
 
 class PipelinePrime(BasePipeline):
     """
-    First implementation of a pipeline. Utilizes the 7 original features from the original B-SOiD paper.
+    First implementation of a full pipeline. Utilizes the 7 original features from the original B-SOiD paper.
 
-    Use DataFrames instead of unnamed numpy arrays like the previous iteration
-
-    For a list of valid kwarg parameters, check parent object, "BasePipeline".
     """
     def engineer_features(self, in_df) -> pd.DataFrame:
         """
@@ -998,7 +1006,8 @@ class PipelinePrime(BasePipeline):
         # Filter
         df_filtered, _ = feature_engineering.adaptively_filter_dlc_output(df)
         # Engineer features
-        df_features: pd.DataFrame = feature_engineering.engineer_7_features_dataframe_NOMISSINGDATA(df_filtered, features_names_7=self.features_names_7)
+        df_features: pd.DataFrame = feature_engineering.engineer_7_features_dataframe(
+            df_filtered, features_names_7=self.features_names_7)
         # Ensure columns don't get dropped by accident
         for col in columns_to_save:
             if col in in_df.columns and col not in df_features.columns:

@@ -23,7 +23,7 @@ logger = config.initialize_logger(__name__)
 
 ### In development
 # PREVIOUSLY: fourcc='mp4v'
-def make_ex_vid(labels_list: Union[List, Tuple], frames_indices_list: Union[List, Tuple], output_file_name: str, video_source: str, output_fps=15, fourcc='H264', output_dir=config.EXAMPLE_VIDEOS_OUTPUT_PATH, **kwargs):  # TODO: low: rename func
+def make_video_clip_from_video(labels_list: Union[List, Tuple], frames_indices_list: Union[List, Tuple], output_file_name: str, video_source: str, output_fps=15, fourcc='H264', output_dir=config.EXAMPLE_VIDEOS_OUTPUT_PATH, **kwargs):
     """
 
     Make a video clip of an existing video
@@ -38,6 +38,7 @@ def make_ex_vid(labels_list: Union[List, Tuple], frames_indices_list: Union[List
     :param kwargs:
     :return:
     """
+
     # Arg  checking
     check_arg.ensure_is_file(video_source)
     check_arg.ensure_has_valid_chars_for_path(output_file_name)
@@ -50,6 +51,8 @@ def make_ex_vid(labels_list: Union[List, Tuple], frames_indices_list: Union[List
         raise ValueError(non_matching_lengths_err)
 
     # Kwargs
+    target_label = kwargs.get('target_label')
+
     font_scale = kwargs.get('font_scale', 1)
     check_arg.ensure_type(font_scale, int)
     rectangle_bgr_black: Tuple[int, int, int] = kwargs.get('rectangle_bgr', (0, 0, 0))  # 000=Black box?
@@ -183,11 +186,8 @@ def generate_video_with_labels(labels: Union[List, Tuple], source_video_file_pat
             done = True
             cv2_video_object.release()
             break
-        # print(f'Frame type: {type(frame)}')
-        # print(frame)
 
         text_width, text_height = cv2.getTextSize(text_for_frame, font, fontScale=font_scale, thickness=1)[0]
-        # text_width, text_height = 10, 10
 
         text_offset_x, text_offset_y = 50, 50  # TODO: low: address magic variables later
         box_coordinates = (

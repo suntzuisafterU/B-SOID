@@ -4,11 +4,10 @@
 from typing import Any, Dict, List, Set
 from unittest import TestCase, skip
 import os
-import time
-
-import itertools
-import numpy as np
-import pandas as pd
+# import time
+# import itertools
+# import numpy as np
+# import pandas as pd
 
 import bsoid
 
@@ -30,7 +29,6 @@ class TestPipeline(TestCase):
 
         unscaled_features_cols: Set[str] = set(p.df_features_train.columns)
         scaled_features_cols: Set[str] = set(p.df_features_train_scaled.columns)
-        is_equal = unscaled_features_cols == scaled_features_cols
 
         # Assert
         err_message = f"""
@@ -50,12 +48,12 @@ Symmetric diff = {unscaled_features_cols.symmetric_difference(scaled_features_co
         # Arrange
         data_source_file_path = csv_test_file_path
         pipe = bsoid.pipeline.PipelinePrime('TestPipeline_asdf')
-        num_of_sources_before_addition: int = len(pipe._dfs_list_raw_train_data)
+        num_of_sources_before_addition: int = len(pipe.training_data_sources)
         num_of_sources_should_be_this_after_addition = num_of_sources_before_addition + 1
 
         # Act
         p = pipe.add_train_data_source(data_source_file_path)
-        num_of_sources_actually_this_after_addition: int = len(p._dfs_list_raw_train_data)
+        num_of_sources_actually_this_after_addition: int = len(p.training_data_sources)
 
         # Assert
 
@@ -165,7 +163,7 @@ p.train_data_files_paths = {p.train_data_files_paths}
         assignment, input_label = 1, 'Behaviour1'
 
         # Act
-        p = p.update_assignment_label(assignment, input_label)
+        p = p.set_label(assignment, input_label)
 
         actual_label = p.get_assignment_label(assignment)
         # Assert
@@ -179,9 +177,9 @@ p.train_data_files_paths = {p.train_data_files_paths}
         assignment, input_label = 12, 'Behaviour12'
 
         # Act
-        p_write = p_write.update_assignment_label(assignment, input_label)
+        p_write = p_write.set_label(assignment, input_label)
         p_write.save()
-        p_write = None
+        # p_write = None
         # del p_write
         # time.sleep(1)
 
@@ -197,8 +195,8 @@ Expected label: {input_label}
 
 Actual label: {actual_label}
 
-All labels map: {p_read._map_assignment_to_behaviour}
-"""
+
+"""  # All labels map: {p_read._map_assignment_to_behaviour}
         self.assertEqual(input_label, actual_label, err)
 
     @skip
@@ -224,6 +222,7 @@ All labels map: {p_read._map_assignment_to_behaviour}
         is_equal = 1 + 1 == 2
         # Assert
         self.assertTrue(is_equal)
+
     @skip
     def test__stub8(self):
         """
@@ -235,5 +234,4 @@ All labels map: {p_read._map_assignment_to_behaviour}
         is_equal = 1 + 1 == 2
         # Assert
         self.assertTrue(is_equal)
-
 

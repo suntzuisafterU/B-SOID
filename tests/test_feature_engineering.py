@@ -54,7 +54,7 @@ TODO: improve error message
         # Arrange
         # Set up functions for feature engineering
         old_feature_engineer: callable = bsoid.feature_engineering.extract_7_features_bsoid_tsne_py
-        new_feature_engineer: callable = bsoid.feature_engineering.engineer_7_features_dataframe
+        new_feature_engineer: callable = bsoid.feature_engineering.engineer_7_features_dataframe_MISSING_1_ROW
         # Read in data
         df_input_data_original = pd.read_csv(single_test_file_location, nrows=bsoid.config.max_rows_to_read_in_from_csv)
         arr_input_data_original_filtered, _ = bsoid.feature_engineering.process_raw_data_and_filter_adaptively(

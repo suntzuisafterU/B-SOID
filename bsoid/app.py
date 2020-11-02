@@ -122,7 +122,7 @@ def build_classifier_new_pipeline(train_folders: List[str] = config.TRAIN_DATA_F
     # # # 3) Engineer features
     # Loop over DataFrames, engineer features!
     dfs_engineered_features: List[List[pd.DataFrame, List[float]]] = [
-        [feature_engineering.engineer_7_features_dataframe(df), i] for df, i in dfs_list_filtered]
+        [feature_engineering.engineer_7_features_dataframe_MISSING_1_ROW(df), i] for df, i in dfs_list_filtered]
 
     # Engineer features into 100ms bins
     for i, df_rect_tuple in enumerate(dfs_engineered_features):
@@ -226,7 +226,7 @@ def run_classifier_new_pipeline(*args, **kwargs) -> None:
     intermediate_features = feature_engineering.extract_7_features_bsoid_tsne_py(data_new)  # REPLACEMENT FOR ABOVE
     features_new = feature_engineering.integrate_features_into_100ms_bins_LEGACY(data=data_new, features=intermediate_features, fps=config.VIDEO_FPS)
 
-    df_features: pd.DataFrame = feature_engineering.engineer_7_features_dataframe()
+    df_features: pd.DataFrame = feature_engineering.engineer_7_features_dataframe_MISSING_1_ROW()
     feature_engineering.integrate_df_feature_into_bins()
 
     # Predict labels
