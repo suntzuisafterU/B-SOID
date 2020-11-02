@@ -8,16 +8,16 @@ More on formatting: https://pyformat.info/
 from matplotlib.axes._axes import _log as matplotlib_axes_logger
 from mpl_toolkits.mplot3d import Axes3D  # Despite being "unused", this import MUST stay for 3d plotting to work. PLO!
 from typing import Any, Dict, List, Union
-import matplotlib.pyplot as plt
 import matplotlib
 import numpy as np
 import os
-import pandas as pd
 import streamlit as st
 import sys
+import traceback
+import matplotlib.pyplot as plt
+import pandas as pd
 import time
 import tkinter
-import traceback
 
 from bsoid import app, check_arg, config, io, pipeline, streamlit_session_state
 
@@ -29,7 +29,8 @@ logger = config.initialize_logger(__file__)
 title = f'B-SOiD Streamlit app'
 valid_video_extensions = {'avi', 'mp4', }
 # Variables for buttons, drop-down menus, and other things
-start_new_project_option_text, load_existing_project_option_text = 'Start new', 'Load existing'
+start_new_project_option_text, load_existing_project_option_text = 'Create new', 'Load existing'
+pipeline_prime_name, HowlandTestPipeline = 'PipelinePrime', 'HowlandLabPipeline_OST'
 iteration = 'iter'
 # Set keys for objects
 key_button_show_pipeline_information = 'key_button_show_more_pipeline_information'
@@ -38,6 +39,7 @@ key_button_change_info = 'key_button_change_info'
 key_button_rebuild_model = 'key_button_rebuild_model'
 key_button_rebuild_model_confirmation = 'key_button_rebuild_model_confirmation'
 key_button_add_new_data = 'key_button_add_new_data'
+key_button_menu_remove_data = 'key_button_menu_remove_data'
 key_button_update_description = 'key_button_update_description'
 key_button_add_train_data_source = 'key_button_add_train_data_source'
 key_button_add_predict_data_source = 'key_button_add_predict_data_source'
@@ -46,6 +48,7 @@ key_button_view_assignments_distribution = 'key_button_view_assignments_distribu
 key_button_save_assignment = 'key_button_save_assignment'
 key_button_show_example_videos_options = 'key_button_show_example_videos_options'
 key_button_create_new_example_videos = 'key_button_create_new_example_videos'
+key_button_menu_label_entire_video = 'key_button_menu_label_entire_video'
 TestButton1, testbutton2 = 'TestButton1', 'Testbutton2'
 ### Page variables data ###
 streamlit_variables_dict = {  # Instantiate default variable values here
@@ -58,12 +61,14 @@ streamlit_variables_dict = {  # Instantiate default variable values here
     key_button_add_new_data: False,
     key_button_add_train_data_source: False,
     key_button_add_predict_data_source: False,
+    key_button_menu_remove_data: False,
     key_button_update_description: False,
     key_button_review_assignments: False,
     key_button_view_assignments_distribution: False,
     key_button_save_assignment: False,
     key_button_show_example_videos_options: False,
     key_button_create_new_example_videos: False,
+    key_button_menu_label_entire_video: False,
     TestButton1: False, testbutton2: False,
 }
 
@@ -97,15 +102,15 @@ def home(*args, **kwargs):
     file_session[iteration] = file_session[iteration] + 1
     is_pipeline_loaded = False
 
-    ### Sidebar ###
+    ### SIDEBAR ###
     st.sidebar.markdown(f'### Iteration: {file_session[iteration]}')
     st.sidebar.markdown('---')
 
-    ### Main ###
+    ### MAIN ###
     st.markdown(f'# {title}')
     st.markdown('------------------------------------------------------------------------------------------')
     try:
-        # Load up pipeline if specified on command line
+        # Load up pipeline if specified on command line or config.ini
         pipeline_file_path = kwargs.get('pipeline', '')
         if not pipeline_file_path:  # If not specified on command line, use config.ini path as default if possible.
             if config.default_pipeline_file_path and os.path.isfile(config.default_pipeline_file_path):
@@ -120,29 +125,44 @@ def home(*args, **kwargs):
             key='StartProjectSelectBox',
             index=2 if os.path.isfile(pipeline_file_path) else 0
         )
-
+        st.markdown('')
         # Option: Start new project
         if start_new_opt == start_new_project_option_text:
             st.markdown(f'## Create new project pipeline')
-            new_project_name = st.text_input(
-                'Enter a new project name. Please only use letters, numbers, and underscores. Press Enter when done.')
-            path_to_project_dir = st.text_input(
-                'Enter a path to a folder where the new project pipeline will be stored. Press Enter when done.')
-            is_project_info_submitted = st.button('Submit', key='SubmitNewProjectInfo')
-            if is_project_info_submitted:
-                # Error checking first
-                if check_arg.has_invalid_chars_in_name_for_a_file(new_project_name):
-                    raise ValueError(
-                        f'Project name has invalid characters present. Re-submit project '
-                        f'pipeline name. {new_project_name}')
-                if not os.path.isdir(path_to_project_dir):
-                    raise NotADirectoryError(f'The following (in double quotes) is not a '
-                                             f'valid directory: "{path_to_project_dir}". TODO: elaborate on error')
-                # If OK: create default pipeline, save, continue
-                p = pipeline.PipelinePrime(new_project_name).save(path_to_project_dir)  # TODO: low: reconcile this line and below
-                # p = io.save_pipeline(pipeline.PipelinePrime(new_project_name))
-                st.success('New project pipeline saved to disk')
-                is_pipeline_loaded = True
+            select_pipe_type = st.selectbox('Select a pipeline implementation',
+                                            options=('', pipeline_prime_name, HowlandTestPipeline))
+            if select_pipe_type:
+                text_input_new_project_name = st.text_input(
+                    'Enter a name for your project pipeline. Please only use letters, numbers, and underscores.')
+                path_to_project_dir = st.text_input(
+                    'Enter a path to a folder where the new project pipeline will be stored. Press Enter when done.')
+                button_project_info_submitted_is_clicked = st.button('Submit', key='SubmitNewProjectInfo')
+                if button_project_info_submitted_is_clicked:
+                    # Error checking first
+                    if check_arg.has_invalid_chars_in_name_for_a_file(text_input_new_project_name):
+                        char_err = ValueError(f'Project name has invalid characters present. Re-submit project pipeline name. {text_input_new_project_name}')
+                        st.error(char_err)
+                        st.stop()
+                    if not os.path.isdir(path_to_project_dir):
+                        dir_err = NotADirectoryError(f'The following (in double quotes) is not a valid directory: "{path_to_project_dir}". TODO: elaborate on error')
+                        st.error(dir_err)
+                        st.stop()
+                    # If OK: create default pipeline, save, continue
+                    if select_pipe_type == pipeline_prime_name:
+                        p = pipeline.PipelinePrime(text_input_new_project_name).save(path_to_project_dir)
+                    elif select_pipe_type == HowlandTestPipeline:
+                        p = pipeline.HowlandLabPipeline_OST(text_input_new_project_name).save(path_to_project_dir)
+                    else:
+                        st.error(RuntimeError('Something unexpected happened'))
+                    st.success(f"""
+Success! Your new project pipeline has been saved to disk. 
+
+It is recommended that you copy the following path to your clipboard:
+
+{p.file_path}
+
+Refresh the page and load up your new pipeline file!
+""")
         # Option: Load existing project
         elif start_new_opt == load_existing_project_option_text:
             st.write('Load existing project pipeline')
@@ -163,18 +183,20 @@ def home(*args, **kwargs):
                 logger.info(f'Streamlit: successfully opened: {path_to_project_file}')
                 st.success('Pipeline loaded successfully.')
                 is_pipeline_loaded = True
-        # Option: no selection made. Wait for user.
+        # Option: no (valid) selection made. Wait for user to select differently.
         else:
             return
     except Exception as e:
         # In case of error, show error and do not continue
-        st.markdown('')
+        st.markdown('An unexpected error occurred. See below:')
         st.error(e)
         st.markdown(f'Stack trace for error: {str(traceback.extract_stack())}')
         logger.error(str(traceback.extract_stack()))
         return
 
     if is_pipeline_loaded:
+        start_new_opt = load_existing_project_option_text
+        path_to_project_file = p._source_folder
         st.markdown('----------------------------------------------------------------------------------------------')
         show_pipeline_info(p)
 
@@ -245,40 +267,43 @@ We recommend that you rebuild the model to avoid future problems.
 
 def show_actions(p: pipeline.PipelinePrime):
     """ Show basic actions that we can perform on the model """
-    ### Sidebar
+    ### SIDEBAR ###
 
-    ### Main
+    ### MAIN PAGE ###
     st.markdown(f'## Actions')
+
     ################################# CHANGE PIPELINE INFORMATION ###############################################
     st.markdown(f'### Pipeline information')
-    button_update_description = st.button(f'Change description (WIP)', key_button_update_description)
+    button_update_description = st.button(f'Expand/collapse: Change project description', key_button_update_description)
     if button_update_description:
         file_session[key_button_update_description] = not file_session[key_button_update_description]
     if file_session[key_button_update_description]:
         text_input_change_desc = st.text_input(f'WORK IN PROGRESS, not yet functional: Change project description here')
         if text_input_change_desc:
             p.set_description(text_input_change_desc).save()
-            st.success(f'Pipeline description was changed! Refresh the page (or press "R") to see changes.')
+            st.success(f'Pipeline description was changed! Refresh the '
+                       f'page (by clicking the page and pressing "R") to see changes.')
 
     # TODO: low: add a "change save location" option?
 
     ####################################### MODEL BUILDING #############################################
     st.markdown(f'### Model building & information')
+
     ### Menu button: adding new data sources ###
-    button_add_new_data = st.button('Add new data source to model (WIP)', key_button_add_new_data)
+    button_add_new_data = st.button('Expand/collapse: Add new data to model', key_button_add_new_data)
     if button_add_new_data:  # Click button, flip state
         file_session[key_button_add_new_data] = not file_session[key_button_add_new_data]
     if file_session[key_button_add_new_data]:  # Now check on value and display accordingly
         st.markdown(f'### Do you want to add data that will be used to train the model, or '
                     f'data that the model will evaluate?')
         # 1/2: Button for adding data to training data set
-        button_add_train_data_source = st.button('-> Add new data for model training', key=key_button_add_train_data_source)
+        button_add_train_data_source = st.button('-> Add new data for training the model', key=key_button_add_train_data_source)
         if button_add_train_data_source:
             file_session[key_button_add_train_data_source] = not file_session[key_button_add_train_data_source]
-            file_session[key_button_add_predict_data_source] = False
+            file_session[key_button_add_predict_data_source] = False  # Close the menu for adding prediction data
         if file_session[key_button_add_train_data_source]:
-            st.markdown(f'TODO: add in new train data')
-            input_new_data_source = st.text_input("TODO: Add new data source for training the model")
+            st.markdown('')
+            input_new_data_source = st.text_input("Input a file path below to data which will be used to train the model")
             if input_new_data_source:
                 # Check if file exists
                 if not os.path.isfile(input_new_data_source):
@@ -287,29 +312,44 @@ def show_actions(p: pipeline.PipelinePrime):
                 else:
                     p = p.add_predict_data_source(input_new_data_source).save()
                     st.success(f'TODO: New prediction data added to pipeline successfully! Pipeline has been saved.')
+                    file_session[key_button_add_train_data_source] = False  # Reset menu to collapsed state
+            st.markdown('')
         # 2/2: Button for adding data to prediction set
-        button_add_predict_data_source = st.button('-> Add new data to be evaluated by the model', key=key_button_add_predict_data_source)
+        button_add_predict_data_source = st.button('-> Add data to be evaluated by the model', key=key_button_add_predict_data_source)
         if button_add_predict_data_source:
             file_session[key_button_add_predict_data_source] = not file_session[key_button_add_predict_data_source]
-            file_session[key_button_add_train_data_source] = False
+            file_session[key_button_add_train_data_source] = False  # Close the menu for adding training data
         if file_session[key_button_add_predict_data_source]:
             st.markdown(f'TODO: add in new predict data')
-            input_new_predict_data_source = st.text(f'TODO: add new data source to be predicted by model')
+            input_new_predict_data_source = st.text_input(f'Input a file path below to a new data source which will be analyzed by the model.')
             if input_new_predict_data_source:
                 # Check if file exists
                 if not os.path.isfile(input_new_predict_data_source):
-                    st.error(FileNotFoundError(f'TODO: expand: File not found: {input_new_predict_data_source}. '
-                                               f'Data not added to pipeline.'))
+                    st.error(FileNotFoundError(f'File not found: {input_new_predict_data_source}. '
+                                               f'No data was added to pipeline prediction data set.'))
+
                 else:
-                    p = p.add_predict_data_source(input_new_predict_data_source)
-                    p = p.save()
-                    st.success(f'TODO: New prediction data added to pipeline successfully! Pipeline has been saved.')
+                    p = p.add_predict_data_source(input_new_predict_data_source).save()
+                    st.success(f'New prediction data added to pipeline successfully! Pipeline has been saved.')
+                    file_session[key_button_add_predict_data_source] = False  # Reset menu to collapsed state
         st.markdown('')
-        st.markdown('')
+
+    ###
+
+    ### Menu button: remove data
+    button_remove_data = st.button('Expand/collapse: remove data from model', key_button_menu_remove_data)
+    if button_remove_data:
+        file_session[key_button_menu_remove_data] = not file_session[key_button_menu_remove_data]
+    if file_session[key_button_menu_remove_data]:
+
+        # TODO: HIGH
+
+        pass
+
     ###
 
     ### Menu button: rebuilding model ###
-    button_see_rebuild_options = st.button('Expand/Collapse Model Parameters (WIP)', key_button_see_rebuild_options)
+    button_see_rebuild_options = st.button('Expand/Collapse: Model Parameters (WIP)', key_button_see_rebuild_options)
     if button_see_rebuild_options:  # Click button, flip state
         file_session[key_button_see_rebuild_options] = not file_session[key_button_see_rebuild_options]
     if file_session[key_button_see_rebuild_options]:  # Now check on value and display accordingly
@@ -369,6 +409,7 @@ def show_actions(p: pipeline.PipelinePrime):
                 st.success(f'Model was successfully re-built!')
                 file_session[key_button_rebuild_model_confirmation] = False
         st.markdown('----------------------------------------------------------------------------------------------')
+
     ###
 
     st.markdown('--------------------------------------------------------------------------------------------------')
@@ -421,56 +462,66 @@ def review_videos(p):
             st.video(get_video_bytes(videos_dict[video_selection]))
         except FileNotFoundError as fe:
             st.error(FileNotFoundError(f'No example behaviour videos were found at this time. Try '
-                                       f'generating them at check back again after. // DEBUG INFO: path checked: {config.EXAMPLE_VIDEOS_OUTPUT_PATH} // {repr(fe)}'))
+                                       f'generating them at check back again after. // '
+                                       f'DEBUG INFO: path checked: {config.EXAMPLE_VIDEOS_OUTPUT_PATH} // {repr(fe)}'))
     ###
 
     st.markdown('')
 
     ### Review labels for behaviours ###
-    button_review_assignments_is_clicked = st.button('Expand/collapse: review assignments labels', key_button_review_assignments)
+    button_review_assignments_is_clicked = st.button('Expand/collapse: review behaviour/assignments labels', key_button_review_assignments)
     if button_review_assignments_is_clicked:  # Click button, flip state
         file_session[key_button_review_assignments] = not file_session[key_button_review_assignments]
     if file_session[key_button_review_assignments]:  # Depending on button click state, show below
-        ### View all assignments
-        st.markdown(f'#### All changes entered save automatically. After all changes, refresh page to see changes.')
-        for a in p.unique_assignments:
-            file_session[str(a)] = p.get_assignment_label(a)
-            existing_behaviour_label = p.get_assignment_label(a)
-            existing_behaviour_label = existing_behaviour_label if existing_behaviour_label is not None else '(No behaviour label assigned yet)'
-            text_input_new_label = st.text_input(f'Add behaviour label to assignment # {a}', value=existing_behaviour_label, key=f'key_input_new_behaviour_assignment_{a}')
-            if text_input_new_label != existing_behaviour_label:
-                p = p.set_label(a, text_input_new_label).save()
+        if not p.is_built:
+            st.info('The model has not been built yet, so there are no labeling options available.')
+        else:
+            ### View all assignments
+            st.markdown(f'#### All changes entered save automatically. After all changes, refresh page to see changes.')
+            for a in p.unique_assignments:
+                file_session[str(a)] = p.get_assignment_label(a)
+                existing_behaviour_label = p.get_assignment_label(a)
+                existing_behaviour_label = existing_behaviour_label if existing_behaviour_label is not None else '(No behaviour label assigned yet)'
+                text_input_new_label = st.text_input(f'Add behaviour label to assignment # {a}', value=existing_behaviour_label, key=f'key_new_behaviour_label_{a}')
+                if text_input_new_label != existing_behaviour_label:
+                    p = p.set_label(a, text_input_new_label).save()
     ###
 
-    ### Create new example videos
+    st.markdown('')
+
+    ### Create new example videos ###
     button_create_new_ex_videos = st.button(f'Expand/collapse: Create new example videos // TODO: elaborate', key=key_button_show_example_videos_options)
     if button_create_new_ex_videos:
         file_session[key_button_show_example_videos_options] = not file_session[key_button_show_example_videos_options]
     if file_session[key_button_show_example_videos_options]:
-        st.markdown(f' TODO: make new example vids interface')
-        select_data_source = st.selectbox('Select a data source', options=['']+p.training_data_sources)  #     def selectbox(dg, label, options, index=0, format_func=str, key=None):
+        st.markdown(f'Fill in variables for making new example videos of behaviours')
+        select_data_source = st.selectbox('Select a data source', options=['']+p.training_data_sources)
         input_video = st.text_input(f'Input path to corresponding video relative to selected data source', value=config.BSOID_BASE_PROJECT_PATH)
-        file_name_prefix = st.text_input(f'File name prefix. This helps us differentiate between')
+        file_name_prefix = st.text_input(f'File name prefix. This helps us differentiate between example videos. OK to leave blank. ')
         number_input_output_fps = st.number_input(f'Output FPS for example videos', value=15, min_value=1)
         number_input_max_examples_of_each_behaviour = st.number_input(f'Maximum number of examples for each behaviour', value=3, min_value=1)
         number_input_min_rows = st.number_input(f'Min # of data rows required for a detection to occur', value=3, min_value=1, max_value=10_000)
         number_input_frames_leadup = st.number_input(f'min # of rows of data after/before behaviour has occurred that lead up // todo: precision', value=10, min_value=1, max_value=10_000)
 
         st.markdown('')
-        button_create_new_ex_videos = st.button('Create new example videos', key=key_button_create_new_example_videos)
+        ### Create new example videos button
+        st.markdown('#### When the variables above are filled out, press the '
+                    '"Confirm" button below to create new example videos')
+        st.markdown('')
+        button_create_new_ex_videos = st.button('Confirm', key=key_button_create_new_example_videos)
         if button_create_new_ex_videos:
             is_error_detected = False
-            ### Verify args
+            ### Check for errors (display as many errors as necessary for redress)
             # File name prefix check
             if check_arg.has_invalid_chars_in_name_for_a_file(file_name_prefix):
-                invalid_name_err_msg = f'Invalid file name submitted. Has invalid character.Prefix="{file_name_prefix}"'
-                st.error(ValueError(invalid_name_err_msg))
                 is_error_detected = True
+                invalid_name_err_msg = f'Invalid file name submitted. Has invalid char. Prefix="{file_name_prefix}"'
+                st.error(ValueError(invalid_name_err_msg))
             # Input video check
             if not os.path.isfile(input_video):
+                is_error_detected = True
                 err_msg = f'Video file not found at path "{input_video}" '
                 st.error(FileNotFoundError(err_msg))
-                is_error_detected = True
             # Continue if good.
             if not is_error_detected:
                 with st.spinner('Creating new videos...'):
@@ -479,17 +530,46 @@ def review_videos(p):
                         input_video,
                         file_name_prefix,
                         min_rows_of_behaviour=number_input_min_rows,
-                        max_examples=number_input_max_examples_of_each_behaviour
+                        max_examples=number_input_max_examples_of_each_behaviour,
+                        output_fps=number_input_output_fps,
                     )
+                st.success(f'Example videos created!')  # TODO: low: improve message
+        st.markdown('--------------------------------------------------------------------------------------')
+
+    ###
+
+    st.markdown('')
+
+    ### Label entire video ###
+    button_menu_label_entire_video = st.button('Expand/collapse: Use model to label to entire video', key=key_button_menu_label_entire_video)
+    if button_menu_label_entire_video:
+        file_session[key_button_menu_label_entire_video] = not file_session[key_button_menu_label_entire_video]
+    if file_session[key_button_menu_label_entire_video]:
+        st.markdown('')
+        st.markdown(f'(WIP) Menu to label entire video')
+        input_video_to_label = st.text_input('Input path to video which is to be labeled')
+        button_create_labeled_video = st.button('Create labeled video')
+        if button_create_labeled_video:
+            with st.spinner('(WIP: ACTUAL VIDEO CREATING FUNCTION NOT BEING RUN) Creating labeled video now. This could take several minutes...'):  # TODO: high
+
+                app.sample_runtime_function(3)
+                p.make_video()  # video_to_be_labeled=config.VIDEO_TO_LABEL_PATH, output_fps=config.OUTPUT_VIDEO_FPS):
+            st.success('Success! Video was created at: TODO: get video out path')
+        st.markdown('---------------------------------------------------------------------------------------')
+
     ###
 
     return display_footer(p)
 
 
+#
+
 def display_footer(p):
     """ Footer of Streamlit page """
 
-    st.markdown('------------------------------------------------------------------------------------------')
+    # st.markdown('------------------------------------------------------------------------------------------')
+
+    st.markdown('')
 
     # save_dir = st.text_input(f'Input dir to save pipeline', )  # TODO: lowest: implement. set value=p.save_location
     # save_all = st.button(f'Save pipeline')
