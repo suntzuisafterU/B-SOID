@@ -31,6 +31,7 @@ valid_video_extensions = {'avi', 'mp4', }
 # Variables for buttons, drop-down menus, and other things
 start_new_project_option_text, load_existing_project_option_text = 'Create new', 'Load existing'
 pipeline_prime_name, HowlandTestPipeline = 'PipelinePrime', 'HowlandLabPipeline_OST'
+training_data_option, predict_data_option = 'Training Data', 'Predict Data'
 iteration = 'iter'
 # Set keys for objects
 key_button_show_pipeline_information = 'key_button_show_more_pipeline_information'
@@ -154,6 +155,7 @@ def home(*args, **kwargs):
                         p = pipeline.HowlandLabPipeline_OST(text_input_new_project_name).save(path_to_project_dir)
                     else:
                         st.error(RuntimeError('Something unexpected happened'))
+                        st.stop()
                     st.success(f"""
 Success! Your new project pipeline has been saved to disk. 
 
@@ -251,9 +253,7 @@ The pipeline was detected to be in an inconsistent state.
 Some common causes include adding/deleting training data or changing model 
 parameters without subsequently rebuilding the model.
 
-We recommend that you rebuild the model to avoid future problems.
-
-        """)
+We recommend that you rebuild the model to avoid future problems. """.strip())
     button_rebuild_inconsistent_model = st.button('Rebuild model')
     if button_rebuild_inconsistent_model:
         with st.spinner('Rebuilding model...'):
@@ -289,7 +289,7 @@ def show_actions(p: pipeline.PipelinePrime):
     ####################################### MODEL BUILDING #############################################
     st.markdown(f'### Model building & information')
 
-    ### Menu button: adding new data sources ###
+    ### Menu button: adding new data ###
     button_add_new_data = st.button('Expand/collapse: Add new data to model', key_button_add_new_data)
     if button_add_new_data:  # Click button, flip state
         file_session[key_button_add_new_data] = not file_session[key_button_add_new_data]
@@ -336,15 +336,36 @@ def show_actions(p: pipeline.PipelinePrime):
 
     ###
 
-    ### Menu button: remove data
+    ### Menu button: remove data ###
     button_remove_data = st.button('Expand/collapse: remove data from model', key_button_menu_remove_data)
     if button_remove_data:
         file_session[key_button_menu_remove_data] = not file_session[key_button_menu_remove_data]
     if file_session[key_button_menu_remove_data]:
 
-        # TODO: HIGH
+        select_train_or_predict_remove = st.selectbox('Select which data you want to remove', options=['', training_data_option, predict_data_option])
 
-        pass
+        if select_train_or_predict_remove == training_data_option:
+            select_train_data_to_remove = st.selectbox('Select a source of data to be removed', options=['']+p.training_data_sources)
+            if select_train_data_to_remove:
+                st.markdown(f'Are you sure you want to remove the following data from the training data set: {select_train_data_to_remove}')
+                st.markdown(f'NOTE: upon removing the data, the model will need to be rebuilt.')
+                confirm = st.button('Confirm')
+                if confirm:
+                    with st.spinner(f'Removing {select_train_data_to_remove} from training data set...'):
+                        p.remove_train_data_source(select_train_data_to_remove).save()
+                    file_session[key_button_menu_remove_data] = False
+                    st.success(f'{select_train_data_to_remove} data successfully removed!')
+
+        if select_train_or_predict_remove == predict_data_option:
+            select_predict_option_to_remove = st.selectbox('Select a source of data to be removed', options=['']+p.predict_data_sources)
+            if select_predict_option_to_remove:
+                st.markdown(f'Are you sure you want to remove the following data from the predicted/analyzed data set: {select_predict_option_to_remove}')
+                confirm = st.button('Confirm')
+                if confirm:
+                    with st.spinner(f'Removing {select_predict_option_to_remove} from predict data set'):
+                        p.remove_predict_data_source(select_predict_option_to_remove).save()
+                    st.success(f'{select_predict_option_to_remove} data was successfully removed!')
+                    file_session[key_button_menu_remove_data] = False
 
     ###
 
