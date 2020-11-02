@@ -7,6 +7,7 @@ More on formatting: https://pyformat.info/
 """
 from matplotlib.axes._axes import _log as matplotlib_axes_logger
 from mpl_toolkits.mplot3d import Axes3D  # Despite being "unused", this import MUST stay for 3d plotting to work. PLO!
+from traceback import format_exc as get_traceback_string
 from typing import Any, Dict, List, Union
 import matplotlib
 import numpy as np
@@ -18,6 +19,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import time
 import tkinter
+# import cPickle as pickle
+
 
 from bsoid import app, check_arg, config, io, pipeline, streamlit_session_state
 
@@ -155,6 +158,8 @@ def home(*args, **kwargs):
                         p = pipeline.HowlandLabPipeline_OST(text_input_new_project_name).save(path_to_project_dir)
                     else:
                         st.error(RuntimeError('Something unexpected happened'))
+                        from traceback import format_exc as get_traceback_string
+                        st.markdown(f'traceback: {get_traceback_string()}')
                         st.stop()
                     st.success(f"""
 Success! Your new project pipeline has been saved to disk. 
@@ -191,6 +196,9 @@ Refresh the page and load up your new pipeline file!
     except Exception as e:
         # In case of error, show error and do not continue
         st.markdown('An unexpected error occurred. See below:')
+        from traceback import format_exc as get_traceback_string
+
+        st.info(f'Traceback: {get_traceback_string()}')
         st.error(e)
         st.markdown(f'Stack trace for error: {str(traceback.extract_stack())}')
         logger.error(str(traceback.extract_stack()))
@@ -256,8 +264,9 @@ parameters without subsequently rebuilding the model.
 We recommend that you rebuild the model to avoid future problems. """.strip())
     button_rebuild_inconsistent_model = st.button('Rebuild model')
     if button_rebuild_inconsistent_model:
-        with st.spinner('Rebuilding model...'):
-            p = p.build().save()
+        with st.spinner('Rebuilding model. This could take a couple minutes...'):
+            p = p.build()
+            p = p.save()
         st.success(f'Model was re-built successfully! Refresh page to see changes.')
 
     st.markdown('------------------------------------------------------------------------------------------------')
@@ -409,6 +418,7 @@ def show_actions(p: pipeline.PipelinePrime):
         ### Other model info ###
         st.markdown('### Other model information')
         input_k_fold_cross_val = st.number_input(f'Set K for K-fold cross validation', value=int(p.cross_validation_k), min_value=2, format='%i')  # TODO: low: add max_value= number of data points (for k=n)?
+        # TODO: med/high: add number input for % holdout for test/train split
         st.markdown('')
 
         st.markdown(f'Note: changing the above parameters without rebuilding the model will have no effect.')
@@ -439,7 +449,6 @@ def show_actions(p: pipeline.PipelinePrime):
 
 
 def see_model_diagnostics(p):
-
     ######################################### MODEL DIAGNOSTICS ########################################################
     st.markdown(f'## Model Diagnostics')
     st.markdown(f'See GMM distributions according to TSNE-reduced feature dimensions // TODO: make this shorter.')
@@ -451,6 +460,7 @@ def see_model_diagnostics(p):
     if file_session[key_button_view_assignments_distribution]:
         fig, ax = p.get_plot_svm_assignments_distribution()
         st.pyplot(fig)
+
     ###
 
     # View 3d Plot
@@ -463,14 +473,15 @@ def see_model_diagnostics(p):
     ###
     st.markdown('--------------------------------------------------------------------------------------------------')
 
-    return review_videos(p)
+    return review_behaviours(p)
 
 
-def review_videos(p):
+def review_behaviours(p):
     """"""
     ### SIDEBAR
 
     ### MAIN
+
     ## Review Videos ##
     st.markdown(f'## Behaviour clustering review')
 
@@ -522,9 +533,10 @@ def review_videos(p):
         number_input_output_fps = st.number_input(f'Output FPS for example videos', value=15, min_value=1)
         number_input_max_examples_of_each_behaviour = st.number_input(f'Maximum number of examples for each behaviour', value=3, min_value=1)
         number_input_min_rows = st.number_input(f'Min # of data rows required for a detection to occur', value=3, min_value=1, max_value=10_000)
-        number_input_frames_leadup = st.number_input(f'min # of rows of data after/before behaviour has occurred that lead up // todo: precision', value=10, min_value=1, max_value=10_000)
+        number_input_frames_leadup = st.number_input(f'min # of rows of data after/before behaviour has occurred that lead up // todo: precision', value=0, min_value=0)
 
         st.markdown('')
+
         ### Create new example videos button
         st.markdown('#### When the variables above are filled out, press the '
                     '"Confirm" button below to create new example videos')
@@ -561,7 +573,7 @@ def review_videos(p):
 
     st.markdown('')
 
-    ### Label entire video ###
+    ### Label an entire video ###
     button_menu_label_entire_video = st.button('Expand/collapse: Use model to label to entire video', key=key_button_menu_label_entire_video)
     if button_menu_label_entire_video:
         file_session[key_button_menu_label_entire_video] = not file_session[key_button_menu_label_entire_video]
@@ -572,9 +584,8 @@ def review_videos(p):
         button_create_labeled_video = st.button('Create labeled video')
         if button_create_labeled_video:
             with st.spinner('(WIP: ACTUAL VIDEO CREATING FUNCTION NOT BEING RUN) Creating labeled video now. This could take several minutes...'):  # TODO: high
-
                 app.sample_runtime_function(3)
-                p.make_video()  # video_to_be_labeled=config.VIDEO_TO_LABEL_PATH, output_fps=config.OUTPUT_VIDEO_FPS):
+                # p.make_video()  # TODO: low: add other options like adding path to output and output fps?
             st.success('Success! Video was created at: TODO: get video out path')
         st.markdown('---------------------------------------------------------------------------------------')
 
@@ -588,9 +599,7 @@ def review_videos(p):
 def display_footer(p):
     """ Footer of Streamlit page """
 
-    # st.markdown('------------------------------------------------------------------------------------------')
-
-    st.markdown('')
+    # st.markdown('')
 
     # save_dir = st.text_input(f'Input dir to save pipeline', )  # TODO: lowest: implement. set value=p.save_location
     # save_all = st.button(f'Save pipeline')
@@ -626,7 +635,7 @@ def example_of_value_saving():
     if button1:
         session_state['TestButton1'] = not session_state['TestButton1']
     if session_state['TestButton1']:
-        line_break()
+
         # session_state['TestButton1'] = not session_state['TestButton1']
 
         st.markdown(f'In button1: Button 1 session state: {session_state["TestButton1"]}')
@@ -637,7 +646,7 @@ def example_of_value_saving():
         if session_state['TestButton2']:
             line_break()
             session_state['TestButton2'] = True
-            st.markdown('button2 pressed')
+            st.markdown('Button 2 pressed')
 
 
 # Main: likely to be deleted later.
