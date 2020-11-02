@@ -431,13 +431,14 @@ def show_actions(p: pipeline.PipelinePrime):
             file_session[key_button_rebuild_model] = not file_session[key_button_rebuild_model]
         if file_session[key_button_rebuild_model]:
             st.markdown('Are you sure?')
-            button_confirmation_of_rebuild = st.button('Confirm', key_button_rebuild_model_confirmation)
+            button_confirmation_of_rebuild = st.button('(WIP, new addition, needs testing) Confirm', key_button_rebuild_model_confirmation)
             if button_confirmation_of_rebuild:
                 file_session[key_button_rebuild_model_confirmation] = True
             if file_session[key_button_rebuild_model_confirmation]:
                 with st.spinner('Rebuilding model...'):
                     # TODO: HIGH: make sure that model parameters are put into Pipeline before build() is called.
-                    p = p.build(True, True).save()
+                    # p = p.build(True, True).save()
+                    app.sample_runtime_function(3)
                 st.success(f'Model was successfully re-built!')
                 file_session[key_button_rebuild_model_confirmation] = False
         st.markdown('----------------------------------------------------------------------------------------------')
