@@ -13,7 +13,7 @@ TODOs:
 
 """
 from bhtsne import tsne as TSNE_bhtsne
-from pandas.core.common import SettingWithCopyWarning
+# from pandas.core.common import SettingWithCopyWarning
 from sklearn.manifold import TSNE as TSNE_sklearn
 from sklearn.metrics import accuracy_score
 from sklearn.mixture import GaussianMixture
@@ -21,8 +21,8 @@ from sklearn.model_selection import cross_val_score  # , train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 from sklearn.utils import shuffle as sklearn_shuffle_dataframe
-from tqdm import tqdm
-from typing import Any, Collection, Dict, List, Optional, Tuple, Union
+# from tqdm import tqdm
+from typing import Any, Dict, List, Optional, Tuple  # TODO: review all uses of Optional
 import inspect
 import joblib
 import numpy as np
@@ -31,7 +31,7 @@ import os
 import pandas as pd
 import sys
 import time
-import warnings
+# import warnings
 
 
 from bsoid import check_arg, config, feature_engineering, io, logging_bsoid, statistics, videoprocessing, visuals
@@ -61,10 +61,6 @@ class PipelineAttributeHolder(object):
     _is_training_data_set_different_from_model_input: bool = False  # Changes to True if new training data is added and classifiers not rebuilt.
     _has_unengineered_predict_data: bool = False    # Changes to True if new predict data is added. Changes to False if features are engineered.
 
-    # Sources
-    train_data_files_paths = []  # : List[str]  # TODO: med: deprecate. Not save-able
-    predict_data_files_paths = []  # List[str]  # TODO: med: deprecate. Not save-able
-
     # Data
     default_cols = ['data_source', 'file_source']  #, svm_assignment_col_name, gmm_assignment_col_name]
     df_features_train_raw = pd.DataFrame(columns=default_cols)
@@ -75,7 +71,7 @@ class PipelineAttributeHolder(object):
     df_features_predict_scaled = pd.DataFrame(columns=default_cols)
 
     # Model state  # TODO: move lower
-    cross_validation_k = config.CROSSVALIDATION_K
+    cross_validation_k: int = config.CROSSVALIDATION_K
     _random_state: int = None
     average_over_n_frames: int = 3  # TODO: low: add to kwargs
     test_train_split_pct: float = None
@@ -104,9 +100,10 @@ class PipelineAttributeHolder(object):
     features_names_7: List[str] = features_which_average_by_mean + features_which_average_by_sum
     test_col_name = 'is_test_data'
 
-    label_0, label_1, label_2, label_3, label_4, label_5, label_6, label_7, label_8, label_9 = ["" for _ in range(10)]
-    label_10, label_11, label_12, label_13, label_14, label_15, label_16, label_17, label_18 = ["" for _ in range(9)]
-    label_19, label_20, label_21, label_22, label_23, label_24, label_25, label_26 = ["" for _ in range(8)]
+    label_0, label_1, label_2, label_3, label_4, label_5, label_6, label_7, label_8, label_9 = ['' for _ in range(10)]
+    label_10, label_11, label_12, label_13, label_14, label_15, label_16, label_17, label_18 = ['' for _ in range(9)]
+    label_19, label_20, label_21, label_22, label_23, label_24, label_25, label_26, label_27 = ['' for _ in range(9)]
+    label_28, label_29, label_30, label_31, label_32, label_33, label_34, label_35, label_36 = ['' for _ in range(9)]
 
     # Misc attributes
     kwargs: dict = {}
@@ -126,22 +123,24 @@ class PipelineAttributeHolder(object):
             logger.error(err)
             raise ValueError(err)
 
-        try:  # TODO: debuggin effort. Remove try/catch later when ironed-out
-            ret = getattr(self, f'label_{assignment}')
+        try:  # This try/catch is a debugging effort. Remove try/catch later when ironed-out.
+            label = getattr(self, f'label_{assignment}')
         except Exception as e:
             logger.error(f'{logging_bsoid.get_current_function()}(): unexpected exception '
                          f'occurred! Please address. Label not found: label_{assignment}')
             raise e
 
-        return ret
+        return label
 
     def set_label(self, assignment, label: str):
         """ Set behavioural label for a given model assignment number/value """
+        assignment = int(assignment)
         setattr(self, f'label_{assignment}', label)
         return self
 
     def set_save_location(self, dir_path):
         # TODO: med: verify
+        raise NotImplementedError()
         check_arg.ensure_type(dir_path, str)
         check_arg.ensure_is_dir(dir_path)
         self._source_folder = dir_path
@@ -197,6 +196,10 @@ class PipelineAttributeHolder(object):
     @property
     def file_path(self):  # TODO: low: review   # Optional[str]
         return os.path.join(self._source_folder, generate_pipeline_filename(self.name))
+    @property
+    def full_path(self):
+        return self.file_path
+
     # Setters
     def set_name(self, name: str):
         # TODO: will this cause problems later with naming convention?
@@ -229,12 +232,8 @@ class BasePipeline(PipelineAttributeHolder):
 
 
     kwargs
-        Kwargs default to pulling in data from config file unless overtly specified to override. See below.
+        Kwargs default to pulling in data from config.ini file unless overtly specified to override. See below.
     ----------
-
-    train_data_source : EITHER List[str] OR str, optional
-        Specify a source or sources by which the pipeline reads in training data.
-        User must ensure that paths
 
     tsne_source : {'sklearn', 'bhtsne'}
         Specify a TSNE implementation to use for dimensionality reduction.
@@ -245,7 +244,7 @@ class BasePipeline(PipelineAttributeHolder):
         'bhtsne'
             bhtsne explanation goes here
 
-
+        # TODO: med: expand on further kwargs
     """
     # Init
     def __init__(self, name: str, save_folder: str = None, **kwargs):
@@ -408,12 +407,20 @@ class BasePipeline(PipelineAttributeHolder):
         # TODO: low: ensure function, add tests
         raise NotImplementedError(f'TODO')
         check_arg.ensure_type(data_source, str)
+        self.df_features_train_raw = self.df_features_train_raw.loc[
+            self.df_features_train_raw['data_source'] != data_source]
+
         self.df_features_train = self.df_features_train.loc[self.df_features_train['data_source'] != data_source]
+
         self.df_features_train_scaled = self.df_features_train_scaled.loc[
             self.df_features_train_scaled['data_source'] != data_source]
         return self
 
     def remove_predict_data_source(self, data_source: str):
+        """
+        Remove data from predicted data set.
+        :param data_source: (str) name of a data source
+        """
         # TODO: low: ensure function, add tests
         raise NotImplementedError(f'TODO')
         check_arg.ensure_type(data_source, str)
@@ -436,7 +443,6 @@ class BasePipeline(PipelineAttributeHolder):
         # TODO: MED: these cols really should be saved in
         #  engineer_7_features_dataframe_NOMISSINGDATA(),
         #  but that func can be amended later due to time constraints
-        columns_to_save = ['scorer', 'source', 'file_source', 'data_source', 'frame']
 
         list_dfs_raw_data = dfs
 
@@ -672,7 +678,6 @@ class BasePipeline(PipelineAttributeHolder):
         return self
 
     # Pipeline-building functions
-    @config.deco__log_entry_exit(logger)
     def build_predict_data(self):
         if not self.is_built:
             self.build_model()
@@ -689,7 +694,7 @@ class BasePipeline(PipelineAttributeHolder):
     def build_model(self, reengineer_train_features: bool = False):
         """
         Builds the model for predicting behaviours.
-        TODO: low: elaborate further.
+        :param reengineer_train_features: (bool) If True, forces the training data to be re-engineered.
         """
         # Engineer features
         logger.debug(f'{inspect.stack()[0][3]}(): Start engineering features')
@@ -788,7 +793,7 @@ class BasePipeline(PipelineAttributeHolder):
 
         # with warnings.catch_warnings():
         #     warnings.filterwarnings('ignore', category=SettingWithCopyWarning)
-        df_shuffled[test_data_col_name] = False
+        df_shuffled[test_data_col_name] = False  # TODO: Setting with copy warning occurs on this exact line. is this not how to instantiate it?
         df_shuffled.loc[:int(len(df) * self.test_train_split_pct), test_data_col_name] = True
 
         df_shuffled = df_shuffled.reset_index()
@@ -818,14 +823,18 @@ class BasePipeline(PipelineAttributeHolder):
             logger.error(invalid_path_err)
             raise ValueError(invalid_path_err)
 
-        self._source_folder = output_path_dir
-
         logger.debug(f'{inspect.stack()[0][3]}(): Attempting to save pipeline to file: {final_out_path}.')
 
-        # Since successful, save
         # Write to file
-        with open(final_out_path, 'wb') as model_file:
-            joblib.dump(self, model_file)
+        old_source_folder = self._source_folder
+        try:
+            # In case of error, track old source folder
+            self._source_folder = output_path_dir
+            with open(final_out_path, 'wb') as model_file:
+                joblib.dump(self, model_file)
+        except Exception as e:
+            self._source_folder = old_source_folder
+            raise e
 
         logger.debug(f'{inspect.stack()[0][3]}(): Pipeline ({self.name}) saved to: {final_out_path}')
         return io.read_pipeline(final_out_path)
@@ -842,20 +851,34 @@ class BasePipeline(PipelineAttributeHolder):
         )
         return
 
-    def make_video(self, video_to_be_labeled=config.VIDEO_TO_LABEL_PATH, output_fps=config.OUTPUT_VIDEO_FPS):
-        labels = list(self.df_features_train_scaled[self.gmm_assignment_col_name].values)
-        labels = [f'label={l}' for l in labels]
+    def make_video(self, video_to_be_labeled, output_fps: int = config.OUTPUT_VIDEO_FPS):
+        """
+
+        :param video_to_be_labeled:
+        :param output_fps:
+        :return:
+        """
+        # Arg checking
         if not os.path.isfile(video_to_be_labeled):
             not_a_video_err = f'The video to be labeled is not a valid file/path. ' \
                               f'Submitted video path: {video_to_be_labeled}. '
             logger.error(not_a_video_err)
-        else:
-            # TODO: implement
-            pass
+            raise FileNotFoundError(not_a_video_err)
+
+        if not self.is_built:
+            err = f'Model is not built so cannot make labeled video'
+            logger.error(err)
+            raise Exception(err)
+
+        # Do it
+        get_label_lambda = lambda x: getattr(self, f'label_{x}')
+        labels = get_label_lambda(self.df_features_train_scaled[self.svm_assignment].values)
+
+        # TODO: med: Implement
 
         return self
 
-    def make_behaviour_example_videos(self, data_source: str, video_file_path: str, file_name_prefix=None, min_rows_of_behaviour=1, max_examples=3, num_frames_leadup=0):
+    def make_behaviour_example_videos(self, data_source: str, video_file_path: str, file_name_prefix=None, min_rows_of_behaviour=1, max_examples=3, num_frames_leadup=0, output_fps=15):
         """
         Create video clips of behaviours
 
@@ -906,7 +929,7 @@ class BasePipeline(PipelineAttributeHolder):
         rle_by_assignment: Dict[Any: List[int, int]] = {}  # Dict[Any: List[int, int]]
         for label, idx, additional_length in rle_zipped_by_entry:
             rle_by_assignment[label] = []
-            if additional_length >= min_rows_of_behaviour:
+            if additional_length - 1 >= min_rows_of_behaviour:
                 rle_by_assignment[label].append([idx, additional_length])
 
         ### Finally: make video clips
@@ -915,26 +938,30 @@ class BasePipeline(PipelineAttributeHolder):
             # Loop over examples
             num_examples = min(max_examples, len(values_list))
             for i in range(num_examples):  # TODO: HIGH: this part dumbly loops over first n examples...In the future, it would be better to ensure that at least one of the examples has a long runtime for analysis
+                output_file_name = f'{file_name_prefix}{time.strftime("%y-%m-%d_%Hh%Mm")}_' \
+                                   f'BehaviourExample__assignment_{key}__example_{i+1}_of_{num_examples}'
                 frame_text_prefix = f'Target: {key} / '
+
                 idx, additional_length_i = values_list[i]
 
-                lower_bound_row_idx = max(0, int(idx) - num_frames_leadup)
-                upper_bound_row_idx = min(len(df)-1, idx + additional_length_i + 1 + num_frames_leadup)
+                lower_bound_row_idx: int = max(0, int(idx) - num_frames_leadup)
+                upper_bound_row_idx: int = min(len(df)-1, idx + additional_length_i + 1 + num_frames_leadup)
 
                 df_selection = df.iloc[lower_bound_row_idx:upper_bound_row_idx, :]
 
+                # Compile labels list via SVM assignment for now...Later, we should get the actual behavioural labels instead of the numerical assignments
                 labels_list = df_selection[self.svm_assignment_col_name].values
                 frames_indices_list = df_selection['frame'].values
-                output_file_name = f'{file_name_prefix}BehaviourExample__assignment_{key}__' \
-                                   f'example_{i+1}_of_{num_examples}'
 
                 videoprocessing.make_video_clip_from_video(
                     labels_list,
                     frames_indices_list,
                     output_file_name,
                     video_file_path,
-                    prefix=frame_text_prefix,
-                    text_bgr=text_bgr)
+                    text_prefix=frame_text_prefix,
+                    text_bgr=text_bgr,
+                    output_fps=output_fps,
+                )
 
         return self
 
@@ -982,7 +1009,6 @@ self.is_built: {self.is_built}
 unique sources in df_train GMM ASSIGNMENTS: {len(np.unique(self.df_features_train[self.gmm_assignment_col_name].values))}
 unique sources in df_train SVM ASSIGNMENTS: {len(np.unique(self.df_features_train[self.svm_assignment_col_name].values))}
 self._is_training_data_set_different_from_model_input: {self._is_training_data_set_different_from_model_input}
-self.train_data_files_paths: {self.train_data_files_paths}
 """.strip()
         return diag
 
@@ -994,6 +1020,7 @@ class PipelinePrime(BasePipeline):
     First implementation of a full pipeline. Utilizes the 7 original features from the original B-SOiD paper.
 
     """
+
     def engineer_features(self, in_df) -> pd.DataFrame:
         """
 
@@ -1029,6 +1056,41 @@ class PipelinePrime(BasePipeline):
         return df_features
 
 
+class HowlandLabPipeline_OST(BasePipeline):
+    """
+    A sample pipeline. Delete me later.
+    """
+    def engineer_features(self, in_df) -> pd.DataFrame:
+        """
+
+        """
+        # try:
+
+        columns_to_save = ['scorer', 'source', 'file_source', 'data_source', 'frame']
+        df = in_df.sort_values('frame').copy()
+
+        # Filter
+        df_filtered, _ = feature_engineering.adaptively_filter_dlc_output(df)
+        # Engineer features
+        df_features: pd.DataFrame = feature_engineering.engineer_7_features_dataframe(
+            df_filtered, features_names_7=self.features_names_7)
+        # Ensure columns don't get dropped by accident
+        for col in columns_to_save:
+            if col in in_df.columns and col not in df_features.columns:
+                df_features[col] = df[col].values
+
+        # Smooth over n-frame windows
+        for feature in self.features_which_average_by_mean:
+            df_features[feature] = feature_engineering.average_values_over_moving_window(
+                df_features[feature].values, 'avg', self.average_over_n_frames)
+        # Sum
+        for feature in self.features_which_average_by_sum:
+            df_features[feature] = feature_engineering.average_values_over_moving_window(
+                df_features[feature].values, 'sum', self.average_over_n_frames)
+
+        return df_features
+
+
 ### Accessory functions ###
 
 def generate_pipeline_filename(name: str):
@@ -1042,8 +1104,7 @@ def generate_pipeline_filename(name: str):
 
 
 def generate_pipeline_filename_from_pipeline(pipeline_obj: BasePipeline) -> str:
-    file_name = f'{pipeline_obj.name}.pipeline'
-    return file_name
+    return generate_pipeline_filename(pipeline_obj.name)
 
 
 # Debugging efforts
@@ -1084,7 +1145,6 @@ if __name__ == '__main__':
         if read_existing:
             # p = bsoid.read_pipeline(actual_save_loc)
             p = io.read_pipeline(full_loc)
-            print(str(p.train_data_files_paths))
             p.plot_assignments_in_3d(show_now=True)
 
         pass
