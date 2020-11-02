@@ -23,19 +23,33 @@ logger = config.initialize_logger(__name__)
 
 ### In development
 # PREVIOUSLY: fourcc='mp4v'
-def make_video_clip_from_video(labels_list: Union[List, Tuple], frames_indices_list: Union[List, Tuple], output_file_name: str, video_source: str, output_fps=15, fourcc='H264', output_dir=config.EXAMPLE_VIDEOS_OUTPUT_PATH, **kwargs):
+def make_video_clip_from_video(labels_list: Union[List, Tuple], frames_indices_list: Union[List, Tuple], output_file_name: str, video_source: str, current_behaviour_list: List[str] = [], output_fps=15, fourcc='H264', output_dir=config.EXAMPLE_VIDEOS_OUTPUT_PATH, **kwargs):
     """
 
     Make a video clip of an existing video
 
+
     :param labels_list: (List[Any]) a list of labels to be included onto the frames for the final video
     :param frames_indices_list: (List[int]) a list of frames by index to be labeled and included in final video
-    :param video_source: (str) a path to a file ___
+    :param video_source: (str) a path to a video file ___
+    :param current_behaviour_list:
     :param output_file_name:
     :param output_fps: (int)
     :param fourcc: (str)
     :param output_dir: (str)
     :param kwargs:
+        prefix : str
+
+        font_scale : int
+
+        text_colour_bgr : Tuple[int, int, int]
+
+        text_offset_x : int
+
+        text_offset_y : int
+
+
+
     :return:
     """
 
@@ -51,18 +65,18 @@ def make_video_clip_from_video(labels_list: Union[List, Tuple], frames_indices_l
         raise ValueError(non_matching_lengths_err)
 
     # Kwargs
-    target_label = kwargs.get('target_label')
-
+    text_prefix = kwargs.get('text_prefix', '')
     font_scale = kwargs.get('font_scale', 1)
-    check_arg.ensure_type(font_scale, int)
-    rectangle_bgr_black: Tuple[int, int, int] = kwargs.get('rectangle_bgr', (0, 0, 0))  # 000=Black box?
-    check_arg.ensure_type(rectangle_bgr_black, tuple)
-    text_colour_bgr_white = kwargs.get('text_bgr', (255, 255, 255))  # 255 = white?
-    check_arg.ensure_type(text_colour_bgr_white, tuple)
-    prefix = kwargs.get('prefix', '')
-    check_arg.ensure_type(prefix, str)
+    rectangle_colour_bgr: Tuple[int, int, int] = kwargs.get('rectangle_bgr', (0, 0, 0))  # 000=Black box?
+    text_colour_bgr = kwargs.get('text_bgr', (255, 255, 255))  # 255 = white?
     text_offset_x = kwargs.get('text_offset_x', 50)
     text_offset_y = kwargs.get('text_offset_y', 125)
+    # Final arg checking before continuing
+
+    check_arg.ensure_type(font_scale, int)
+    check_arg.ensure_type(rectangle_colour_bgr, tuple)
+    check_arg.ensure_type(text_colour_bgr, tuple)
+    check_arg.ensure_type(text_prefix, str)
     check_arg.ensure_type(text_offset_x, int)
     check_arg.ensure_type(text_offset_y, int)
     # Do
@@ -84,8 +98,7 @@ def make_video_clip_from_video(labels_list: Union[List, Tuple], frames_indices_l
                            f'video: {int(cv2_video_object.get(cv2.CAP_PROP_FRAME_COUNT))}'
             raise Exception(no_frame_err)
 
-        text_for_frame = f'{prefix}Current Assignment: {label}'
-          # TODO: med/low: address magic variables later
+        text_for_frame = f'{text_prefix}Current Assignment: {label}'
 
         text_width, text_height = cv2.getTextSize(text_for_frame, font, fontScale=font_scale, thickness=1)[0]
         box_top_left, box_top_right = (
@@ -94,7 +107,7 @@ def make_video_clip_from_video(labels_list: Union[List, Tuple], frames_indices_l
         )
 
         # Add background colour for text
-        cv2.rectangle(frame, box_top_left, box_top_right, rectangle_bgr_black, cv2.FILLED)
+        cv2.rectangle(frame, box_top_left, box_top_right, rectangle_colour_bgr, cv2.FILLED)
         # Add text
         cv2.putText(
             img=frame,
@@ -102,7 +115,7 @@ def make_video_clip_from_video(labels_list: Union[List, Tuple], frames_indices_l
             org=(text_offset_x, text_offset_y),
             fontFace=font,
             fontScale=font_scale,
-            color=text_colour_bgr_white,
+            color=text_colour_bgr,
             thickness=1
         )
         # Wrap up
@@ -115,10 +128,10 @@ def make_video_clip_from_video(labels_list: Union[List, Tuple], frames_indices_l
 
     # Open video writer object
     video_writer = cv2.VideoWriter(
-        os.path.join(output_dir, f'{output_file_name}.mp4'),  # Full output file path
-        four_character_code,  # fourcc -- four character code
-        output_fps,  # fps
-        (width, height)  # frameSize
+        os.path.join(output_dir, f'{output_file_name}.mp4'),    # Full output file path
+        four_character_code,                                    # fourcc -- four character code
+        output_fps,                                             # fps
+        (width, height)                                         # frameSize
     )
     # Loop over all images and write to file (as video)
     log_every = 100
