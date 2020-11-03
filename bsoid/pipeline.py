@@ -1,5 +1,4 @@
 """
-Pipeline:  TODO: elaborate
 
 For ever new pipeline implementation by the user, make sure you do the following:
     - Use BasicPipeline as the parent object
@@ -11,26 +10,28 @@ Notes
 TODOs:
     low: implement ACTUAL random state s.t. all random state property calls beget a truly random integer
 
+Add attrib checking for engineer_features? https://duckduckgo.com/?t=ffab&q=get+all+classes+within+a+file+python&ia=web&iax=qa
+
 """
 from bhtsne import tsne as TSNE_bhtsne
-# from pandas.core.common import SettingWithCopyWarning
 from sklearn.manifold import TSNE as TSNE_sklearn
 from sklearn.metrics import accuracy_score
 from sklearn.mixture import GaussianMixture
-from sklearn.model_selection import cross_val_score  # , train_test_split
+from sklearn.model_selection import cross_val_score
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 from sklearn.utils import shuffle as sklearn_shuffle_dataframe
-# from tqdm import tqdm
 from typing import Any, Dict, List, Optional, Tuple  # TODO: review all uses of Optional
 import inspect
 import joblib
 import numpy as np
-# import openTSNE  # openTSNE only supports n_components 2 or less
 import os
 import pandas as pd
 import sys
 import time
+# from pandas.core.common import SettingWithCopyWarning
+# from tqdm import tqdm
+# import openTSNE  # openTSNE only supports n_components 2 or less
 # import warnings
 
 
@@ -70,10 +71,10 @@ class PipelineAttributeHolder(object):
     df_features_predict = pd.DataFrame(columns=default_cols)
     df_features_predict_scaled = pd.DataFrame(columns=default_cols)
 
-    # Model state  # TODO: move lower
+    # Other model vars (Rename this)
     cross_validation_k: int = config.CROSSVALIDATION_K
     _random_state: int = None
-    average_over_n_frames: int = 3  # TODO: low: add to kwargs
+    average_over_n_frames: int = 3  # TODO: low: add to kwargs? Address later.
     test_train_split_pct: float = None
 
     # Model objects
@@ -89,7 +90,9 @@ class PipelineAttributeHolder(object):
     tsne_verbose: int = None
     # GMM
     gmm_n_components, gmm_covariance_type, gmm_tol, gmm_reg_covar = None,  None, None, None
-    gmm_max_iter, gmm_n_init, gmm_init_params, gmm_verbose = None, None, None, None
+    gmm_max_iter, gmm_n_init, gmm_init_params = None, None, None
+    gmm_verbose: int = None
+    gmm_verbose_interval: int = None
     # SVM
     svm_c, svm_gamma, svm_probability, svm_verbose = None, None, None, None
 
@@ -318,6 +321,9 @@ class BasePipeline(PipelineAttributeHolder):
         gmm_verbose = kwargs.get('gmm_verbose', config.gmm_verbose)
         check_arg.ensure_type(gmm_verbose, int)
         self.gmm_verbose = gmm_verbose
+        gmm_verbose_interval = kwargs.get('gmm_verbose_interval', config.gmm_verbose_interval)
+        check_arg.ensure_type(gmm_verbose_interval, int)
+        self.gmm_verbose_interval = gmm_verbose_interval
         # SVM vars
         svm_c = kwargs.get('svm_c', config.svm_c)
         self.svm_c = svm_c
@@ -642,6 +648,7 @@ class BasePipeline(PipelineAttributeHolder):
             n_init=self.gmm_n_init,
             init_params=self.gmm_init_params,
             verbose=self.gmm_verbose,
+            verbose_interval=self.gmm_verbose_interval,
             random_state=self.random_state,
         ).fit(data)
         return self
@@ -663,7 +670,7 @@ class BasePipeline(PipelineAttributeHolder):
         )
         # Fit SVM to non-test data
         self._clf_svm.fit(
-            X=df.loc[~df[self.test_col_name]][self.features_names_7],
+            X=df.loc[~df[self.test_col_name]][self.features_names_7],  # TODO: too specific
             y=df.loc[~df[self.test_col_name]][self.gmm_assignment_col_name],
         )
         return self
@@ -675,19 +682,6 @@ class BasePipeline(PipelineAttributeHolder):
             self.df_features_train_scaled,
             pd.DataFrame(arr_tsne_result, columns=self.dims_cols_names),
         ], axis=1)
-        return self
-
-    # Pipeline-building functions
-    def build_predict_data(self):
-        if not self.is_built:
-            self.build_model()
-        # Engineer predict features
-        if self._has_unengineered_predict_data:  # TODO: HIGH: variable deprecated
-            self.engineer_features_predict()
-        # Scale
-        # TODO: scale data
-        self.scale_transform_predict_data()
-
         return self
 
     # Model building
@@ -789,11 +783,9 @@ class BasePipeline(PipelineAttributeHolder):
         df = self.df_features_train_scaled
         df_shuffled = sklearn_shuffle_dataframe(df)  # Shuffles data, loses none in the process. Assign bool accordingly
 
-        # TODO: Use the following pattern to avoid SettingWithCopy error df.loc[mask, "z"] = 0 //   https://realpython.com/pandas-settingwithcopywarning/
-
         # with warnings.catch_warnings():
         #     warnings.filterwarnings('ignore', category=SettingWithCopyWarning)
-        df_shuffled[test_data_col_name] = False  # TODO: Setting with copy warning occurs on this exact line. is this not how to instantiate it?
+        df_shuffled[test_data_col_name] = False  # TODO: Setting with copy warning occurs on this exact line. is this not how to instantiate it? https://realpython.com/pandas-settingwithcopywarning/
         df_shuffled.loc[:int(len(df) * self.test_train_split_pct), test_data_col_name] = True
 
         df_shuffled = df_shuffled.reset_index()
@@ -842,6 +834,7 @@ class BasePipeline(PipelineAttributeHolder):
     # Video stuff
     def write_video_frames_to_disk(self, video_to_be_labeled=config.VIDEO_TO_LABEL_PATH):
         # TODO: LOW: implement
+        raise NotImplementedError()
         labels = list(self.df_features_train_scaled[self.gmm_assignment_col_name].values)
         labels = [f'label_i={i} // label={l}' for i, l in enumerate(labels)]
         # TODO: ensure new implementation works!!!!!
@@ -1015,6 +1008,14 @@ self._is_training_data_set_different_from_model_input: {self._is_training_data_s
 
 # Concrete pipeline implementations
 
+class DemoPipeline(BasePipeline):
+    """ Demo pipeline used for demonstration on usage. Do not implement this into any real projects. """
+    def engineer_features(self, data: pd.DataFrame):
+        """ Sample feature engineering function since all
+        implementations of BasePipeline must implement this single function. """
+        return data
+
+
 class PipelinePrime(BasePipeline):
     """
     First implementation of a full pipeline. Utilizes the 7 original features from the original B-SOiD paper.
@@ -1052,41 +1053,6 @@ class PipelinePrime(BasePipeline):
         # except Exception as e:
         #     logger.error(f'{df_features.columns} // fail on feature: {feature} // {df_features.head(10).to_string()} //{repr(e)}')
         #     raise e
-
-        return df_features
-
-
-class HowlandLabPipeline_OST(BasePipeline):
-    """
-    A sample pipeline. Delete me later.
-    """
-    def engineer_features(self, in_df) -> pd.DataFrame:
-        """
-
-        """
-        # try:
-
-        columns_to_save = ['scorer', 'source', 'file_source', 'data_source', 'frame']
-        df = in_df.sort_values('frame').copy()
-
-        # Filter
-        df_filtered, _ = feature_engineering.adaptively_filter_dlc_output(df)
-        # Engineer features
-        df_features: pd.DataFrame = feature_engineering.engineer_7_features_dataframe(
-            df_filtered, features_names_7=self.features_names_7)
-        # Ensure columns don't get dropped by accident
-        for col in columns_to_save:
-            if col in in_df.columns and col not in df_features.columns:
-                df_features[col] = df[col].values
-
-        # Smooth over n-frame windows
-        for feature in self.features_which_average_by_mean:
-            df_features[feature] = feature_engineering.average_values_over_moving_window(
-                df_features[feature].values, 'avg', self.average_over_n_frames)
-        # Sum
-        for feature in self.features_which_average_by_sum:
-            df_features[feature] = feature_engineering.average_values_over_moving_window(
-                df_features[feature].values, 'sum', self.average_over_n_frames)
 
         return df_features
 
