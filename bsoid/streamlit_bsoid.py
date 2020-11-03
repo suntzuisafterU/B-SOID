@@ -7,7 +7,6 @@ More on formatting: https://pyformat.info/
 """
 from matplotlib.axes._axes import _log as matplotlib_axes_logger
 from mpl_toolkits.mplot3d import Axes3D  # Despite being "unused", this import MUST stay for 3d plotting to work. PLO!
-from traceback import format_exc as get_traceback_string
 from typing import Any, Dict, List, Union
 import matplotlib
 import numpy as np
@@ -15,10 +14,10 @@ import os
 import streamlit as st
 import sys
 import traceback
-import matplotlib.pyplot as plt
-import pandas as pd
-import time
-import tkinter
+# import matplotlib.pyplot as plt
+# import pandas as pd
+# import time
+# import tkinter
 # import cPickle as pickle
 
 
@@ -53,7 +52,6 @@ key_button_save_assignment = 'key_button_save_assignment'
 key_button_show_example_videos_options = 'key_button_show_example_videos_options'
 key_button_create_new_example_videos = 'key_button_create_new_example_videos'
 key_button_menu_label_entire_video = 'key_button_menu_label_entire_video'
-TestButton1, testbutton2 = 'TestButton1', 'Testbutton2'
 ### Page variables data ###
 streamlit_variables_dict = {  # Instantiate default variable values here
     iteration: 0,
@@ -73,7 +71,6 @@ streamlit_variables_dict = {  # Instantiate default variable values here
     key_button_show_example_videos_options: False,
     key_button_create_new_example_videos: False,
     key_button_menu_label_entire_video: False,
-    TestButton1: False, testbutton2: False,
 }
 
 
@@ -134,7 +131,7 @@ def home(*args, **kwargs):
         if start_new_opt == start_new_project_option_text:
             st.markdown(f'## Create new project pipeline')
             select_pipe_type = st.selectbox('Select a pipeline implementation',
-                                            options=('', pipeline_prime_name, HowlandTestPipeline))
+                                            options=('', pipeline_prime_name, ))
             if select_pipe_type:
                 text_input_new_project_name = st.text_input(
                     'Enter a name for your project pipeline. Please only use letters, numbers, and underscores.')
@@ -154,12 +151,11 @@ def home(*args, **kwargs):
                     # If OK: create default pipeline, save, continue
                     if select_pipe_type == pipeline_prime_name:
                         p = pipeline.PipelinePrime(text_input_new_project_name).save(path_to_project_dir)
-                    elif select_pipe_type == HowlandTestPipeline:
-                        p = pipeline.HowlandLabPipeline_OST(text_input_new_project_name).save(path_to_project_dir)
+                    # elif select_pipe_type == HowlandTestPipeline:
+                    #     p = pipeline.HowlandLabPipeline_OST(text_input_new_project_name).save(path_to_project_dir)
                     else:
                         st.error(RuntimeError('Something unexpected happened'))
-                        from traceback import format_exc as get_traceback_string
-                        st.markdown(f'traceback: {get_traceback_string()}')
+                        st.markdown(f'traceback: {traceback.format_exc()}')
                         st.stop()
                     st.success(f"""
 Success! Your new project pipeline has been saved to disk. 
@@ -629,25 +625,19 @@ def get_video_bytes(path_to_video):
 # Misc.
 
 def example_of_value_saving():
-    session_state = streamlit_session_state.get(**streamlit_variables_dict)
-    key_state_button_1 = ''
+    session_state = streamlit_session_state.get(**{'TestButton1': False, 'TestButton2': False})
     st.markdown("# [Title]")
-    button1 = st.button('Test Button 1', 'TestButton1')
+    button1_is_clicked = st.button('Test Button 1', 'TestButton1')
     st.markdown(f'Pre button1: Button 1 session state: {session_state["TestButton1"]}')
-    if button1:
+    if button1_is_clicked:
         session_state['TestButton1'] = not session_state['TestButton1']
     if session_state['TestButton1']:
-
-        # session_state['TestButton1'] = not session_state['TestButton1']
-
         st.markdown(f'In button1: Button 1 session state: {session_state["TestButton1"]}')
-
-        button2 = st.button('Test Button 2', 'TestButton2')
-        if button2:
+        button2_is_clicked = st.button('Test Button 2', 'TestButton2')
+        if button2_is_clicked:
             session_state['TestButton2'] = not session_state['TestButton2']
         if session_state['TestButton2']:
             line_break()
-            session_state['TestButton2'] = True
             st.markdown('Button 2 pressed')
 
 
