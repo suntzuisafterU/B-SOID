@@ -84,11 +84,24 @@ def augmented_runlength_encoding(labels: Union[List, np.ndarray]) -> Tuple[List[
 
 # Stats
 def mean(*args):
+    """
+    Get the mean average for all arguments for those that are not NaN
+    :param args:
+    :return:
+    # TODO: solve case for all arguments are NaN
+    """
     args = [arg for arg in args if arg == arg]  # Remove any 'nan' values
     return functools.reduce(lambda x, y: x + y, args, 0) / len(args)
 
 
 def sum_args(*args):
+    """
+    Get the sum of all arguments for those that are not NaN
+    # TODO: low: describe
+    :param args:
+    :return:
+    # TODO: solve case for all arguments are NAN
+    """
     args = [arg for arg in args if arg == arg]  # Remove any 'nan' values
     return functools.reduce(lambda x, y: x + y, args, 0)
 
