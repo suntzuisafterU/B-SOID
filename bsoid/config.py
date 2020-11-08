@@ -176,11 +176,11 @@ DEFAULT_H5_TEST_FILE: str = os.path.join(
 # except ValueError:  # In the case that the value is empty (since it is optional), assign max possible size to read in
 #     max_rows_to_read_in_from_csv = sys.maxsize
 max_rows_to_read_in_from_csv: int = configuration.getint('TESTING', 'max_rows_to_read_in_from_csv') \
-    if configuration.get('TESTING', 'max_rows_to_read_in_from_csv') else sys.maxsize  # TODO: potentially remove this variable. When comparing pd.read_csv and bsoid.read_csv, they dont match
+    if configuration.get('TESTING', 'max_rows_to_read_in_from_csv') else sys.maxsize  # TODO: potentially remove this variable. When comparing pd.read_csv and bsoid.read_csv, they dont match due to header probs
 
 
 assert os.path.isfile(DEFAULT_CSV_TEST_FILE), f'CSV test file was not found: {DEFAULT_CSV_TEST_FILE}'
-assert os.path.isfile(DEFAULT_H5_TEST_FILE), f'h5 test file was not found: {DEFAULT_H5_TEST_FILE}'
+# assert os.path.isfile(DEFAULT_H5_TEST_FILE), f'h5 test file was not found: {DEFAULT_H5_TEST_FILE}'  # TODO: low: when h5 format finally figured-out (From an actual DLC project outcome), re-instate this assert
 
 
 ### EMGMM ########################################
@@ -193,6 +193,8 @@ gmm_max_iter = configuration.getint('EM/GMM', 'max_iter')
 gmm_n_init = configuration.getint('EM/GMM', 'n_init')
 gmm_init_params = configuration.get('EM/GMM', 'init_params')
 gmm_verbose = configuration.getint('EM/GMM', 'verbose')
+gmm_verbose_interval = configuration.getint('EM/GMM', 'verbose_interval') \
+    if configuration.get('EM/GMM', 'verbose_interval') else 10  # 10 is the default
 EMGMM_PARAMS = {
     'n_components': gmm_n_components,
     'covariance_type': gmm_covariance_type,
