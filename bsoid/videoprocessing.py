@@ -152,12 +152,15 @@ def make_video_clip_from_video(labels_list: Union[List, Tuple], frames_indices_l
 
 ### ___
 
-def generate_video_with_labels(labels: Union[List, Tuple], source_video_file_path, output_file_name, output_fps, fourcc='mp4v', output_dir_path=config.OUTPUT_PATH, **kwargs):
+def generate_video_with_labels(labels: Union[List, Tuple, np.ndarray], source_video_file_path, output_file_name, output_fps, fourcc='mp4v', output_dir_path=config.OUTPUT_PATH, **kwargs):
     """
-
-    :param labels:
-    :param source_video_file_path:
-    :param output_file_name:
+    Given a video and labels for behaviours that correspond to that given video, create a new video
+    which has text labels on it.
+    :param labels: (list, tuple, collection of strings)
+    :param source_video_file_path: (str) the absolute path to the video which will be labeled. This video
+        will not be overwritten.
+    :param output_file_name: (str) the name of the file when it is done being created. Do not
+        include the path or extension, just the name.
     :param output_fps:
     :param fourcc:
     :param output_dir_path:
@@ -613,7 +616,7 @@ def write_annotated_frames_to_disk_from_video_LEGACY(path_to_video: str, labels,
 def create_labeled_example_videos_by_label(labels, critical_behaviour_minimum_duration=3, num_randomly_generated_examples=5, frame_dir=config.FRAMES_OUTPUT_PATH, output_path=config.VIDEO_OUTPUT_FOLDER_PATH, output_fps=5, fourcc_extension='mp4v') -> None:
     """ * LEGACY *
     (Generalized create_labeled_video() function that works between _py, _umap, and _voc submodules)
-    TODO: Describe function
+    TODO: low: Describe
     :param labels: 1D array, labels from training or testing
     :param critical_behaviour_minimum_duration: scalar, minimum duration for random selection of behaviors, default 300ms
     :param num_randomly_generated_examples: scalar, number of randomly generated examples, default 5  # TODO: low: default is actually 3..does counts refer to cv2.VideoWriter pathing?
