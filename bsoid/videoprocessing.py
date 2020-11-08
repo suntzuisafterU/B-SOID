@@ -169,20 +169,25 @@ def generate_video_with_labels(labels: Union[List, Tuple, np.ndarray], source_vi
         rectangle_br: (tuple(int, int, int)):  Sets colour for rectangle around text
     :return:
     """
+    text_color_bgr = (255, 255, 255)  # 255 = white?
     # Get kwargs, check args
     if not os.path.isfile(source_video_file_path):
         not_a_vid_err = f'This is not a file/video: {source_video_file_path} / todo: elaborate'
         logger.error(not_a_vid_err)
         raise ValueError(not_a_vid_err)
+    if not isinstance(labels, list) and not isinstance(labels, tuple) and not isinstance(labels, np.ndarray):
+        type_err = f'`labels` had an unexpected type: {type(labels)}'  # TODO: flesh out err msg
+        logger.error(type_err)
+        raise TypeError(type_err)
+    font_scale = kwargs.get('font_scale', 1)
+    rectangle_bgr = kwargs.get('rectangle_bgr', (0, 0, 0))  # 000=Black box?
     check_arg.ensure_type(output_fps, int)
     check_arg.ensure_type(fourcc, str)
-    font_scale = kwargs.get('font_scale', 1)
     check_arg.ensure_type(font_scale, int)
-    rectangle_bgr = kwargs.get('rectangle_bgr', (0, 0, 0))  # 000=Black box?
     check_arg.ensure_type(rectangle_bgr, tuple)
-    text_color_bgr = (255, 255, 255)  # 255 = white?
 
-    # Do
+
+    ### Do main work
     # 1/2: Iterate over video frames, add text labels, add frame to frames_list
     font = cv2.FONT_HERSHEY_COMPLEX
     four_character_code = cv2.VideoWriter_fourcc(*fourcc)
@@ -191,21 +196,40 @@ def generate_video_with_labels(labels: Union[List, Tuple, np.ndarray], source_vi
     total_frames_of_source_vid = int(cv2_video_object.get(cv2.CAP_PROP_FRAME_COUNT))
     logger.debug(f'Total frames: {total_frames_of_source_vid}')
 
+    is_frame_retrieved, frame = cv2_video_object.read()
+    height, width, _layers = frame.shape
+
+    # Open video writer object
+    video_writer = cv2.VideoWriter(
+        os.path.join(output_dir_path, f'{output_file_name}.mp4'),   # Full output file path
+        four_character_code,                                        # fourcc
+        output_fps,                                                 # fps
+        (width, height)                                             # frameSize
+    )
+
+    # for img in tqdm(frames_list, desc='Writing video...'):  # TODO: low: add progress bar
+    #     video_writer.write(img)
+    #     if i % log_every == 0:
+    #         logger.debug(f'Working on iter: {i}')
+    #     i += 1
+
     # Loop over frames, assign labels to all
     print('Is it opened?', cv2_video_object.isOpened())
     done = False
     i, frame_count = 0, 0
-    frames_list = []
+
     while cv2_video_object.isOpened() and not done:
-        text_for_frame = labels[i]
+
         is_frame_retrieved, frame = cv2_video_object.read()
         if not is_frame_retrieved:
             logger.debug(f'Is frame retrieved? {is_frame_retrieved}')
             done = True
             cv2_video_object.release()
             break
+        text_for_frame = labels[i]
 
         ### TIGHTLY BOUND - TEXT ADDITION ###
+        # TODO: Note: if the label is not a string, the below line will fail!
         text_width, text_height = cv2.getTextSize(text_for_frame, font, fontScale=font_scale, thickness=1)[0]
 
         text_offset_x, text_offset_y = 50, 50  # TODO: low: address magic variables later
@@ -220,9 +244,12 @@ def generate_video_with_labels(labels: Union[List, Tuple, np.ndarray], source_vi
         ###
 
         # Wrap up
-        frames_list.append(frame)
+        #frames_list.append(frame)
+        video_writer.write(frame)
+
         i += 1
-        frame_count += 1
+        frame_count += 4
+
         cv2_video_object.set(1, frame_count)
         if i % 100 == 0:
             logger.debug(f'Done iter {i}')
@@ -231,23 +258,10 @@ def generate_video_with_labels(labels: Union[List, Tuple, np.ndarray], source_vi
     ###########################################################################################
     # 2/2: Write video with object
     # Extract first image in images list. Set dimensions.
-    height, width, _layers = frames_list[0].shape
 
-    # Open video writer object
-    video_writer = cv2.VideoWriter(
-        os.path.join(output_dir_path, f'{output_file_name}.mp4'),   # Full output file path
-        four_character_code,                                        # fourcc
-        output_fps,                                                 # fps
-        (width, height)                                             # frameSize
-    )
+
     # Loop over all images and write to file (as video) with video writer
-    log_every = 250
-    i = 0
-    for img in tqdm(frames_list, desc='Writing video...'):  # TODO: low: add progress bar
-        video_writer.write(img)
-        if i % log_every == 0:
-            logger.debug(f'Working on iter: {i}')
-        i += 1
+
     # All done. Release video, clean up, and return.
     video_writer.release()
     cv2.destroyAllWindows()
@@ -824,3 +838,7 @@ def a():
     video_out_dir = f"C:\\Users\\killian\\projects\\B-SOID\\examples"
     # Test out new vid writing func
 
+
+if __name__ == '__main__':
+    p = io.read_pipeline()
+    generate_video_with_labels()
