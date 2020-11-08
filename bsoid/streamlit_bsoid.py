@@ -377,6 +377,7 @@ def show_actions(p: pipeline.PipelinePrime):
                         p.remove_predict_data_source(select_predict_option_to_remove).save()
                     st.success(f'{select_predict_option_to_remove} data was successfully removed!')
                     file_session[key_button_menu_remove_data] = False
+                st.markdown('')
 
     ###
 

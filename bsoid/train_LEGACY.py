@@ -37,7 +37,7 @@ logger = config.initialize_logger(__name__)
 ### NEW ###
 
 
-@config.deco__log_entry_exit(logger)
+@config.log_function_entry_exit(logger)
 def train_TSNE_NEW(list_of_arrays_data: pd.DataFrame, features, fps=config.VIDEO_FPS, dimensions: int = 3, comp=None, **kwargs) -> Tuple[pd.DataFrame, pd.DataFrame, TSNE_bthsne, StandardScaler]:
     """
     Encapsulates legacy implementation of training TSNE
@@ -134,7 +134,7 @@ def train_TSNE_LEGACY(list_of_arrays_data: List[np.ndarray], features: List[np.n
     return features_10fps, f_10fps_scaled, trained_tsne, scaler
 
 
-@config.deco__log_entry_exit(logger)
+@config.log_function_entry_exit(logger)
 def train_emgmm_with_learned_tsne_space_NEW(df_trained_tsne: pd.DataFrame, emgmm_params=config.EMGMM_PARAMS) -> np.ndarray:
     """
     Trains EM-GMM (unsupervised) given learned t-SNE space
@@ -171,7 +171,7 @@ def train_emgmm_with_learned_tsne_space_NEW(df_trained_tsne: pd.DataFrame, emgmm
     return assignments
 
 
-@config.deco__log_entry_exit(logger)
+@config.log_function_entry_exit(logger)
 def train_SVM__bsoid_svm_py(df, features_list: List[str], label: str, features: np.ndarray, labels: np.ndarray, comp: int = config.COMPILE_CSVS_FOR_TRAINING, holdout_pct: float = config.HOLDOUT_PERCENT, cv_it: int = config.CROSSVALIDATION_K, svm_params: dict = config.SVM_PARAMS) -> SVC:
     """
     Train SVM classifier
@@ -384,7 +384,7 @@ def extract_features_and_train_TSNE(list_of_arrays_data: List[np.ndarray], bodyp
 
 ########################################################################################################################
 
-@config.deco__log_entry_exit(logger)
+@config.log_function_entry_exit(logger)
 def train_umap_unsupervised_with_xy_features_umapapp(data: List[np.ndarray], fps: int = config.VIDEO_FPS) -> Tuple:
     # TODO: high: ensure that the final logic matches original functions..ensure no renaming side-effects occurred
     """
@@ -467,7 +467,7 @@ def train_umap_unsupervised_with_xy_features_umapapp(data: List[np.ndarray], fps
             f_10fps_sc = features_n_scaled  # scaling is important as I've seen wildly different stdev/feat between sessions
     logger.debug(f'{inspect.stack()[0][3]: Now exiting.}')
     return f_10fps, f_10fps_sc
-@config.deco__log_entry_exit(logger)
+@config.log_function_entry_exit(logger)
 def bsoid_umap_embed_umapapp(features_10fps_scaled, umap_params=config.UMAP_PARAMS) -> Tuple[umap.UMAP, Any]:
     """
     Trains UMAP (unsupervised) given a set of features based on (x,y) positions
@@ -501,7 +501,7 @@ def bsoid_umap_embed_umapapp(features_10fps_scaled, umap_params=config.UMAP_PARA
     logger.debug(f'{inspect.stack()[0][3]}: now exiting.')
     return trained_umap, umap_embeddings
 
-@config.deco__log_entry_exit(logger)
+@config.log_function_entry_exit(logger)
 def bsoid_hdbscan_umapapp(umap_embeddings, hdbscan_params=config.HDBSCAN_PARAMS) -> Tuple[Any, np.ndarray, Any]:
     """
     Trains HDBSCAN (unsupervised) given learned UMAP space
@@ -535,7 +535,7 @@ def bsoid_hdbscan_umapapp(umap_embeddings, hdbscan_params=config.HDBSCAN_PARAMS)
                 'Done predicting labels for {} instances in {} D space...'.format(*umap_embeddings.shape))
     return assignments, soft_clusters, soft_assignments
 
-@config.deco__log_entry_exit(logger)
+@config.log_function_entry_exit(logger)
 def bsoid_nn_appumap(feats, labels, holdout_pct: float = config.HOLDOUT_PERCENT, cv_it: int = config.CROSSVALIDATION_K,
                      mlp_params=config.MLP_PARAMS) -> Tuple[Any, Any, Any]:
     """
@@ -582,7 +582,7 @@ def bsoid_nn_appumap(feats, labels, holdout_pct: float = config.HOLDOUT_PERCENT,
                 f'Features shape: {feats_train.shape} / labels shape: {labels_train.shape}')
     return clf, scores, nn_assignments
 
-@config.deco__log_entry_exit(logger)
+@config.log_function_entry_exit(logger)
 def train_mlp_classifier_voc(feats, labels, comp: int = config.COMPILE_CSVS_FOR_TRAINING, holdout_percent: float = config.HOLDOUT_PERCENT, crossvalidation_k: int = config.CROSSVALIDATION_K, mlp_params=config.MLP_PARAMS) -> Tuple[Any, Any]:
     """
     Trains MLP classifier
@@ -782,7 +782,7 @@ def bsoid_tsne_voc(data: list, bodyparts=config.BODYPARTS_VOC_LEGACY, fps=config
             logger.debug(f'{inspect.stack()[0][3]}(): Done embedding into 3 D.')
     return features_10fps, features_10fps_scaled, trained_tsne
 
-@config.deco__log_entry_exit(logger)
+@config.log_function_entry_exit(logger)
 def train_emgmm_with_learned_tsne_space(trained_tsne_array, comp=config.COMPILE_CSVS_FOR_TRAINING, emgmm_params=config.EMGMM_PARAMS) -> np.ndarray:
     """
     Trains EM-GMM (unsupervised) given learned t-SNE space
@@ -817,7 +817,7 @@ def train_em_gmm_NEW(df):
     """"""
     # TODO: HIGH
     return
-@config.deco__log_entry_exit(logger)
+@config.log_function_entry_exit(logger)
 def bsoid_svm_py(features: np.ndarray, labels: np.ndarray,
                  comp: int = config.COMPILE_CSVS_FOR_TRAINING,
                  holdout_pct: float = config.HOLDOUT_PERCENT,
@@ -897,7 +897,7 @@ def bsoid_svm_py(features: np.ndarray, labels: np.ndarray,
     logger.info(f'{inspect.stack()[0][3]}(): Scored cross-validated SVM performance.')  # Previously: .format(feats_train.shape, labels_train.shape))
     return classifier, scores
 
-@config.deco__log_entry_exit(logger)
+@config.log_function_entry_exit(logger)
 def get_data_train_TSNE_then_GMM_then_SVM_then_return_EVERYTHING__py(train_folders: List[str]):
     """
     This function takes the place of "main.py" previously implemented in bsoid_py.
@@ -948,7 +948,7 @@ def get_data_train_TSNE_then_GMM_then_SVM_then_return_EVERYTHING__py(train_folde
         logger.debug(f'Exiting GRAPH PLOTTING section of {inspect.stack()[0][3]}')
     return features_10fps, trained_tsne_list, scaler, gmm_assignments, classifier, scores
 
-@config.deco__log_entry_exit(logger)
+@config.log_function_entry_exit(logger)
 def train__import_data_and_process__train_tsne__train_gmm__train_clf__voc(train_folders: list):
     if not isinstance(train_folders, list):
         raise ValueError(f'`train_folders` arg was expected to be list but instead found '
@@ -1002,7 +1002,7 @@ def bsoid_feats_umapapp(data: list, fps: int = config.VIDEO_FPS) -> Tuple:
     return replacement_func(data, fps)
 
 
-@config.deco__log_entry_exit(logger)
+@config.log_function_entry_exit(logger)
 def main_py(*args, **kwargs):
     """
     :param train_folders: list, training data folders
@@ -1018,14 +1018,14 @@ def main_py(*args, **kwargs):
     err = f'Use `{replacement_func.__qualname__}` instead'
     logger.error(err)
     raise DeprecationWarning(err)
-@config.deco__log_entry_exit(logger)
+@config.log_function_entry_exit(logger)
 def main_voc(train_folders: list):
     replacement_func = train__import_data_and_process__train_tsne__train_gmm__train_clf__voc
     warning = f'This function, {likelihoodprocessing.get_current_function()}, will be deprecated soon. Instead, use: ' \
               f'{replacement_func.__qualname__}.'
     logger.warning(warning)
     return replacement_func(train_folders)
-@config.deco__log_entry_exit(logger)
+@config.log_function_entry_exit(logger)
 def main_umap(train_folders: list):
     if not isinstance(train_folders, list):
         raise ValueError(f'`train_folders` arg was expected to be list but instead found '

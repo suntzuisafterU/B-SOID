@@ -988,7 +988,7 @@ def integrate_into_bins(list_of_arrays_data: pd.DataFrame, features, fps=config.
     return features_10fps
 
 
-@config.deco__log_entry_exit(logger)
+@config.log_function_entry_exit(logger)
 def process_raw_data_and_filter_adaptively(df_input_data: pd.DataFrame) -> Tuple[np.ndarray, List]:
     """ Legacy implementation.
 
@@ -1094,7 +1094,7 @@ def process_raw_data_and_filter_adaptively(df_input_data: pd.DataFrame) -> Tuple
     return final__array_filtered_data, percent_filterd_per_bodypart__perc_rect
 
 
-@config.deco__log_entry_exit(logger)
+@config.log_function_entry_exit(logger)
 def adaptive_filter_data_app(input_df: pd.DataFrame, BODYPARTS: dict):  # TODO: rename function for clarity?
     """
     TODO: purpose

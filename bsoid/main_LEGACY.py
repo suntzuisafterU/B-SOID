@@ -21,7 +21,7 @@ logger = config.initialize_logger(__name__)
 
 ###################
 
-@config.deco__log_entry_exit(logger)
+@config.log_function_entry_exit(logger)
 def build_py(train_folders) -> Tuple[Any, Any, Any, Any, Any, Any]:
     """
     Automatically saves single CSV file containing training outputs (in 10Hz, 100ms per row):
@@ -75,7 +75,7 @@ def build_py(train_folders) -> Tuple[Any, Any, Any, Any, Any, Any]:
     return features_10fps, trained_tsne, scaler_object, gmm_assignments, classifier, scores
 
 
-@config.deco__log_entry_exit(logger)
+@config.log_function_entry_exit(logger)
 def run_py(predict_folders):  # TODO: HIGH: break up this function and rename. TOo many things happening.
     """
     Automatically loads classifier in OUTPUTPATH with MODELNAME in config
@@ -192,7 +192,7 @@ def test_function_to_build_then_run_py():
 
 ########################################################################################################################
 
-@config.deco__log_entry_exit(logger)
+@config.log_function_entry_exit(logger)
 def build_umap(train_folders) -> Tuple[Any, Any, Any, Any, Any, Any, Any, Any, Any]:
     """
     :param train_folders: list, folders to build behavioral model on
@@ -245,7 +245,7 @@ def build_umap(train_folders) -> Tuple[Any, Any, Any, Any, Any, Any, Any, Any, A
 
     logger.info('Saved. Expand on this info message.')
     return features_10fps, features_10fps_scaled, umap_embeddings, hdb_assignments, soft_assignments, soft_clusters, nn_classifier, scores, nn_assignments
-@config.deco__log_entry_exit(logger)
+@config.log_function_entry_exit(logger)
 def build_voc(train_folders) -> Tuple[Any, Any, Any, Any, List]:
     """
     Automatically saves single CSV file containing training outputs (in 10Hz, 100ms per row):
@@ -482,7 +482,7 @@ def retrain_umap(train_folders):
 
 ########################################################################################################################
 
-@config.deco__log_entry_exit(logger)
+@config.log_function_entry_exit(logger)
 def test_function_to_build_then_run_umap():
     logger.debug(f'STARTING _UMAP TRAIN SERIES')
     build_umap(config.TRAIN_FOLDERS_IN_DLC_PROJECT_toBeDeprecated)
@@ -491,7 +491,7 @@ def test_function_to_build_then_run_umap():
     run_umap(config.PREDICT_FOLDERS_IN_DLC_PROJECT_toBeDeprecated)
     logger.debug(f'ENDING _UMAP RUN SERIES. SUCCESS!')
     logger.debug(f'End of test.')
-@config.deco__log_entry_exit(logger)
+@config.log_function_entry_exit(logger)
 def test_function_to_build_then_run_voc():
     logger.debug(f'STARTING _VOC TRAIN SERIES')
     build_voc(config.TRAIN_FOLDERS_IN_DLC_PROJECT_toBeDeprecated)
@@ -500,7 +500,7 @@ def test_function_to_build_then_run_voc():
     run_voc(config.PREDICT_FOLDERS_IN_DLC_PROJECT_toBeDeprecated)
     logger.debug(f'ENDING _VOC RUN SERIES. SUCCESS!')
     logger.debug(f'End of test.')
-@config.deco__log_entry_exit(logger)
+@config.log_function_entry_exit(logger)
 def test_build_py():
     build_py(config.TRAIN_FOLDERS_IN_DLC_PROJECT_toBeDeprecated)
 

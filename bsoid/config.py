@@ -141,7 +141,7 @@ CROSSVALIDATION_N_JOBS: int = configuration.getint('MODEL', 'CROSS_VALIDATION_N_
 
 ### LOGGING ######################################################
 
-deco__log_entry_exit: callable = logging_bsoid.log_entry_exit  # TODO: temporary measure to enable logging when entering/exiting functions
+log_function_entry_exit: callable = logging_bsoid.log_entry_exit  # TODO: temporary measure to enable logging when entering/exiting functions
 
 config_log_file_folder_path = configuration.get('LOGGING', 'LOG_FILE_FOLDER_PATH')
 log_file_folder_path = config_log_file_folder_path if config_log_file_folder_path else default_log_folder_path

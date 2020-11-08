@@ -299,7 +299,7 @@ def write_video_with_existing_frames(video_path, frames_dir_path, output_vid_nam
     return
 
 
-@config.deco__log_entry_exit(logger)
+@config.log_function_entry_exit(logger)
 def write_annotated_frames_to_disk_from_video_NEW(path_to_video: str, labels, fps: int = config.VIDEO_FPS, output_path: str = config.FRAMES_OUTPUT_PATH, pct_frames_to_label: float = config.PERCENT_FRAMES_TO_LABEL):
     """ * LEGACY *
     This function serves to supersede the old 'vid2frame()' function for future clarity.
@@ -412,7 +412,11 @@ def write_individual_frame_to_file(is_frame_retrieved: bool, frame: np.ndarray, 
 
 
 def label_frame(frame, label):
-    """"""
+    """
+    A first attempt at encapsulating the "labeling" process (adding text to a
+    specified video frame). So far, it hasn't been confirmed to work.
+    """
+    # TODO: high: evaluate if returning the frame is necessary...don't all CV2 changes occur in place?
     font_scale, font = 1, cv2.FONT_HERSHEY_COMPLEX
     rectangle_bgr_black = (0, 0, 0)
     color_white_bgr = (255, 255, 255)
@@ -432,7 +436,7 @@ def label_frame(frame, label):
 
 def get_frames_from_video(path_to_video, frames_to_skip_after_each_write=1, **kwargs) -> List[np.ndarray]:
     """
-    Pull frames
+    For a given video, retrieve all specified video frames and return as a list of those frames
     """
     frames = []
     # TODO: resolve fails
@@ -467,9 +471,10 @@ def get_frames_from_video(path_to_video, frames_to_skip_after_each_write=1, **kw
     return frames
 
 
-def write_annotated_frames_to_disk_from_video_source_NEW_multiprocessed(path_to_video: str, labels, pct_frames_to_label: float = config.PERCENT_FRAMES_TO_LABEL) -> List:
-    """ * Legacy adjusted *
-    New implementation to leverage multiprocessing (optional) just because original implementation is so slow.
+def write_annotated_frames_to_disk_from_video_source_with_multiprocessing(path_to_video: str, labels, pct_frames_to_label: float = config.PERCENT_FRAMES_TO_LABEL) -> None:
+    """
+    A new multiprocessed version of writing frames to disk (using legacy execution flow) to
+    leverage multiprocessing (optional with N_JOBS I suppose) just because original implementation is so slow.
     """
     # TODO: resolve fails
 
@@ -523,7 +528,7 @@ def write_annotated_frames_to_disk_from_video_source_NEW_multiprocessed(path_to_
 
 ### Video creation - Legacy ############################################################################################
 
-@config.deco__log_entry_exit(logger)
+@config.log_function_entry_exit(logger)
 def write_annotated_frames_to_disk_from_video_LEGACY(path_to_video: str, labels, fps: int = config.VIDEO_FPS, output_path: str = config.FRAMES_OUTPUT_PATH, pct_frames_to_label: float = config.PERCENT_FRAMES_TO_LABEL):
     """ * LEGACY *
     This function serves to supersede the old 'vid2frame()' function for future clarity.

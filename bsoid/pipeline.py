@@ -1125,3 +1125,6 @@ if __name__ == '__main__':
         pass
 
 
+
+
+# C:\Users\killian\projects\B-SOID\output\empty.pipeline

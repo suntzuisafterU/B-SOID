@@ -30,7 +30,7 @@ logger = config.initialize_logger(__name__)
 ### NEW ###
 
 
-@config.deco__log_entry_exit(logger)
+@config.log_function_entry_exit(logger)
 def train_TSNE_NEW(list_of_arrays_data: pd.DataFrame, features, fps=config.VIDEO_FPS, dimensions: int = 3, comp=None, **kwargs) -> Tuple[pd.DataFrame, pd.DataFrame, TSNE_bthsne, StandardScaler]:
     """
     Encapsulates legacy implementation of training TSNE
@@ -125,7 +125,7 @@ def train_TSNE_LEGACY(list_of_arrays_data: List[np.ndarray], features: List[np.n
     return features_10fps, f_10fps_scaled, trained_tsne, scaler
 
 
-@config.deco__log_entry_exit(logger)
+@config.log_function_entry_exit(logger)
 def train_emgmm_with_learned_tsne_space_NEW(df_trained_tsne: pd.DataFrame, emgmm_params=config.EMGMM_PARAMS) -> np.ndarray:
     """
     Trains EM-GMM (unsupervised) given learned t-SNE space
@@ -162,7 +162,7 @@ def train_emgmm_with_learned_tsne_space_NEW(df_trained_tsne: pd.DataFrame, emgmm
     return assignments
 
 
-@config.deco__log_entry_exit(logger)
+@config.log_function_entry_exit(logger)
 def train_SVM__bsoid_svm_py(df, features_list: List[str], label: str, features: np.ndarray, labels: np.ndarray, comp: int = config.COMPILE_CSVS_FOR_TRAINING, holdout_pct: float = config.HOLDOUT_PERCENT, cv_it: int = config.CROSSVALIDATION_K, svm_params: dict = config.SVM_PARAMS) -> SVC:
     """
     Train SVM classifier
@@ -373,7 +373,7 @@ def extract_features_and_train_TSNE(list_of_arrays_data: List[np.ndarray], bodyp
 
 ########################################################################################################################
 
-@config.deco__log_entry_exit(logger)
+@config.log_function_entry_exit(logger)
 def train_emgmm_with_learned_tsne_space(trained_tsne_array, comp=config.COMPILE_CSVS_FOR_TRAINING, emgmm_params=config.EMGMM_PARAMS) -> np.ndarray:
     """
     Trains EM-GMM (unsupervised) given learned t-SNE space
@@ -405,7 +405,7 @@ def train_emgmm_with_learned_tsne_space(trained_tsne_array, comp=config.COMPILE_
     assignments: np.ndarray = np.array(assignments_list)
     return assignments
 
-@config.deco__log_entry_exit(logger)
+@config.log_function_entry_exit(logger)
 def bsoid_svm_py(features: np.ndarray, labels: np.ndarray,
                  comp: int = config.COMPILE_CSVS_FOR_TRAINING,
                  holdout_pct: float = config.HOLDOUT_PERCENT,
@@ -485,7 +485,7 @@ def bsoid_svm_py(features: np.ndarray, labels: np.ndarray,
     logger.info(f'{inspect.stack()[0][3]}(): Scored cross-validated SVM performance.')  # Previously: .format(feats_train.shape, labels_train.shape))
     return classifier, scores
 
-@config.deco__log_entry_exit(logger)
+@config.log_function_entry_exit(logger)
 def get_data_train_TSNE_then_GMM_then_SVM_then_return_EVERYTHING__py(train_folders: List[str]):
     """
     This function takes the place of "main.py" previously implemented in bsoid_py.

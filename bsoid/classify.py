@@ -185,7 +185,7 @@ def bsoid_frameshift_py(data_new, scaler, fps: int, clf_SVM) -> List[np.ndarray]
     return labels_frameshifted_high
 
 
-@config.deco__log_entry_exit(logger)
+@config.log_function_entry_exit(logger)
 def main_py(predict_folders: List[str], scaler, fps, svm_classifier__behavioural_model) -> Tuple[Any, List, List, List]:
     """
     :param predict_folders: list, data folders

@@ -97,7 +97,7 @@ def plot_assignment_distribution_histogram(assignments: Collection, **kwargs) ->
 
 #######################################################################################################################
 
-@config.deco__log_entry_exit(logger)
+@config.log_function_entry_exit(logger)
 def plot_tsne_in_3d(data, **kwargs):
     # TODO: HIGH: consider reducing the total data when plotting because, if TONS of data is
     #  plotted in 3d, it can be very laggy when viewing and when especially rotating
@@ -181,7 +181,7 @@ def plot_transition_matrix(transition_matrix: np.ndarray, fps, save_fig_to_file,
     return fig
 
 
-@config.deco__log_entry_exit(logger)
+@config.log_function_entry_exit(logger)
 def plot_feats_bsoidpy_NEW(features, labels) -> None:
     """ *  *
     :param features: list, features for multiple sessions
@@ -398,7 +398,7 @@ def plot_classes_bsoidapp(data, assignments) -> Tuple:
 
 ### PLOT ACCURACY ######################################################################################################
 
-@config.deco__log_entry_exit(logger)
+@config.log_function_entry_exit(logger)
 def plot_accuracy_MLP(scores, show_plot=config.PLOT_GRAPHS, save_fig_to_file=config.SAVE_GRAPHS_TO_FILE, fig_file_prefix='classifier_accuracy_score', **kwargs) -> Tuple:
     """
     TODO: low: purpose
@@ -521,7 +521,7 @@ def plot_accuracy_SVM(scores, save_fig_to_file=config.SAVE_GRAPHS_TO_FILE,
 
 ### PLOT FEATS ########################################################################################################
 
-@config.deco__log_entry_exit(logger)
+@config.log_function_entry_exit(logger)
 def plot_feats_bsoidpy(features, labels) -> None:
     """ *Legacy*
     :param features: list, features for multiple sessions
@@ -609,7 +609,7 @@ def plot_feats_bsoidpy(features, labels) -> None:
     else: raise TypeError(f'invalid type detected for labels: {type(labels)}')
 
 
-@config.deco__log_entry_exit(logger)
+@config.log_function_entry_exit(logger)
 def plot_feats_bsoidUMAPAPP(features, labels: list) -> None:
     """
     :param features: list (or numpy array??), features for multiple sessions  # TODO
@@ -707,7 +707,7 @@ def plot_feats_bsoidUMAPAPP(features, labels: list) -> None:
         raise TypeError(type_err)
 
 
-@config.deco__log_entry_exit(logger)
+@config.log_function_entry_exit(logger)
 def plot_feats_bsoidvoc(features, labels: list) -> None:
     """
     :param features: list, features for multiple sessions
@@ -873,7 +873,7 @@ def plot_accuracy_bsoidumap(scores) -> None:
     # my_file = 'clf_scores'
     # fig.savefig(os.path.join(OUTPUT_PATH, f'{fig_file_prefix}_{timestr}.svg'))
     plot_accuracy_MLP(scores, show_plot=True, save_fig_to_file=True)
-@config.deco__log_entry_exit(logger)
+@config.log_function_entry_exit(logger)
 def plot_accuracy_bsoidpy(scores) -> None:
     """ ** DEPRECATION WARNING ** """
     # fig = plt.figure(facecolor='w', edgecolor='k')

@@ -438,7 +438,7 @@ def bsoid_frameshift_voc(data_new, fps: int, clf_MLP) -> List[np.ndarray]:
     logger.info(f'Done frameshift-predicting a total of {len(data_new)} files.')
     return labels_frameshifted_high
 
-@config.deco__log_entry_exit(logger)
+@config.log_function_entry_exit(logger)
 def main_py(predict_folders: List[str], scaler, fps, svm_classifier__behavioural_model) -> Tuple[Any, List, List, List]:
     """
     :param predict_folders: list, data folders
@@ -476,7 +476,7 @@ def main_py(predict_folders: List[str], scaler, fps, svm_classifier__behavioural
             #     config.VIDEO_TO_LABEL_PATH,
             #     labels_frameshift_low[config.IDENTIFICATION_ORDER],
             # )
-            videoprocessing.write_annotated_frames_to_disk_from_video_source_NEW_multiprocessed(
+            videoprocessing.write_annotated_frames_to_disk_from_video_source_with_multiprocessing(
                 config.VIDEO_TO_LABEL_PATH,
                 labels_frameshift_low[config.IDENTIFICATION_ORDER],
             )
