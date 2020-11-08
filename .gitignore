@@ -13,3 +13,6 @@ tags
 typescript
 .idea/
 venv/
+
+# Scratch files
+comp*.txt
