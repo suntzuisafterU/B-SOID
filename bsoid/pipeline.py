@@ -836,17 +836,6 @@ class BasePipeline(PipelineAttributeHolder):
         return io.read_pipeline(final_out_path)
 
     # Video stuff
-    def write_video_frames_to_disk(self, video_to_be_labeled=config.VIDEO_TO_LABEL_PATH):
-        # TODO: LOW: implement
-        raise NotImplementedError()
-        labels = list(self.df_features_train_scaled[self.gmm_assignment_col_name].values)
-        labels = [f'label_i={i} // label={l}' for i, l in enumerate(labels)]
-        # TODO: ensure new implementation works!!!!!
-        videoprocessing.write_annotated_frames_to_disk_from_video_NEW(
-            video_to_be_labeled,
-            labels,
-        )
-        return
 
     def make_video(self, video_to_be_labeled, video_name: str, output_fps: int = config.OUTPUT_VIDEO_FPS):
         """
