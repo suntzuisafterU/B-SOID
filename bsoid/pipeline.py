@@ -9,6 +9,7 @@ Notes
     - the OpenTSNE implementation does not allow more than 2 components
 TODOs:
     low: implement ACTUAL random state s.t. all random state property calls beget a truly random integer
+    low: review "theta"(/angle) for TSNE
 
 Add attrib checking for engineer_features? https://duckduckgo.com/?t=ffab&q=get+all+classes+within+a+file+python&ia=web&iax=qa
 
@@ -110,6 +111,7 @@ class PipelineAttributeHolder(object):
 
     # Misc attributes
     kwargs: dict = {}
+    _last_built: str = None
 
     # SORT ME
     _acc_score: float = None
@@ -410,16 +412,16 @@ class BasePipeline(PipelineAttributeHolder):
         return self
 
     def remove_train_data_source(self, data_source: str):
+        """  """
         # TODO: low: ensure function, add tests
-        raise NotImplementedError(f'TODO')
         check_arg.ensure_type(data_source, str)
         self.df_features_train_raw = self.df_features_train_raw.loc[
             self.df_features_train_raw['data_source'] != data_source]
-
-        self.df_features_train = self.df_features_train.loc[self.df_features_train['data_source'] != data_source]
-
+        self.df_features_train = self.df_features_train.loc[
+            self.df_features_train['data_source'] != data_source]
         self.df_features_train_scaled = self.df_features_train_scaled.loc[
             self.df_features_train_scaled['data_source'] != data_source]
+
         return self
 
     def remove_predict_data_source(self, data_source: str):
@@ -428,9 +430,11 @@ class BasePipeline(PipelineAttributeHolder):
         :param data_source: (str) name of a data source
         """
         # TODO: low: ensure function, add tests
-        raise NotImplementedError(f'TODO')
         check_arg.ensure_type(data_source, str)
-        self.df_features_predict = self.df_features_predict.loc[self.df_features_predict['data_source'] != data_source]
+        self.df_features_predict_raw = self.df_features_predict_raw.loc[
+            self.df_features_predict_raw['data_source'] != data_source]
+        self.df_features_predict = self.df_features_predict.loc[
+            self.df_features_predict['data_source'] != data_source]
         self.df_features_predict_scaled = self.df_features_predict_scaled.loc[
             self.df_features_predict_scaled['data_source'] != data_source]
         return self
@@ -734,6 +738,7 @@ class BasePipeline(PipelineAttributeHolder):
         # Final touches. Save state of pipeline.
         self._is_built = True
         self._is_training_data_set_different_from_model_input = False
+        self._last_built = time.strftime("%Y-%m-%d_%Hh%Mm%Ss")
         logger.debug(f'All done with building classifiers/model!')
 
         return self
@@ -742,7 +747,6 @@ class BasePipeline(PipelineAttributeHolder):
         """ This is the legacy naming. Method kept for backwards compatibility. THis function will be delted later. """
         return self.build_model(reengineer_train_features=reengineer_train_features)
 
-    # Generating predict data
     def generate_predict_data_assignments(self, reengineer_train_data_features: bool = False, reengineer_predict_features = False):  # TODO: low: rename?
         """ Runs after build(). Using terminology from old implementation. TODO: purpose """
         # TODO: add arg checking for empty predict data?
@@ -1005,6 +1009,11 @@ self._is_training_data_set_different_from_model_input: {self._is_training_data_s
 """.strip()
         return diag
 
+    #
+    def __repr__(self) -> str:
+        # TODO: flesh out how these are usually built. Add a last updated info?
+        return f'{self.name}'
+
 
 # Concrete pipeline implementations
 
@@ -1116,4 +1125,3 @@ if __name__ == '__main__':
         pass
 
 
-# C:\Users\killian\projects\B-SOID\output\videoTestAfterNoon1.pipeline
