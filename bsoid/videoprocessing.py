@@ -171,7 +171,7 @@ def generate_video_with_labels(labels: Union[List, Tuple, np.ndarray], source_vi
     """
     # Get kwargs, check args
     if not os.path.isfile(source_video_file_path):
-        not_a_vid_err = f'This is not a video: {source_video_file_path} / todo: elaborate'
+        not_a_vid_err = f'This is not a file/video: {source_video_file_path} / todo: elaborate'
         logger.error(not_a_vid_err)
         raise ValueError(not_a_vid_err)
     check_arg.ensure_type(output_fps, int)
@@ -181,7 +181,9 @@ def generate_video_with_labels(labels: Union[List, Tuple, np.ndarray], source_vi
     rectangle_bgr = kwargs.get('rectangle_bgr', (0, 0, 0))  # 000=Black box?
     check_arg.ensure_type(rectangle_bgr, tuple)
     text_color_bgr = (255, 255, 255)  # 255 = white?
+
     # Do
+    # 1/2: Iterate over video frames, add text labels, add frame to frames_list
     font = cv2.FONT_HERSHEY_COMPLEX
     four_character_code = cv2.VideoWriter_fourcc(*fourcc)
 
@@ -193,7 +195,7 @@ def generate_video_with_labels(labels: Union[List, Tuple, np.ndarray], source_vi
     print('Is it opened?', cv2_video_object.isOpened())
     done = False
     i, frame_count = 0, 0
-    frames = []
+    frames_list = []
     while cv2_video_object.isOpened() and not done:
         text_for_frame = labels[i]
         is_frame_retrieved, frame = cv2_video_object.read()
@@ -203,6 +205,7 @@ def generate_video_with_labels(labels: Union[List, Tuple, np.ndarray], source_vi
             cv2_video_object.release()
             break
 
+        ### TIGHTLY BOUND - TEXT ADDITION ###
         text_width, text_height = cv2.getTextSize(text_for_frame, font, fontScale=font_scale, thickness=1)[0]
 
         text_offset_x, text_offset_y = 50, 50  # TODO: low: address magic variables later
@@ -213,8 +216,11 @@ def generate_video_with_labels(labels: Union[List, Tuple, np.ndarray], source_vi
         cv2.rectangle(frame, box_coordinates[0], box_coordinates[1], rectangle_bgr, cv2.FILLED)
         cv2.putText(img=frame, text=labels[i], org=(text_offset_x, text_offset_y),
                     fontFace=font, fontScale=font_scale, color=text_color_bgr, thickness=1)
+
+        ###
+
         # Wrap up
-        frames.append(frame)
+        frames_list.append(frame)
         i += 1
         frame_count += 1
         cv2_video_object.set(1, frame_count)
@@ -223,8 +229,9 @@ def generate_video_with_labels(labels: Union[List, Tuple, np.ndarray], source_vi
     logger.debug(f'Is it opened? {cv2_video_object.isOpened()}')
 
     ###########################################################################################
+    # 2/2: Write video with object
     # Extract first image in images list. Set dimensions.
-    height, width, _layers = frames[0].shape
+    height, width, _layers = frames_list[0].shape
 
     # Open video writer object
     video_writer = cv2.VideoWriter(
@@ -236,7 +243,7 @@ def generate_video_with_labels(labels: Union[List, Tuple, np.ndarray], source_vi
     # Loop over all images and write to file (as video) with video writer
     log_every = 250
     i = 0
-    for img in tqdm(frames, desc='Writing video...'):  # TODO: low: add progress bar
+    for img in tqdm(frames_list, desc='Writing video...'):  # TODO: low: add progress bar
         video_writer.write(img)
         if i % log_every == 0:
             logger.debug(f'Working on iter: {i}')
@@ -302,7 +309,6 @@ def write_video_with_existing_frames(video_path, frames_dir_path, output_vid_nam
     return
 
 
-@config.log_function_entry_exit(logger)
 def write_annotated_frames_to_disk_from_video_NEW(path_to_video: str, labels, fps: int = config.VIDEO_FPS, output_path: str = config.FRAMES_OUTPUT_PATH, pct_frames_to_label: float = config.PERCENT_FRAMES_TO_LABEL):
     """ * LEGACY *
     This function serves to supersede the old 'vid2frame()' function for future clarity.
