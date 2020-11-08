@@ -34,10 +34,12 @@ valid_video_extensions = {'avi', 'mp4', }
 start_new_project_option_text, load_existing_project_option_text = 'Create new', 'Load existing'
 pipeline_prime_name, HowlandTestPipeline = 'PipelinePrime', 'HowlandLabPipeline_OST'
 training_data_option, predict_data_option = 'Training Data', 'Predict Data'
-iteration = 'iter'
-# Set keys for objects
+key_iteration_page_refresh_count = 'key_iteration_page_refresh_count'
+
+# Set keys for objects (mostly buttons) for streamlit components that need some form of persistence.
 key_button_show_pipeline_information = 'key_button_show_more_pipeline_information'
 key_button_see_rebuild_options = 'key_button_see_model_options'
+key_button_see_advanced_options = 'key_button_see_advanced_options'
 key_button_change_info = 'key_button_change_info'
 key_button_rebuild_model = 'key_button_rebuild_model'
 key_button_rebuild_model_confirmation = 'key_button_rebuild_model_confirmation'
@@ -54,9 +56,10 @@ key_button_create_new_example_videos = 'key_button_create_new_example_videos'
 key_button_menu_label_entire_video = 'key_button_menu_label_entire_video'
 ### Page variables data ###
 streamlit_variables_dict = {  # Instantiate default variable values here
-    iteration: 0,
+    key_iteration_page_refresh_count: 0,
     key_button_show_pipeline_information: False,
     key_button_see_rebuild_options: False,
+    key_button_see_advanced_options: False,
     key_button_change_info: False,
     key_button_rebuild_model: False,
     key_button_rebuild_model_confirmation: False,
@@ -100,11 +103,11 @@ def home(*args, **kwargs):
     global file_session
     file_session = streamlit_session_state.get(**streamlit_variables_dict)
     matplotlib.use('TkAgg')  # For allowing graphs to pop out as separate windows
-    file_session[iteration] = file_session[iteration] + 1
+    file_session[key_iteration_page_refresh_count] = file_session[key_iteration_page_refresh_count] + 1
     is_pipeline_loaded = False
 
     ### SIDEBAR ###
-    st.sidebar.markdown(f'### Iteration: {file_session[iteration]}')
+    st.sidebar.markdown(f'### Iteration: {file_session[key_iteration_page_refresh_count]}')
     st.sidebar.markdown('---')
 
     ### MAIN ###
@@ -258,13 +261,15 @@ Some common causes include adding/deleting training data or changing model
 parameters without subsequently rebuilding the model.
 
 We recommend that you rebuild the model to avoid future problems. """.strip())
-    button_rebuild_inconsistent_model = st.button('(WIP) Rebuild model')
-    if button_rebuild_inconsistent_model:
-        with st.spinner('Rebuilding model. This could take a couple minutes...'):
-            app.sample_runtime_function(3)
-            # p = p.build()
-            # p = p.save()
-        st.success(f'Model was re-built successfully! Refresh page to see changes.')
+
+    # # TODO: for below commented-out: add a CONFIRM button to confirm model re-build, then re-instate
+    # button_rebuild_inconsistent_model = st.button('(WIP) Rebuild model')
+    # if button_rebuild_inconsistent_model:
+    #     with st.spinner('Rebuilding model. This could take a couple minutes...'):
+    #         # app.sample_runtime_function(3)
+    #         p = p.build()
+    #         p = p.save()
+    #     st.success(f'Model was re-built successfully! Refresh page to see changes.')
 
     st.markdown('------------------------------------------------------------------------------------------------')
 
@@ -293,7 +298,7 @@ def show_actions(p: pipeline.PipelinePrime):
     # TODO: low: add a "change save location" option?
 
     ####################################### MODEL BUILDING #############################################
-    st.markdown(f'### Model building & information')
+    st.markdown(f'## Model building & information')
 
     ### Menu button: adding new data ###
     button_add_new_data = st.button('Expand/collapse: Add new data to model', key_button_add_new_data)
@@ -316,7 +321,7 @@ def show_actions(p: pipeline.PipelinePrime):
                     st.error(FileNotFoundError(f'TODO: expand: File not found: {input_new_data_source}. Data not added to pipeline.'))
                 # Add to pipeline, save
                 else:
-                    p = p.add_predict_data_source(input_new_data_source).save()
+                    p = p.add_train_data_source(input_new_data_source).save()
                     st.success(f'TODO: New prediction data added to pipeline successfully! Pipeline has been saved.')
                     file_session[key_button_add_train_data_source] = False  # Reset menu to collapsed state
             st.markdown('')
@@ -358,7 +363,7 @@ def show_actions(p: pipeline.PipelinePrime):
                 confirm = st.button('Confirm')
                 if confirm:
                     with st.spinner(f'Removing {select_train_data_to_remove} from training data set...'):
-                        p.remove_train_data_source(select_train_data_to_remove).save()
+                        p = p.remove_train_data_source(select_train_data_to_remove).save()
                     file_session[key_button_menu_remove_data] = False
                     st.success(f'{select_train_data_to_remove} data successfully removed!')
 
@@ -380,42 +385,42 @@ def show_actions(p: pipeline.PipelinePrime):
     if button_see_rebuild_options:  # Click button, flip state
         file_session[key_button_see_rebuild_options] = not file_session[key_button_see_rebuild_options]
     if file_session[key_button_see_rebuild_options]:  # Now check on value and display accordingly
-        st.markdown('')
-        st.markdown('- **(WIP) This section is a work-in-progress!**')
-
-        st.markdown('### TSNE Parameters')
-        input_tsne_early_exaggeration = st.number_input(
-            f'TSNE: early exaggeration (current model value set at: {p.tsne_early_exaggeration})',
-            min_value=0., max_value=100., value=p.tsne_early_exaggeration, step=0.1, format='%.2f')
-        input_tsne_n_components = st.slider(f'TSNE: n components (current value: {p.tsne_dimensions})',
-                                            value=p.tsne_dimensions, min_value=1, max_value=10, step=1, format='%i')
-        # TODO: HIGH: FIX BELOW COMMENT
-        # input_tsne_n_iter = st.number_input(f'TSNE "n_iter" (current value set to: {p.tsne_n_iter})',
-        #                                     value={int(p.tsne_n_iter)},
-        #                                     min_value=250, max_value=1_000, step=1)
-
-        # TODO: n_jobs: n_jobs=-1: all cores being used, set to -2 for all cores but one.
-        # TODO: theta (float, required): theta = 0.5
-        # TODO: verbose: (original note: verbose=2 shows check points)
-
-        st.markdown('### GMM Parameters')
-        slider_gmm_n_components = st.slider(f'GMM Components', value=p.gmm_n_components, min_value=2, max_value=40, step=1)
-        input_gmm_reg_covar = st.number_input(f'GMM "reg. covariance" ', value=p.gmm_reg_covar, format='%f')
-        input_gmm_tolerance = st.number_input(f'GMM tolerance', value=p.gmm_tol, min_value=1e-10, max_value=50., step=0.1, format='%.2f')
-        input_gmm_max_iter = st.number_input(f'GMM max iterations', min_value=1, max_value=100_000, value=p.gmm_max_iter, step=1)
-        input_gmm_n_init = st.number_input(f'GMM "n_init". It is recommended that you use a value of 20', value=p.gmm_n_init, step=1, format="%i")
-
-        st.markdown('### SVM Parameters')
-        ### SVM ###
-        input_svm_c = st.number_input(f'SVM C', value=p.svm_c, format='%.2f')
-        input_svm_gamma = st.number_input(f'SVM gamma',
-                                          value=p.svm_gamma, format='%.2f')
-        # TODO: probability = True
-        # TODO: n_jobs = -2
+        st.markdown('------------------------------------------------------------------------------------')
+        st.markdown('## Model Parameters')
+        st.markdown('### Gaussian Mixture Model Parameters')
+        slider_gmm_n_components = st.slider(f'GMM Components (clusters)', value=p.gmm_n_components, min_value=2, max_value=40, step=1)
+        # TODO: low: add GMM: probability = True
+        # TODO: low: add: GMM: n_jobs = -2
         ### Other model info ###
         st.markdown('### Other model information')
         input_k_fold_cross_val = st.number_input(f'Set K for K-fold cross validation', value=int(p.cross_validation_k), min_value=2, format='%i')  # TODO: low: add max_value= number of data points (for k=n)?
         # TODO: med/high: add number input for % holdout for test/train split
+
+        st.markdown('')
+        ### Advanced Parameters ###
+        button_see_advanced_options = st.button('Expand: advanced parameters')
+        if button_see_advanced_options:
+            file_session[key_button_see_advanced_options] = not file_session[key_button_see_advanced_options]
+        if file_session[key_button_see_advanced_options]:
+            st.markdown(f'### Advanced model options. Do not change things here unless you know what you are doing!')
+            st.markdown(f'If you collapse the advanced options menu, all changes made will revert unless you rebuild the model.')
+            # See advanced options for model
+            st.markdown('### Advanced TSNE Parameters')
+            input_tsne_early_exaggeration = st.number_input(f'TSNE: early exaggeration', min_value=0., max_value=100., value=p.tsne_early_exaggeration, step=0.1, format='%.2f')
+            input_tsne_n_components = st.slider(f'TSNE: n components/dimensions', value=p.tsne_dimensions, min_value=1, max_value=10, step=1, format='%i')
+            input_tsne_n_iter = st.number_input(label=f'TSNE "n_iter"', value=p.tsne_n_iter, min_value=250, max_value=5_000)
+            # TODO: n_jobs: n_jobs=-1: all cores being used, set to -2 for all cores but one.
+            st.markdown(f'### Advanced GMM parameters')
+            input_gmm_reg_covar = st.number_input(f'GMM "reg. covariance" ', value=p.gmm_reg_covar, format='%f')
+            input_gmm_tolerance = st.number_input(f'GMM tolerance', value=p.gmm_tol, min_value=1e-10, max_value=50., step=0.1, format='%.2f')
+            input_gmm_max_iter = st.number_input(f'GMM max iterations', min_value=1, max_value=100_000, value=p.gmm_max_iter, step=1)
+            input_gmm_n_init = st.number_input(f'GMM "n_init". It is recommended that you use a value of 20', value=p.gmm_n_init, step=1, format="%i")
+            st.markdown('### Advanced SVM Parameters')
+            ### SVM ###
+            input_svm_c = st.number_input(f'SVM C', value=p.svm_c, format='%.2f')
+            input_svm_gamma = st.number_input(f'SVM gamma', value=p.svm_gamma, format='%.2f')
+        ###
+
         st.markdown('')
 
         st.markdown(f'Note: changing the above parameters without rebuilding the model will have no effect.')
@@ -427,14 +432,15 @@ def show_actions(p: pipeline.PipelinePrime):
             file_session[key_button_rebuild_model] = not file_session[key_button_rebuild_model]
         if file_session[key_button_rebuild_model]:
             st.markdown('Are you sure?')
-            button_confirmation_of_rebuild = st.button('(WIP, new addition, needs testing) Confirm', key_button_rebuild_model_confirmation)
+            button_confirmation_of_rebuild = st.button('Confirm', key_button_rebuild_model_confirmation)
             if button_confirmation_of_rebuild:
                 file_session[key_button_rebuild_model_confirmation] = True
             if file_session[key_button_rebuild_model_confirmation]:
-                with st.spinner('Rebuilding model (not actually, still needs testing)...'):
+                with st.spinner('Rebuilding model...'):
                     # TODO: HIGH: make sure that model parameters are put into Pipeline before build() is called.
-                    # p = p.build(True, True).save()
-                    app.sample_runtime_function(3)
+                    # if p.gmm_n_components != slider_gmm_n_components:
+                    #     p.gmm_n_components = slider_gmm_n_components
+                    p = p.build(True, True).save()
                 st.success(f'Model was successfully re-built!')
                 file_session[key_button_rebuild_model_confirmation] = False
         st.markdown('----------------------------------------------------------------------------------------------')
@@ -462,7 +468,7 @@ def see_model_diagnostics(p):
     ###
 
     # View 3d Plot
-    gmm_button = st.button('Pop out window of GMM distribution')  # TODO: low: phrase this button better?
+    gmm_button = st.button('Pop out window of cluster/assignment distribution')  # TODO: low: phrase this button better?
     if gmm_button:
         try:
             p.plot_assignments_in_3d(show_now=True)
@@ -480,7 +486,7 @@ def review_behaviours(p):
 
     ### MAIN
 
-    ## Review Videos ##
+    ## Review Behaviour Example Videos ##
     st.markdown(f'## Behaviour clustering review')
 
     example_videos_file_list: List[str] = [video_file_name for video_file_name in os.listdir(config.EXAMPLE_VIDEOS_OUTPUT_PATH) if video_file_name.split('.')[-1] in valid_video_extensions]  # # TODO: low/med: add user intervention on default path to check?
@@ -502,7 +508,7 @@ def review_behaviours(p):
     button_review_assignments_is_clicked = st.button('Expand/collapse: review behaviour/assignments labels', key_button_review_assignments)
     if button_review_assignments_is_clicked:  # Click button, flip state
         file_session[key_button_review_assignments] = not file_session[key_button_review_assignments]
-    if file_session[key_button_review_assignments]:  # Depending on button click state, show below
+    if file_session[key_button_review_assignments]:  # Depending on state, set behaviours to assignments
         if not p.is_built:
             st.info('The model has not been built yet, so there are no labeling options available.')
         else:
@@ -581,9 +587,9 @@ def review_behaviours(p):
         input_video_to_label = st.text_input('Input path to video which is to be labeled')
         button_create_labeled_video = st.button('Create labeled video')
         if button_create_labeled_video:
-            with st.spinner('(WIP: ACTUAL VIDEO CREATING FUNCTION NOT BEING RUN) Creating labeled video now. This could take several minutes...'):  # TODO: high
-                app.sample_runtime_function(3)
-                # p.make_video()  # TODO: low: add other options like adding path to output and output fps?
+            with st.spinner('(WIP: Video creation efficiency still being worked on) Creating labeled video now. This could take several minutes...'):  # TODO: high
+                # app.sample_runtime_function(3)
+                p.make_video()  # TODO: med: add other options like adding output path and output fps?
             st.success('Success! Video was created at: TODO: get video out path')
         st.markdown('---------------------------------------------------------------------------------------')
 
