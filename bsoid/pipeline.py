@@ -848,7 +848,7 @@ class BasePipeline(PipelineAttributeHolder):
         )
         return
 
-    def make_video(self, video_to_be_labeled, output_fps: int = config.OUTPUT_VIDEO_FPS):
+    def make_video(self, video_to_be_labeled, video_name: str, output_fps: int = config.OUTPUT_VIDEO_FPS):
         """
 
         :param video_to_be_labeled:
@@ -869,9 +869,15 @@ class BasePipeline(PipelineAttributeHolder):
 
         # Do it
         get_label_lambda = lambda x: getattr(self, f'label_{x}')
-        labels = get_label_lambda(self.df_features_train_scaled[self.svm_assignment].values)
+        labels: np.ndarray[str] = get_label_lambda(self.df_features_train_scaled[self.svm_assignment].values)
 
-        # TODO: med: Implement
+        # TODO: med: Implement something more efficient
+        videoprocessing.generate_video_with_labels(
+            labels,
+            video_to_be_labeled,
+            video_name,
+            output_fps
+        )
 
         return self
 
