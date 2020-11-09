@@ -51,7 +51,6 @@ class PipelineAttributeHolder(object):
     """
     # Base information
     _name, _description = 'DefaultPipelineName', '(Default pipeline description)'
-    _source_folder: str = config.OUTPUT_PATH  # Folder in which this pipeline resides. OUTPUT_PATH is default.
     data_ext: str = 'csv'  # Extension which data is read from
     dims_cols_names = None  # Union[List[str], Tuple[str]]
     valid_tsne_sources: set = {'bhtsne', 'sklearn', }
@@ -84,7 +83,7 @@ class PipelineAttributeHolder(object):
     _clf_svm: SVC = None
     # TSNE
     tsne_source: str = 'sklearn'
-    tsne_dimensions: int = None
+    tsne_dimensions: int = 3
     tsne_n_iter: int = None
     tsne_early_exaggeration: float = None  # Defaults to config.ini value if not specified in kwargs
     tsne_n_jobs: int = None  # n cores used during process
@@ -143,13 +142,6 @@ class PipelineAttributeHolder(object):
         setattr(self, f'label_{assignment}', label)
         return self
 
-    def set_save_location(self, dir_path):
-        # TODO: med: verify
-        raise NotImplementedError()
-        check_arg.ensure_type(dir_path, str)
-        check_arg.ensure_is_dir(dir_path)
-        self._source_folder = dir_path
-
     # # # Getters/Properties
     @property
     def is_in_inconsistent_state(self):
@@ -174,8 +166,6 @@ class PipelineAttributeHolder(object):
     @property
     def accuracy_score(self): return self._acc_score
     @property
-    def location(self): return self._source_folder
-    @property
     def scaler(self): return self._scaler
     @property
     def svm_col(self) -> str: return self.svm_assignment_col_name
@@ -198,12 +188,6 @@ class PipelineAttributeHolder(object):
         if len(self.df_features_train_scaled) > 0:
             return list(np.unique(self.df_features_train_scaled[self.svm_col].values))
         return []
-    @property
-    def file_path(self):  # TODO: low: review   # Optional[str]
-        return os.path.join(self._source_folder, generate_pipeline_filename(self.name))
-    @property
-    def full_path(self):
-        return self.file_path
 
     # Setters
     def set_name(self, name: str):
@@ -220,7 +204,6 @@ class PipelineAttributeHolder(object):
 
     def set_params(self, **kwargs):
         raise NotImplementedError('')
-
         return self
 
 
@@ -256,11 +239,11 @@ class BasePipeline(PipelineAttributeHolder):
         # Pipeline name
         check_arg.ensure_type(name, str)
         self.set_name(name)
-        # Save folder
-        if save_folder is not None:
-            check_arg.ensure_type(save_folder, str)
-            check_arg.ensure_is_dir(save_folder)
-            self.set_save_location(save_folder)
+        # # Save folder  # TODO: evaluate
+        # if save_folder is not None:
+        #     check_arg.ensure_type(save_folder, str)
+        #     check_arg.ensure_is_dir(save_folder)
+        #     self.set_save_location(save_folder)
         # TSNE source
         tsne_source = kwargs.get('tsne_source', '')
         check_arg.ensure_type(tsne_source, str)
@@ -269,8 +252,8 @@ class BasePipeline(PipelineAttributeHolder):
         
         self.kwargs = kwargs
         # Final setup
+        self.dims_cols_names = [f'dim{d+1}' for d in range(self.tsne_dimensions)]  # TODO: low: encapsulate elsewhere
         self.__read_in_kwargs(**kwargs)
-        self.dims_cols_names = [f'dim{d + 1}' for d in range(self.tsne_dimensions)]  # TODO: low: encapsulate elsewhere
 
     def __read_in_kwargs(self, **kwargs):
         """ Reads in kwargs else pull form config file """
@@ -527,7 +510,9 @@ class BasePipeline(PipelineAttributeHolder):
         """ TODO
         """
         # Queue data
-        list_dfs_raw_data = [self.df_features_predict_raw.loc[self.df_features_predict_raw['data_source'] == src].sort_values('frame').copy() for src in np.unique(self.df_features_predict_raw['data_source'].values)]
+        list_dfs_raw_data = [self.df_features_predict_raw.loc[self.df_features_predict_raw['data_source'] == src]
+                                 .sort_values('frame').copy()
+                             for src in np.unique(self.df_features_predict_raw['data_source'].values)]
         # Call engineering function
         df_features = self.engineer_features_all_dfs(list_dfs_raw_data)
         # Save data, return
@@ -798,13 +783,13 @@ class BasePipeline(PipelineAttributeHolder):
         return self
 
     # Saving and stuff
-    def save(self, output_path_dir=None):
+    def save(self, output_path_dir=config.OUTPUT_PATH):
         """
         Defaults to config.ini OUTPUT_PATH variable if a save path not specified beforehand.
         :param output_path_dir: (str) an absolute path to a DIRECTORY where the pipeline will be saved.
         """
-        if output_path_dir is None:
-            output_path_dir = config.OUTPUT_PATH if not self._source_folder else self._source_folder
+        # if output_path_dir is None:
+        #     output_path_dir = config.OUTPUT_PATH
         logger.debug(f'{inspect.stack()[0][3]}(): Attempting to save pipeline to the following folder: {output_path_dir}.')
 
         # Check if valid directory
@@ -822,14 +807,14 @@ class BasePipeline(PipelineAttributeHolder):
         logger.debug(f'{inspect.stack()[0][3]}(): Attempting to save pipeline to file: {final_out_path}.')
 
         # Write to file
-        old_source_folder = self._source_folder
+        # old_source_folder = self._source_folder
         try:
             # In case of error, track old source folder
-            self._source_folder = output_path_dir
+            # self._source_folder = output_path_dir
             with open(final_out_path, 'wb') as model_file:
                 joblib.dump(self, model_file)
         except Exception as e:
-            self._source_folder = old_source_folder
+            # self._source_folder = old_source_folder
             raise e
 
         logger.debug(f'{inspect.stack()[0][3]}(): Pipeline ({self.name}) saved to: {final_out_path}')
@@ -837,7 +822,7 @@ class BasePipeline(PipelineAttributeHolder):
 
     # Video stuff
 
-    def make_video(self, video_to_be_labeled, video_name: str, output_fps: int = config.OUTPUT_VIDEO_FPS):
+    def make_video(self, video_to_be_labeled: str, video_name: str, output_fps: int = config.OUTPUT_VIDEO_FPS):
         """
 
         :param video_to_be_labeled:
@@ -856,11 +841,19 @@ class BasePipeline(PipelineAttributeHolder):
             logger.error(err)
             raise Exception(err)
 
-        # Do it
-        get_label_lambda = lambda x: getattr(self, f'label_{x}')
-        labels: np.ndarray[str] = get_label_lambda(self.df_features_train_scaled[self.svm_assignment].values)
+        # Do
 
+        # labels: np.ndarray[str] = lambdax(self.df_features_train_scaled[self.svm_assignment].values)
+
+        # lambdax = lambda x: f'assignment_{x}'  # TODO: HIGH: instead of generating random text
+        lambdax = lambda x: getattr(self, f'label_{x}')
+
+        # labels = self.df_features_train_scaled[self.svm_assignment].values
+        # labels = lambdax()
+        data = self.df_features_predict_scaled.loc[self.df_features_predict_scaled['data_source'] == 'Video4DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000.csv'][self.svm_assignment].values
+        labels = list(map(lambdax, data))
         # TODO: med: Implement something more efficient
+        # Generate video with variables
         videoprocessing.generate_video_with_labels(
             labels,
             video_to_be_labeled,
@@ -932,7 +925,7 @@ class BasePipeline(PipelineAttributeHolder):
             for i in range(num_examples):  # TODO: HIGH: this part dumbly loops over first n examples...In the future, it would be better to ensure that at least one of the examples has a long runtime for analysis
                 output_file_name = f'{file_name_prefix}{time.strftime("%y-%m-%d_%Hh%Mm")}_' \
                                    f'BehaviourExample__assignment_{key}__example_{i+1}_of_{num_examples}'
-                frame_text_prefix = f'Target: {key} / '
+                frame_text_prefix = f'Target: {key} / '  # TODO: med/high: magic variable
 
                 idx, additional_length_i = values_list[i]
 
@@ -1123,3 +1116,4 @@ if __name__ == '__main__':
 
 
 # C:\Users\killian\projects\B-SOID\output\empty.pipeline
+# cd $bsoid ; conda activate bsoid
