@@ -18,6 +18,9 @@ assert os.path.isfile(csv_test_file_path)
 
 class TestPipeline(TestCase):
 
+    # Param adds, changes, checks
+    # TODO: add test for pipeline.set_params()
+
     # SCALING DATA
     @skip   # Temporary skip since it takes forever to run this due to sample size
     def test__scale_data__shouldReturnDataFrameWithSameColumnNames__afterScalingData(self):
