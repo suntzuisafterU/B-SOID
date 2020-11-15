@@ -9,15 +9,12 @@ TODO: Commands to implement:
 
 from typing import Any, Dict, List, Tuple
 import argparse
-import sys
+# import sys
 
 import bsoid
 from bsoid.pipeline import *  # This line is required for Streamlit to load Pipeline objects. Do not delete. For a more robust solution, consider: https://rebeccabilbro.github.io/module-main-has-no-attribute/
 
 logger = bsoid.config.initialize_logger(__name__)
-
-
-dev_debugging = False  # TODO: low: debugging effort
 
 
 ########################################################################################################################
@@ -53,24 +50,23 @@ def parse_args() -> argparse.Namespace:
 
     # Parse args, return
     args: argparse.Namespace = parser.parse_args()
-    if dev_debugging:
-        logger.debug(f'ARGS: {args}')
-        logger.debug(f'args.command = {args.command}')
-        logger.debug(f'args.p = {args.p}')
+
+    logger.debug(f'ARGS: {args}')
+    logger.debug(f'args.command = {args.command}')
+    logger.debug(f'args.p = {args.p}')
 
     return args
 
 
 # TODO: do_command() needs to be properly and thoroughly implemented. Until there is enough
 #   time to actually do that, use temporary functions below
-def do_command(args: argparse.Namespace) -> None:
+def execute_command(args: argparse.Namespace) -> None:
     kwargs = {}
 
     if args.p:
-        kwargs['pipeline'] = args.p
+        kwargs['pipeline_path'] = args.p
 
-        if dev_debugging:
-            logger.debug(f'arg.p parsed as: {args.p}')
+        logger.debug(f'arg.p parsed as: {args.p}')
 
     return map_command_to_func[args.command](**kwargs)
 
@@ -90,14 +86,16 @@ def do_command_from_sysargv_parse(args: List[str]) -> None:
     Stand-in function for do_command(). Because parsing functions using argparse is not complete/ready,
     we use this function for now to execute command-line commands
     """
+    kwargs = {}
+
+    #
     if len(args) < 2:
-        err = f'No command detected. Args = {args}.'
+        err = f'No command detected. Command-line args = {args}.'
         logger.error(err)
         raise NotImplementedError(err)
-    kwargs = {}
+
     cmd = args[1]
     if cmd in map_command_to_func:
-
         if len(args) >= 3:
             kwargs['subcommand'] = args[2]
 
@@ -115,12 +113,11 @@ def main():
     ### Parse args
     args = parse_args()
 
-    if dev_debugging:
-        print(f'args: {args}')
-        print(f'args.command: {args.command}')
+    print(f'args: {args}')
+    print(f'args.command: {args.command}')
 
     ### Do command
-    do_command(args)
+    execute_command(args)
 
     ### End
     pass
