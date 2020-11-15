@@ -54,10 +54,10 @@ def clear_output_folders(*args, **kwargs) -> None:
     return None
 
 
-def streamlit(*args, **kwargs) -> None:
+def streamlit(**kwargs) -> None:
     """ Streamlit code here. Currently this is the first and only iteration of streamlit apps, but
     who knows how many will be created in the future. """
-    streamlit_bsoid.home(*args, **kwargs)
+    streamlit_bsoid.home(**kwargs)
 
 
 # Trying to emulate previous pipelines
