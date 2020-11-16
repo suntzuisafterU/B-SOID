@@ -103,7 +103,7 @@ def read_csv(csv_file_path: str, **kwargs) -> pd.DataFrame:
     # Save data file name (different from pathing source)
     df['data_source'] = file_name
     # Number the frames
-    df['frame'] = range(len(df))
+    df['frame'] = list(range(len(df)))
 
     # Save source for future use
     # df['source'] = file_path
