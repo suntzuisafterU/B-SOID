@@ -15,7 +15,9 @@ def preload_logger_with_config_vars(logger_name: str, log_format: str,
                                     stdout_log_level: str = None, file_log_level: str = None,
                                     file_log_file_path: str = None, email_log_level: str = None):
     """
-    Create a meta logger.  TODO: expand
+    Create a meta logger. On first call, load up main settings for logger.
+    Returns a callable. That returned callable can have a file-specific name loaded
+        in so that the name in the logs reflects the file the logger was instantiated inside.
     """
     def argument_loaded_function(current_python_file_name: str, log_format: str = log_format):
         """Load in stored config args"""
@@ -110,8 +112,7 @@ def create_generic_logger(logger_name: str, log_format: str,
 
 def log_entry_exit(logger=None):
     """
-    Meta decorator. If used as deco., then must have argument of logger for it to
-    be useful. Otherwise, does nothing.
+    Meta decorator. If used as deco., then must have argument of logger object for it to be useful.
     """
     def decorator(func):
         def function_wrapper(*args, **kwargs):
@@ -121,7 +122,8 @@ def log_entry_exit(logger=None):
             result = func(*args, *kwargs)
             end_time = time.perf_counter()
             if logger:
-                logger.debug(f'Now exiting: {func.__qualname__}(). Time spent in function: {round(end_time-start_time, 1)} seconds')
+                logger.debug(f'Now exiting: {func.__qualname__}(). Time spent in '
+                             f'function: {round(end_time-start_time, 1)} seconds')
             return result
         return function_wrapper
     return decorator
@@ -130,12 +132,16 @@ def log_entry_exit(logger=None):
 # Accessory functions
 
 def get_current_function() -> str:
-    """"""
+    """
+    Get the string name of the current function in which this function is called.
+    """
     return inspect.stack()[1][3]
 
 
 def get_caller_function() -> str:
-    """"""
+    """
+    Get the string name of the function which calls the current function the interpreter is in.
+    """
     return inspect.stack()[2][3]
 
 
