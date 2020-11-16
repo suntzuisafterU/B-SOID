@@ -20,6 +20,20 @@ class TestPipeline(TestCase):
 
     # Param adds, changes, checks
     # TODO: add test for pipeline.set_params()
+    def test__set_params__shouldKeepDefaultsWhileChangingSpecifiedVars__whenOptionalArgForReadingInConfigVarsNotTrue(self):
+        # Arrange
+        p = bsoid.pipeline.PipelinePrime('TestPipe07dfdp')
+        default_gmm_n_components = p.gmm_n_components
+
+        # Act
+        p = p.set_params(tsne_n_components=5)
+        gmm_n_components_after_set_param = p.gmm_n_components
+
+        # Assert
+        err_msg = f"""
+
+"""
+        self.assertEqual(default_gmm_n_components, gmm_n_components_after_set_param, err_msg)
 
     # SCALING DATA
     @skip   # Temporary skip since it takes forever to run this due to sample size

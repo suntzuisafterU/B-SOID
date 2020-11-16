@@ -171,3 +171,7 @@ Difference:
 
         self.assertTrue(is_filtered_data_equal, err_not_equal)
 
+    def test__win_len(self):  # TODO: high
+
+        pass
+
