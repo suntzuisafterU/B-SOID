@@ -7,6 +7,7 @@ For ever new pipeline implementation by the user, make sure you do the following
 
 Notes
     - the OpenTSNE implementation does not allow more than 2 components
+    - GMM's "reg covar" == "regularization covariance"
 TODOs:
     low: implement ACTUAL random state s.t. all random state property calls beget a truly random integer
     low: review "theta"(/angle) for TSNE
@@ -51,16 +52,18 @@ class PipelineAttributeHolder(object):
     """
     # Base information
     _name, _description = 'DefaultPipelineName', '(Default pipeline description)'
-    data_ext: str = 'csv'  # Extension which data is read from
+    # data_ext: str = 'csv'  # Extension which data is read from  # TODO: deprecate, delete line
     dims_cols_names = None  # Union[List[str], Tuple[str]]
     valid_tsne_sources: set = {'bhtsne', 'sklearn', }
     gmm_assignment_col_name, svm_assignment_col_name,  = 'gmm_assignment', 'svm_assignment'
     behaviour_col_name = 'behaviour'
+
     # Tracking vars
     _is_built = False  # Is False until the classifiers are built then changes to True
 
     _is_training_data_set_different_from_model_input: bool = False  # Changes to True if new training data is added and classifiers not rebuilt.
     _has_unengineered_predict_data: bool = False    # Changes to True if new predict data is added. Changes to False if features are engineered.
+    _has_modified_model_variables: bool = False
 
     # Data
     default_cols = ['data_source', 'file_source']  #, svm_assignment_col_name, gmm_assignment_col_name]
@@ -83,7 +86,7 @@ class PipelineAttributeHolder(object):
     _clf_svm: SVC = None
     # TSNE
     tsne_source: str = 'sklearn'
-    tsne_dimensions: int = 3
+    tsne_n_components: int = 3
     tsne_n_iter: int = None
     tsne_early_exaggeration: float = None  # Defaults to config.ini value if not specified in kwargs
     tsne_n_jobs: int = None  # n cores used during process
@@ -183,6 +186,7 @@ class PipelineAttributeHolder(object):
     @property
     def raw_assignments(self):  # List[str]
         return self.raw_assignments
+
     @property
     def unique_assignments(self) -> List[any]:
         if len(self.df_features_train_scaled) > 0:
@@ -200,10 +204,6 @@ class PipelineAttributeHolder(object):
         """ Set a description of the pipeline. Include any notes you want to keep regarding the process used. """
         check_arg.ensure_type(description, str)
         self._description = description
-        return self
-
-    def set_params(self, **kwargs):
-        raise NotImplementedError('')
         return self
 
 
@@ -252,78 +252,88 @@ class BasePipeline(PipelineAttributeHolder):
         
         self.kwargs = kwargs
         # Final setup
-        self.dims_cols_names = [f'dim{d+1}' for d in range(self.tsne_dimensions)]  # TODO: low: encapsulate elsewhere
-        self.__read_in_kwargs(**kwargs)
 
-    def __read_in_kwargs(self, **kwargs):
-        """ Reads in kwargs else pull form config file """
+        self.set_params(read_config_on_missing_param=True, **kwargs)
+
+    def set_params(self, read_config_on_missing_param=False, **kwargs):
+        """
+        Reads in variables to change for pipeline.
+
+        If optional arg `read_config_on_missing_param` is True, then any parameter NOT mentioned
+        explicitly will be read in from the config.ini file and replace the current value in the pipeline.
+        """
         # TODO: ADD KWARGS OPTION FOR OVERRIDING VERBOSE in CONFIG.INI!!!!!!!! ****
         # TODO: LOW: add kwargs parsing for averaging over n-frames
-        # TODO: low/med: add kwargs for parsing test/train split pct
         # Random state  # TODO: low ensure random state correct
-        random_state = kwargs.get('random_state', config.RANDOM_STATE)
+        random_state = kwargs.get('random_state', config.RANDOM_STATE if read_config_on_missing_param else self.random_state)
         check_arg.ensure_type(random_state, int)
         self._random_state = random_state
         ### TSNE ###
         ## SKLEARN ##
-        tsne_n_components = kwargs.get('n_components', config.TSNE_N_COMPONENTS)  # TODO: low: shape up kwarg name for n components? See string name
+        tsne_n_components = kwargs.get('tsne_n_components', config.TSNE_N_COMPONENTS if read_config_on_missing_param else self.tsne_n_components)  # TODO: low: shape up kwarg name for n components? See string name
         check_arg.ensure_type(tsne_n_components, int)
-        self.tsne_dimensions = tsne_n_components
-        tsne_n_iter = kwargs.get('tsne_n_iter', config.TSNE_N_ITER)
+        self.tsne_n_components = tsne_n_components
+        tsne_n_iter = kwargs.get('tsne_n_iter', config.TSNE_N_ITER if read_config_on_missing_param else self.tsne_n_iter)
         check_arg.ensure_type(tsne_n_iter, int)
         self.tsne_n_iter = tsne_n_iter
-        tsne_early_exaggeration = kwargs.get('tsne_early_exaggeration', config.TSNE_EARLY_EXAGGERATION)
+        tsne_early_exaggeration = kwargs.get('tsne_early_exaggeration', config.TSNE_EARLY_EXAGGERATION if read_config_on_missing_param else self.tsne_early_exaggeration)
         check_arg.ensure_type(tsne_early_exaggeration, float)
         self.tsne_early_exaggeration = tsne_early_exaggeration
-        n_jobs = kwargs.get('tsne_n_jobs', config.TSNE_N_JOBS)
+        n_jobs = kwargs.get('tsne_n_jobs', config.TSNE_N_JOBS if read_config_on_missing_param else self.tsne_n_jobs)
         check_arg.ensure_type(n_jobs, int)
         self.tsne_n_jobs = n_jobs
-        tsne_verbose = kwargs.get('tsne_verbose', config.TSNE_VERBOSE)
+        tsne_verbose = kwargs.get('tsne_verbose', config.TSNE_VERBOSE if read_config_on_missing_param else self.tsne_verbose)
         check_arg.ensure_type(tsne_verbose, int)
         self.tsne_verbose = tsne_verbose
         # GMM vars
-        gmm_n_components = kwargs.get('gmm_n_components', config.gmm_n_components)
+        gmm_n_components = kwargs.get('gmm_n_components', config.gmm_n_components if read_config_on_missing_param else self.gmm_n_components)
         check_arg.ensure_type(gmm_n_components, int)
         self.gmm_n_components = gmm_n_components
-        gmm_covariance_type = kwargs.get('gmm_covariance_type', config.gmm_covariance_type)
+        gmm_covariance_type = kwargs.get('gmm_covariance_type', config.gmm_covariance_type if read_config_on_missing_param else self.gmm_covariance_type)
         check_arg.ensure_type(gmm_covariance_type, str)
         self.gmm_covariance_type = gmm_covariance_type
-        gmm_tol = kwargs.get('gmm_tol', config.gmm_tol)
+        gmm_tol = kwargs.get('gmm_tol', config.gmm_tol if read_config_on_missing_param else self.gmm_tol)
         check_arg.ensure_type(gmm_tol, float)
         self.gmm_tol = gmm_tol
-        gmm_reg_covar = kwargs.get('gmm_reg_covar', config.gmm_reg_covar)
+        gmm_reg_covar = kwargs.get('gmm_reg_covar', config.gmm_reg_covar if read_config_on_missing_param else self.gmm_reg_covar)
         check_arg.ensure_type(gmm_reg_covar, float)
         self.gmm_reg_covar = gmm_reg_covar
-        gmm_max_iter = kwargs.get('gmm_max_iter', config.gmm_max_iter)
+        gmm_max_iter = kwargs.get('gmm_max_iter', config.gmm_max_iter if read_config_on_missing_param else self.gmm_max_iter)
         check_arg.ensure_type(gmm_max_iter, int)
         self.gmm_max_iter = gmm_max_iter
-        gmm_n_init = kwargs.get('gmm_n_init', config.gmm_n_init)
+        gmm_n_init = kwargs.get('gmm_n_init', config.gmm_n_init if read_config_on_missing_param else self.gmm_n_init)
         check_arg.ensure_type(gmm_n_init, int)
         self.gmm_n_init = gmm_n_init
-        gmm_init_params = kwargs.get('gmm_init_params', config.gmm_init_params)
+        gmm_init_params = kwargs.get('gmm_init_params', config.gmm_init_params if read_config_on_missing_param else self.gmm_init_params)
         check_arg.ensure_type(gmm_init_params, str)
         self.gmm_init_params = gmm_init_params
-        gmm_verbose = kwargs.get('gmm_verbose', config.gmm_verbose)
+        gmm_verbose = kwargs.get('gmm_verbose', config.gmm_verbose if read_config_on_missing_param else self.gmm_verbose)
         check_arg.ensure_type(gmm_verbose, int)
         self.gmm_verbose = gmm_verbose
-        gmm_verbose_interval = kwargs.get('gmm_verbose_interval', config.gmm_verbose_interval)
+        gmm_verbose_interval = kwargs.get('gmm_verbose_interval', config.gmm_verbose_interval if read_config_on_missing_param else self.gmm_verbose_interval)
         check_arg.ensure_type(gmm_verbose_interval, int)
         self.gmm_verbose_interval = gmm_verbose_interval
         # SVM vars
-        svm_c = kwargs.get('svm_c', config.svm_c)
+        svm_c = kwargs.get('svm_c', config.svm_c if read_config_on_missing_param else self.svm_c)
         self.svm_c = svm_c
-        svm_gamma = kwargs.get('svm_gamma', config.svm_gamma)
+        svm_gamma = kwargs.get('svm_gamma', config.svm_gamma if read_config_on_missing_param else self.svm_gamma)
         self.svm_gamma = svm_gamma
-        svm_probability = kwargs.get('svm_probability', config.svm_probability)
+        svm_probability = kwargs.get('svm_probability', config.svm_probability if read_config_on_missing_param else self.svm_probability)
         self.svm_probability = svm_probability
-        svm_verbose = kwargs.get('svm_verbose', config.svm_verbose)
+        svm_verbose = kwargs.get('svm_verbose', config.svm_verbose if read_config_on_missing_param else self.svm_verbose)
         self.svm_verbose = svm_verbose
-        cross_validation_k = kwargs.get('cross_validation_k', config.CROSSVALIDATION_K)
+        cross_validation_k = kwargs.get('cross_validation_k', config.CROSSVALIDATION_K if read_config_on_missing_param else self.cross_validation_k)
         check_arg.ensure_type(cross_validation_k, int)
         self.cross_validation_k = cross_validation_k
 
+        # TODO: low/med: add kwargs for parsing test/train split pct
         if self.test_train_split_pct is None:
             self.test_train_split_pct = config.HOLDOUT_PERCENT
+
+        self.dims_cols_names = [f'dim_{d + 1}' for d in range(self.tsne_n_components)]  # TODO: low: encapsulate elsewhere
+
+        self._has_modified_model_variables = True
+        return self
 
     # Add & delete data
     def add_train_data_source(self, *train_data_args):
@@ -424,7 +434,8 @@ class BasePipeline(PipelineAttributeHolder):
 
     # Engineer features
     def engineer_features(self, data: pd.DataFrame):
-        err = f'{logging_bsoid.get_current_function()}(): Not Implemented for base Pipeline object {self.__name__}.'
+        err = f'{logging_bsoid.get_current_function()}(): Not Implemented for base ' \
+              f'Pipeline object {self.__name__}. You must implement this for all child objects.'
         logger.error(err)
         raise NotImplementedError(err)
 
@@ -605,7 +616,7 @@ class BasePipeline(PipelineAttributeHolder):
         if self.tsne_source == 'bhtsne':
             arr_result = TSNE_bhtsne(
                 data[self.features_names_7],
-                dimensions=self.tsne_dimensions,
+                dimensions=self.tsne_n_components,
                 perplexity=np.sqrt(len(self.features_names_7)),  # TODO: implement math somewhere else
                 rand_seed=self.random_state,
             )
@@ -614,7 +625,7 @@ class BasePipeline(PipelineAttributeHolder):
             arr_result = TSNE_sklearn(
                 perplexity=np.sqrt(len(data.columns)),  # Perplexity scales with sqrt, power law  # TODO: encapsulate this later
                 learning_rate=max(200, len(data.columns) // 16),  # alpha*eta = n  # TODO: encapsulate this later
-                n_components=self.tsne_dimensions,
+                n_components=self.tsne_n_components,
                 random_state=self.random_state,
                 n_iter=self.tsne_n_iter,
                 early_exaggeration=self.tsne_early_exaggeration,
@@ -723,6 +734,7 @@ class BasePipeline(PipelineAttributeHolder):
         # Final touches. Save state of pipeline.
         self._is_built = True
         self._is_training_data_set_different_from_model_input = False
+        self._has_modified_model_variables = False
         self._last_built = time.strftime("%Y-%m-%d_%Hh%Mm%Ss")
         logger.debug(f'All done with building classifiers/model!')
 
@@ -829,6 +841,7 @@ class BasePipeline(PipelineAttributeHolder):
         :param output_fps:
         :return:
         """
+
         # Arg checking
         if not os.path.isfile(video_to_be_labeled):
             not_a_video_err = f'The video to be labeled is not a valid file/path. ' \
@@ -858,7 +871,7 @@ class BasePipeline(PipelineAttributeHolder):
             labels,
             video_to_be_labeled,
             video_name,
-            output_fps
+            30,  # TODO: med/high: magic variable: output fps for video
         )
 
         return self
@@ -888,9 +901,9 @@ class BasePipeline(PipelineAttributeHolder):
             file_name_prefix += '__'
 
         # Get data
-        if data_source in np.unique(self.df_features_train_scaled['data_source'].values):
+        if data_source in self.training_data_sources:  # np.unique(self.df_features_train_scaled['data_source'].values):
             df = self.df_features_train_scaled
-        elif data_source in np.unique(self.df_features_predict_scaled['data_source'].values):
+        elif data_source in self.predict_data_sources:
             df = self.df_features_predict_scaled
         else:
             err = f'Data source not found: {data_source}'
@@ -916,12 +929,15 @@ class BasePipeline(PipelineAttributeHolder):
             rle_by_assignment[label] = []
             if additional_length - 1 >= min_rows_of_behaviour:
                 rle_by_assignment[label].append([idx, additional_length])
+        for key in rle_by_assignment.keys():
+            rle_by_assignment[key] = sorted(rle_by_assignment[key], key=lambda x: x[1])
 
         ### Finally: make video clips
         # Loop over assignments
         for key, values_list in rle_by_assignment.items():
             # Loop over examples
             num_examples = min(max_examples, len(values_list))
+            logger.debug(f'')
             for i in range(num_examples):  # TODO: HIGH: this part dumbly loops over first n examples...In the future, it would be better to ensure that at least one of the examples has a long runtime for analysis
                 output_file_name = f'{file_name_prefix}{time.strftime("%y-%m-%d_%Hh%Mm")}_' \
                                    f'BehaviourExample__assignment_{key}__example_{i+1}_of_{num_examples}'
@@ -932,11 +948,11 @@ class BasePipeline(PipelineAttributeHolder):
                 lower_bound_row_idx: int = max(0, int(idx) - num_frames_leadup)
                 upper_bound_row_idx: int = min(len(df)-1, idx + additional_length_i + 1 + num_frames_leadup)
 
-                df_selection = df.iloc[lower_bound_row_idx:upper_bound_row_idx, :]
+                df_frames_selection = df.iloc[lower_bound_row_idx:upper_bound_row_idx, :]
 
                 # Compile labels list via SVM assignment for now...Later, we should get the actual behavioural labels instead of the numerical assignments
-                labels_list = df_selection[self.svm_assignment_col_name].values
-                frames_indices_list = df_selection['frame'].values
+                labels_list = df_frames_selection[self.svm_assignment_col_name].values
+                frames_indices_list = df_frames_selection['frame'].values
 
                 videoprocessing.make_video_clip_from_video(
                     labels_list,
@@ -999,7 +1015,7 @@ self._is_training_data_set_different_from_model_input: {self._is_training_data_s
 
     #
     def __repr__(self) -> str:
-        # TODO: flesh out how these are usually built. Add a last updated info?
+        # TODO: low: flesh out how these are usually built. Add a last updated info?
         return f'{self.name}'
 
 
@@ -1018,7 +1034,6 @@ class PipelinePrime(BasePipeline):
     First implementation of a full pipeline. Utilizes the 7 original features from the original B-SOiD paper.
 
     """
-
     def engineer_features(self, in_df) -> pd.DataFrame:
         """
 
@@ -1033,6 +1048,57 @@ class PipelinePrime(BasePipeline):
         # Engineer features
         df_features: pd.DataFrame = feature_engineering.engineer_7_features_dataframe(
             df_filtered, features_names_7=self.features_names_7)
+        # Ensure columns don't get dropped by accident
+        for col in columns_to_save:
+            if col in in_df.columns and col not in df_features.columns:
+                df_features[col] = df[col].values
+
+        # Smooth over n-frame windows
+        for feature in self.features_which_average_by_mean:
+            df_features[feature] = feature_engineering.average_values_over_moving_window(
+                df_features[feature].values, 'avg', self.average_over_n_frames)
+        # Sum
+        for feature in self.features_which_average_by_sum:
+            df_features[feature] = feature_engineering.average_values_over_moving_window(
+                df_features[feature].values, 'sum', self.average_over_n_frames)
+
+        # except Exception as e:
+        #     logger.error(f'{df_features.columns} // fail on feature: {feature} // {df_features.head(10).to_string()} //{repr(e)}')
+        #     raise e
+
+        return df_features
+
+
+class PipelineEPM(BasePipeline):
+    """
+
+    """
+
+    def engineer_features(self, in_df) -> pd.DataFrame:
+        """
+
+        """
+        map_mouse_point_to_config_name = {
+            'Head': 'NOSETIP',
+            'ForepawLeft': 'FOREPAW_LEFT',
+            'ForepawRight': 'FOREPAW_RIGHT',
+            'HindpawLeft': 'HINDPAW_LEFT',
+            'HindpawRight': 'HINDPAW_RIGHT',
+            'Tailbase': 'TAILBASE',
+        }
+
+
+        columns_to_save = ['scorer', 'source', 'file_source', 'data_source', 'frame']
+        df = in_df.sort_values('frame').copy()
+
+        # Filter
+        df_filtered, _ = feature_engineering.adaptively_filter_dlc_output(df)
+        # Engineer features
+        df_features: pd.DataFrame = feature_engineering.engineer_7_features_dataframe(
+            df_filtered,
+            features_names_7=self.features_names_7,
+            map_names=map_mouse_point_to_config_name,
+        )
         # Ensure columns don't get dropped by accident
         for col in columns_to_save:
             if col in in_df.columns and col not in df_features.columns:
@@ -1116,4 +1182,5 @@ if __name__ == '__main__':
 
 
 # C:\Users\killian\projects\B-SOID\output\empty.pipeline
-# cd $bsoid ; conda activate bsoid
+# conda deactivate ; cd $bsoid ; conda activate bsoid
+#
