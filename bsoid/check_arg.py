@@ -50,7 +50,7 @@ def ensure_columns_in_DataFrame(df: pd.DataFrame, columns: Collection[str]) -> N
 
 def ensure_has_valid_chars_for_path(path):
     if has_invalid_chars_in_name_for_a_file(path):
-        err = f'Caller: {get_caller_function()}(): TODO ; ELABORATE; invalid path. Path= {path}'
+        err = f'Caller: {get_caller_function()}(): Path name has invalid characters. Path = "{path}"'
         logger.error(err)
         raise ValueError(err)
 
