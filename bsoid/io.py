@@ -58,6 +58,7 @@ def read_csv(csv_file_path: str, **kwargs) -> pd.DataFrame:
     nrows = kwargs.get('nrows', sys.maxsize)  # TODO: address case where nrows is <= 3 (no data parsed then)
     file_path = csv_file_path  # os.path.split(csv_file_path)[-1]
     file_folder, file_name = os.path.split(file_path)
+    file_name_without_extension, extension = file_name.split('.')
     # # # # # # #
     # Read in CSV
     df = pd.read_csv(csv_file_path, header=None, nrows=nrows)
@@ -101,12 +102,9 @@ def read_csv(csv_file_path: str, **kwargs) -> pd.DataFrame:
     # File source __________
     df['file_source'] = file_path
     # Save data file name (different from pathing source)
-    df['data_source'] = file_name
+    df['data_source'] = file_name_without_extension
     # Number the frames
     df['frame'] = list(range(len(df)))
-
-    # Save source for future use
-    # df['source'] = file_path
 
     return df
 

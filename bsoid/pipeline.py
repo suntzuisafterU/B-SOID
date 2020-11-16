@@ -344,7 +344,8 @@ class BasePipeline(PipelineAttributeHolder):
             In the case that an arg is List[str], the arg must be a list of strings that
         """
         train_data_args = [path for path in train_data_args
-                           if os.path.split(path)[-1] not in set(self.df_features_train_raw['data_source'].values)]
+                           if os.path.split(path)[-1].split('.')[0]  # <- Get file name without extension
+                           not in set(self.df_features_train_raw['data_source'].values)]
         for path in train_data_args:
             if os.path.isfile(path):
                 df_new_data = io.read_csv(path)
@@ -363,7 +364,7 @@ class BasePipeline(PipelineAttributeHolder):
                     self._is_training_data_set_different_from_model_input = True
                     logger.debug(f'Added file to train data: {file_path}')
             else:
-                unusual_path_err = f'Unusual file/dir path submitted but not found: {path}. Is not a valid ' \
+                unusual_path_err = f'Unusual file/dir path submitted but not found: "{path}". Is not a valid ' \
                                    f'file and not a directory.'
                 logger.error(unusual_path_err)
                 raise ValueError(unusual_path_err)
@@ -378,7 +379,8 @@ class BasePipeline(PipelineAttributeHolder):
             In the case that an arg is List[str], the arg must be a list of strings that
         """
         predict_data_args = [path for path in predict_data_args
-                             if os.path.split(path)[-1] not in set(self.df_features_predict_raw['data_source'].values)]
+                             if os.path.split(path)[-1].split('.')[0]  # <- Get file name without extension
+                             not in set(self.df_features_predict_raw['data_source'].values)]
         for path in predict_data_args:
             if os.path.isfile(path):
                 df_new_data = io.read_csv(path)
@@ -405,7 +407,7 @@ class BasePipeline(PipelineAttributeHolder):
         return self
 
     def remove_train_data_source(self, data_source: str):
-        """  """
+        """"""
         # TODO: low: ensure function, add tests
         check_arg.ensure_type(data_source, str)
         self.df_features_train_raw = self.df_features_train_raw.loc[
@@ -506,7 +508,7 @@ class BasePipeline(PipelineAttributeHolder):
         # Queue data
         list_dfs_raw_data = [self.df_features_train_raw.loc[self.df_features_train_raw['data_source'] == src]
                                  .sort_values('frame').copy()
-                             for src in np.unique(self.df_features_train_raw['data_source'].values)]
+                             for src in set(self.df_features_train_raw['data_source'].values)]
         # Call engineering function
         df_features = self.engineer_features_all_dfs(list_dfs_raw_data)
         # Save data
@@ -523,7 +525,7 @@ class BasePipeline(PipelineAttributeHolder):
         # Queue data
         list_dfs_raw_data = [self.df_features_predict_raw.loc[self.df_features_predict_raw['data_source'] == src]
                                  .sort_values('frame').copy()
-                             for src in np.unique(self.df_features_predict_raw['data_source'].values)]
+                             for src in set(self.df_features_predict_raw['data_source'].values)]
         # Call engineering function
         df_features = self.engineer_features_all_dfs(list_dfs_raw_data)
         # Save data, return
@@ -901,7 +903,7 @@ class BasePipeline(PipelineAttributeHolder):
             file_name_prefix += '__'
 
         # Get data
-        if data_source in self.training_data_sources:  # np.unique(self.df_features_train_scaled['data_source'].values):
+        if data_source in self.training_data_sources:
             df = self.df_features_train_scaled
         elif data_source in self.predict_data_sources:
             df = self.df_features_predict_scaled
@@ -911,6 +913,8 @@ class BasePipeline(PipelineAttributeHolder):
             raise KeyError(err)
         logger.debug(f'{logging_bsoid.get_current_function()}(): Total records: {len(df)}')
 
+        ### Execute
+        # Get data
         df = df.loc[df["data_source"] == data_source].sort_values('frame')
 
         # Get Run-Length Encoding of assignments
@@ -1078,6 +1082,7 @@ class PipelineEPM(BasePipeline):
         """
 
         """
+        check_arg.ensure_type(in_df, pd.DataFrame)
         map_mouse_point_to_config_name = {
             'Head': 'NOSETIP',
             'ForepawLeft': 'FOREPAW_LEFT',
@@ -1086,7 +1091,6 @@ class PipelineEPM(BasePipeline):
             'HindpawRight': 'HINDPAW_RIGHT',
             'Tailbase': 'TAILBASE',
         }
-
 
         columns_to_save = ['scorer', 'source', 'file_source', 'data_source', 'frame']
         df = in_df.sort_values('frame').copy()
@@ -1177,10 +1181,3 @@ if __name__ == '__main__':
             p.plot_assignments_in_3d(show_now=True)
 
         pass
-
-
-
-
-# C:\Users\killian\projects\B-SOID\output\empty.pipeline
-# conda deactivate ; cd $bsoid ; conda activate bsoid
-#
