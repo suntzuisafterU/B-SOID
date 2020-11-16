@@ -252,7 +252,7 @@ def engineer_7_features_dataframe(df: pd.DataFrame, features_names_7: List[str] 
         win_len = win_len_formula(config.VIDEO_FPS)
     logger.debug(f'{logging_bsoid.get_current_function()}(): `win_len` was calculated as: {win_len}')
 
-    req_config_feats = {
+    required_features_from_config = {
         'Head': 'SNOUT/HEAD',
         'ForepawLeft': 'LEFT_SHOULDER/FOREPAW',
         'ForepawRight': 'RIGHT_SHOULDER/FOREPAW',
@@ -262,27 +262,22 @@ def engineer_7_features_dataframe(df: pd.DataFrame, features_names_7: List[str] 
     }
     ###
 
+    # # Arg checks
     # Initial args checks
     check_arg.ensure_type(df, pd.DataFrame)
     check_arg.ensure_type(win_len, int)
+    assert len(features_names_7) == 7, f'features_names_7 should be 7 items long. TODO: formally replace this error later.'
+
+    # Replace any keys to check for in config.ini file
+    if map_names is not None:
+        check_arg.ensure_type(map_names, dict)
+        for mouse_part, config_file_key_name in map_names.items():
+            required_features_from_config[mouse_part] = config_file_key_name
 
     # Check for required columns
     set_df_columns = set(df.columns)
-
-    # required_config_features = [
-    #     'SNOUT/HEAD',
-    #     'LEFT_SHOULDER/FOREPAW',
-    #     'RIGHT_SHOULDER/FOREPAW',
-    #     'LEFT_HIP/HINDPAW',
-    #     'RIGHT_HIP/HINDPAW',
-    #     'TAILBASE',
-    # ]
-    if map_names is not None:
-        for mouse_part, config_name in map_names.items():
-            req_config_feats[mouse_part] = config_name
-
     # Check if the required parts are present in data set before proceeding
-    for feature, data_label in req_config_feats.items():
+    for feature, data_label in required_features_from_config.items():
         feature_x, feature_y = f'{config.get_part(data_label)}_x', f'{config.get_part(data_label)}_y'
         if feature_x not in set_df_columns:
             err_feature_x_missing = f'`{feature_x}` is required for this feature ' \
@@ -294,6 +289,7 @@ def engineer_7_features_dataframe(df: pd.DataFrame, features_names_7: List[str] 
                                     f'engineering but was not found. All submitted columns are: {df.columns}'
             logger.error(err_feature_y_missing)
             raise ValueError(err_feature_y_missing)
+        set_df_columns -= {feature_x, feature_y}
 
     if 'scorer' in df.columns:
         unique_scorers = np.unique(df['scorer'].values)
@@ -328,16 +324,16 @@ def engineer_7_features_dataframe(df: pd.DataFrame, features_names_7: List[str] 
         'Tailbase': 'TAILBASE',
     }
     """
-    head_x = f'{config.get_part(req_config_feats["Head"])}_x'
-    head_y = f'{config.get_part(req_config_feats["Head"])}_y'
-    left_shoulder_x = f'{config.get_part(req_config_feats["ForepawLeft"])}_x'
-    left_shoulder_y = f'{config.get_part(req_config_feats["ForepawLeft"])}_y'
-    right_shoulder_x = f'{config.get_part(req_config_feats["ForepawRight"])}_x'
-    right_shoulder_y = f'{config.get_part(req_config_feats["ForepawRight"])}_y'
-    left_hip_x = f'{config.get_part(req_config_feats["HindpawLeft"])}_x'
-    left_hip_y = f'{config.get_part(req_config_feats["HindpawLeft"])}_y'
-    right_hip_x, right_hip_y = [f'{config.get_part(req_config_feats["HindpawRight"])}_{suffix}' for suffix in ('x', 'y')]
-    tailbase_x, tailbase_y = [f'{config.get_part(req_config_feats["Tailbase"])}_{suffix}' for suffix in ('x', 'y')]
+    head_x = f'{config.get_part(required_features_from_config["Head"])}_x'
+    head_y = f'{config.get_part(required_features_from_config["Head"])}_y'
+    left_shoulder_x = f'{config.get_part(required_features_from_config["ForepawLeft"])}_x'
+    left_shoulder_y = f'{config.get_part(required_features_from_config["ForepawLeft"])}_y'
+    right_shoulder_x = f'{config.get_part(required_features_from_config["ForepawRight"])}_x'
+    right_shoulder_y = f'{config.get_part(required_features_from_config["ForepawRight"])}_y'
+    left_hip_x = f'{config.get_part(required_features_from_config["HindpawLeft"])}_x'
+    left_hip_y = f'{config.get_part(required_features_from_config["HindpawLeft"])}_y'
+    right_hip_x, right_hip_y = [f'{config.get_part(required_features_from_config["HindpawRight"])}_{suffix}' for suffix in ('x', 'y')]
+    tailbase_x, tailbase_y = [f'{config.get_part(required_features_from_config["Tailbase"])}_{suffix}' for suffix in ('x', 'y')]
 
     ####################################################################################################################
     # Create intermediate variables to solve for final features.
@@ -453,6 +449,10 @@ def engineer_7_features_dataframe(df: pd.DataFrame, features_names_7: List[str] 
     results_cols: List[str] = features_names_7
 
     df_engineered_features = pd.DataFrame(features_for_dataframe, columns=results_cols)
+    for col in set_df_columns:
+        if col not in df_engineered_features.columns:
+            df_engineered_features[col] = df[col]
+
     if 'scorer' in set_df_columns:
         df_engineered_features['scorer'] = scorer
     if 'source' in set_df_columns:
