@@ -866,14 +866,22 @@ class BasePipeline(PipelineAttributeHolder):
 
         svm_assignment_values_array = df_data[self.svm_assignment].values
         labels = list(map(self.get_assignment_label, svm_assignment_values_array))
-
+        frames = list(df_data['frame'].values)
         # Generate video with variables
-        videoprocessing.generate_video_with_labels(
+        videoprocessing.make_video_clip_from_video(   # labels_list: Union[List, Tuple], frames_indices_list: Union[List, Tuple], output_file_name: str, video_source: str, current_behaviour_list: List[str] = [], output_fps=15, fourcc='H264', output_dir=config.EXAMPLE_VIDEOS_OUTPUT_PATH, **kwargs):
             labels,
-            video_to_be_labeled,
+            frames,
             video_name,
-            output_fps,  # TODO: med/high: magic variable: output fps for video
+            video_to_be_labeled,
+            output_fps=output_fps,
+
         )
+        # videoprocessing.generate_video_with_labels(
+        #     labels,
+        #     video_to_be_labeled,
+        #     video_name,
+        #     output_fps,  # TODO: med/high: magic variable: output fps for video
+        # )
 
         return self
 
