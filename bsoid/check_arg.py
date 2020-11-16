@@ -14,7 +14,6 @@ from bsoid.logging_bsoid import get_caller_function
 import bsoid
 
 logger = bsoid.config.initialize_logger(__file__)
-ERROR_INVALID_NAME = 123  # PLO: Necessary for valid file name checking.
 
 
 ###
@@ -115,6 +114,7 @@ def is_pathname_valid(pathname: str) -> bool:
     Returns: (bool) `True` if the passed pathname is a valid pathname for the current OS;
                     `False` otherwise.
     """
+    ERROR_INVALID_NAME = 123  # PLO: Necessary for valid file name checking.
     # If this pathname is either not a string or is but is empty, this pathname is invalid.
     try:
         if not isinstance(pathname, str) or not pathname:
