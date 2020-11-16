@@ -7,7 +7,7 @@ More on formatting: https://pyformat.info/
 """
 from matplotlib.axes._axes import _log as matplotlib_axes_logger
 from mpl_toolkits.mplot3d import Axes3D  # Despite being "unused", this import MUST stay for 3d plotting to work. PLO!
-from typing import Any, Dict, List, Union
+from typing import Dict, List
 import matplotlib
 import numpy as np
 import os
@@ -21,7 +21,7 @@ import traceback
 # import cPickle as pickle
 
 
-from bsoid import app, check_arg, config, io, pipeline, streamlit_session_state
+from bsoid import check_arg, config, io, pipeline, streamlit_session_state
 
 logger = config.initialize_logger(__file__)
 
@@ -79,14 +79,14 @@ streamlit_variables_dict = {  # Instantiate default variable values here
 
 ##### Page layout #####
 
-def home(*args, **kwargs):
+def home(**kwargs):
     """
     The designated home page/entry point when Streamlit is used with B-SOiD.
 
     -------------
     kwargs
 
-        pipeline : str
+        pipeline_path : str
         A path to an existing pipeline file which will be loaded by default
         on page load. If this kwarg is not specified, the config.ini
         value will be checked (via bsoid.config), and that file path, if
@@ -95,9 +95,6 @@ def home(*args, **kwargs):
         up to the user to fill out.
 
     """
-    # BSOID_project_path = os.path.dirname(os.path.dirname(__file__))
-    # if BSOID_project_path not in sys.path:
-    #     sys.path.insert(0, BSOID_project_path)
 
     ### Set up initial variables
     global file_session
@@ -108,14 +105,14 @@ def home(*args, **kwargs):
 
     ### SIDEBAR ###
     st.sidebar.markdown(f'### Iteration: {file_session[key_iteration_page_refresh_count]}')
-    st.sidebar.markdown('---')
+    st.sidebar.markdown('------')
 
     ### MAIN ###
     st.markdown(f'# {title}')
     st.markdown('------------------------------------------------------------------------------------------')
     try:
         # Load up pipeline if specified on command line or config.ini
-        pipeline_file_path = kwargs.get('pipeline', '')
+        pipeline_file_path = kwargs.get('pipeline_path', '')
         if not pipeline_file_path:  # If not specified on command line, use config.ini path as default if possible.
             if config.default_pipeline_file_path and os.path.isfile(config.default_pipeline_file_path):
                 pipeline_file_path = config.default_pipeline_file_path
@@ -144,11 +141,13 @@ def home(*args, **kwargs):
                 if button_project_info_submitted_is_clicked:
                     # Error checking first
                     if check_arg.has_invalid_chars_in_name_for_a_file(text_input_new_project_name):
-                        char_err = ValueError(f'Project name has invalid characters present. Re-submit project pipeline name. {text_input_new_project_name}')
+                        char_err = ValueError(f'Project name has invalid characters present. '
+                                              f'Re-submit project pipeline name. {text_input_new_project_name}')
                         st.error(char_err)
                         st.stop()
                     if not os.path.isdir(path_to_project_dir):
-                        dir_err = NotADirectoryError(f'The following (in double quotes) is not a valid directory: "{path_to_project_dir}". TODO: elaborate on error')
+                        dir_err = NotADirectoryError(f'The following (in double quotes) is not a valid '
+                                                     f'directory: "{path_to_project_dir}". TODO: elaborate on error')
                         st.error(dir_err)
                         st.stop()
                     # If OK: create default pipeline, save, continue
@@ -165,7 +164,7 @@ Success! Your new project pipeline has been saved to disk.
 
 It is recommended that you copy the following path to your clipboard:
 
-{p.file_path}
+{os.path.join(path_to_project_dir, f'{text_input_new_project_name}.pipeline')}
 
 Refresh the page and load up your new pipeline file!
 """)
@@ -205,12 +204,12 @@ Refresh the page and load up your new pipeline file!
 
     if is_pipeline_loaded:
         start_new_opt = load_existing_project_option_text
-        path_to_project_file = p._source_folder
+        # path_to_project_file = p._source_folder
         st.markdown('----------------------------------------------------------------------------------------------')
-        show_pipeline_info(p)
+        show_pipeline_info(p, pipeline_path=path_to_project_file)
 
 
-def show_pipeline_info(p: pipeline.PipelinePrime, *args, **kwargs):
+def show_pipeline_info(p: pipeline.PipelinePrime, **kwargs):
     """  """
     ### SIDEBAR ###
 
@@ -218,7 +217,7 @@ def show_pipeline_info(p: pipeline.PipelinePrime, *args, **kwargs):
     st.markdown(f'## Pipeline basic information')
     st.markdown(f'- Name: **{p.name}**')
     st.markdown(f'- Description: **{p.description}**')
-    st.markdown(f'- Local file location: **{p.file_path}**')
+    st.markdown(f'- Local file location: **{kwargs.get("pipeline_path")}**')
 
     ### Menu button: show more info
     button_show_advanced_pipeline_information = st.button(
@@ -403,12 +402,12 @@ def show_actions(p: pipeline.PipelinePrime):
         if button_see_advanced_options:
             file_session[key_button_see_advanced_options] = not file_session[key_button_see_advanced_options]
         if file_session[key_button_see_advanced_options]:
-            st.markdown(f'### Advanced model options. Do not change things here unless you know what you are doing!')
-            st.markdown(f'If you collapse the advanced options menu, all changes made will revert unless you rebuild the model.')
+            st.markdown('### Advanced model options. Do not change things here unless you know what you are doing!')
+            st.markdown('If you collapse the advanced options menu, all changes made will revert unless you rebuild the model.')
             # See advanced options for model
             st.markdown('### Advanced TSNE Parameters')
             input_tsne_early_exaggeration = st.number_input(f'TSNE: early exaggeration', min_value=0., max_value=100., value=p.tsne_early_exaggeration, step=0.1, format='%.2f')
-            input_tsne_n_components = st.slider(f'TSNE: n components/dimensions', value=p.tsne_dimensions, min_value=1, max_value=10, step=1, format='%i')
+            input_tsne_n_components = st.slider(f'TSNE: n components/dimensions', value=p.tsne_n_components, min_value=1, max_value=10, step=1, format='%i')
             input_tsne_n_iter = st.number_input(label=f'TSNE "n_iter"', value=p.tsne_n_iter, min_value=250, max_value=5_000)
             # TODO: n_jobs: n_jobs=-1: all cores being used, set to -2 for all cores but one.
             st.markdown(f'### Advanced GMM parameters')
@@ -429,18 +428,38 @@ def show_actions(p: pipeline.PipelinePrime):
         # Save above info
         st.markdown('## Rebuild model with new parameters above?')
         button_rebuild_model = st.button('I want to rebuild model with new parameters', key_button_rebuild_model)
-        if button_rebuild_model:
-            file_session[key_button_rebuild_model] = not file_session[key_button_rebuild_model]
-        if file_session[key_button_rebuild_model]:
+        if button_rebuild_model: file_session[key_button_rebuild_model] = not file_session[key_button_rebuild_model]
+        if file_session[key_button_rebuild_model]:  # Rebuild model button was clicked
             st.markdown('Are you sure?')
             button_confirmation_of_rebuild = st.button('Confirm', key_button_rebuild_model_confirmation)
             if button_confirmation_of_rebuild:
                 file_session[key_button_rebuild_model_confirmation] = True
-            if file_session[key_button_rebuild_model_confirmation]:
+            if file_session[key_button_rebuild_model_confirmation]:  # Rebuild model confirmed.
                 with st.spinner('Rebuilding model...'):
+                    model_vars = {
+                        'gmm_n_components': slider_gmm_n_components,
+                        'cross_validation_k': input_k_fold_cross_val,
+                        # Advanced opts
+                        'tsne_early_exaggeration': input_tsne_early_exaggeration,
+                        'tsne_n_components': input_tsne_n_components,
+                        'tsne_n_iter': input_tsne_n_iter,
+
+                        'gmm_reg_covar': input_gmm_reg_covar,
+                        'gmm_tol': input_gmm_tolerance,
+                        'gmm_max_iter': input_gmm_max_iter,
+                        'gmm_n_init': input_gmm_n_init,
+
+                        'svm_c': input_svm_c,
+                        'svm_gamma': input_svm_gamma,
+
+                    }
+                    # if file_session[key_button_see_advanced_options]:
+                    #     model_vars = {**{
+                    #         'tsne_n_components': input_tsne_n_components,
+                    #     }, **model_vars}
+
                     # TODO: HIGH: make sure that model parameters are put into Pipeline before build() is called.
-                    # if p.gmm_n_components != slider_gmm_n_components:
-                    #     p.gmm_n_components = slider_gmm_n_components
+                    p = p.set_params(**model_vars)
                     p = p.build(True, True).save()
                 st.success(f'Model was successfully re-built!')
                 file_session[key_button_rebuild_model_confirmation] = False
@@ -535,16 +554,15 @@ def review_behaviours(p):
         select_data_source = st.selectbox('Select a data source', options=['']+p.training_data_sources)
         input_video = st.text_input(f'Input path to corresponding video relative to selected data source', value=config.BSOID_BASE_PROJECT_PATH)
         file_name_prefix = st.text_input(f'File name prefix. This helps us differentiate between example videos. OK to leave blank. ')
-        number_input_output_fps = st.number_input(f'Output FPS for example videos', value=15, min_value=1)
+        number_input_output_fps = st.number_input(f'Output FPS for example videos', value=8, min_value=1)
         number_input_max_examples_of_each_behaviour = st.number_input(f'Maximum number of examples for each behaviour', value=3, min_value=1)
-        number_input_min_rows = st.number_input(f'Min # of data rows required for a detection to occur', value=3, min_value=1, max_value=10_000)
+        number_input_min_rows = st.number_input(f'Min # of data rows required for a detection to occur', value=3, min_value=0, max_value=10_000)
         number_input_frames_leadup = st.number_input(f'min # of rows of data after/before behaviour has occurred that lead up // todo: precision', value=0, min_value=0)
 
         st.markdown('')
 
         ### Create new example videos button
-        st.markdown('#### When the variables above are filled out, press the '
-                    '"Confirm" button below to create new example videos')
+        st.markdown('#### When the variables above are filled out, press the "Confirm" button below to create new example videos')
         st.markdown('')
         button_create_new_ex_videos = st.button('Confirm', key=key_button_create_new_example_videos)
         if button_create_new_ex_videos:
@@ -570,6 +588,7 @@ def review_behaviours(p):
                         min_rows_of_behaviour=number_input_min_rows,
                         max_examples=number_input_max_examples_of_each_behaviour,
                         output_fps=number_input_output_fps,
+                        num_frames_leadup=number_input_frames_leadup,
                     )
                 st.success(f'Example videos created!')  # TODO: low: improve message
         st.markdown('--------------------------------------------------------------------------------------')
@@ -586,11 +605,18 @@ def review_behaviours(p):
         st.markdown('')
         st.markdown(f'(WIP) Menu to label entire video')
         input_video_to_label = st.text_input('Input path to video which is to be labeled')
+        selected_data_source = st.selectbox('Select a data source to use as the label set for '
+                                            'specified video (WIP: rewrite this line better :) )',
+                                            options=['']+p.training_data_sources+p.predict_data_sources)
+
         button_create_labeled_video = st.button('Create labeled video')
         if button_create_labeled_video:
+            if not selected_data_source:
+                st.error('An invalid data source was selected. Please change the data source and try again.')
+                st.stop()
             with st.spinner('(WIP: Video creation efficiency still being worked on) Creating labeled video now. This could take several minutes...'):  # TODO: high
                 # app.sample_runtime_function(3)
-                p.make_video()  # TODO: med: add other options like adding output path and output fps?
+                p.make_video(input_video_to_label, 'magicvariable')  # TODO: med: add other options like adding output path and output fps?
             st.success('Success! Video was created at: TODO: get video out path')
         st.markdown('---------------------------------------------------------------------------------------')
 
@@ -603,13 +629,6 @@ def review_behaviours(p):
 
 def display_footer(p):
     """ Footer of Streamlit page """
-
-    # st.markdown('')
-
-    # save_dir = st.text_input(f'Input dir to save pipeline', )  # TODO: lowest: implement. set value=p.save_location
-    # save_all = st.button(f'Save pipeline')
-    # if save_all:
-    #     p = p.save(save_dir if save_dir else None)
 
     return p
 
