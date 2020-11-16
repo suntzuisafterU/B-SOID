@@ -229,6 +229,240 @@ def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.Da
     return df_adaptively_filtered_data, percent_filterd_per_bodypart__perc_rect
 
 
+def engineer_7_features_dataframe(df: pd.DataFrame, features_names_7: List[str] = ['DistFrontPawsTailbaseRelativeBodyLength', 'DistBackPawsBaseTailRelativeBodyLength', 'InterforepawDistance', 'BodyLength', 'SnoutToTailbaseChangeInAngle', 'SnoutSpeed', 'TailbaseSpeed', ], map_names: dict = None, copy: bool = False, win_len: int = None) -> pd.DataFrame:
+    # TODO: high: ensure ALL columns in input DataFrame also come out of the output
+    # TODO: review https://stackoverflow.com/questions/35215161/most-efficient-way-to-map-function-over-numpy-array
+    #   Computationally intensive! Work on performance later.
+    """ *NEW*
+    A copy of the similarly-named feature engineering function; however, the top array element is NOT chopped off,
+    ensuring that the number of sample that enter is the same number that exits.
+
+    There are 6 required body parts:
+        -
+
+    Note: you'll end up with 1 less row than you started with on input
+    :param features_names_7:  TODO?
+    :param win_len: TODO
+    :param df: (DataFrame)
+    :param map_names (dict)
+    :param copy:
+    :return: (DataFrame)
+    """
+    if win_len is None:
+        win_len = win_len_formula(config.VIDEO_FPS)
+    logger.debug(f'{logging_bsoid.get_current_function()}(): `win_len` was calculated as: {win_len}')
+
+    req_config_feats = {
+        'Head': 'SNOUT/HEAD',
+        'ForepawLeft': 'LEFT_SHOULDER/FOREPAW',
+        'ForepawRight': 'RIGHT_SHOULDER/FOREPAW',
+        'HindpawLeft': 'LEFT_HIP/HINDPAW',
+        'HindpawRight': 'RIGHT_HIP/HINDPAW',
+        'Tailbase': 'TAILBASE',
+    }
+    ###
+
+    # Initial args checks
+    check_arg.ensure_type(df, pd.DataFrame)
+    check_arg.ensure_type(win_len, int)
+
+    # Check for required columns
+    set_df_columns = set(df.columns)
+
+    # required_config_features = [
+    #     'SNOUT/HEAD',
+    #     'LEFT_SHOULDER/FOREPAW',
+    #     'RIGHT_SHOULDER/FOREPAW',
+    #     'LEFT_HIP/HINDPAW',
+    #     'RIGHT_HIP/HINDPAW',
+    #     'TAILBASE',
+    # ]
+    if map_names is not None:
+        for mouse_part, config_name in map_names.items():
+            req_config_feats[mouse_part] = config_name
+
+    # Check if the required parts are present in data set before proceeding
+    for feature, data_label in req_config_feats.items():
+        feature_x, feature_y = f'{config.get_part(data_label)}_x', f'{config.get_part(data_label)}_y'
+        if feature_x not in set_df_columns:
+            err_feature_x_missing = f'`{feature_x}` is required for this feature ' \
+                                    f'engineering but was not found. All submitted columns are: {df.columns}'
+            logger.error(err_feature_x_missing)
+            raise ValueError(err_feature_x_missing)
+        if feature_y not in set_df_columns:
+            err_feature_y_missing = f'`{feature_y}` is required for this feature ' \
+                                    f'engineering but was not found. All submitted columns are: {df.columns}'
+            logger.error(err_feature_y_missing)
+            raise ValueError(err_feature_y_missing)
+
+    if 'scorer' in df.columns:
+        unique_scorers = np.unique(df['scorer'].values)
+        if len(unique_scorers) != 1:
+            err = f'More than one scorer value found. Expected only 1. Scorer values: {unique_scorers}'
+            logger.error(err)
+            raise ValueError(err)
+        scorer = unique_scorers[0]
+    else:
+        scorer = None
+    if 'source' in df.columns:
+        unique_sources = np.unique(df['source'].values)
+        if len(unique_sources) != 1:
+            err = f'More than one source value found. Expected only 1. source values: {unique_sources}'
+            logger.error(err)
+            raise ValueError(err)
+        source = unique_sources[0]
+    else:
+        source = None
+    # Solve kwargs
+
+    # Do
+    # Enumerate necessary variables for specifying data
+    num_data_rows: int = len(df)
+    """
+        req_config_feats = {
+        'Head': 'SNOUT/HEAD',
+        'ForepawLeft': 'LEFT_SHOULDER/FOREPAW',
+        'ForepawRight': 'RIGHT_SHOULDER/FOREPAW',
+        'HindpawLeft': 'LEFT_HIP/HINDPAW',
+        'HindpawRight': 'RIGHT_HIP/HINDPAW',
+        'Tailbase': 'TAILBASE',
+    }
+    """
+    head_x = f'{config.get_part(req_config_feats["Head"])}_x'
+    head_y = f'{config.get_part(req_config_feats["Head"])}_y'
+    left_shoulder_x = f'{config.get_part(req_config_feats["ForepawLeft"])}_x'
+    left_shoulder_y = f'{config.get_part(req_config_feats["ForepawLeft"])}_y'
+    right_shoulder_x = f'{config.get_part(req_config_feats["ForepawRight"])}_x'
+    right_shoulder_y = f'{config.get_part(req_config_feats["ForepawRight"])}_y'
+    left_hip_x = f'{config.get_part(req_config_feats["HindpawLeft"])}_x'
+    left_hip_y = f'{config.get_part(req_config_feats["HindpawLeft"])}_y'
+    right_hip_x, right_hip_y = [f'{config.get_part(req_config_feats["HindpawRight"])}_{suffix}' for suffix in ('x', 'y')]
+    tailbase_x, tailbase_y = [f'{config.get_part(req_config_feats["Tailbase"])}_{suffix}' for suffix in ('x', 'y')]
+
+    ####################################################################################################################
+    # Create intermediate variables to solve for final features.
+
+    # fpd
+    inter_forepaw_distance = df[[left_shoulder_x, left_shoulder_y]].values - df[[right_shoulder_x, right_shoulder_y]].values  # Previously: 'fpd'
+
+    # cfp
+    cfp__center_between_forepaws = np.vstack((
+        (df[left_shoulder_x].values + df[right_shoulder_x].values) / 2,
+        (df[left_shoulder_y].values + df[right_shoulder_y].values) / 2,
+    )).T  # Previously: cfp
+
+    # chp
+    chp__center_between_hindpaws = np.vstack((
+        (df[left_hip_x].values + df[right_hip_x].values) / 2,
+        (df[left_hip_y].values + df[right_hip_y].values) / 2,
+    )).T
+    # cfp_pt
+    dFT__cfp_pt__center_between_forepaws__minus__proximal_tail = np.vstack(([
+        cfp__center_between_forepaws[:, 0] - df[tailbase_x].values,
+        cfp__center_between_forepaws[:, 1] - df[tailbase_y].values,
+    ])).T
+
+    # chp_pt
+    chp__center_between_hindpaws__minus__proximal_tail = np.vstack(([
+        chp__center_between_hindpaws[:, 0] - df[tailbase_x].values,
+        chp__center_between_hindpaws[:, 1] - df[tailbase_y].values,
+    ])).T  # chp_pt
+
+    # sn_pt
+    snout__proximal_tail__distance__aka_BODYLENGTH = np.vstack(([
+        df[head_x].values - df[tailbase_x].values,
+        df[head_y].values - df[tailbase_y].values,
+    ])).T  # previously: sn_pt
+
+    ### Create the 4 static measurement features
+    inter_forepaw_distance__normalized = np.zeros(num_data_rows)  # originally: fpd_norm
+    cfp_pt__center_between_forepaws__minus__proximal_tail__normalized = np.zeros(num_data_rows)  # originally: cfp_pt_norm
+    chp__proximal_tail__normalized = np.zeros(num_data_rows)  # originally: chp_pt_norm
+    snout__proximal_tail__distance__aka_BODYLENGTH__normalized = np.zeros(num_data_rows)  # originally: sn_pt_norm
+
+    for j in range(1, num_data_rows):
+        # Each of these steps below produces a single-valued-array (shape: (1,1)) and inserted it into the noramlized
+        inter_forepaw_distance__normalized[j] = np.array(np.linalg.norm(inter_forepaw_distance[j, :]))
+        cfp_pt__center_between_forepaws__minus__proximal_tail__normalized[j] = np.linalg.norm(dFT__cfp_pt__center_between_forepaws__minus__proximal_tail[j, :])
+        chp__proximal_tail__normalized[j] = np.linalg.norm(chp__center_between_hindpaws__minus__proximal_tail[j, :])
+        snout__proximal_tail__distance__aka_BODYLENGTH__normalized[j] = np.linalg.norm(snout__proximal_tail__distance__aka_BODYLENGTH[j, :])
+    ## "Smooth" features for final use
+    # Body length (1)
+    snout__proximal_tail__distance__aka_BODYLENGTH__normalized_smoothed = statistics.boxcar_center(
+        snout__proximal_tail__distance__aka_BODYLENGTH__normalized, win_len)  # sn_pt_norm_smth
+    # Inter-forepaw distance (4)
+    inter_forepaw_distance__normalized__smoothed = statistics.boxcar_center(
+        inter_forepaw_distance__normalized, win_len)  # fpd_norm_smth
+    # (2)
+    snout__center_forepaws__normalized__smoothed = statistics.boxcar_center(
+        snout__proximal_tail__distance__aka_BODYLENGTH__normalized -
+        cfp_pt__center_between_forepaws__minus__proximal_tail__normalized,
+        win_len)  # sn_cfp_norm_smth
+    # (3)
+    snout__center_hindpaws__normalized__smoothed = statistics.boxcar_center(
+        snout__proximal_tail__distance__aka_BODYLENGTH__normalized -
+        chp__proximal_tail__normalized,
+        win_len)  # sn_chp_norm_smth
+
+    ### Create the 3 time-varying features (out of a total of 7 final features)
+    snout__proximal_tail__angle = np.zeros(num_data_rows - 1)  # originally: sn_pt_ang
+    snout_speed__aka_snout__displacement = np.zeros(num_data_rows - 1)  # originally: sn_disp
+    tail_speed__aka_proximal_tail__displacement = np.zeros(num_data_rows - 1)  # originally: pt_disp
+    for k in range(num_data_rows - 1):
+        a_3d = np.hstack([snout__proximal_tail__distance__aka_BODYLENGTH[k, :], 0])
+        b_3d = np.hstack([snout__proximal_tail__distance__aka_BODYLENGTH[k + 1, :], 0])
+        c = np.cross(b_3d, a_3d)
+        snout__proximal_tail__angle[k] = np.dot(
+            np.dot(np.sign(c[2]), 180) / np.pi, math.atan2(np.linalg.norm(c), np.dot(
+                snout__proximal_tail__distance__aka_BODYLENGTH[k, :],
+                snout__proximal_tail__distance__aka_BODYLENGTH[k + 1, :])))
+
+        snout_speed__aka_snout__displacement[k] = np.linalg.norm(
+            # df[[head_x, head_y]].iloc[k + 1].values -  # TODO: IMPORTANT ******************* While this snout speed implementation matches the legacy implementation, is it really generating snout speed at all? .... Why only the x?
+            # df[[head_x, head_y]].iloc[k].values)
+            df[[head_x, ]].iloc[k + 1].values -  # TODO: IMPORTANT ******************* While this snout speed implementation matches the legacy implementation, is it really generating snout speed at all? .... ^
+            df[[head_x, ]].iloc[k].values)
+
+        tail_speed__aka_proximal_tail__displacement[k] = np.linalg.norm(
+            # df[[tailbase_x, tailbase_y]].iloc[k+1, :].values -
+            # df[[tailbase_x, tailbase_y]].iloc[k, :].values)
+            df[[tailbase_x, ]].iloc[k + 1, :].values -
+            df[[tailbase_x, ]].iloc[k, :].values)  # TODO: why only the x?
+
+    snout__proximal_tail__angle__smoothed = statistics.boxcar_center(snout__proximal_tail__angle, win_len)  # sn_pt_ang_smth =>
+    snout_speed__aka_snout_displacement_smoothed = statistics.boxcar_center(snout_speed__aka_snout__displacement, win_len)  # sn_disp_smth =>
+    tail_speed__aka_proximal_tail__displacement__smoothed = statistics.boxcar_center(tail_speed__aka_proximal_tail__displacement, win_len)  # originally: pt_disp_smth
+
+    # Aggregate/organize features according to original implementation
+    # Note that the below features array is organized in shape: (number of features, number of records) which
+    #   is typically backwards from how DataFrames are composed.
+    value_to_prepend_to_time_variant_features = 0.
+    features = np.vstack((
+        snout__center_forepaws__normalized__smoothed[:],  # 2
+        snout__center_hindpaws__normalized__smoothed[:],  # 3
+        inter_forepaw_distance__normalized__smoothed[:],  # 4
+        snout__proximal_tail__distance__aka_BODYLENGTH__normalized_smoothed[:],  # 1
+        # time-varying features
+        np.insert(snout__proximal_tail__angle__smoothed[:], 0, snout__proximal_tail__angle__smoothed[0]),  # 7
+        np.insert(snout_speed__aka_snout_displacement_smoothed[:], 0, snout_speed__aka_snout_displacement_smoothed[0]),  # 5
+        np.insert(tail_speed__aka_proximal_tail__displacement__smoothed[:], 0, tail_speed__aka_proximal_tail__displacement__smoothed[0]),  # 6
+    ))
+    # Create DataFrame for features. Flip the features so that the records run along the rows and the
+    #   features are in the columns.
+    features_for_dataframe: np.ndarray = features.T
+    results_cols: List[str] = features_names_7
+
+    df_engineered_features = pd.DataFrame(features_for_dataframe, columns=results_cols)
+    if 'scorer' in set_df_columns:
+        df_engineered_features['scorer'] = scorer
+    if 'source' in set_df_columns:
+        df_engineered_features['source'] = source
+    if 'frame' in set_df_columns:
+        df_engineered_features['frame'] = df['frame'].values
+
+    return df_engineered_features
+
+
 def engineer_7_features_dataframe_MISSING_1_ROW(df: pd.DataFrame, features_names_7: List[str] = ['DistFrontPawsTailbaseRelativeBodyLength', 'DistBackPawsBaseTailRelativeBodyLength', 'InterforepawDistance', 'BodyLength', 'SnoutToTailbaseChangeInAngle', 'SnoutSpeed', 'TailbaseSpeed', ], map_names: dict = None, copy: bool = False, win_len: int = None) -> pd.DataFrame:
     # TODO: high: keep scorer col?  <----------------------------------------------------------------------------------------------------------------****
     # TODO: review https://stackoverflow.com/questions/35215161/most-efficient-way-to-map-function-over-numpy-array
@@ -427,213 +661,6 @@ def engineer_7_features_dataframe_MISSING_1_ROW(df: pd.DataFrame, features_names
     return df_engineered_features
 
 
-def engineer_7_features_dataframe(df: pd.DataFrame, features_names_7: List[str] = ['DistFrontPawsTailbaseRelativeBodyLength', 'DistBackPawsBaseTailRelativeBodyLength', 'InterforepawDistance', 'BodyLength', 'SnoutToTailbaseChangeInAngle', 'SnoutSpeed', 'TailbaseSpeed', ], map_names: dict = None, copy: bool = False, win_len: int = None) -> pd.DataFrame:
-    # TODO: high: ensure ALL columns in input DataFrame also come out of the output
-    # TODO: review https://stackoverflow.com/questions/35215161/most-efficient-way-to-map-function-over-numpy-array
-    #   Computationally intensive! Work on performance later.
-    """ *NEW*
-    A copy of the similarly-named feature engineering function; however, the top array element is NOT chopped off,
-    ensuring that the number of sample that enter is the same number that exits.
-
-    Note: you'll end up with 1 less row than you started with on input
-    :param features_names_7:  TODO?
-    :param win_len: TODO
-    :param df: (DataFrame)
-    :param map_names (dict)
-    :param copy:
-    :return: (DataFrame)
-    """
-    if win_len is None:
-        win_len = original_feature_extraction_win_len_formula(config.VIDEO_FPS)
-
-    ###
-
-    # Args checks
-    check_arg.ensure_type(df, pd.DataFrame)
-
-    # Check for required columns
-    set_df_columns = set(df.columns)
-    required_config_features = [
-        'SNOUT/HEAD',
-        'LEFT_SHOULDER/FOREPAW',
-        'RIGHT_SHOULDER/FOREPAW',
-        'LEFT_HIP/HINDPAW',
-        'RIGHT_HIP/HINDPAW',
-        'TAILBASE',
-    ]
-    for feature in required_config_features:
-        feature_x, feature_y = f'{config.get_part(feature)}_x', f'{config.get_part(feature)}_y'
-        if feature_x not in set_df_columns:
-            err_feature_x_missing = f'`{feature_x}` is required for this feature ' \
-                                    f'engineering but was not found. All submitted columns are: {df.columns}'
-            logger.error(err_feature_x_missing)
-            raise ValueError(err_feature_x_missing)
-        if feature_y not in set_df_columns:
-            err_feature_y_missing = f'`{feature_y}` is required for this feature ' \
-                                    f'engineering but was not found. All submitted columns are: {df.columns}'
-            logger.error(err_feature_y_missing)
-            raise ValueError(err_feature_y_missing)
-
-    if 'scorer' in df.columns:
-        unique_scorers = np.unique(df['scorer'].values)
-        if len(unique_scorers) != 1:
-            err = f'More than one scorer value found. Expected only 1. Scorer values: {unique_scorers}'
-            logger.error(err)
-            raise ValueError(err)
-        scorer = unique_scorers[0]
-    else:
-        scorer = None
-    if 'source' in df.columns:
-        unique_sources = np.unique(df['source'].values)
-        if len(unique_sources) != 1:
-            err = f'More than one source value found. Expected only 1. source values: {unique_sources}'
-            logger.error(err)
-            raise ValueError(err)
-        source = unique_sources[0]
-    else:
-        source = None
-    # Solve kwargs
-
-    # Do
-    # Enumerate necessary variables for specifying data
-    num_data_rows: int = len(df)
-    left_shoulder_x = f'{config.get_part("LEFT_SHOULDER/FOREPAW")}_x'
-    left_shoulder_y = f'{config.get_part("left_shoulder/forepaw")}_y'
-    right_shoulder_x = f'{config.get_part("RIGHT_SHOULDER/FOREPAW")}_x'
-    right_shoulder_y = f'{config.get_part("Right_shoulder/forepaw")}_y'
-    left_hip_x = f'{config.get_part("LEFT_HIP/HINDPAW")}_x'
-    left_hip_y = f'{config.get_part("LEFT_HIP/HINDPAW")}_y'
-    right_hip_x = f'{config.get_part("RIGHT_HIP/HINDPAW")}_x'
-    right_hip_y = f'{config.get_part("RIGHT_HIP/HINDPAW")}_y'
-    tailbase_x = f'{config.get_part("Tailbase")}_x'
-    tailbase_y = f'{config.get_part("Tailbase")}_y'
-    head_x = f'{config.get_part("SNOUT/HEAD")}_x'
-    head_y = f'{config.get_part("SNOUT/HEAD")}_y'
-
-    ####################################################################################################################
-    # Create intermediate variables to solve for final features.
-
-    # fpd
-    inter_forepaw_distance = df[[left_shoulder_x, left_shoulder_y]].values - df[[right_shoulder_x, right_shoulder_y]].values  # Previously: 'fpd'
-
-    # cfp
-    cfp__center_between_forepaws = np.vstack((
-        (df[left_shoulder_x].values + df[right_shoulder_x].values) / 2,
-        (df[left_shoulder_y].values + df[right_shoulder_y].values) / 2,
-    )).T  # Previously: cfp
-
-    # chp
-    chp__center_between_hindpaws = np.vstack((
-        (df[left_hip_x].values + df[right_hip_x].values) / 2,
-        (df[left_hip_y].values + df[right_hip_y].values) / 2,
-    )).T
-    # cfp_pt
-    dFT__cfp_pt__center_between_forepaws__minus__proximal_tail = np.vstack(([
-        cfp__center_between_forepaws[:, 0] - df[tailbase_x].values,
-        cfp__center_between_forepaws[:, 1] - df[tailbase_y].values,
-    ])).T
-
-    # chp_pt
-    chp__center_between_hindpaws__minus__proximal_tail = np.vstack(([
-        chp__center_between_hindpaws[:, 0] - df[tailbase_x].values,
-        chp__center_between_hindpaws[:, 1] - df[tailbase_y].values,
-    ])).T  # chp_pt
-
-    # sn_pt
-    snout__proximal_tail__distance__aka_BODYLENGTH = np.vstack(([
-        df[head_x].values - df[tailbase_x].values,
-        df[head_y].values - df[tailbase_y].values,
-    ])).T  # previously: sn_pt
-
-    ### Create the 4 static measurement features
-    inter_forepaw_distance__normalized = np.zeros(num_data_rows)  # originally: fpd_norm
-    cfp_pt__center_between_forepaws__minus__proximal_tail__normalized = np.zeros(num_data_rows)  # originally: cfp_pt_norm
-    chp__proximal_tail__normalized = np.zeros(num_data_rows)  # originally: chp_pt_norm
-    snout__proximal_tail__distance__aka_BODYLENGTH__normalized = np.zeros(num_data_rows)  # originally: sn_pt_norm
-
-    for j in range(1, num_data_rows):
-        # Each of these steps below produces a single-valued-array (shape: (1,1)) and inserted it into the noramlized
-        inter_forepaw_distance__normalized[j] = np.array(np.linalg.norm(inter_forepaw_distance[j, :]))
-        cfp_pt__center_between_forepaws__minus__proximal_tail__normalized[j] = np.linalg.norm(dFT__cfp_pt__center_between_forepaws__minus__proximal_tail[j, :])
-        chp__proximal_tail__normalized[j] = np.linalg.norm(chp__center_between_hindpaws__minus__proximal_tail[j, :])
-        snout__proximal_tail__distance__aka_BODYLENGTH__normalized[j] = np.linalg.norm(snout__proximal_tail__distance__aka_BODYLENGTH[j, :])
-    ## "Smooth" features for final use
-    # Body length (1)
-    snout__proximal_tail__distance__aka_BODYLENGTH__normalized_smoothed = statistics.boxcar_center(
-        snout__proximal_tail__distance__aka_BODYLENGTH__normalized, win_len)  # sn_pt_norm_smth
-    # Inter-forepaw distance (4)
-    inter_forepaw_distance__normalized__smoothed = statistics.boxcar_center(
-        inter_forepaw_distance__normalized, win_len)  # fpd_norm_smth
-    # (2)
-    snout__center_forepaws__normalized__smoothed = statistics.boxcar_center(
-        snout__proximal_tail__distance__aka_BODYLENGTH__normalized -
-        cfp_pt__center_between_forepaws__minus__proximal_tail__normalized,
-        win_len)  # sn_cfp_norm_smth
-    # (3)
-    snout__center_hindpaws__normalized__smoothed = statistics.boxcar_center(
-        snout__proximal_tail__distance__aka_BODYLENGTH__normalized -
-        chp__proximal_tail__normalized,
-        win_len)  # sn_chp_norm_smth
-
-    ### Create the 3 time-varying features (out of a total of 7 final features)
-    snout__proximal_tail__angle = np.zeros(num_data_rows - 1)  # originally: sn_pt_ang
-    snout_speed__aka_snout__displacement = np.zeros(num_data_rows - 1)  # originally: sn_disp
-    tail_speed__aka_proximal_tail__displacement = np.zeros(num_data_rows - 1)  # originally: pt_disp
-    for k in range(num_data_rows - 1):
-        a_3d = np.hstack([snout__proximal_tail__distance__aka_BODYLENGTH[k, :], 0])
-        b_3d = np.hstack([snout__proximal_tail__distance__aka_BODYLENGTH[k + 1, :], 0])
-        c = np.cross(b_3d, a_3d)
-        snout__proximal_tail__angle[k] = np.dot(
-            np.dot(np.sign(c[2]), 180) / np.pi, math.atan2(np.linalg.norm(c), np.dot(
-                snout__proximal_tail__distance__aka_BODYLENGTH[k, :],
-                snout__proximal_tail__distance__aka_BODYLENGTH[k + 1, :])))
-
-        snout_speed__aka_snout__displacement[k] = np.linalg.norm(
-            # df[[head_x, head_y]].iloc[k + 1].values -  # TODO: IMPORTANT ******************* While this snout speed implementation matches the legacy implementation, is it really generating snout speed at all? ....
-            # df[[head_x, head_y]].iloc[k].values)
-            df[[head_x, ]].iloc[k + 1].values -  # TODO: IMPORTANT ******************* While this snout speed implementation matches the legacy implementation, is it really generating snout speed at all? ....
-            df[[head_x, ]].iloc[k].values)
-
-        tail_speed__aka_proximal_tail__displacement[k] = np.linalg.norm(
-            # df[[tailbase_x, tailbase_y]].iloc[k+1, :].values -
-            # df[[tailbase_x, tailbase_y]].iloc[k, :].values)
-            df[[tailbase_x, ]].iloc[k + 1, :].values -
-            df[[tailbase_x, ]].iloc[k, :].values)  # TODO: why only the x?
-
-    snout__proximal_tail__angle__smoothed = statistics.boxcar_center(snout__proximal_tail__angle, win_len)  # sn_pt_ang_smth =>
-    snout_speed__aka_snout_displacement_smoothed = statistics.boxcar_center(snout_speed__aka_snout__displacement, win_len)  # sn_disp_smth =>
-    tail_speed__aka_proximal_tail__displacement__smoothed = statistics.boxcar_center(tail_speed__aka_proximal_tail__displacement, win_len)  # originally: pt_disp_smth
-
-    # Aggregate/organize features according to original implementation
-    # Note that the below features array is organized in shape: (number of features, number of records) which
-    #   is typically backwards from how DataFrames are composed.
-    value_to_prepend_to_time_variant_features = 0.
-    features = np.vstack((
-        snout__center_forepaws__normalized__smoothed[:],  # 2
-        snout__center_hindpaws__normalized__smoothed[:],  # 3
-        inter_forepaw_distance__normalized__smoothed[:],  # 4
-        snout__proximal_tail__distance__aka_BODYLENGTH__normalized_smoothed[:],  # 1
-        # time-varying features
-        np.insert(snout__proximal_tail__angle__smoothed[:], 0, snout__proximal_tail__angle__smoothed[0]),  # 7
-        np.insert(snout_speed__aka_snout_displacement_smoothed[:], 0, snout_speed__aka_snout_displacement_smoothed[0]),  # 5
-        np.insert(tail_speed__aka_proximal_tail__displacement__smoothed[:], 0, tail_speed__aka_proximal_tail__displacement__smoothed[0]),  # 6
-    ))
-    # Create DataFrame for features. Flip the features so that the records run along the rows and the
-    #   features are in the columns.
-    features_for_dataframe: np.ndarray = features.T
-    results_cols: List[str] = features_names_7
-
-    df_engineered_features = pd.DataFrame(features_for_dataframe, columns=results_cols)
-    if 'scorer' in set_df_columns:
-        df_engineered_features['scorer'] = scorer
-    if 'source' in set_df_columns:
-        df_engineered_features['source'] = source
-    if 'frame' in set_df_columns:
-        df_engineered_features['frame'] = df['frame'].values
-
-    return df_engineered_features
-
-
 def integrate_df_feature_into_bins(df, feature: str, method: str, n_frames: int, copy: bool = False) -> pd.DataFrame:
     """ *NEW*
     Use old algorithm to integrate features
@@ -772,6 +799,16 @@ def adaptive_filter_LEGACY(df_input_data: pd.DataFrame) -> Tuple[np.ndarray, Lis
 def original_feature_extraction_win_len_formula(fps: int):
     """"""
     win_len = np.int(np.round(0.05 / (1 / fps)) * 2 - 1)
+    return win_len
+
+
+def win_len_formula(fps: int) -> int:
+    """
+    A mimic of the original win_len formula except without relying on numpy
+    :param fps:
+    :return:
+    """
+    win_len = int(round(0.05 / (1 / fps)) * 2 - 1)
     return win_len
 
 
@@ -1156,3 +1193,5 @@ if __name__ == '__main__':
     print(average_values_over_moving_window(dff['x'], 'sum', 2))
 
     pass
+
+# streamlit run main.py streamlit -- -p "C:\Users\killian\projects\B-SOID\output\newdata5.pipeline"
