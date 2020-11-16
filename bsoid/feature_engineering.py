@@ -39,7 +39,7 @@ logger = config.initialize_logger(__name__)
 #### NEW ###############################################################################################################
 
 def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.DataFrame, List[float]]:  # TODO: implement new adaptive-filter_data for new data pipelineing
-    """ *NEW* --> Successor function to old method in likelikhood processing. Uses new DataFrame type.
+    """ *NEW* --> Successor function to old method in likelikhood processing. Uses new DataFrame type for input/output.
     Takes in a ____ TODO: low: ...
 
     Usually this function is completed directly after reading in DLC data.
@@ -227,6 +227,66 @@ def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.Da
         logger.error(missing_rows_err)
         raise ValueError(missing_rows_err)
     return df_adaptively_filtered_data, percent_filterd_per_bodypart__perc_rect
+
+
+def average_hindpaw(df, feature_name='AvgHindpaw', copy=False) -> np.ndarray:
+    """
+    Returns 2-d array where the average location of the hindpaws are
+    :param df:
+    :return:
+    """
+    df = df.copy() if copy else df
+    # TODO: med/high: implement
+    return df
+
+
+def distance_from_left_shoulder_to_nose(df, copy=False):
+    df = df.copy() if copy else df
+    # TODO: med/high: implement
+
+    return df
+
+
+def distance_from_right_shoulder_to_nose(df, feature_name='TODO:', copy=False) -> np.ndarray:
+    df = df.copy() if copy else df
+    # TODO: med/high: implement
+    return df
+
+
+def distance_from_forepaw_left_to_hindpaw_left(df, copy=False):
+    df = df.copy() if copy else df
+    # TODO: med/high: implement
+
+    return df
+
+
+def distance_from_forepaw_right_to_hindpaw_right(df, copy=False):
+    df = df.copy() if copy else df
+    # TODO: med/high: implement
+    return df
+
+
+def distance_nosetip_to_avg_hindpaw(df, copy=False):
+    df = df.copy() if copy else df
+    # TODO: med/high: implement
+    return df
+
+
+def velocity_average_forepaws(df, copy=False):
+    df = df.copy() if copy else df
+
+    return df
+
+
+def average_distance_between_n_features(arr_1, arr_2) -> np.ndarray:
+    """
+
+    :param in_array: (array) a 2-d array where the first dimensions is number of records and second dimension is categories of data.
+    :return:
+    """
+    averaged_array = (arr_1 + arr_2) / 2
+    # TODO: med/high: implement
+    return averaged_array
 
 
 def engineer_7_features_dataframe(df: pd.DataFrame, features_names_7: List[str] = ['DistFrontPawsTailbaseRelativeBodyLength', 'DistBackPawsBaseTailRelativeBodyLength', 'InterforepawDistance', 'BodyLength', 'SnoutToTailbaseChangeInAngle', 'SnoutSpeed', 'TailbaseSpeed', ], map_names: dict = None, copy: bool = False, win_len: int = None) -> pd.DataFrame:
@@ -672,23 +732,30 @@ def integrate_df_feature_into_bins(df, feature: str, method: str, n_frames: int,
     :return:
     """
     # Arg checking
-    valid_methods: set = {'avg', 'sum', }
+    check_arg.ensure_type(df, pd.DataFrame)
     check_arg.ensure_type(method, str)
+    check_arg.ensure_type(n_frames, int)
+    valid_methods: set = {'avg', 'sum', }
+
     if method not in valid_methods:
         err = f'Input method ({method}) was not a valid method- to apply to a feature. Valid methods: {valid_methods}'
         logger.error(err)
         raise ValueError(err)
     if feature not in df.columns:
-        err = f'{inspect.stack()[0][3]}(): TODO: feature not found. Cannot integrate into 100ms bins.'  # TODO
+        err = f'{logging_bsoid.get_current_function()}(): TODO: feature not found. Cannot integrate into ?ms bins.'
         logger.error(err)
         raise ValueError(err)
+
     # Kwarg resolution
     df = df.copy() if copy else df
+
+    # Execute
+    input_cols = list(df.columns)
+
     arr_result = np.zeros(math.ceil(len(df)/n_frames))
-    # Do
     data_of_interest = df[feature].values
     for i in range(0, len(df), n_frames):
-        # TODO
+        # TODO: HIGH
         pass
 
     return df
