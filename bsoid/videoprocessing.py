@@ -1,5 +1,5 @@
 """
-Extracting frames from videos
+Creating videos and everything related
 """
 
 from typing import Any, Dict, List, Tuple, Union
@@ -22,7 +22,7 @@ logger = config.initialize_logger(__name__)
 
 ### In development
 # PREVIOUSLY: fourcc='mp4v'
-def make_video_clip_from_video(labels_list: Union[List, Tuple], frames_indices_list: Union[List, Tuple], output_file_name: str, video_source: str, current_behaviour_list: List[str] = [], output_fps=15, fourcc='H264', output_dir=config.EXAMPLE_VIDEOS_OUTPUT_PATH, **kwargs):
+def make_labeled_video_according_to_frame(labels_list: Union[List, Tuple], frames_indices_list: Union[List, Tuple], output_file_name: str, video_source: str, current_behaviour_list: List[str] = [], output_fps=15, fourcc='H264', output_dir=config.EXAMPLE_VIDEOS_OUTPUT_PATH, **kwargs):
     """
     Make a video clip of an existing video
 
@@ -146,8 +146,6 @@ def make_video_clip_from_video(labels_list: Union[List, Tuple], frames_indices_l
     return
 
 
-### ___
-
 def generate_video_with_labels(labels: Union[List, Tuple, np.ndarray], source_video_file_path, output_file_name, output_fps, fourcc='mp4v', output_dir_path=config.OUTPUT_PATH, **kwargs):
     """
     Given a video and labels for behaviours that correspond to that given video, create a new video
@@ -165,7 +163,9 @@ def generate_video_with_labels(labels: Union[List, Tuple, np.ndarray], source_vi
         rectangle_br: (tuple(int, int, int)):  Sets colour for rectangle around text
     :return:
     """
-    text_color_bgr = (255, 255, 255)  # 255 = white?
+
+    text_color_bgr = (255, 255, 255)  # 255*3 == white?
+
     # Get kwargs, check args
     if not os.path.isfile(source_video_file_path):
         not_a_vid_err = f'This is not a file/video: {source_video_file_path} / todo: elaborate'
