@@ -62,10 +62,8 @@ configuration.read(os.path.join(BSOID_BASE_PROJECT_PATH, config_file_name))
 
 ### PATH ################################################################################
 DLC_PROJECT_PATH = configuration.get('PATH', 'DLC_PROJECT_PATH')
-OUTPUT_PATH = config_output_path = configuration.get('PATH', 'OUTPUT_PATH').strip() \
-    if configuration.get('PATH', 'OUTPUT_PATH').strip() else default_output_path
-VIDEO_OUTPUT_FOLDER_PATH = configuration.get('PATH', 'VIDEOS_OUTPUT_PATH') \
-    if configuration.get('PATH', 'VIDEOS_OUTPUT_PATH') else os.path.join(OUTPUT_PATH, 'videos')
+OUTPUT_PATH = config_output_path = configuration.get('PATH', 'OUTPUT_PATH').strip() if configuration.get('PATH', 'OUTPUT_PATH').strip() else default_output_path
+VIDEO_OUTPUT_FOLDER_PATH = configuration.get('PATH', 'VIDEOS_OUTPUT_PATH') if configuration.get('PATH', 'VIDEOS_OUTPUT_PATH') else os.path.join(OUTPUT_PATH, 'videos')
 GRAPH_OUTPUT_PATH = os.path.join(OUTPUT_PATH, 'graphs')
 FRAMES_OUTPUT_PATH = os.path.join(OUTPUT_PATH, 'frames')
 EXAMPLE_VIDEOS_OUTPUT_PATH = os.path.join(OUTPUT_PATH, 'example_videos')
@@ -112,7 +110,7 @@ assert isinstance(PERCENT_FRAMES_TO_LABEL, float) and 0. < PERCENT_FRAMES_TO_LAB
 assert isinstance(IDENTIFICATION_ORDER, int), f'check IDENTIFICATION_ORDER for type validity'
 
 
-### STREAMLIT ###################################################
+### STREAMLIT ############################################################
 default_pipeline_file_path = configuration.get('STREAMLIT', 'default_pipeline_location')
 
 if default_pipeline_file_path:
@@ -132,16 +130,16 @@ def get_part(part) -> str:
 # TODO: add literals?
 
 
-### MODEL ################################################
+### MODEL ###############################################################
 RANDOM_STATE: int = configuration.getint('MODEL', 'RANDOM_STATE', fallback=random.randint(1, 100_000_000))
 HOLDOUT_PERCENT: float = configuration.getfloat('MODEL', 'HOLDOUT_TEST_PCT')
 CROSSVALIDATION_K: int = configuration.getint('MODEL', 'CROSS_VALIDATION_K')
 CROSSVALIDATION_N_JOBS: int = configuration.getint('MODEL', 'CROSS_VALIDATION_N_JOBS')
 
 
-### LOGGING ######################################################
+### LOGGING ##########################################################
 
-log_function_entry_exit: callable = logging_bsoid.log_entry_exit  # TODO: temporary measure to enable logging when entering/exiting functions
+log_function_entry_exit: callable = logging_bsoid.log_entry_exit  # TODO: temporary measure to enable logging when entering/exiting functions. Times entry/exit for duration.
 
 config_log_file_folder_path = configuration.get('LOGGING', 'LOG_FILE_FOLDER_PATH')
 log_file_folder_path = config_log_file_folder_path if config_log_file_folder_path else default_log_folder_path
@@ -183,7 +181,7 @@ assert os.path.isfile(DEFAULT_CSV_TEST_FILE), f'CSV test file was not found: {DE
 # assert os.path.isfile(DEFAULT_H5_TEST_FILE), f'h5 test file was not found: {DEFAULT_H5_TEST_FILE}'  # TODO: low: when h5 format finally figured-out (From an actual DLC project outcome), re-instate this assert
 
 
-### EMGMM ########################################
+### GMM PARAMS ########################################
 
 gmm_n_components = configuration.getint('EM/GMM', 'n_components')
 gmm_covariance_type = configuration.get('EM/GMM', 'covariance_type')
