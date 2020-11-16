@@ -1,9 +1,8 @@
-### bsoid app
 """
 Extracting frames from videos
 """
 
-from typing import Any, List, Tuple, Union
+from typing import Any, Dict, List, Tuple, Union
 from tqdm import tqdm
 import cv2
 import inspect
@@ -13,9 +12,9 @@ import os
 import random
 import sys
 import time
+# import easygui  # docs: http://easygui.sourceforge.net/
 
-
-from bsoid import check_arg, config, statistics
+from bsoid import check_arg, config, logging_bsoid, statistics
 from bsoid.logging_bsoid import get_current_function
 
 logger = config.initialize_logger(__name__)
@@ -25,9 +24,7 @@ logger = config.initialize_logger(__name__)
 # PREVIOUSLY: fourcc='mp4v'
 def make_video_clip_from_video(labels_list: Union[List, Tuple], frames_indices_list: Union[List, Tuple], output_file_name: str, video_source: str, current_behaviour_list: List[str] = [], output_fps=15, fourcc='H264', output_dir=config.EXAMPLE_VIDEOS_OUTPUT_PATH, **kwargs):
     """
-
     Make a video clip of an existing video
-
 
     :param labels_list: (List[Any]) a list of labels to be included onto the frames for the final video
     :param frames_indices_list: (List[int]) a list of frames by index to be labeled and included in final video
@@ -37,8 +34,9 @@ def make_video_clip_from_video(labels_list: Union[List, Tuple], frames_indices_l
     :param output_fps: (int)
     :param fourcc: (str)
     :param output_dir: (str)
+
     :param kwargs:
-        prefix : str
+        text_prefix : str
 
         font_scale : int
 
@@ -49,11 +47,20 @@ def make_video_clip_from_video(labels_list: Union[List, Tuple], frames_indices_l
         text_offset_y : int
 
 
-
     :return:
     """
+    font: int = cv2.FONT_HERSHEY_COMPLEX
 
-    # Arg  checking
+    # Kwargs
+    font_scale = kwargs.get('font_scale', 1)
+    rectangle_colour_bgr: Tuple[int, int, int] = kwargs.get('rectangle_bgr', (0, 0, 0))  # 000=Black box?
+    text_colour_bgr = kwargs.get('text_bgr', (255, 255, 255))  # 255 = white?
+    text_prefix = kwargs.get('text_prefix', '')
+    text_offset_x = kwargs.get('text_offset_x', 50)
+    text_offset_y = kwargs.get('text_offset_y', 125)
+
+    # Arg checking
+    # # Check args
     check_arg.ensure_is_file(video_source)
     check_arg.ensure_has_valid_chars_for_path(output_file_name)
     check_arg.ensure_is_dir(output_dir)
@@ -63,39 +70,47 @@ def make_video_clip_from_video(labels_list: Union[List, Tuple], frames_indices_l
                                    f'labels and the list of frames do not match'
         logger.error(non_matching_lengths_err)
         raise ValueError(non_matching_lengths_err)
-
-    # Kwargs
-    text_prefix = kwargs.get('text_prefix', '')
-    font_scale = kwargs.get('font_scale', 1)
-    rectangle_colour_bgr: Tuple[int, int, int] = kwargs.get('rectangle_bgr', (0, 0, 0))  # 000=Black box?
-    text_colour_bgr = kwargs.get('text_bgr', (255, 255, 255))  # 255 = white?
-    text_offset_x = kwargs.get('text_offset_x', 50)
-    text_offset_y = kwargs.get('text_offset_y', 125)
-    # Final arg checking before continuing
-
+    # # Check kwargs
     check_arg.ensure_type(font_scale, int)
     check_arg.ensure_type(rectangle_colour_bgr, tuple)
     check_arg.ensure_type(text_colour_bgr, tuple)
     check_arg.ensure_type(text_prefix, str)
     check_arg.ensure_type(text_offset_x, int)
     check_arg.ensure_type(text_offset_y, int)
-    # Do
-    font: int = cv2.FONT_HERSHEY_COMPLEX
+
+    ### Execute ###
+    # Open source video
+    cv2_source_video_object = cv2.VideoCapture(video_source)
+    total_frames_of_source_vid = int(cv2_source_video_object.get(cv2.CAP_PROP_FRAME_COUNT))
+    logger.debug(f"Total # of frames in video: {total_frames_of_source_vid}")
+    logger.debug(f"Is it opened? {cv2_source_video_object.isOpened()}")
+
+    # Get dimensions of first frame in video, use that to instantiate VideoWriter
+    cv2_source_video_object.set(1, 0)
+    is_frame_retrieved, frame = cv2_source_video_object.read()
+    if not is_frame_retrieved:
+        err = f''
+        logger.error(err)
+        raise RuntimeError(err)
+    height, width, _layers = frame.shape
+
+    # Open video writer object
     four_character_code = cv2.VideoWriter_fourcc(*fourcc)
+    video_writer = cv2.VideoWriter(
+        os.path.join(output_dir, f'{output_file_name}.mp4'),    # Full output file path
+        four_character_code,                                    # fourcc -- four character code
+        output_fps,                                             # fps
+        (width, height)                                         # frameSize
+    )
 
-    cv2_video_object = cv2.VideoCapture(video_source)
-    # total_frames_of_source_vid = int(cv2_video_object.get(cv2.CAP_PROP_FRAME_COUNT))
-    # logger.debug(f"Is it opened? {cv2_video_object.isOpened()}")
-
-    numpy_frames: List[np.ndarray] = []
     # Loop over all requested frames, add text, then append to list for later video creation
     for i in range(len(frames_indices_list)):
         label, frame_idx = labels_list[i], frames_indices_list[i]
-        cv2_video_object.set(1, frame_idx)
-        is_frame_retrieved, frame = cv2_video_object.read()
+        cv2_source_video_object.set(1, frame_idx)
+        is_frame_retrieved, frame = cv2_source_video_object.read()
         if not is_frame_retrieved:
             no_frame_err = f'frame index ({frame_idx}) not found not found. Total frames in ' \
-                           f'video: {int(cv2_video_object.get(cv2.CAP_PROP_FRAME_COUNT))}'
+                           f'video: {int(cv2_source_video_object.get(cv2.CAP_PROP_FRAME_COUNT))}'
             raise Exception(no_frame_err)
 
         text_for_frame = f'{text_prefix}Current Assignment: {label}'
@@ -118,31 +133,12 @@ def make_video_clip_from_video(labels_list: Union[List, Tuple], frames_indices_l
             color=text_colour_bgr,
             thickness=1
         )
-        # Wrap up
-        numpy_frames.append(frame)
+        # numpy_frames.append(frame)
+        video_writer.write(frame)
 
     ###########################################################################################
     ### Now that all necessary frames are extracted & labeled, create video with them.
     # Extract first image in images list. Get dimensions for video.
-    height, width, _layers = numpy_frames[0].shape
-
-    # Open video writer object
-    video_writer = cv2.VideoWriter(
-        os.path.join(output_dir, f'{output_file_name}.mp4'),    # Full output file path
-        four_character_code,                                    # fourcc -- four character code
-        output_fps,                                             # fps
-        (width, height)                                         # frameSize
-    )
-    # Loop over all images and write to file (as video)
-    log_every = 100
-    i = 0
-    for img in tqdm(numpy_frames, desc='Writing video...'):  # TODO: low: add progress bar
-        video_writer.write(img)
-        if i % log_every == 0:
-            logger.debug(f'Working on iteration: {i}')
-            pass
-        i += 1
-
     # All done. Release video, clean up, then return.
     video_writer.release()
     cv2.destroyAllWindows()
@@ -186,9 +182,8 @@ def generate_video_with_labels(labels: Union[List, Tuple, np.ndarray], source_vi
     check_arg.ensure_type(font_scale, int)
     check_arg.ensure_type(rectangle_bgr, tuple)
 
-
     ### Do main work
-    # 1/2: Iterate over video frames, add text labels, add frame to frames_list
+    # # TODO: rework this comment: 1/2: Iterate over video frames, add text labels, add frame to frames_list
     font = cv2.FONT_HERSHEY_COMPLEX
     four_character_code = cv2.VideoWriter_fourcc(*fourcc)
 
@@ -206,12 +201,6 @@ def generate_video_with_labels(labels: Union[List, Tuple, np.ndarray], source_vi
         output_fps,                                                 # fps
         (width, height)                                             # frameSize
     )
-
-    # for img in tqdm(frames_list, desc='Writing video...'):  # TODO: low: add progress bar
-    #     video_writer.write(img)
-    #     if i % log_every == 0:
-    #         logger.debug(f'Working on iter: {i}')
-    #     i += 1
 
     # Loop over frames, assign labels to all
     print('Is it opened?', cv2_video_object.isOpened())
@@ -248,7 +237,7 @@ def generate_video_with_labels(labels: Union[List, Tuple, np.ndarray], source_vi
         video_writer.write(frame)
 
         i += 1
-        frame_count += 4
+        frame_count += 1
 
         cv2_video_object.set(1, frame_count)
         if i % 100 == 0:
@@ -313,7 +302,7 @@ def write_video_with_existing_frames(video_path, frames_dir_path, output_vid_nam
 
     # Loop over all images and write to file with video writer
     log_every, i = 0, 250
-    for image in tqdm(frames, desc='Writing video...'):  # TODO: low: add progress bar
+    for image in tqdm(frames, desc='Writing video...', disable=True if config.stdout_log_level=='DEBUG' else False):  # TODO: low: add progress bar
         video_writer.write(cv2.imread(os.path.join(frames_dir_path, image)))
         # if i % log_every == 0:
         #     logger.debug(f'Working on iter: {i}')
@@ -839,6 +828,78 @@ def a():
     # Test out new vid writing func
 
 
-if __name__ == '__main__':
-    p = io.read_pipeline()
-    generate_video_with_labels()
+# def x(p=None, file_name_prefix='', data_source=''):
+#     text_bgr = (255, 255, 255)
+#
+#     # Solve kwargs
+#     if file_name_prefix is None:
+#         file_name_prefix = ''
+#     else:
+#         check_arg.ensure_type(file_name_prefix, str)
+#         check_arg.ensure_has_valid_chars_for_path(file_name_prefix)
+#         file_name_prefix += '__'
+#
+#     # Get data
+#     if data_source in np.unique(p.df_features_train_scaled['data_source'].values):
+#         df = p.df_features_train_scaled
+#     elif data_source in np.unique(p.df_features_predict_scaled['data_source'].values):
+#         df = p.df_features_predict_scaled
+#     else:
+#         err = f'Data source not found: {data_source}'
+#         logger.error(err)
+#         raise KeyError(err)
+#     logger.debug(f'{logging_bsoid.get_current_function()}(): Total records: {len(df)}')
+#
+#     df = df.loc[df["data_source"] == data_source].sort_values('frame')
+#
+#     # Get Run-Length Encoding of assignments
+#     assignments = df[p.svm_assignment_col_name].values
+#     rle: Tuple[List, List, List] = statistics.augmented_runlength_encoding(assignments)
+#
+#     # Zip RLE according to order
+#     # First index is value, second is index, third is additional length
+#     rle_zipped_by_entry = []
+#     for row__assignment_idx_addedLength in zip(*rle):
+#         rle_zipped_by_entry.append(list(row__assignment_idx_addedLength))
+#
+#     # Roll up assignments into a dict. Keys are labels, values are lists of [index, additional length]
+#     rle_by_assignment: Dict[Any, List[int]] = {}  # Dict[Any: List[int, int]]
+#     for label, idx, additional_length in rle_zipped_by_entry:
+#         rle_by_assignment[label] = []
+#         if additional_length - 1 >= min_rows_of_behaviour:
+#             rle_by_assignment[label].append([idx, additional_length])
+#
+#     ### Finally: make video clips
+#     # Loop over assignments
+#     for key, values_list in rle_by_assignment.items():
+#         # Loop over examples
+#         num_examples = min(max_examples, len(values_list))
+#         for i in range(
+#                 num_examples):  # TODO: HIGH: this part dumbly loops over first n examples...In the future, it would be better to ensure that at least one of the examples has a long runtime for analysis
+#             output_file_name = f'{file_name_prefix}{time.strftime("%y-%m-%d_%Hh%Mm")}_' \
+#                                f'BehaviourExample__assignment_{key}__example_{i + 1}_of_{num_examples}'
+#             frame_text_prefix = f'Target: {key} / '  # TODO: med/high: magic variable
+#
+#             idx, additional_length_i = values_list[i]
+#
+#             lower_bound_row_idx: int = max(0, int(idx) - num_frames_leadup)
+#             upper_bound_row_idx: int = min(len(df) - 1, idx + additional_length_i + 1 + num_frames_leadup)
+#
+#             df_selection = df.iloc[lower_bound_row_idx:upper_bound_row_idx, :]
+#
+#             # Compile labels list via SVM assignment for now...Later, we should get the actual behavioural labels instead of the numerical assignments
+#             labels_list = df_selection[p.svm_assignment_col_name].values
+#             frames_indices_list = df_selection['frame'].values
+#             print(key, i)
+#     #         videoprocessing.make_video_clip_from_video(
+#     #             labels_list,
+#     #             frames_indices_list,
+#     #             output_file_name,
+#     #             video_file_path,
+#     #             text_prefix=frame_text_prefix,
+#     #             text_bgr=text_bgr,
+#     #             output_fps=output_fps,
+#     #         )
+#
+
+#
