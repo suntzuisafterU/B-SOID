@@ -809,7 +809,7 @@ class BasePipeline(PipelineAttributeHolder):
         # Check if valid directory
         check_arg.ensure_is_dir(output_path_dir)
 
-        # Do
+        # Execute
         final_out_path = os.path.join(output_path_dir, generate_pipeline_filename(self._name))
         # Check if valid final path to be saved
         check_arg.ensure_is_valid_path(final_out_path)
@@ -821,14 +821,12 @@ class BasePipeline(PipelineAttributeHolder):
         logger.debug(f'{inspect.stack()[0][3]}(): Attempting to save pipeline to file: {final_out_path}.')
 
         # Write to file
-        # old_source_folder = self._source_folder
         try:
-            # In case of error, track old source folder
-            # self._source_folder = output_path_dir
             with open(final_out_path, 'wb') as model_file:
                 joblib.dump(self, model_file)
         except Exception as e:
-            # self._source_folder = old_source_folder
+            err = f'{logging_bsoid.get_current_function()}(): An unexpected error occurred: {repr(e)}'
+            logger.error(err)
             raise e
 
         logger.debug(f'{inspect.stack()[0][3]}(): Pipeline ({self.name}) saved to: {final_out_path}')
@@ -836,7 +834,7 @@ class BasePipeline(PipelineAttributeHolder):
 
     # Video stuff
 
-    def make_video(self, video_to_be_labeled: str, video_name: str, output_fps: int = config.OUTPUT_VIDEO_FPS):
+    def make_video(self, video_to_be_labeled: str, data_source: str, video_name: str, output_fps: int = config.OUTPUT_VIDEO_FPS):
         """
 
         :param video_to_be_labeled:
@@ -850,30 +848,31 @@ class BasePipeline(PipelineAttributeHolder):
                               f'Submitted video path: {video_to_be_labeled}. '
             logger.error(not_a_video_err)
             raise FileNotFoundError(not_a_video_err)
-
         if not self.is_built:
             err = f'Model is not built so cannot make labeled video'
             logger.error(err)
             raise Exception(err)
 
-        # Do
+        ### Execute
+        # Get corresponding data
+        if data_source in self.training_data_sources:
+            df_data = self.df_features_train_scaled.loc[self.df_features_train_scaled['data_source'] == data_source]
+        elif data_source in self.predict_data_sources:
+            df_data = self.df_features_predict_scaled.loc[self.df_features_predict_scaled['data_source'] == data_source]
+        else:
+            err = f'{logging_bsoid.get_current_function()}(): Data source not found: "{data_source}"'
+            logger.error(err)
+            raise ValueError(err)
 
-        # labels: np.ndarray[str] = lambdax(self.df_features_train_scaled[self.svm_assignment].values)
+        svm_assignment_values_array = df_data[self.svm_assignment].values
+        labels = list(map(self.get_assignment_label, svm_assignment_values_array))
 
-        # lambdax = lambda x: f'assignment_{x}'  # TODO: HIGH: instead of generating random text
-        lambdax = lambda x: getattr(self, f'label_{x}')
-
-        # labels = self.df_features_train_scaled[self.svm_assignment].values
-        # labels = lambdax()
-        data = self.df_features_predict_scaled.loc[self.df_features_predict_scaled['data_source'] == 'Video4DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000.csv'][self.svm_assignment].values
-        labels = list(map(lambdax, data))
-        # TODO: med: Implement something more efficient
         # Generate video with variables
         videoprocessing.generate_video_with_labels(
             labels,
             video_to_be_labeled,
             video_name,
-            30,  # TODO: med/high: magic variable: output fps for video
+            output_fps,  # TODO: med/high: magic variable: output fps for video
         )
 
         return self
@@ -1042,8 +1041,6 @@ class PipelinePrime(BasePipeline):
         """
 
         """
-        # try:
-
         columns_to_save = ['scorer', 'source', 'file_source', 'data_source', 'frame']
         df = in_df.sort_values('frame').copy()
 
@@ -1052,6 +1049,7 @@ class PipelinePrime(BasePipeline):
         # Engineer features
         df_features: pd.DataFrame = feature_engineering.engineer_7_features_dataframe(
             df_filtered, features_names_7=self.features_names_7)
+
         # Ensure columns don't get dropped by accident
         for col in columns_to_save:
             if col in in_df.columns and col not in df_features.columns:
@@ -1065,10 +1063,6 @@ class PipelinePrime(BasePipeline):
         for feature in self.features_which_average_by_sum:
             df_features[feature] = feature_engineering.average_values_over_moving_window(
                 df_features[feature].values, 'sum', self.average_over_n_frames)
-
-        # except Exception as e:
-        #     logger.error(f'{df_features.columns} // fail on feature: {feature} // {df_features.head(10).to_string()} //{repr(e)}')
-        #     raise e
 
         return df_features
 
@@ -1181,3 +1175,6 @@ if __name__ == '__main__':
             p.plot_assignments_in_3d(show_now=True)
 
         pass
+
+# streamlit run main.py streamlit -- -p "C:\Users\killian\projects\B-SOID\output\example2.pipeline"
+# streamlit run main.py streamlit -- -p "C:\Users\killian\projects\B-SOID\output\example2.pipeline"
