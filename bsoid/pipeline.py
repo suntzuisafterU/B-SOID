@@ -534,27 +534,27 @@ class BasePipeline(PipelineAttributeHolder):
         return self
 
     ## Scaling data
-    def _create_scaled_data(self, df, features, create_new_scaler: bool = False) -> pd.DataFrame:
+    def _create_scaled_data(self, df_data, features, create_new_scaler: bool = False) -> pd.DataFrame:
         """
         A universal data scaling function that is usable for training data as well as new prediction data.
         Scales down features in place and does not keep original data.
         """
         # Check args
         check_arg.ensure_type(features, list)
-        check_arg.ensure_columns_in_DataFrame(df, features)
-        # Do
+        check_arg.ensure_columns_in_DataFrame(df_data, features)
+        # Execute
         if create_new_scaler:
             self._scaler = StandardScaler()
-            self._scaler.fit(df[features])
-        arr_data_scaled: np.ndarray = self.scaler.transform(df[features])
+            self._scaler.fit(df_data[features])
+        arr_data_scaled: np.ndarray = self.scaler.transform(df_data[features])
         df_scaled_data = pd.DataFrame(arr_data_scaled, columns=features)
         # For new DataFrame, replace columns that were not scaled so that data does not go missing
-        for col in df.columns:
+        for col in df_data.columns:
             if col not in set(df_scaled_data.columns):
-                df_scaled_data[col] = df[col].values
+                df_scaled_data[col] = df_data[col].values
         return df_scaled_data
 
-    def scale_transform_train_data(self, features: Optional[List[str]] = None, create_new_scaler=True):
+    def scale_transform_train_data(self, features: List[str] = None, create_new_scaler=True):
         """
         Scales training data. By default, creates new scaler according to train
         data and stores it in pipeline
@@ -565,14 +565,14 @@ class BasePipeline(PipelineAttributeHolder):
         :return: self
         """
         # Queue up data to use
-        if features is None: features = self.features_names_7
+        if features is None:  # TODO: low: remove his if statement as a default feature
+            features = self.features_names_7
         df_features_train = self.df_features_train
         # Check args
         check_arg.ensure_type(features, list)
         check_arg.ensure_columns_in_DataFrame(df_features_train, features)
         # Get scaled data
-        df_scaled_data = self._create_scaled_data(
-            df_features_train, features, create_new_scaler=create_new_scaler)
+        df_scaled_data = self._create_scaled_data(df_features_train, features, create_new_scaler=create_new_scaler)
         check_arg.ensure_type(df_scaled_data, pd.DataFrame)  # Debugging effort. Remove later.
         # Save data. Return.
         self.df_features_train_scaled = df_scaled_data
@@ -698,7 +698,7 @@ class BasePipeline(PipelineAttributeHolder):
             self.engineer_features_train()
 
         # Scale data
-        self.scale_transform_train_data(create_new_scaler=True)  # Optional kwarg specified for clarity  # TODO: review
+        self.scale_transform_train_data(features=self.features_names_7, create_new_scaler=True)
 
         # TSNE -- create new dimensionally reduced data
         self.tsne_reduce_df_features_train()
