@@ -1,14 +1,12 @@
 
-# generated analysis output
-
 # Sections that should not be shared
 logs
 
-# python generated files
+# Python generated files
 **/__pycache__
 **.ipynb_checkpoints
 
-# dev files
+# Dev files
 tags
 typescript
 .idea/
@@ -17,3 +15,4 @@ venv/
 # Scratch files
 comp*.txt
 scratch.*
+streamlitnyc.py
