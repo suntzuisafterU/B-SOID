@@ -21,9 +21,10 @@ logger = config.initialize_logger(__name__)
 
 
 ### In development
-# PREVIOUSLY: fourcc='mp4v'
+
 def make_labeled_video_according_to_frame(labels_list: Union[List, Tuple], frames_indices_list: Union[List, Tuple], output_file_name: str, video_source: str, current_behaviour_list: List[str] = [], output_fps=15, fourcc='H264', output_dir=config.EXAMPLE_VIDEOS_OUTPUT_PATH, **kwargs):
     """
+    # PREVIOUSLY: fourcc='mp4v' was default
     Make a video clip of an existing video
 
     :param labels_list: (List[Any]) a list of labels to be included onto the frames for the final video
@@ -145,6 +146,8 @@ def make_labeled_video_according_to_frame(labels_list: Union[List, Tuple], frame
 
     return
 
+
+### Previously used
 
 def generate_video_with_labels(labels: Union[List, Tuple, np.ndarray], source_video_file_path, output_file_name, output_fps, fourcc='mp4v', output_dir_path=config.OUTPUT_PATH, **kwargs):
     """
