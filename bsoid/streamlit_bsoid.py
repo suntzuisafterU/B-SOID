@@ -684,7 +684,3 @@ if __name__ == '__main__':
         sys.path.insert(0, BSOID_project_path)
     # home()
     example_of_value_saving()
-
-
-# C:\Users\killian\projects\B-SOID\output\videoTestAfterNoon1.pipeline
-# C:\Users\killian\projects\B-SOID\output\streamlitpipe.pipeline
