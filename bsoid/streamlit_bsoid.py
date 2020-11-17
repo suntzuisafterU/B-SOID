@@ -218,6 +218,7 @@ def show_pipeline_info(p: pipeline.PipelinePrime, **kwargs):
     st.markdown(f'- Name: **{p.name}**')
     st.markdown(f'- Description: **{p.description}**')
     st.markdown(f'- Local file location: **{kwargs.get("pipeline_path")}**')
+    st.markdown(f'- Is the model built: **{p.is_built}**')
 
     ### Menu button: show more info
     button_show_advanced_pipeline_information = st.button(
@@ -236,7 +237,7 @@ def show_pipeline_info(p: pipeline.PipelinePrime, **kwargs):
                 st.markdown(f'- - **{s}**')
         else:
             st.markdown(f'- - **None**')
-        st.markdown(f'- Is the model built: **{p.is_built}**')
+
         st.markdown(f'- - Number of data points in training data set: '
                     f'**{len(p.df_features_train) if p.df_features_train is not None else None}**')
         st.markdown(f'- - Total unique behaviours clusters: **{len(p.unique_assignments)}**')
@@ -262,13 +263,6 @@ parameters without subsequently rebuilding the model.
 We recommend that you rebuild the model to avoid future problems. """.strip())
 
     # # TODO: for below commented-out: add a CONFIRM button to confirm model re-build, then re-instate
-    # button_rebuild_inconsistent_model = st.button('(WIP) Rebuild model')
-    # if button_rebuild_inconsistent_model:
-    #     with st.spinner('Rebuilding model. This could take a couple minutes...'):
-    #         # app.sample_runtime_function(3)
-    #         p = p.build()
-    #         p = p.save()
-    #     st.success(f'Model was re-built successfully! Refresh page to see changes.')
 
     st.markdown('------------------------------------------------------------------------------------------------')
 
@@ -343,6 +337,7 @@ def show_actions(p: pipeline.PipelinePrime):
                     st.success(f'New prediction data added to pipeline successfully! Pipeline has been saved.')
                     file_session[key_button_add_predict_data_source] = False  # Reset menu to collapsed state
         st.markdown('')
+        st.markdown('')
 
     ###
 
@@ -378,10 +373,12 @@ def show_actions(p: pipeline.PipelinePrime):
                     file_session[key_button_menu_remove_data] = False
                 st.markdown('')
 
+        st.markdown('')
+
     ###
 
     ### Menu button: rebuilding model ###
-    button_see_rebuild_options = st.button('Expand/Collapse: Model Parameters (WIP)', key_button_see_rebuild_options)
+    button_see_rebuild_options = st.button('Expand/Collapse: Review/alter Model Parameters', key_button_see_rebuild_options)
     if button_see_rebuild_options:  # Click button, flip state
         file_session[key_button_see_rebuild_options] = not file_session[key_button_see_rebuild_options]
     if file_session[key_button_see_rebuild_options]:  # Now check on value and display accordingly
@@ -464,6 +461,16 @@ def show_actions(p: pipeline.PipelinePrime):
                 st.success(f'Model was successfully re-built!')
                 file_session[key_button_rebuild_model_confirmation] = False
         st.markdown('----------------------------------------------------------------------------------------------')
+
+    ###
+
+    button_rebuild_inconsistent_model = st.button('(WIP) Rebuild model')
+    if button_rebuild_inconsistent_model:
+        with st.spinner('Rebuilding model. This could take a couple minutes...'):
+            # app.sample_runtime_function(3)
+            p = p.build()
+            p = p.save()
+        st.success(f'Model was re-built successfully! Refresh page to see changes.')
 
     ###
 
@@ -680,3 +687,4 @@ if __name__ == '__main__':
 
 
 # C:\Users\killian\projects\B-SOID\output\videoTestAfterNoon1.pipeline
+# C:\Users\killian\projects\B-SOID\output\streamlitpipe.pipeline
