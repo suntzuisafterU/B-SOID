@@ -378,7 +378,7 @@ def show_actions(p: pipeline.PipelinePrime):
     ###
 
     ### Menu button: rebuilding model ###
-    button_see_rebuild_options = st.button('Expand/Collapse: Review/alter Model Parameters', key_button_see_rebuild_options)
+    button_see_rebuild_options = st.button('Expand/Collapse: Review Model Parameters & Rebuild Model', key_button_see_rebuild_options)
     if button_see_rebuild_options:  # Click button, flip state
         file_session[key_button_see_rebuild_options] = not file_session[key_button_see_rebuild_options]
     if file_session[key_button_see_rebuild_options]:  # Now check on value and display accordingly
@@ -392,6 +392,12 @@ def show_actions(p: pipeline.PipelinePrime):
         st.markdown('### Other model information')
         input_k_fold_cross_val = st.number_input(f'Set K for K-fold cross validation', value=int(p.cross_validation_k), min_value=2, format='%i')  # TODO: low: add max_value= number of data points (for k=n)?
         # TODO: med/high: add number input for % holdout for test/train split
+
+        # Hack solution: specify params here so that the variable exists even though advanced params section not opened.
+        input_tsne_early_exaggeration, input_tsne_n_components = p.tsne_early_exaggeration, p.tsne_n_components
+        input_tsne_n_iter, input_gmm_reg_covar, input_gmm_tolerance = p.tsne_n_iter, p.gmm_reg_covar, p.gmm_tol
+        input_gmm_max_iter, input_gmm_n_init = p.gmm_max_iter, p.gmm_n_init
+        input_svm_c, input_svm_gamma = p.svm_c, p.svm_gamma
 
         st.markdown('')
         ### Advanced Parameters ###
@@ -416,6 +422,7 @@ def show_actions(p: pipeline.PipelinePrime):
             ### SVM ###
             input_svm_c = st.number_input(f'SVM C', value=p.svm_c, format='%.2f')
             input_svm_gamma = st.number_input(f'SVM gamma', value=p.svm_gamma, format='%.2f')
+
         ###
 
         st.markdown('')
@@ -450,10 +457,6 @@ def show_actions(p: pipeline.PipelinePrime):
                         'svm_gamma': input_svm_gamma,
 
                     }
-                    # if file_session[key_button_see_advanced_options]:
-                    #     model_vars = {**{
-                    #         'tsne_n_components': input_tsne_n_components,
-                    #     }, **model_vars}
 
                     # TODO: HIGH: make sure that model parameters are put into Pipeline before build() is called.
                     p = p.set_params(**model_vars)
@@ -464,13 +467,6 @@ def show_actions(p: pipeline.PipelinePrime):
 
     ###
 
-    button_rebuild_inconsistent_model = st.button('(WIP) Rebuild model')
-    if button_rebuild_inconsistent_model:
-        with st.spinner('Rebuilding model. This could take a couple minutes...'):
-            # app.sample_runtime_function(3)
-            p = p.build()
-            p = p.save()
-        st.success(f'Model was re-built successfully! Refresh page to see changes.')
 
     ###
 
