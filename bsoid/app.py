@@ -11,8 +11,8 @@ import pandas as pd
 import time
 
 # TODO: low: clean up imports
-from bsoid import classify, classify_LEGACY, config, feature_engineering, io, logging_bsoid,\
-    streamlit_bsoid, train, train_LEGACY, util, videoprocessing, visuals
+from bsoid import classify, config, feature_engineering, io, logging_bsoid,\
+    streamlit_bsoid, train, util, videoprocessing, visuals
 from bsoid.config import OUTPUT_PATH, VIDEO_FPS
 
 
@@ -232,7 +232,7 @@ def run_classifier_new_pipeline(*args, **kwargs) -> None:
     # Predict labels
     labels_frameshift_low: List = classify.bsoid_predict_py(features_new, train_scaler_obj, behavioural_model)
     # Create
-    labels_frameshift_high: List = classify_LEGACY.bsoid_frameshift_py(data_new, train_scaler_obj, config.VIDEO_FPS, behavioural_model)
+    labels_frameshift_high: List = classify.bsoid_frameshift_py(data_new, train_scaler_obj, config.VIDEO_FPS, behavioural_model)
 
     if config.PLOT_GRAPHS:
         visuals.plot_feats_bsoidpy(features_new, labels_frameshift_low)
