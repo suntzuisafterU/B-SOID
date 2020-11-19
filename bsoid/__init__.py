@@ -10,7 +10,6 @@ from . import (
     check_arg,
     config,
     classify,
-    classify_LEGACY,
     feature_engineering,
     io,
     logging_bsoid,
@@ -20,7 +19,6 @@ from . import (
     streamlit_bsoid,
     streamlit_session_state,
     train,
-    train_LEGACY,  # TODO: potentially remove after rewiring code
     util,
     videoprocessing,
     visuals,
