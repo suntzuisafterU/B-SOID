@@ -21,8 +21,9 @@ import math
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import time
 
-from bsoid import check_arg, config, feature_engineering, logging_bsoid, io, statistics, train_LEGACY, visuals
+from bsoid import check_arg, config, feature_engineering, logging_bsoid, io, statistics, visuals
 
 logger = config.initialize_logger(__name__)
 
