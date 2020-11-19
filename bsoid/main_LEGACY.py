@@ -13,7 +13,7 @@ import os
 import pandas as pd
 import time
 
-from bsoid import classify, classify_LEGACY, config, train, train_LEGACY, util
+from bsoid import classify, config, train, util
 from bsoid.config import VIDEO_FPS, OUTPUT_PATH as OUTPUT_PATH
 
 logger = config.initialize_logger(__name__)

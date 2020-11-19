@@ -9,21 +9,26 @@ Potential abbreviations:
 """
 # Hierarchical Density-Based Spatial Clustering of Applications with Noise
 from bhtsne import tsne as TSNE_bthsne
-from sklearn.mixture import GaussianMixture
+from sklearn.neural_network import MLPClassifier
+from sklearn.manifold import TSNE as TSNE_sklearn
 from sklearn.metrics import plot_confusion_matrix
+from sklearn.mixture import GaussianMixture
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 from tqdm import tqdm
 from typing import Any, List, Tuple
+import hdbscan
 import inspect
+import itertools
 import math
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import time
+import umap
 
-from bsoid import check_arg, config, feature_engineering, logging_bsoid, io, statistics, visuals
+from bsoid import check_arg, config, feature_engineering, logging_bsoid, io, statistics, train, visuals
 
 logger = config.initialize_logger(__name__)
 
@@ -521,10 +526,10 @@ def get_data_train_TSNE_then_GMM_then_SVM_then_return_EVERYTHING__py(train_folde
         raise ValueError(zero_filenames_error)
 
     # Extract features and train TSNE
-    features_10fps, features_10fps_scaled, trained_tsne_list, scaler = train_LEGACY.extract_features_and_train_TSNE(list_of_arrays_of_training_data)  # features_10fps, features_10fps_scaled, trained_tsne_list, scaler = bsoid_tsne_py(list_of_arrays_of_training_data)  # replace with: extract_features_and_train_TSNE
+    features_10fps, features_10fps_scaled, trained_tsne_list, scaler = train.extract_features_and_train_TSNE(list_of_arrays_of_training_data)  # features_10fps, features_10fps_scaled, trained_tsne_list, scaler = bsoid_tsne_py(list_of_arrays_of_training_data)  # replace with: extract_features_and_train_TSNE
 
     # Train GMM
-    gmm_assignments = train_LEGACY.train_emgmm_with_learned_tsne_space(trained_tsne_list)  # gmm_assignments = bsoid_gmm_pyvoc(trained_tsne)  # replaced with below
+    gmm_assignments = train.train_emgmm_with_learned_tsne_space(trained_tsne_list)  # gmm_assignments = bsoid_gmm_pyvoc(trained_tsne)  # replaced with below
 
     # Train SVM
     classifier, scores = bsoid_svm_py(features_10fps_scaled, gmm_assignments)
@@ -817,13 +822,13 @@ def extract_7_features_bsoid_tsne_py(list_of_arrays_data: List[np.ndarray], body
             snout__proximal_tail__distance__aka_BODYLENGTH__normalized[j] = np.linalg.norm(snout__proximal_tail__distance__aka_BODYLENGTH[j, :])
         ## "Smooth" features for final use
         # Body length (1)
-        snout__proximal_tail__distance__aka_BODYLENGTH__normalized_smoothed = likelihoodprocessing.boxcar_center(snout__proximal_tail__distance__aka_BODYLENGTH__normalized, win_len)                           # sn_pt_norm_smth
+        snout__proximal_tail__distance__aka_BODYLENGTH__normalized_smoothed = statistics.boxcar_center(snout__proximal_tail__distance__aka_BODYLENGTH__normalized, win_len)                           # sn_pt_norm_smth
         # Inter-forepaw distance (4)
-        inter_forepaw_distance__normalized__smoothed = likelihoodprocessing.boxcar_center(inter_forepaw_distance__normalized, win_len)                                               # fpd_norm_smth
+        inter_forepaw_distance__normalized__smoothed = statistics.boxcar_center(inter_forepaw_distance__normalized, win_len)                                               # fpd_norm_smth
         # (2)
-        snout__center_forepaws__normalized__smoothed = likelihoodprocessing.boxcar_center(snout__proximal_tail__distance__aka_BODYLENGTH__normalized - cfp_pt__center_between_forepaws__minus__proximal_tail__normalized, win_len)   # sn_cfp_norm_smth
+        snout__center_forepaws__normalized__smoothed = statistics.boxcar_center(snout__proximal_tail__distance__aka_BODYLENGTH__normalized - cfp_pt__center_between_forepaws__minus__proximal_tail__normalized, win_len)   # sn_cfp_norm_smth
         # (3)
-        snout__center_hindpaws__normalized__smoothed = likelihoodprocessing.boxcar_center(snout__proximal_tail__distance__aka_BODYLENGTH__normalized - chp__proximal_tail__normalized, win_len)   # sn_chp_norm_smth
+        snout__center_hindpaws__normalized__smoothed = statistics.boxcar_center(snout__proximal_tail__distance__aka_BODYLENGTH__normalized - chp__proximal_tail__normalized, win_len)   # sn_chp_norm_smth
 
         ### Create the 3 time-varying features ###
         snout__proximal_tail__angle = np.zeros(num_data_rows - 1)                   # originally: sn_pt_ang
@@ -837,9 +842,9 @@ def extract_7_features_bsoid_tsne_py(list_of_arrays_data: List[np.ndarray], body
             snout_speed__aka_snout__displacement[k] = np.linalg.norm(data_array[k + 1, 2 * bodyparts['Snout/Head']:2 * bodyparts['Snout/Head'] + 1] - data_array[k, 2 * bodyparts['Snout/Head']:2 * bodyparts['Snout/Head'] + 1])
             tail_speed__aka_proximal_tail__displacement[k] = np.linalg.norm(data_array[k + 1, 2 * bodyparts['Tailbase']:2 * bodyparts['Tailbase'] + 1] - data_array[k,2 * bodyparts['Tailbase']:2 * bodyparts['Tailbase'] + 1])
         # Smooth features for final use
-        snout__proximal_tail__angle__smoothed = likelihoodprocessing.boxcar_center(snout__proximal_tail__angle, win_len)  # sn_pt_ang_smth =>
-        snout_speed__aka_snout_displacement_smoothed = likelihoodprocessing.boxcar_center(snout_speed__aka_snout__displacement, win_len)  # sn_disp_smth =>
-        tail_speed__aka_proximal_tail__displacement__smoothed = likelihoodprocessing.boxcar_center(tail_speed__aka_proximal_tail__displacement, win_len)  # originally: pt_disp_smth
+        snout__proximal_tail__angle__smoothed = statistics.boxcar_center(snout__proximal_tail__angle, win_len)  # sn_pt_ang_smth =>
+        snout_speed__aka_snout_displacement_smoothed = statistics.boxcar_center(snout_speed__aka_snout__displacement, win_len)  # sn_disp_smth =>
+        tail_speed__aka_proximal_tail__displacement__smoothed = statistics.boxcar_center(tail_speed__aka_proximal_tail__displacement, win_len)  # originally: pt_disp_smth
 
         ### Append final features to features list ###
         features.append(np.vstack((
@@ -921,7 +926,7 @@ def train_umap_unsupervised_with_xy_features_umapapp(data: List[np.ndarray], fps
         dxy_eu = np.zeros([data_range, dxy_r.shape[1]])
         ang = np.zeros([data_range - 1, dxy_r.shape[1]])
         for l in range(dis_r.shape[1]):
-            dis_smth.append(likelihoodprocessing.boxcar_center(dis_r[:, l], win_len))
+            dis_smth.append(statistics.boxcar_center(dis_r[:, l], win_len))
         for k in range(dxy_r.shape[1]):
             for kk in range(data_range):
                 dxy_eu[kk, k] = np.linalg.norm(dxy_r[kk, k, :])
@@ -932,8 +937,8 @@ def train_umap_unsupervised_with_xy_features_umapapp(data: List[np.ndarray], fps
                     ang[kk, k] = np.dot(np.dot(np.sign(c[2]), 180) / np.pi,
                                         math.atan2(np.linalg.norm(c),
                                                    np.dot(dxy_r[kk, k, :], dxy_r[kk + 1, k, :])))
-            dxy_smth.append(likelihoodprocessing.boxcar_center(dxy_eu[:, k], win_len))
-            ang_smth.append(likelihoodprocessing.boxcar_center(ang[:, k], win_len))
+            dxy_smth.append(statistics.boxcar_center(dxy_eu[:, k], win_len))
+            ang_smth.append(statistics.boxcar_center(ang[:, k], win_len))
         dis_smth = np.array(dis_smth)
         dxy_smth = np.array(dxy_smth)
         ang_smth = np.array(ang_smth)
@@ -1027,14 +1032,14 @@ def bsoid_hdbscan_umapapp(umap_embeddings, hdbscan_params=config.HDBSCAN_PARAMS)
         ).fit(umap_embeddings)
         numulab.append(len(np.unique(trained_classifier.labels_)))
         if numulab[-1] > highest_numulab_value:
-            logger.debug(f'{likelihoodprocessing.get_current_function()}(): '
+            logger.debug(f'{statistics.get_current_function()}(): '
                          f'Adjusting minimum cluster size to maximize cluster number...')
             highest_numulab_value = numulab[-1]
             best_clf = trained_classifier
     assignments = best_clf.labels_
     soft_clusters = hdbscan.all_points_membership_vectors(best_clf)
     soft_assignments = np.argmax(soft_clusters, axis=1)
-    logger.info(f'{likelihoodprocessing.get_current_function()}: ' +
+    logger.info(f'{statistics.get_current_function()}: ' +
                 'Done predicting labels for {} instances in {} D space...'.format(*umap_embeddings.shape))
     return assignments, soft_clusters, soft_assignments
 
@@ -1420,7 +1425,7 @@ def get_data_train_TSNE_then_GMM_then_SVM_then_return_EVERYTHING__py(train_folde
 
     ##########
     # Get data
-    file_names_list, list_of_arrays_of_training_data, _perc_rect = likelihoodprocessing.import_csvs_data_from_folders_in_PROJECTPATH_and_process_data(train_folders)
+    file_names_list, list_of_arrays_of_training_data, _perc_rect = statistics.import_csvs_data_from_folders_in_PROJECTPATH_and_process_data(train_folders)
     # Check that outputs are fine for runtime
     if len(file_names_list) == 0:
         zero_folders_error = f'{inspect.stack()[0][3]}: Zero training folders were specified. Check ' \
@@ -1457,7 +1462,7 @@ def train__import_data_and_process__train_tsne__train_gmm__train_clf__voc(train_
         raise ValueError(f'`train_folders` arg was expected to be list but instead found '
                          f'type: {type(train_folders)} (value:  {train_folders}).')
 
-    _file_names, training_data, perc_rect = likelihoodprocessing.import_csvs_data_from_folders_in_PROJECTPATH_and_process_data(train_folders)
+    _file_names, training_data, perc_rect = statistics.import_csvs_data_from_folders_in_PROJECTPATH_and_process_data(train_folders)
 
     # Train T-SNE
     features_10fps, features_10fps_scaled, trained_tsne = bsoid_tsne_voc(training_data)
