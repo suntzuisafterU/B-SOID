@@ -15,7 +15,7 @@ import numpy as np
 import os
 
 # # # B-SOiD imports # # #
-from . import classify_LEGACY, config, feature_engineering, io, logging_bsoid, statistics, videoprocessing, visuals
+from . import  config, feature_engineering, io, logging_bsoid, statistics, videoprocessing, visuals
 
 logger = config.initialize_logger(__name__)
 
@@ -130,8 +130,6 @@ def bsoid_predict_py(features, trained_scaler, clf_SVM) -> List:
         labels_frameshifted_low.append(labels_i)
     logger.info(f'{inspect.stack()[0][3]}(): Done predicting a total of {len(features)} files.')
     return labels_frameshifted_low
-
-
 def bsoid_predict_app(features, clf_MLP) -> List:
     """
     :param features: list, multiple feats (original feature space)
