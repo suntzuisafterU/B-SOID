@@ -32,7 +32,7 @@ title = f'B-SOiD Streamlit app'
 valid_video_extensions = {'avi', 'mp4', }
 # Variables for buttons, drop-down menus, and other things
 start_new_project_option_text, load_existing_project_option_text = 'Create new', 'Load existing'
-pipeline_prime_name, HowlandTestPipeline = 'PipelinePrime', 'HowlandLabPipeline_OST'
+pipeline_prime_name, pipeline_epm_name = 'PipelinePrime', 'pipeline_epm_name'
 training_data_option, predict_data_option = 'Training Data', 'Predict Data'
 key_iteration_page_refresh_count = 'key_iteration_page_refresh_count'
 
@@ -131,7 +131,7 @@ def home(**kwargs):
         if start_new_opt == start_new_project_option_text:
             st.markdown(f'## Create new project pipeline')
             select_pipe_type = st.selectbox('Select a pipeline implementation',
-                                            options=('', pipeline_prime_name, ))
+                                            options=('', pipeline_prime_name, pipeline_epm_name))
             if select_pipe_type:
                 text_input_new_project_name = st.text_input(
                     'Enter a name for your project pipeline. Please only use letters, numbers, and underscores.')
@@ -153,8 +153,8 @@ def home(**kwargs):
                     # If OK: create default pipeline, save, continue
                     if select_pipe_type == pipeline_prime_name:
                         p = pipeline.PipelinePrime(text_input_new_project_name).save(path_to_project_dir)
-                    # elif select_pipe_type == HowlandTestPipeline:
-                    #     p = pipeline.HowlandLabPipeline_OST(text_input_new_project_name).save(path_to_project_dir)
+                    elif select_pipe_type == pipeline_epm_name:
+                        p = pipeline.PipelineEPM(text_input_new_project_name).save(path_to_project_dir)
                     else:
                         st.error(RuntimeError('Something unexpected happened'))
                         st.markdown(f'traceback: {traceback.format_exc()}')
