@@ -26,9 +26,14 @@ def plot_GM_assignments_in_3d_new(data: np.ndarray, assignments, show_now=True, 
     """
     Plot trained TSNE for EM-GMM assignments.
 
-    :param data: 2D array, trained_tsne array (3 columns)
-    :param assignments: 1D array, EM-GMM assignments
-    :param show_now:
+    :param data: (2-d numpy array) Must be a numpy array with a shape of: (n_rows, 3).
+        So currently, for this function at least, the input data MUST be t-sne reduced into 3 dimensions
+    :param assignments: 1D array, EM-GMM assignments, used to colour the points. Must be the same length as @data
+
+    The assignment (for @param assignments) at row index i directly correlates to the tsne dimensions (for @param data) at index row i
+
+    :param show_now: (bool) Default True. ___
+
     """
     # TODO: find out why attaching the log entry/exit decorator kills the streamlit graph-rotation app
     if not isinstance(data, np.ndarray):
