@@ -315,7 +315,7 @@ def show_actions(p: pipeline.PipelinePrime):
                 # Add to pipeline, save
                 else:
                     p = p.add_train_data_source(input_new_data_source).save()
-                    st.success(f'TODO: New prediction data added to pipeline successfully! Pipeline has been saved.')
+                    st.success(f'TODO: New training data added to pipeline successfully! Pipeline has been saved.')
                     file_session[key_button_add_train_data_source] = False  # Reset menu to collapsed state
             st.markdown('')
         # 2/2: Button for adding data to prediction set
@@ -617,9 +617,9 @@ def review_behaviours(p):
             if not selected_data_source:
                 st.error('An invalid data source was selected. Please change the data source and try again.')
                 st.stop()
-            with st.spinner('(WIP: Video creation efficiency still being worked on) Creating labeled video now. This could take several minutes...'):  # TODO: high
+            with st.spinner('(WIP: Video creation efficiency still being worked on) Creating labeled video now. This could take several minutes...'):  # TODO: High
                 # app.sample_runtime_function(3)
-                p.make_video(input_video_to_label, 'magicvariable')  # TODO: med: add other options like adding output path and output fps?
+                p.make_video(input_video_to_label, 'magicvariable_in_streamlit')  # TODO: med: add other options like adding output path and output fps?
             st.success('Success! Video was created at: TODO: get video out path')
         st.markdown('---------------------------------------------------------------------------------------')
 
