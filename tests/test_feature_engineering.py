@@ -175,3 +175,79 @@ Difference:
 
         pass
 
+    def test__average_distance_between_n_features__shouldCalculateAverageLocationOfFeature__whenOneArraySubmitted(self):
+        # TODO:
+        # Arrange
+        data = [[1, 2, 3],
+                [4, 5, 6], ]
+        arr_input = np.array(data)
+        arr_expected_output = np.array(data)
+        # Act
+        arr_actual_output = bsoid.feature_engineering.average_distance_between_n_features(arr_input)
+        # Assert
+        is_equal = (arr_expected_output == arr_actual_output).all()
+        err = f"""
+Expected output:
+{arr_expected_output}
+
+Actual output:
+{arr_actual_output}
+""".strip()  # TODO: elaborate error message to suss out potential problems
+        self.assertTrue(is_equal, err)
+
+    def test__average_distance_between_n_features__shouldCalculateAverageLocationOfFeature__whenTwoArraysSubmitted(self):
+        # TODO:
+        # Arrange
+        data_1 = [[0, 2],
+                  [2, 2], ]
+        data_2 = [[5, 2],
+                  [1, 1], ]
+        data_expected_output = [[2.5, 2.],
+                                [1.5, 1.5], ]
+        arr_input_1 = np.array(data_1)
+        arr_input_2 = np.array(data_2)
+        arr_expected_output = np.array(data_expected_output)
+        # Act
+        arr_actual_output = bsoid.feature_engineering.average_distance_between_n_features(arr_input_1, arr_input_2)
+        # Assert
+        is_equal = (arr_expected_output == arr_actual_output).all()
+        err = f"""
+Expected output:
+{arr_expected_output}
+
+Actual output:
+{arr_actual_output}
+
+"""  # TODO: elaborate error message to suss out potential problems
+        self.assertTrue(is_equal, err)
+
+    @skip
+    def test__average_distance_between_n_features__shouldCalculateAverageLocationOfFeature__whenThreeArraysSubmitted(self):
+        # TODO: finish the 3rd data set and also the expected data output
+        # Arrange
+        data_1 = [[0, 2],
+                  [2, 2], ]
+        data_2 = [[5, 2],
+                  [1, 1], ]
+        data_3 = [[],
+                  [], ]
+        data_expected_output = [[2.5, 2.],
+                                [1.5, 1.5],
+                                [], ]
+        arr_input_1 = np.array(data_1)
+        arr_input_2 = np.array(data_2)
+        arr_input_3 = np.array(data_3)
+        arr_expected_output = np.array(data_expected_output)
+        # Act
+        arr_actual_output = bsoid.feature_engineering.average_distance_between_n_features(arr_input_1, arr_input_2, arr_input_3)
+        # Assert
+        is_equal = (arr_expected_output == arr_actual_output).all()
+        err = f"""
+Expected output:
+{arr_expected_output}
+
+Actual output:
+{arr_actual_output}
+""".strip()  # TODO: elaborate error message to suss out potential problems
+        self.assertTrue(is_equal, err)
+
