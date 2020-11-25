@@ -832,6 +832,29 @@ class BasePipeline(PipelineAttributeHolder):
         logger.debug(f'{inspect.stack()[0][3]}(): Pipeline ({self.name}) saved to: {final_out_path}')
         return io.read_pipeline(final_out_path)
 
+    def save_to_folder(self, dir: str):
+        """  """
+        # Arg checking
+        if not os.path.isdir(dir):
+            not_a_dir_err = f'Argument `dir` = "{dir}" is not a valid directory. Saving pipeline to dir failed.'
+            logger.error(not_a_dir_err)
+            raise NotADirectoryError(not_a_dir_err)
+        # Execute
+        # TODO: implement execution
+        return
+
+    def save_as(self, file_path):
+        """
+
+        :param file_path:
+        :return:
+        """
+        # Arg check
+        # TODO: implement arg checking
+        # Execute
+        # TODO: implement
+        return
+
     # Video stuff
 
     def make_video(self, video_to_be_labeled: str, data_source: str, video_name: str, output_fps: int = config.OUTPUT_VIDEO_FPS):
@@ -982,8 +1005,7 @@ class BasePipeline(PipelineAttributeHolder):
         """
         Get a histogram of assignments in order to review their distribution in the TRAINING data
         """
-        fig, ax = visuals.plot_assignment_distribution_histogram(
-            self.df_features_train_scaled[self.svm_assignment_col_name])
+        fig, ax = visuals.plot_assignment_distribution_histogram(self.df_features_train_scaled[self.svm_assignment_col_name])
         return fig, ax
 
     def plot_assignments_in_3d(self, show_now=False, save_to_file=False, azim_elev=(70, 135), **kwargs) -> Tuple[object, object]:
