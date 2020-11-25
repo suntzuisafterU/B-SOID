@@ -229,62 +229,121 @@ def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.Da
     return df_adaptively_filtered_data, percent_filterd_per_bodypart__perc_rect
 
 
-def average_hindpaw(df, feature_name='AvgHindpaw', copy=False) -> np.ndarray:
+def average_hindpaw_location(df, feature_name='AvgHindpaw', copy=False) -> np.ndarray:
     """
     Returns 2-d array where the average location of the hindpaws are
     :param df:
     :return:
     """
+    # Arg checking
+    check_arg.ensure_type(df, pd.DataFrame)
+    if config.get_part('HINDPAW_LEFT') not in df.columns:
+        err_missing_hindpaw_left = f'{logging_bsoid.get_current_function()}(): TODO: elaborate: missing hindpaw left column so cannot complete this function'
+        logger.error(err_missing_hindpaw_left)
+        raise ValueError(err_missing_hindpaw_left)
+    if config.get_part('HINDPAW_RIGHT') not in df.columns:
+        err_missing_hindpaw_right = f'{logging_bsoid.get_current_function()}(): TODO: elaborate: missing hindpaw right column so cannot complete this function'
+        logger.error(err_missing_hindpaw_right)
+        raise ValueError(err_missing_hindpaw_right)
+    # Resolve kwargs
     df = df.copy() if copy else df
+    # Execute
     # TODO: med/high: implement
     return df
 
 
 def distance_from_left_shoulder_to_nose(df, copy=False):
+    """
+
+    :param df:
+    :param copy:
+    :return:
+    """
+    # Arg checking
+    check_arg.ensure_type(df, pd.DataFrame)
+    # Kwarg resolution
     df = df.copy() if copy else df
+    # Execute
     # TODO: med/high: implement
 
     return df
 
 
 def distance_from_right_shoulder_to_nose(df, feature_name='TODO:', copy=False) -> np.ndarray:
+    # Arg checking
+    check_arg.ensure_type(df, pd.DataFrame)
+    # Kwarg resolution
     df = df.copy() if copy else df
+    # Execute
     # TODO: med/high: implement
     return df
 
 
 def distance_from_forepaw_left_to_hindpaw_left(df, copy=False):
+    # Arg checking
+    check_arg.ensure_type(df, pd.DataFrame)
+    # Kwarg resolution
     df = df.copy() if copy else df
+    # Execute
     # TODO: med/high: implement
 
     return df
 
 
 def distance_from_forepaw_right_to_hindpaw_right(df, copy=False):
+    # Arg checking
+    check_arg.ensure_type(df, pd.DataFrame)
+    # Kwarg resolution
     df = df.copy() if copy else df
+    # Execute
     # TODO: med/high: implement
     return df
 
 
 def distance_nosetip_to_avg_hindpaw(df, copy=False):
+    # Arg checking
+    check_arg.ensure_type(df, pd.DataFrame)
+    # Kwarg resolution
     df = df.copy() if copy else df
+    # Execute
     # TODO: med/high: implement
     return df
 
 
 def velocity_average_forepaws(df, copy=False):
+    # Arg checking
+    check_arg.ensure_type(df, pd.DataFrame)
+    # Kwarg resolution
     df = df.copy() if copy else df
-
+    # Execute
+    # TODO: med/high: implement
     return df
 
 
-def average_distance_between_n_features(arr_1, arr_2) -> np.ndarray:
+def average_distance_between_n_features(**arrays) -> np.ndarray:
     """
 
     :param in_array: (array) a 2-d array where the first dimensions is number of records and second dimension is categories of data.
     :return:
     """
-    averaged_array = (arr_1 + arr_2) / 2
+    # Arg Checks
+    if len(arrays) == 0:
+        cannot_average_0_arrays_err = f''
+        logger.error(cannot_average_0_arrays_err)
+        raise ValueError(cannot_average_0_arrays_err)
+    for arr in arrays:
+        check_arg.ensure_type(arr, np.ndarray)
+    set_of_shapes = set([arr.shape for arr in arrays])
+    if len(set_of_shapes) > 1:
+        err_disparate_shapes_of_arrays = f''
+        logger.error(err_disparate_shapes_of_arrays)
+        raise ValueError(err_disparate_shapes_of_arrays)
+    # Execute
+    averaged_array = arrays[0]
+    for i in range(1, len(arrays)):
+        averaged_array += arrays[i]
+    averaged_array = averaged_array / len(arrays)
+    # averaged_array = (arr_1 + arr_2) / 2
     # TODO: med/high: implement
     return averaged_array
 
