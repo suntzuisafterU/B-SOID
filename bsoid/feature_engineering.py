@@ -131,6 +131,17 @@ def average_hindpaw_location(df, feature_name='AvgHindpaw', copy=False) -> np.nd
     return df
 
 
+def distance_between_two_arrays(arr1, arr2) -> float:
+    """
+
+    :param arr1:
+    :param arr2:
+    :return:
+    """
+    dist = np.sum((arr1 - arr2)**2)**0.5
+
+    return dist
+
 #### New, reworked feature engineer from previous authors ############################
 
 def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.DataFrame, List[float]]:  # TODO: implement new adaptive-filter_data for new data pipelineing

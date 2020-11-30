@@ -196,13 +196,13 @@ Actual output:
         self.assertTrue(is_equal, err)
 
     def test__average_distance_between_n_features__shouldCalculateAverageLocationOfFeature__whenTwoArraysSubmitted(self):
-        # TODO:
+        # TODO: finish off this test, then remove this TODO if passes.
         # Arrange
         data_1 = [[0, 2],
                   [2, 2], ]
         data_2 = [[5, 2],
                   [1, 1], ]
-        data_expected_output = [[2.5, 2.],
+        data_expected_output = [[2.5, 2.0],
                                 [1.5, 1.5], ]
         arr_input_1 = np.array(data_1)
         arr_input_2 = np.array(data_2)
@@ -250,4 +250,24 @@ Actual output:
 {arr_actual_output}
 """.strip()  # TODO: elaborate error message to suss out potential problems
         self.assertTrue(is_equal, err)
+
+    def test__distance_between_2_arrays(self):
+        # Arrange
+        data_1 = [[5, 2, 3], ]
+        arr_1 = np.array(data_1)
+        data_2 = [[20, 15.5, 7], ]
+        arr_2 = np.array(data_2)
+        expected_output_distance: float = 20.573040611440984
+
+        # Act
+        actual_output_distance: float = bsoid.feature_engineering.distance_between_two_arrays(arr_1, arr_2)
+
+        # Assert
+        # TODO: flesh out err message
+        err_msg = f"""
+expected output: {expected_output_distance}
+
+actual output: {actual_output_distance}
+""".strip()
+        self.assertEquals(expected_output_distance, actual_output_distance, err_msg)
 
