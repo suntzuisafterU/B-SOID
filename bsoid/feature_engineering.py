@@ -38,6 +38,62 @@ logger = config.initialize_logger(__name__)
 
 ### Independent features
 
+def attach_average_hindpaw_xy(df: pd.DataFrame, avg_hindpaw_x='AvgHindpaw_x', avg_hindpaw_y='AvgHindpaw_y', copy=False) -> pd.DataFrame:
+    """
+    Returns 2-d array where the average location of the hindpaws are
+    :param df:
+    :return:
+    """
+#     # Arg checking
+    check_arg.ensure_type(df, pd.DataFrame)
+    hindpaw_left, hindpaw_right = config.get_part('HINDPAW_LEFT'), config.get_part('HINDPAW_RIGHT')
+    for feat, xy in itertools.product((hindpaw_left, hindpaw_right), ['x', 'y']):
+        if f'{feat}_{xy}' not in df.columns:
+            err_missing_feature = f'{logging_bsoid.get_current_function()}(): missing feature column "{feat}_{xy}", so cannot calculate avg position. Columns = {list(df.columns)}'
+            logging_bsoid.log_then_raise(err_missing_feature, logger, KeyError)
+    # Resolve kwargs
+    df = df.copy() if copy else df
+
+    # Execute
+    hindpaw_left_xy = df[[f'{hindpaw_left}_x', f'{hindpaw_left}_y']].values
+    hindpaw_right_xy = df[[f'{hindpaw_right}_x', f'{hindpaw_right}_y']].values
+    avg_hindpaw_xy: np.ndarray = np.array(list(map(average_vector_between_n_vectors, hindpaw_left_xy, hindpaw_right_xy)))
+
+    # Create DataFrame from result, attach to existing
+    df_avg = pd.DataFrame(avg_hindpaw_xy, columns=[avg_hindpaw_x, avg_hindpaw_y])
+    df = pd.concat([df, df_avg], axis=1)
+
+    return df
+
+
+def attach_average_forepaw_xy(df: pd.DataFrame, avg_forepaw_x='AvgForepaw_x', avg_forepaw_y='AvgForepaw_y', copy=False) -> pd.DataFrame:
+    """
+    TODO
+    """
+    #
+    # Arg checking
+    check_arg.ensure_type(df, pd.DataFrame)
+    forepaw_left, forepaw_right = config.get_part('FOREPAW_LEFT'), config.get_part('FOREPAW_RIGHT')
+    for feat, xy in itertools.product((forepaw_left, forepaw_right), ['x', 'y']):
+        if f'{feat}_{xy}' not in df.columns:
+            err_missing_feature = f'{logging_bsoid.get_current_function()}(): missing feature column "{feat}_{xy}", so cannot calculate avg position. Columns = {list(df.columns)}'
+            logging_bsoid.log_then_raise(err_missing_feature, logger, KeyError)
+
+    # Resolve kwargs
+    df = df.copy() if copy else df
+
+    # Execute
+    forepaw_left_xy = df[[f'{forepaw_left}_x', f'{forepaw_left}_y']].values
+    forepaw_right_xy = df[[f'{forepaw_right}_x', f'{forepaw_right}_y']].values
+    avg_forepaw_xy: np.ndarray = np.array(
+        list(map(average_vector_between_n_vectors, forepaw_left_xy, forepaw_right_xy)))
+
+    # Create DataFrame from result, attach to existing
+    df_avg = pd.DataFrame(avg_forepaw_xy, columns=[avg_forepaw_x, avg_forepaw_y])
+    df = pd.concat([df, df_avg], axis=1)
+
+    return df
+
 
 def distance_from_left_shoulder_to_nose(df, copy=False) -> pd.DataFrame:
     """
@@ -66,9 +122,19 @@ def distance_from_right_shoulder_to_nose(df, feature_name='TODO:', copy=False):
     return df
 
 
-def distance_from_forepaw_left_to_hindpaw_left(df, copy=False):
+def attach_distance_from_forepaw_left_to_hindpaw_left(df, forepaw_left=config.get_part('FOREPAW_LEFT'), hindpaw_left=config.get_part('HINDPAW_LEFT'), copy=False):
     # Arg checking
     check_arg.ensure_type(df, pd.DataFrame)
+    if forepaw_left not in df.columns:
+        err_missing_forepaw_left = f'Missing forpaw left from columns. Forepaw left = "{forepaw_left}" ' \
+                                   f'and columns are: {list(df.columns)}'
+        logger.error(err_missing_forepaw_left)
+        raise ValueError(err_missing_forepaw_left)
+    if hindpaw_left not in df.columns:
+        err_missing_hindpaw_left = f'Missing hindpaw left from columns. Hindpaw left = "{hindpaw_left}" ' \
+                                   f'and columns are: {list(df.columns)}'
+        logger.error(err_missing_hindpaw_left)
+        raise ValueError(err_missing_hindpaw_left)
     # Kwarg resolution
     df = df.copy() if copy else df
     # Execute
@@ -108,28 +174,6 @@ def velocity_average_forepaws(df, copy=False):
 
 
 ### Numpy array feature creation (TODO: rename this section)
-def average_hindpaw_location(df, feature_name='AvgHindpaw', copy=False) -> np.ndarray:
-    """
-    Returns 2-d array where the average location of the hindpaws are
-    :param df:
-    :return:
-    """
-    # Arg checking
-    check_arg.ensure_type(df, pd.DataFrame)
-    required_features = ['HINDPAW_LEFT', 'HINDPAW_RIGHT']
-    for feat, xy in itertools.product(required_features, ['x', 'y']):
-        if config.get_part(f'{feat}_{xy}') not in df.columns:
-            err_missing_hindpaw_left = f'{logging_bsoid.get_current_function()}(): TODO: elaborate: ' \
-                                       f'missing feature column "{feat}_{xy}", so cannot complete this function'
-            logger.error(err_missing_hindpaw_left)
-            raise ValueError(err_missing_hindpaw_left)
-    # Resolve kwargs
-    df = df.copy() if copy else df
-    # Execute
-
-    # TODO: med/high: implement
-    return df
-
 
 def distance_between_two_arrays(arr1, arr2) -> float:
     """
@@ -141,6 +185,7 @@ def distance_between_two_arrays(arr1, arr2) -> float:
     dist = np.sum((arr1 - arr2)**2)**0.5
 
     return dist
+
 
 #### New, reworked feature engineer from previous authors ############################
 
@@ -335,11 +380,9 @@ def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.Da
     return df_adaptively_filtered_data, percent_filterd_per_bodypart__perc_rect
 
 
-def average_distance_between_n_features(*arrays) -> np.ndarray:
+def average_vector_between_n_vectors(*arrays) -> np.ndarray:
     """
-
-    :param in_array: (array) a 2-d array where the first dimensions is number of records and second dimension is categories of data.
-    :return:
+    TODO
     """
     # Arg Checks
     if len(arrays) == 0:
@@ -1327,15 +1370,32 @@ def adaptive_filter_data_app(input_df: pd.DataFrame, BODYPARTS: dict):  # TODO: 
 
 
 if __name__ == '__main__':
-    d = [[1, 10, 100], [2, 0, 100], [3, 3, 3]]
-    data_d = np.array(d)
-    cols = ['x', 'y', 'z']
-    dff = pd.DataFrame(data_d, columns=cols)
-    print(dff.to_string())
-    print('---')
-    # print(integrate_df_feature_into_bins(dff, 'x', 'avg', 3))
-    print(average_values_over_moving_window(dff['x'], 'sum', 2))
+    data_l = [[1, 2, ],
+              [3, 4],
+              [5, 6]]
+    arr1 = np.array(data_l)
+    data_n = [[101, 102],
+              [103, 104],
+              [105, 106]]
+    arr2 = np.array(data_n)
+    dfl = pd.DataFrame(data_l, columns=[f'{config.get_part("NOSETIP")}_x', f"{config.get_part('HINDPAW_LEFT')}_y"])
+    dfn = pd.DataFrame(data_n, columns=[f'{config.get_part("HINDPAW_RIGHT")}_x', f"{config.get_part('HINDPAW_RIGHT')}_y"])
 
-    pass
+    # dfn = pd.DataFrame(data_n, columns=['nose_x', 'nose_y'])
+    df = pd.concat([dfl, dfn], axis=1)
+    print(attach_average_hindpaw_xy(df).to_string())
+
+
+    #
+    # d = [[1, 10, 100], [2, 0, 100], [3, 3, 3]]
+    # data_d = np.array(d)
+    # cols = ['x', 'y', 'z']
+    # dff = pd.DataFrame(data_d, columns=cols)
+    # print(dff.to_string())
+    # print('---')
+    # # print(integrate_df_feature_into_bins(dff, 'x', 'avg', 3))
+    # print(average_values_over_moving_window(dff['x'], 'sum', 2))
+    #
+    # pass
 
 # streamlit run main.py streamlit -- -p "C:\Users\killian\projects\B-SOID\output\newdata5.pipeline"
