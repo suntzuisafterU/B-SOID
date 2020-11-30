@@ -145,6 +145,18 @@ def get_caller_function() -> str:
     return inspect.stack()[2][3]
 
 
+def log_then_raise(err_msg, logger, exception):
+    """
+    Log an error then raise corresponding exception. Helps save space since this pattern is seen often.
+    :param err_msg: (str) Error message
+    :param logger: (Logger object)
+    :param exception: A valid python exception that can be raised
+    :return:
+    """
+    logger.error(err_msg)
+    raise exception(err_msg)
+
+
 # Example functions (not actively in use but useful to have)
 
 def decorator_example(func):
