@@ -183,7 +183,7 @@ Difference:
         arr_input = np.array(data)
         arr_expected_output = np.array(data)
         # Act
-        arr_actual_output = bsoid.feature_engineering.average_distance_between_n_features(arr_input)
+        arr_actual_output = bsoid.feature_engineering.average_vector_between_n_vectors(arr_input)
         # Assert
         is_equal = (arr_expected_output == arr_actual_output).all()
         err = f"""
@@ -208,7 +208,7 @@ Actual output:
         arr_input_2 = np.array(data_2)
         arr_expected_output = np.array(data_expected_output)
         # Act
-        arr_actual_output = bsoid.feature_engineering.average_distance_between_n_features(arr_input_1, arr_input_2)
+        arr_actual_output = bsoid.feature_engineering.average_vector_between_n_vectors(arr_input_1, arr_input_2)
         # Assert
         is_equal = (arr_expected_output == arr_actual_output).all()
         err = f"""
@@ -239,7 +239,7 @@ Actual output:
         arr_input_3 = np.array(data_3)
         arr_expected_output = np.array(data_expected_output)
         # Act
-        arr_actual_output = bsoid.feature_engineering.average_distance_between_n_features(arr_input_1, arr_input_2, arr_input_3)
+        arr_actual_output = bsoid.feature_engineering.average_vector_between_n_vectors(arr_input_1, arr_input_2, arr_input_3)
         # Assert
         is_equal = (arr_expected_output == arr_actual_output).all()
         err = f"""
@@ -263,11 +263,31 @@ Actual output:
         actual_output_distance: float = bsoid.feature_engineering.distance_between_two_arrays(arr_1, arr_2)
 
         # Assert
-        # TODO: flesh out err message
         err_msg = f"""
 expected output: {expected_output_distance}
 
 actual output: {actual_output_distance}
 """.strip()
         self.assertEquals(expected_output_distance, actual_output_distance, err_msg)
+
+    def test__average_arr_location(self):
+        # Arrange
+        data_1 = [[5., 2., 3.], ]
+        arr_1 = np.array(data_1)
+        data_2 = [[20., 15.5, 7.], ]
+        arr_2 = np.array(data_2)
+        exp_data = [[(5+20)/2., (2+15.5)/2, (3+7)/2], ]
+        expected_output_arr = np.array(exp_data)
+
+        # Act
+        actual_output_arr = bsoid.feature_engineering.average_vector_between_n_vectors(arr_1, arr_2)
+
+        # Assert
+        is_equals = (expected_output_arr == actual_output_arr).all()
+        err_msg = f"""
+expected_output_arr output: {expected_output_arr}
+
+actual actual_output_arr: {actual_output_arr}
+""".strip()
+        self.assertTrue(is_equals, err_msg)
 
