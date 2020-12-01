@@ -23,7 +23,7 @@ Author also specifies that: the features are also smoothed over, or averaged acr
     a sliding window of size equivalent to 60ms (30ms prior to and after the frame of interest).
 """
 from tqdm import tqdm
-from typing import List, Tuple
+from typing import Collection, List, Tuple
 import inspect
 import itertools
 import math
@@ -39,6 +39,7 @@ logger = config.initialize_logger(__name__)
 ### Attach features to DataFrame
 
 def attach_average_hindpaw_xy(df: pd.DataFrame, avg_hindpaw_x='AvgHindpaw_x', avg_hindpaw_y='AvgHindpaw_y', copy=False) -> pd.DataFrame:
+    # TODO: low: deprecate later with generalized xy averaging function
     """
     Returns 2-d array where the average location of the hindpaws are
     :param df:
@@ -59,40 +60,6 @@ def attach_average_hindpaw_xy(df: pd.DataFrame, avg_hindpaw_x='AvgHindpaw_x', av
     avg_hindpaw_xy: np.ndarray = np.array(list(map(average_vector_between_n_vectors, hindpaw_left_xy, hindpaw_right_xy)))
     # Create DataFrame from result, attach to existing data
     df_avg = pd.DataFrame(avg_hindpaw_xy, columns=[avg_hindpaw_x, avg_hindpaw_y])
-    df = pd.concat([df, df_avg], axis=1)
-
-    return df
-
-
-def attach_distance_between_2_feats(df, feature_1, feature_2, resultant_feature_name, resolve_features_with_config_ini=False, copy=False) -> pd.DataFrame:
-    """
-
-    :param df: (DataFrame)
-    :param feature_1: (str)
-    :param feature_2: (str)
-    :param resultant_feature_name: (str)
-    :param resolve_features_with_config_ini: (bool)
-    :param copy: (bool)
-    :return:
-    """
-    # Arg checking
-    check_arg.ensure_type(df, pd.DataFrame)
-    feature_1 = config.get_part(feature_1) if resolve_features_with_config_ini else feature_1
-    feature_2 = config.get_part(feature_2) if resolve_features_with_config_ini else feature_2
-
-    for feat, xy in itertools.product((feature_1, feature_2), ['x', 'y']):
-        if f'{feat}_{xy}' not in df.columns:
-            err_missing_feature = f'{logging_bsoid.get_current_function()}(): missing feature column "{feat}_{xy}", so cannot calculate avg position. Columns = {list(df.columns)}'
-            logging_bsoid.log_then_raise(err_missing_feature, logger, KeyError)
-    # Resolve kwargs
-    df = df.copy() if copy else df
-    # Execute
-    feature_1_xy_arr = df[[f'{feature_1}_x', f'{feature_1}_y']].values
-    feature_2_xy_arr = df[[f'{feature_2}_x', f'{feature_2}_y']].values
-
-    distance_between_features_array: np.ndarray = np.array(list(map(distance_between_two_arrays, feature_1_xy_arr, feature_2_xy_arr)))
-    # Create DataFrame from result, attach to existing data
-    df_avg = pd.DataFrame(distance_between_features_array, columns=[resultant_feature_name, ])
     df = pd.concat([df, df_avg], axis=1)
 
     return df
@@ -129,6 +96,39 @@ def attach_average_forepaw_xy(df: pd.DataFrame, avg_forepaw_x='AvgForepaw_x', av
     return df
 
 
+def attach_distance_between_2_feats(df: pd.DataFrame, feature_1, feature_2, resultant_feature_name, resolve_features_with_config_ini=False, copy=False) -> pd.DataFrame:
+    """
+
+    :param df: (DataFrame)
+    :param feature_1: (str)
+    :param feature_2: (str)
+    :param resultant_feature_name: (str)
+    :param resolve_features_with_config_ini: (bool)
+    :param copy: (bool)
+    :return:
+    """
+    # Arg checking
+    check_arg.ensure_type(df, pd.DataFrame)
+    feature_1 = config.get_part(feature_1) if resolve_features_with_config_ini else feature_1
+    feature_2 = config.get_part(feature_2) if resolve_features_with_config_ini else feature_2
+    for feat, xy in itertools.product((feature_1, feature_2), ['x', 'y']):
+        if f'{feat}_{xy}' not in set(df.columns):
+            err_missing_feature = f'{logging_bsoid.get_current_function()}(): missing feature column "{feat}_{xy}", so cannot calculate avg position. Columns = {list(df.columns)}'
+            logging_bsoid.log_then_raise(err_missing_feature, logger, KeyError)
+    # Resolve kwargs
+    df = df.copy() if copy else df
+    # Execute
+    feature_1_xy_arr = df[[f'{feature_1}_x', f'{feature_1}_y']].values
+    feature_2_xy_arr = df[[f'{feature_2}_x', f'{feature_2}_y']].values
+
+    distance_between_features_array: np.ndarray = np.array(list(map(distance_between_two_arrays, feature_1_xy_arr, feature_2_xy_arr)))
+    # Create DataFrame from result, attach to existing data
+    df_avg = pd.DataFrame(distance_between_features_array, columns=[resultant_feature_name, ])
+    df = pd.concat([df, df_avg], axis=1)
+
+    return df
+
+
 def average_xy_between_2_features(df: pd.DataFrame, feature1, feature2, result_feature_prefix, copy=False) -> pd.DataFrame:
     """
     Returns 2-d array where the average location between feature1 and feature2
@@ -153,17 +153,19 @@ def average_xy_between_2_features(df: pd.DataFrame, feature1, feature2, result_f
     return df
 
 
-def attach_velocity_of_feature(df: pd.DataFrame, feature, secs_between_points: float, new_feature_prefix='veloc', infer_feature_name_from_config=False, copy=False) -> pd.DataFrame:
+def attach_velocity_of_feature(df: pd.DataFrame, feature, secs_between_points: float, resultant_feature_name: str, infer_feature_name_from_config=False, copy=False) -> pd.DataFrame:
     """"""  # TODO: low
     # Check args
     check_arg.ensure_type(df, pd.DataFrame)
     check_arg.ensure_type(feature, str)
+    # TODO: ensure more type checking
+    check_arg.ensure_type(resultant_feature_name, str)
     # Resolve kwargs
     feature = config.get_part(feature) if infer_feature_name_from_config else feature
     df = df.copy() if copy else df
     # Execute
-    velocity_array = velocity_of_xy_feature(df[[f'{feature}_x', f'{feature}_y']], secs_between_points)
-    df[f'{new_feature_prefix}{feature}'] = velocity_array
+    velocity_array = velocity_of_xy_feature(df[[f'{feature}_x', f'{feature}_y']].values, secs_between_points)
+    df[f'{resultant_feature_name}'] = velocity_array
 
     return df
 
@@ -209,7 +211,7 @@ def distance_between_two_arrays(arr1, arr2) -> float:
     :return:
     """
     # Arg checking
-    # TODO: test for same shape b/w arrays
+    # TODO: low: test for same shape b/w arrays
 
     # Execute
     distance = (np.sum((arr1 - arr2)**2))**0.5
@@ -226,10 +228,11 @@ def velocity_of_xy_feature(arr, secs_between_rows) -> np.ndarray:
     # TODO: add array shape check (should be shape of (n_rows, 2 columns)
     # Execute
     # TODO: low: implement a vectorized function later
-    veloc_values = [np.NaN, ]  # velocity cannot be determined for t0
+    veloc_values = [np.NaN for _ in range(len(arr))]  # velocity cannot be determined for t0
     for i in range(1, arr.shape[0]):
         veloc_i = distance_between_two_arrays(arr[i], arr[i-1]) / secs_between_rows
-        veloc_values.append(veloc_i)
+        veloc_values[i] = veloc_i
+
 
     # Last minute result checking
     if len(veloc_values) != arr.shape[0]:
@@ -239,7 +242,8 @@ def velocity_of_xy_feature(arr, secs_between_rows) -> np.ndarray:
         logging_bsoid.log_then_raise(err_mismatch_input_output, logger, ValueError)
 
     veloc_array = np.array(veloc_values)
-    if veloc_array.shape[1] != 1:
+
+    if veloc_array.shape != (len(arr), ):
         err_incorrect_columns = f'The return array should just have one column of velocities but an incorrect number of columns was discovered. Number of columns = {veloc_array.shape[1]} (return array shape = {veloc_array.shape}).'
         logging_bsoid.log_then_raise(err_incorrect_columns, logger, ValueError)
 
@@ -248,8 +252,15 @@ def velocity_of_xy_feature(arr, secs_between_rows) -> np.ndarray:
 
 ### Binning
 def average_values_over_moving_window(data, method, n_frames: int) -> np.ndarray:
+    """
+    Use a moving window which covers
+    :param data:
+    :param method:
+    :param n_frames:
+    :return:
+    """
     # Arg checking
-    valid_methods: set = {'avg', 'sum', 'mean'}
+    valid_methods: set = {'avg', 'sum', 'mean', 'average'}
     check_arg.ensure_type(method, str)
     if method not in valid_methods:
         err = f'Input method ({method}) was not a valid method- to apply to a feature. Valid methods: {valid_methods}'
@@ -264,16 +275,21 @@ def average_values_over_moving_window(data, method, n_frames: int) -> np.ndarray
         averaging_function = statistics.mean
     elif method == 'sum':
         averaging_function = statistics.sum_args
-    else: raise TypeError(f'{inspect.stack()[0][3]}(): This should never be read.')
+    else:
+        err = f'{logging_bsoid.get_current_function()}(): This should never be read since ' \
+              f'method was validated earlier in function'
+        logger.error(err)
+        raise TypeError(err)
     #
     if isinstance(data, pd.Series):
         data = data.values
-    # Do
+
+    # Create iterators
     iterators = itertools.tee(data, n_frames)
     for i in range(len(iterators)):
         for _ in range(i):
             next(iterators[i], None)
-
+    # Execute
     # TODO: rename `asdf`
     asdf = [averaging_function(*iters_tuple) for iters_tuple in itertools.zip_longest(*iterators, fillvalue=float('nan'))]
 
@@ -282,44 +298,74 @@ def average_values_over_moving_window(data, method, n_frames: int) -> np.ndarray
     return return_array
 
 
-def integrate_df_feature_into_bins(df, feature: str, method: str, n_frames: int, copy: bool = False) -> pd.DataFrame:
-    """ *NEW*
-    Use old algorithm to integrate features
-    :param df:
-    :param feature:
+def average_array_into_bins(arr, n_rows_per_bin, average_method: str):
+    """"""
+    # ARg checking
+    valid_avg_methods = {'sum', 'avg', 'average', 'mean', 'first'}
+    if average_method not in valid_avg_methods:
+        err_invalid_method = f'Invalid method specified: {average_method}'  # TODO: low: improve err msg later
+        logging_bsoid.log_then_raise(err_invalid_method, logger, ValueError)
+    #
+    if average_method in {'sum', }:
+        method = statistics.sum_args
+    elif average_method in {'avg', 'average', 'mean', }:
+        method = statistics.mean
+    elif average_method in {'first', }:
+        method = statistics.first_arg
+    else:
+        err_impossible = f'An impossible avg method found. SHouldve been arg checked at start. Value = "{average_method}"'  # TODO: low: improve err msg later
+        logger.error(err_impossible)
+        raise ValueError(err_impossible)
+
+    # Execute
+    integrated_data = []
+    for i in range(0, len(arr), n_rows_per_bin):
+        integrated_val = method(*arr[i: i + n_rows_per_bin])
+        integrated_data.append(integrated_val)
+
+    integrated_arr = np.array(integrated_data)
+    return integrated_arr
+
+
+def integrate_df_feature_into_bins(df: pd.DataFrame, map_features_to_bin_methods: dict, n_rows: int, copy: bool = False) -> pd.DataFrame:
+    """
+    TODO
+    :param df: (DataFrame)
+    :param features: Dictionary of features and associated averaging methods. If a column name in the
+        argument DataFrame (`df`) is NOT specified in this mapping, then
+        e.g.:   {'velocity': 'sum',
+                'distance_1': 'avg',
+                'distance_2': 'first', }
+
     :param method:
-    :param n_frames:
+    :param n_rows: (int)
     :param copy: (bool)
     :return:
     """
     # Arg checking
     check_arg.ensure_type(df, pd.DataFrame)
-    check_arg.ensure_type(method, str)
-    check_arg.ensure_type(n_frames, int)
-    valid_methods: set = {'avg', 'sum', }
-
-    if method not in valid_methods:
-        err = f'Input method ({method}) was not a valid method- to apply to a feature. Valid methods: {valid_methods}'
-        logger.error(err)
-        raise ValueError(err)
-    if feature not in df.columns:
-        err = f'{logging_bsoid.get_current_function()}(): TODO: feature not found. Cannot integrate into ?ms bins.'
-        logger.error(err)
-        raise ValueError(err)
-
+    check_arg.ensure_type(n_rows, int)
+    for feature in map_features_to_bin_methods.keys():
+        if feature not in df.columns:
+            err = f'{logging_bsoid.get_current_function()}(): TODO: elaborate: feature not found. Cannot integrate into ?ms bins.'
+            logger.error(err)
+            raise ValueError(err)
     # Kwarg resolution
     df = df.copy() if copy else df
-
     # Execute
-    input_cols = list(df.columns)
+    data_list_of_arrays, corresponding_cols_list = [], []
+    for col in df.columns:
+        if col in map_features_to_bin_methods:
+            integrated_array = average_array_into_bins(df[col].values, n_rows, map_features_to_bin_methods[col])
+        else:
+            integrated_array = average_array_into_bins(df[col].values, n_rows, 'first')
 
-    arr_result = np.zeros(math.ceil(len(df)/n_frames))
-    data_of_interest = df[feature].values
-    for i in range(0, len(df), n_frames):
-        # TODO: HIGH
-        pass
+        data_list_of_arrays.append(integrated_array)
+        corresponding_cols_list.append(col)
 
-    return df
+    out_df = pd.DataFrame(np.array(data_list_of_arrays), index=corresponding_cols_list).transpose()
+
+    return out_df
 
 
 #### New, reworked feature engineer from previous authors ############################
@@ -1052,8 +1098,8 @@ def original_feature_extraction_win_len_formula(fps: int):
 def win_len_formula(fps: int) -> int:
     """
     A mimic of the original win_len formula except without relying on numpy
-    :param fps:
-    :return:
+    :param fps: (int)
+    :return: (int)
     """
     win_len = int(round(0.05 / (1 / fps)) * 2 - 1)
     return win_len

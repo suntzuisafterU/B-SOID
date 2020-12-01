@@ -1161,7 +1161,7 @@ class PipelineTim(BasePipeline):
     """
 
     """
-
+    # Feature names
     feat_name_dist_forepawleft_nosetip = 'distForepawLeftNosetip'
     feat_name_dist_forepawright_nosetip = 'distForepawRightNosetip'
     feat_name_dist_forepawLeft_hindpawLeft = 'distForepawLeftHindpawLeft'
@@ -1174,10 +1174,11 @@ class PipelineTim(BasePipeline):
         feat_name_dist_forepawright_nosetip,
         feat_name_dist_forepawLeft_hindpawLeft,
         feat_name_dist_forepawRight_hindpawRight,
-        feat_name_dist_AvgHindpaw_Nosetip ,
+        feat_name_dist_AvgHindpaw_Nosetip,
         feat_name_dist_AvgForepaw_NoseTip,
         feat_name_velocity_AvgForepaw,
     ]
+    n_rows_to_integrate_by: int = 3  # 3 = 3 frames = 100ms capture in a 30fps video. 100ms was used in original paper.
 
     def engineer_features(self, in_df: pd.DataFrame):
         # TODO: WIP
@@ -1211,24 +1212,33 @@ class PipelineTim(BasePipeline):
         # 4
         df = feature_engineering.attach_distance_between_2_feats(df, 'FOREPAW_RIGHT', 'HINDPAW_RIGHT', self.feat_name_dist_forepawRight_hindpawRight, resolve_features_with_config_ini=True)
         # 5, 6
-        df = feature_engineering.attach_average_forepaw_xy(df)
+        df = feature_engineering.attach_average_forepaw_xy(df)  # TODO: replace these two functions with the generalized xy averaging function
         df = feature_engineering.attach_average_hindpaw_xy(df)
         df = feature_engineering.attach_distance_between_2_feats(df, 'AvgHindpaw', config.get_part('NOSETIP'), self.feat_name_dist_AvgHindpaw_Nosetip)
         # 7
         df = feature_engineering.attach_distance_between_2_feats(df, 'AvgForepaw', config.get_part('NOSETIP'), self.feat_name_dist_AvgForepaw_NoseTip)
         # 8
-        # TODO: velocity of avgforepaw
-        df = feature_engineering.attach_velocity_of_feature(df, 'AvgForepaw', secs_between_points=1/config.VIDEO_FPS)
-        # Binning
-        # TODO: binning
+        df = feature_engineering.attach_velocity_of_feature(df, 'AvgForepaw', 1/config.VIDEO_FPS, self.feat_name_velocity_AvgForepaw)
 
-        # Debug effort/check: ensure columns don't get dropped by accident
-        for col in in_df.columns:
-            if col not in list(df.columns):
-                err_missing_col = f'Missing col should not have been lost in feature engineering but was. ' \
-                                  f'Column = {col}.'  # TODO: low: improve err message
-                logger.error(err_missing_col)
-                raise KeyError(err_missing_col)
+        # Binning
+        map_feature_to_integrate_method = {
+            self.feat_name_dist_forepawleft_nosetip: 'avg',
+            self.feat_name_dist_forepawright_nosetip: 'avg',
+            self.feat_name_dist_forepawLeft_hindpawLeft: 'avg',
+            self.feat_name_dist_forepawRight_hindpawRight: 'avg',
+            self.feat_name_dist_AvgHindpaw_Nosetip: 'avg',
+            self.feat_name_dist_AvgForepaw_NoseTip: 'avg',
+            self.feat_name_velocity_AvgForepaw: 'sum',
+        }
+        df = feature_engineering.integrate_df_feature_into_bins(df, map_feature_to_integrate_method, self.n_rows_to_integrate_by)
+
+        # # Debug effort/check: ensure columns don't get dropped by accident
+        # for col in in_df.columns:
+        #     if col not in list(df.columns):
+        #         err_missing_col = f'Missing col should not have been lost in feature engineering but was. ' \
+        #                           f'Column = {col}. (df={df.head().to_string()})'  # TODO: low: improve err message
+        #         logger.error(err_missing_col)
+        #         raise KeyError(err_missing_col)
 
         return df
 
@@ -1251,15 +1261,53 @@ def generate_pipeline_filename_from_pipeline(pipeline_obj: BasePipeline) -> str:
 
 # Debugging efforts
 
+# if __name__ == '__main__':
+#     # This __main__ section is a debugging effort and holds no value to the final product.
+#     BSOID = os.path.dirname(os.path.dirname(__file__))
+#     if BSOID not in sys.path: sys.path.append(BSOID)
+#     test_file_1 = "C:\\Users\\killian\\projects\\OST-with-DLC\\bsoid_train_videos\\" \
+#                   "Video1DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000.csv"
+#     test_file_2 = "C:\\Users\\killian\\projects\\OST-with-DLC\\bsoid_train_videos\\" \
+#                   "Video2DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000.csv"
+#     assert os.path.isfile(test_file_1)
+#     assert os.path.isfile(test_file_2)
+#
+#     run = True
+#     if run:
+#         # Test build
+#         nom = 'videoTest3adsddddddfasdf'
+#         loc = 'C:\\Users\\killian\\Pictures'
+#         full_loc = os.path.join(loc, f'{nom}.pipeline')
+#         actual_save_loc = f'C:\\{nom}.pipeline'
+#
+#         make_new = True
+#         save_new = True
+#         if make_new:
+#             p = PipelinePrime(name=nom)
+#             p = p.add_train_data_source(test_file_1)
+#             p = p.add_predict_data_source(test_file_2)
+#             p.average_over_n_frames = 5
+#             p = p.build_classifier()
+#             p = p.generate_predict_data_assignments()
+#             if save_new:
+#                 p = p.save(loc)
+#             print(f'cross_val_scores: {p._cross_val_scores}')
+#
+#         read_existing = False
+#         if read_existing:
+#             # p = bsoid.read_pipeline(actual_save_loc)
+#             p = io.read_pipeline(full_loc)
+#             p.plot_assignments_in_3d(show_now=True)
+
+
 if __name__ == '__main__':
     # This __main__ section is a debugging effort and holds no value to the final product.
     BSOID = os.path.dirname(os.path.dirname(__file__))
     if BSOID not in sys.path: sys.path.append(BSOID)
-    test_file_1 = "C:\\Users\\killian\\projects\\OST-with-DLC\\bsoid_train_videos\\" \
-                  "Video1DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000.csv"
-    test_file_2 = "C:\\Users\\killian\\projects\\OST-with-DLC\\bsoid_train_videos\\" \
-                  "Video2DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000.csv"
-    assert os.path.isfile(test_file_1)
+    test_file_1 = os.path.join(BSOID, 'restraint', 'Restraint-1DLC_resnet50_EPM-RESTRAINTNov2shuffle1_1030000.csv')
+    test_file_2 = os.path.join(BSOID, 'restraint', 'Restraint-2DLC_resnet50_EPM-RESTRAINTNov2shuffle1_1030000.csv')
+
+    assert os.path.isfile(test_file_1), f'path does not exist: {test_file_1}'
     assert os.path.isfile(test_file_2)
 
     run = True
@@ -1273,7 +1321,7 @@ if __name__ == '__main__':
         make_new = True
         save_new = True
         if make_new:
-            p = PipelinePrime(name=nom)
+            p = PipelineTim(name=nom)
             p = p.add_train_data_source(test_file_1)
             p = p.add_predict_data_source(test_file_2)
             p.average_over_n_frames = 5
@@ -1289,7 +1337,6 @@ if __name__ == '__main__':
             p = io.read_pipeline(full_loc)
             p.plot_assignments_in_3d(show_now=True)
 
-        pass
 
 # streamlit run main.py streamlit -- -p "C:\Users\killian\projects\B-SOID\output\example2.pipeline"
 # streamlit run main.py streamlit -- -p "C:\Users\killian\projects\B-SOID\output\example2.pipeline"
