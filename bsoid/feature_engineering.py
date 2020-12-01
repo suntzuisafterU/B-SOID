@@ -36,7 +36,7 @@ from bsoid import check_arg, config, statistics, logging_bsoid
 logger = config.initialize_logger(__name__)
 
 
-### Independent features
+### Attach features to DataFrame
 
 def attach_average_hindpaw_xy(df: pd.DataFrame, avg_hindpaw_x='AvgHindpaw_x', avg_hindpaw_y='AvgHindpaw_y', copy=False) -> pd.DataFrame:
     """
@@ -44,7 +44,7 @@ def attach_average_hindpaw_xy(df: pd.DataFrame, avg_hindpaw_x='AvgHindpaw_x', av
     :param df:
     :return:
     """
-#     # Arg checking
+    # Arg checking
     check_arg.ensure_type(df, pd.DataFrame)
     hindpaw_left, hindpaw_right = config.get_part('HINDPAW_LEFT'), config.get_part('HINDPAW_RIGHT')
     for feat, xy in itertools.product((hindpaw_left, hindpaw_right), ['x', 'y']):
@@ -53,16 +53,36 @@ def attach_average_hindpaw_xy(df: pd.DataFrame, avg_hindpaw_x='AvgHindpaw_x', av
             logging_bsoid.log_then_raise(err_missing_feature, logger, KeyError)
     # Resolve kwargs
     df = df.copy() if copy else df
-
     # Execute
     hindpaw_left_xy = df[[f'{hindpaw_left}_x', f'{hindpaw_left}_y']].values
     hindpaw_right_xy = df[[f'{hindpaw_right}_x', f'{hindpaw_right}_y']].values
     avg_hindpaw_xy: np.ndarray = np.array(list(map(average_vector_between_n_vectors, hindpaw_left_xy, hindpaw_right_xy)))
-
-    # Create DataFrame from result, attach to existing
+    # Create DataFrame from result, attach to existing data
     df_avg = pd.DataFrame(avg_hindpaw_xy, columns=[avg_hindpaw_x, avg_hindpaw_y])
     df = pd.concat([df, df_avg], axis=1)
 
+    return df
+
+
+def attach_distance_between_2_feats(df, feature_1, feature_2, resultant_feature_name, resolve_features_with_config_ini=False, copy=False):
+    """
+
+    :param df: (DataFrame)
+    :param feature_1: (str)
+    :param feature_2: (str)
+    :param resultant_feature_name: (str)
+    :param resolve_features_with_config_ini: (bool)
+    :param copy: (bool)
+    :return:
+    """
+    # Arg checking
+    check_arg.ensure_type(df, pd.DataFrame)
+
+    # Kwarg resolution
+    df = df.copy() if copy else df
+    # Execute
+
+    # TODO: high priority # <---------------------------------------------------------------------------------------------------------------------------------
     return df
 
 
@@ -70,7 +90,7 @@ def attach_average_forepaw_xy(df: pd.DataFrame, avg_forepaw_x='AvgForepaw_x', av
     """
     TODO
     """
-    #
+    # TODO: consider deprecation for a more genrealized function later
     # Arg checking
     check_arg.ensure_type(df, pd.DataFrame)
     forepaw_left, forepaw_right = config.get_part('FOREPAW_LEFT'), config.get_part('FOREPAW_RIGHT')
@@ -82,11 +102,13 @@ def attach_average_forepaw_xy(df: pd.DataFrame, avg_forepaw_x='AvgForepaw_x', av
     # Resolve kwargs
     df = df.copy() if copy else df
 
-    # Execute
+    # Execute #
+    # Grab data
     forepaw_left_xy = df[[f'{forepaw_left}_x', f'{forepaw_left}_y']].values
     forepaw_right_xy = df[[f'{forepaw_right}_x', f'{forepaw_right}_y']].values
-    avg_forepaw_xy: np.ndarray = np.array(
-        list(map(average_vector_between_n_vectors, forepaw_left_xy, forepaw_right_xy)))
+
+    # Use vector solution to quickly generate 2-d array for avg forepaw locations for x and y at each time point
+    avg_forepaw_xy: np.ndarray = np.array(list(map(average_vector_between_n_vectors, forepaw_left_xy, forepaw_right_xy)))
 
     # Create DataFrame from result, attach to existing
     df_avg = pd.DataFrame(avg_forepaw_xy, columns=[avg_forepaw_x, avg_forepaw_y])
@@ -95,81 +117,53 @@ def attach_average_forepaw_xy(df: pd.DataFrame, avg_forepaw_x='AvgForepaw_x', av
     return df
 
 
-def distance_from_left_shoulder_to_nose(df, copy=False) -> pd.DataFrame:
+def average_xy_between_2_features(df):
+    # TODO: low: implement: a more universal function to attach_average_forepaw_xy() and attach_average_hindpaw_xy()
+
+    return df
+
+
+def attach_velocity_of_feature(df: pd.DataFrame, feature, secs_between_points: float, infer_feature_name_from_config=False, copy=False):
+    # Check args
+    check_arg.ensure_type(df, pd.DataFrame)
+    check_arg.ensure_type(feature, str)
+    # Resolve kwargs
+    feature = config.get_part(feature) if infer_feature_name_from_config else feature
+    df = df.copy() if copy else df
+    # Execute
+    # TODO: HIGH
+
+    return df
+
+
+def attach_distance_from_forepaw_left_to_nose(df, new_feature_name='distLeftShoulderToNose', copy=False) -> pd.DataFrame:
     """
+    Attaches new column to DataFrame with the distance from left shoulder to nose
 
     :param df:
+    :param new_feature_name: (str)
     :param copy:
     :return:
     """
+    #  TODO: MED: DEPRECATE THIS FUNCTION! use the generalized function in favour of this
     # Arg checking
     check_arg.ensure_type(df, pd.DataFrame)
+    forepaw_left = config.get_part('FOREPAW_LEFT')
+    nosetip = config.get_part('NOSETIP')
+    for feat, xy in itertools.product((forepaw_left, nosetip), ['x', 'y']):
+        feat = f'{feat}_{xy}'
+        if feat not in df.columns:
+            err_missing_feat = f'The feature "{feat}" is required but was not found as a column in the data. ' \
+                               f'Columns = {list(df.columns)}'
+            logging_bsoid.log_then_raise(err_missing_feat, logger, KeyError)
     # Kwarg resolution
     df = df.copy() if copy else df
     # Execute
-    # TODO: med/high: implement
+    forepaw_left_arr = df[[f'{forepaw_left}_x', f'{forepaw_left}_y']].values
+    nosetip_arr = df[[f'{nosetip}_x', f'{nosetip}_y']]. values
+    distances_arr = np.array(list(map(distance_between_two_arrays, forepaw_left_arr, nosetip_arr)))
+    df[new_feature_name] = distances_arr
 
-    return df
-
-
-def distance_from_right_shoulder_to_nose(df, feature_name='TODO:', copy=False):
-    # Arg checking
-    check_arg.ensure_type(df, pd.DataFrame)
-    # Kwarg resolution
-    df = df.copy() if copy else df
-    # Execute
-    # TODO: med/high: implement
-    return df
-
-
-def attach_distance_from_forepaw_left_to_hindpaw_left(df, forepaw_left=config.get_part('FOREPAW_LEFT'), hindpaw_left=config.get_part('HINDPAW_LEFT'), copy=False):
-    # Arg checking
-    check_arg.ensure_type(df, pd.DataFrame)
-    if forepaw_left not in df.columns:
-        err_missing_forepaw_left = f'Missing forpaw left from columns. Forepaw left = "{forepaw_left}" ' \
-                                   f'and columns are: {list(df.columns)}'
-        logger.error(err_missing_forepaw_left)
-        raise ValueError(err_missing_forepaw_left)
-    if hindpaw_left not in df.columns:
-        err_missing_hindpaw_left = f'Missing hindpaw left from columns. Hindpaw left = "{hindpaw_left}" ' \
-                                   f'and columns are: {list(df.columns)}'
-        logger.error(err_missing_hindpaw_left)
-        raise ValueError(err_missing_hindpaw_left)
-    # Kwarg resolution
-    df = df.copy() if copy else df
-    # Execute
-    # TODO: med/high: implement
-
-    return df
-
-
-def distance_from_forepaw_right_to_hindpaw_right(df, copy=False):
-    # Arg checking
-    check_arg.ensure_type(df, pd.DataFrame)
-    # Kwarg resolution
-    df = df.copy() if copy else df
-    # Execute
-    # TODO: med/high: implement
-    return df
-
-
-def distance_nosetip_to_avg_hindpaw(df, copy=False):
-    # Arg checking
-    check_arg.ensure_type(df, pd.DataFrame)
-    # Kwarg resolution
-    df = df.copy() if copy else df
-    # Execute
-    # TODO: med/high: implement
-    return df
-
-
-def velocity_average_forepaws(df, copy=False):
-    # Arg checking
-    check_arg.ensure_type(df, pd.DataFrame)
-    # Kwarg resolution
-    df = df.copy() if copy else df
-    # Execute
-    # TODO: med/high: implement
     return df
 
 
@@ -182,9 +176,12 @@ def distance_between_two_arrays(arr1, arr2) -> float:
     :param arr2:
     :return:
     """
-    dist = np.sum((arr1 - arr2)**2)**0.5
+    # Arg checking
+    # TODO: test for same shape b/w arrays
 
-    return dist
+    # Execute
+    distance = (np.sum((arr1 - arr2)**2))**0.5
+    return distance
 
 
 #### New, reworked feature engineer from previous authors ############################
@@ -1384,6 +1381,24 @@ if __name__ == '__main__':
     # dfn = pd.DataFrame(data_n, columns=['nose_x', 'nose_y'])
     df = pd.concat([dfl, dfn], axis=1)
     print(attach_average_hindpaw_xy(df).to_string())
+
+
+    data_l = [[1, 2, ],
+              [3, 4],
+              [5, 6]]
+    arr1 = np.array(data_l)
+    data_n = [[101, 102],
+              [103, 104],
+              [105, 106]]
+    arr2 = np.array(data_n)
+    dfl = pd.DataFrame(data_l, columns=[f'{config.get_part("NOSETIP")}_x', f"{config.get_part('HINDPAW_LEFT')}_y"])
+    dfn = pd.DataFrame(data_n, columns=[f'{config.get_part("FOREPAW_LEFT")}_x', f"{config.get_part('HINDPAW_RIGHT')}_y"])
+
+    # dfn = pd.DataFrame(data_n, columns=['nose_x', 'nose_y'])
+    df = pd.concat([dfl, dfn], axis=1)
+    print(attach_distance_from_forepaw_left_to_nose(df).to_string())
+
+
 
 
     #
