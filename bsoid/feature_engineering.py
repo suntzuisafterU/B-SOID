@@ -64,7 +64,7 @@ def attach_average_hindpaw_xy(df: pd.DataFrame, avg_hindpaw_x='AvgHindpaw_x', av
     return df
 
 
-def attach_distance_between_2_feats(df, feature_1, feature_2, resultant_feature_name, resolve_features_with_config_ini=False, copy=False):
+def attach_distance_between_2_feats(df, feature_1, feature_2, resultant_feature_name, resolve_features_with_config_ini=False, copy=False) -> pd.DataFrame:
     """
 
     :param df: (DataFrame)
@@ -77,12 +77,24 @@ def attach_distance_between_2_feats(df, feature_1, feature_2, resultant_feature_
     """
     # Arg checking
     check_arg.ensure_type(df, pd.DataFrame)
+    feature_1 = config.get_part(feature_1) if resolve_features_with_config_ini else feature_1
+    feature_2 = config.get_part(feature_2) if resolve_features_with_config_ini else feature_2
 
-    # Kwarg resolution
+    for feat, xy in itertools.product((feature_1, feature_2), ['x', 'y']):
+        if f'{feat}_{xy}' not in df.columns:
+            err_missing_feature = f'{logging_bsoid.get_current_function()}(): missing feature column "{feat}_{xy}", so cannot calculate avg position. Columns = {list(df.columns)}'
+            logging_bsoid.log_then_raise(err_missing_feature, logger, KeyError)
+    # Resolve kwargs
     df = df.copy() if copy else df
     # Execute
+    feature_1_xy_arr = df[[f'{feature_1}_x', f'{feature_1}_y']].values
+    feature_2_xy_arr = df[[f'{feature_2}_x', f'{feature_2}_y']].values
 
-    # TODO: high priority # <---------------------------------------------------------------------------------------------------------------------------------
+    distance_between_features_array: np.ndarray = np.array(list(map(distance_between_two_arrays, feature_1_xy_arr, feature_2_xy_arr)))
+    # Create DataFrame from result, attach to existing data
+    df_avg = pd.DataFrame(distance_between_features_array, columns=[resultant_feature_name, ])
+    df = pd.concat([df, df_avg], axis=1)
+
     return df
 
 
@@ -117,13 +129,31 @@ def attach_average_forepaw_xy(df: pd.DataFrame, avg_forepaw_x='AvgForepaw_x', av
     return df
 
 
-def average_xy_between_2_features(df):
-    # TODO: low: implement: a more universal function to attach_average_forepaw_xy() and attach_average_hindpaw_xy()
+def average_xy_between_2_features(df: pd.DataFrame, feature1, feature2, result_feature_prefix, copy=False) -> pd.DataFrame:
+    """
+    Returns 2-d array where the average location between feature1 and feature2
+    """
+    # Arg checking
+    check_arg.ensure_type(df, pd.DataFrame)
+    for feat, xy in itertools.product((feature1, feature2), ['x', 'y']):
+        if f'{feat}_{xy}' not in df.columns:
+            err_missing_feature = f'{logging_bsoid.get_current_function()}(): missing feature column "{feat}_{xy}", ' \
+                                  f'so cannot calculate avg position. Columns = {list(df.columns)}'
+            logging_bsoid.log_then_raise(err_missing_feature, logger, KeyError)
+    # Resolve kwargs
+    df = df.copy() if copy else df
+    # Execute
+    feature1_xy_arr = df[[f'{feature1}_x', f'{feature1}_y']].values
+    feature2_xy_arr = df[[f'{feature2}_x', f'{feature2}_y']].values
+    avg_feature1_feature2_xy_arr: np.ndarray = np.array(list(map(average_vector_between_n_vectors, feature1_xy_arr, feature2_xy_arr)))
+    # Create DataFrame from result, attach to existing data
+    df_avg = pd.DataFrame(avg_feature1_feature2_xy_arr, columns=[f'{result_feature_prefix}_x', f'{result_feature_prefix}_y'])
+    df = pd.concat([df, df_avg], axis=1)
 
     return df
 
 
-def attach_velocity_of_feature(df: pd.DataFrame, feature, secs_between_points: float, infer_feature_name_from_config=False, copy=False) -> pd.DataFrame:
+def attach_velocity_of_feature(df: pd.DataFrame, feature, secs_between_points: float, new_feature_prefix='veloc', infer_feature_name_from_config=False, copy=False) -> pd.DataFrame:
     """"""  # TODO: low
     # Check args
     check_arg.ensure_type(df, pd.DataFrame)
@@ -132,7 +162,8 @@ def attach_velocity_of_feature(df: pd.DataFrame, feature, secs_between_points: f
     feature = config.get_part(feature) if infer_feature_name_from_config else feature
     df = df.copy() if copy else df
     # Execute
-    # TODO: HIGH
+    velocity_array = velocity_of_xy_feature(df[[f'{feature}_x', f'{feature}_y']], secs_between_points)
+    df[f'{new_feature_prefix}{feature}'] = velocity_array
 
     return df
 
@@ -168,7 +199,7 @@ def attach_distance_from_forepaw_left_to_nose(df, new_feature_name='distLeftShou
     return df
 
 
-### Numpy array feature creation (TODO: rename this section)
+### Numpy array feature creation (TODO: rename this section?)
 
 def distance_between_two_arrays(arr1, arr2) -> float:
     """
@@ -183,6 +214,36 @@ def distance_between_two_arrays(arr1, arr2) -> float:
     # Execute
     distance = (np.sum((arr1 - arr2)**2))**0.5
     return distance
+
+
+def velocity_of_xy_feature(arr, secs_between_rows) -> np.ndarray:
+    """
+    outputs a 1-d array of velocities of each row
+    since v(xy1) = (xy1 - xy0) / (t1 - t0), we will also need the time between each row
+    """
+    # Arg checking
+    check_arg.ensure_type(arr, np.ndarray)
+    # TODO: add array shape check (should be shape of (n_rows, 2 columns)
+    # Execute
+    # TODO: low: implement a vectorized function later
+    veloc_values = [np.NaN, ]  # velocity cannot be determined for t0
+    for i in range(1, arr.shape[0]):
+        veloc_i = distance_between_two_arrays(arr[i], arr[i-1]) / secs_between_rows
+        veloc_values.append(veloc_i)
+
+    # Last minute result checking
+    if len(veloc_values) != arr.shape[0]:
+        err_mismatch_input_output = f'The length of the input array and the length of the ' \
+                                    f'output array do not match. This is incorrect. Input ' \
+                                    f'array length = {arr.shape[0]}, and output array length = {len(veloc_values)}'
+        logging_bsoid.log_then_raise(err_mismatch_input_output, logger, ValueError)
+
+    veloc_array = np.array(veloc_values)
+    if veloc_array.shape[1] != 1:
+        err_incorrect_columns = f'The return array should just have one column of velocities but an incorrect number of columns was discovered. Number of columns = {veloc_array.shape[1]} (return array shape = {veloc_array.shape}).'
+        logging_bsoid.log_then_raise(err_incorrect_columns, logger, ValueError)
+
+    return veloc_array
 
 
 ### Binning
