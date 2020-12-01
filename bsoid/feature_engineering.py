@@ -123,7 +123,8 @@ def average_xy_between_2_features(df):
     return df
 
 
-def attach_velocity_of_feature(df: pd.DataFrame, feature, secs_between_points: float, infer_feature_name_from_config=False, copy=False):
+def attach_velocity_of_feature(df: pd.DataFrame, feature, secs_between_points: float, infer_feature_name_from_config=False, copy=False) -> pd.DataFrame:
+    """"""  # TODO: low
     # Check args
     check_arg.ensure_type(df, pd.DataFrame)
     check_arg.ensure_type(feature, str)
@@ -138,7 +139,7 @@ def attach_velocity_of_feature(df: pd.DataFrame, feature, secs_between_points: f
 
 def attach_distance_from_forepaw_left_to_nose(df, new_feature_name='distLeftShoulderToNose', copy=False) -> pd.DataFrame:
     """
-    Attaches new column to DataFrame with the distance from left shoulder to nose
+    Attaches new column to DataFrame with the distance from left forepaw to nose
 
     :param df:
     :param new_feature_name: (str)
@@ -182,6 +183,82 @@ def distance_between_two_arrays(arr1, arr2) -> float:
     # Execute
     distance = (np.sum((arr1 - arr2)**2))**0.5
     return distance
+
+
+### Binning
+def average_values_over_moving_window(data, method, n_frames: int) -> np.ndarray:
+    # Arg checking
+    valid_methods: set = {'avg', 'sum', 'mean'}
+    check_arg.ensure_type(method, str)
+    if method not in valid_methods:
+        err = f'Input method ({method}) was not a valid method- to apply to a feature. Valid methods: {valid_methods}'
+        logger.error(err)
+        raise ValueError(err)
+    if not isinstance(n_frames, int):
+        type_err = f'Invalid type found for n_Frames TODO elaborate. FOund type: {type(n_frames)}'
+        logger.error(type_err)
+        raise TypeError(type_err)
+    # Arg resolution
+    if method in {'avg', 'mean', }:
+        averaging_function = statistics.mean
+    elif method == 'sum':
+        averaging_function = statistics.sum_args
+    else: raise TypeError(f'{inspect.stack()[0][3]}(): This should never be read.')
+    #
+    if isinstance(data, pd.Series):
+        data = data.values
+    # Do
+    iterators = itertools.tee(data, n_frames)
+    for i in range(len(iterators)):
+        for _ in range(i):
+            next(iterators[i], None)
+
+    # TODO: rename `asdf`
+    asdf = [averaging_function(*iters_tuple) for iters_tuple in itertools.zip_longest(*iterators, fillvalue=float('nan'))]
+
+    return_array = np.array(asdf)
+
+    return return_array
+
+
+def integrate_df_feature_into_bins(df, feature: str, method: str, n_frames: int, copy: bool = False) -> pd.DataFrame:
+    """ *NEW*
+    Use old algorithm to integrate features
+    :param df:
+    :param feature:
+    :param method:
+    :param n_frames:
+    :param copy: (bool)
+    :return:
+    """
+    # Arg checking
+    check_arg.ensure_type(df, pd.DataFrame)
+    check_arg.ensure_type(method, str)
+    check_arg.ensure_type(n_frames, int)
+    valid_methods: set = {'avg', 'sum', }
+
+    if method not in valid_methods:
+        err = f'Input method ({method}) was not a valid method- to apply to a feature. Valid methods: {valid_methods}'
+        logger.error(err)
+        raise ValueError(err)
+    if feature not in df.columns:
+        err = f'{logging_bsoid.get_current_function()}(): TODO: feature not found. Cannot integrate into ?ms bins.'
+        logger.error(err)
+        raise ValueError(err)
+
+    # Kwarg resolution
+    df = df.copy() if copy else df
+
+    # Execute
+    input_cols = list(df.columns)
+
+    arr_result = np.zeros(math.ceil(len(df)/n_frames))
+    data_of_interest = df[feature].values
+    for i in range(0, len(df), n_frames):
+        # TODO: HIGH
+        pass
+
+    return df
 
 
 #### New, reworked feature engineer from previous authors ############################
@@ -836,81 +913,6 @@ def engineer_7_features_dataframe_MISSING_1_ROW(df: pd.DataFrame, features_names
         df_engineered_features['source'] = source
 
     return df_engineered_features
-
-
-def integrate_df_feature_into_bins(df, feature: str, method: str, n_frames: int, copy: bool = False) -> pd.DataFrame:
-    """ *NEW*
-    Use old algorithm to integrate features
-    :param df:
-    :param feature:
-    :param method:
-    :param n_frames:
-    :param copy: (bool)
-    :return:
-    """
-    # Arg checking
-    check_arg.ensure_type(df, pd.DataFrame)
-    check_arg.ensure_type(method, str)
-    check_arg.ensure_type(n_frames, int)
-    valid_methods: set = {'avg', 'sum', }
-
-    if method not in valid_methods:
-        err = f'Input method ({method}) was not a valid method- to apply to a feature. Valid methods: {valid_methods}'
-        logger.error(err)
-        raise ValueError(err)
-    if feature not in df.columns:
-        err = f'{logging_bsoid.get_current_function()}(): TODO: feature not found. Cannot integrate into ?ms bins.'
-        logger.error(err)
-        raise ValueError(err)
-
-    # Kwarg resolution
-    df = df.copy() if copy else df
-
-    # Execute
-    input_cols = list(df.columns)
-
-    arr_result = np.zeros(math.ceil(len(df)/n_frames))
-    data_of_interest = df[feature].values
-    for i in range(0, len(df), n_frames):
-        # TODO: HIGH
-        pass
-
-    return df
-
-
-def average_values_over_moving_window(data, method, n_frames: int) -> np.ndarray:
-    # Arg checking
-    valid_methods: set = {'avg', 'sum', 'mean'}
-    check_arg.ensure_type(method, str)
-    if method not in valid_methods:
-        err = f'Input method ({method}) was not a valid method- to apply to a feature. Valid methods: {valid_methods}'
-        logger.error(err)
-        raise ValueError(err)
-    if not isinstance(n_frames, int):
-        type_err = f'Invalid type found for n_Frames TODO elaborate. FOund type: {type(n_frames)}'
-        logger.error(type_err)
-        raise TypeError(type_err)
-    # Arg resolution
-    if method in {'avg', 'mean', }:
-        averaging_function = statistics.mean
-    elif method == 'sum':
-        averaging_function = statistics.sum_args
-    else: raise TypeError(f'{inspect.stack()[0][3]}(): This should never be read.')
-    #
-    if isinstance(data, pd.Series):
-        data = data.values
-    # Do
-    iterators = itertools.tee(data, n_frames)
-    for i in range(len(iterators)):
-        for _ in range(i):
-            next(iterators[i], None)
-
-    # TODO: rename `asdf`
-    asdf = [averaging_function(*iters_tuple) for iters_tuple in itertools.zip_longest(*iterators, fillvalue=float('nan'))]
-
-    return_array = np.array(asdf)
-
-    return return_array
 
 
 ### OLD ################################################################################################################
