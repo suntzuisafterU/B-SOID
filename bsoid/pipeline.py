@@ -1148,6 +1148,91 @@ class PipelineEPM(BasePipeline):
         return df_features
 
 
+class PipelineFlex(BasePipeline):
+
+    # TODO: WIP: creating a flexible class to use with streamlit that allows for flexible feature selection
+
+    def engineer_features(self, data: pd.DataFrame):
+         # TODO
+        return data
+
+
+class PipelineTim(BasePipeline):
+    """
+
+    """
+
+    feat_name_dist_forepawleft_nosetip = 'distForepawLeftNosetip'
+    feat_name_dist_forepawright_nosetip = 'distForepawRightNosetip'
+    feat_name_dist_forepawLeft_hindpawLeft = 'distForepawLeftHindpawLeft'
+    feat_name_dist_forepawRight_hindpawRight = 'distForepawRightHindpawRight'
+    feat_name_dist_AvgHindpaw_Nosetip = 'distAvgHindpawNoseTip'
+    feat_name_dist_AvgForepaw_NoseTip = 'distAvgForepawNoseTip'
+    feat_name_velocity_AvgForepaw = 'velocAvgForepaw'
+    all_features = [
+        feat_name_dist_forepawleft_nosetip,
+        feat_name_dist_forepawright_nosetip,
+        feat_name_dist_forepawLeft_hindpawLeft,
+        feat_name_dist_forepawRight_hindpawRight,
+        feat_name_dist_AvgHindpaw_Nosetip ,
+        feat_name_dist_AvgForepaw_NoseTip,
+        feat_name_velocity_AvgForepaw,
+    ]
+
+    def engineer_features(self, in_df: pd.DataFrame):
+        # TODO: WIP
+        """
+        # Head dips
+        1. d(forepaw left to nose)
+        2. d(forepaw right to nose)
+        # Rears
+        3. d(forepaw left to hindpaw left)
+        4. d(forepaw right to hindpaw right)
+        5. d(nose to avg hindpaw)
+        # Stretch attends
+        6. d(avg hindpaw to nose) - same as #5
+        7. d(avg forepaw to nose)
+        8. v(avgForepaw)
+
+        """
+        # Arg Checking
+        check_arg.ensure_type(in_df, pd.DataFrame)
+        # Execute
+        df = in_df.sort_values('frame').copy()
+        # Filter
+        df, _ = feature_engineering.adaptively_filter_dlc_output(df)
+        # Engineer features
+        # 1
+        df = feature_engineering.attach_distance_between_2_feats(df, 'FOREPAW_LEFT', 'NOSETIP', self.feat_name_dist_forepawleft_nosetip, resolve_features_with_config_ini=True)
+        # 2
+        df = feature_engineering.attach_distance_between_2_feats(df, 'FOREPAW_RIGHT', 'NOSETIP', self.feat_name_dist_forepawright_nosetip, resolve_features_with_config_ini=True)
+        # 3
+        df = feature_engineering.attach_distance_between_2_feats(df, 'FOREPAW_LEFT', 'HINDPAW_LEFT', self.feat_name_dist_forepawLeft_hindpawLeft, resolve_features_with_config_ini=True)
+        # 4
+        df = feature_engineering.attach_distance_between_2_feats(df, 'FOREPAW_RIGHT', 'HINDPAW_RIGHT', self.feat_name_dist_forepawRight_hindpawRight, resolve_features_with_config_ini=True)
+        # 5, 6
+        df = feature_engineering.attach_average_forepaw_xy(df)
+        df = feature_engineering.attach_average_hindpaw_xy(df)
+        df = feature_engineering.attach_distance_between_2_feats(df, 'AvgHindpaw', config.get_part('NOSETIP'), self.feat_name_dist_AvgHindpaw_Nosetip)
+        # 7
+        df = feature_engineering.attach_distance_between_2_feats(df, 'AvgForepaw', config.get_part('NOSETIP'), self.feat_name_dist_AvgForepaw_NoseTip)
+        # 8
+        # TODO: velocity of avgforepaw
+        df = feature_engineering.attach_velocity_of_feature(df, 'AvgForepaw', secs_between_points=1/config.VIDEO_FPS)
+        # Binning
+        # TODO: binning
+
+        # Debug effort/check: ensure columns don't get dropped by accident
+        for col in in_df.columns:
+            if col not in list(df.columns):
+                err_missing_col = f'Missing col should not have been lost in feature engineering but was. ' \
+                                  f'Column = {col}.'  # TODO: low: improve err message
+                logger.error(err_missing_col)
+                raise KeyError(err_missing_col)
+
+        return df
+
+
 ### Accessory functions ###
 
 def generate_pipeline_filename(name: str):
