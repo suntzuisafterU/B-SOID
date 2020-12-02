@@ -331,13 +331,13 @@ def integrate_df_feature_into_bins(df: pd.DataFrame, map_features_to_bin_methods
     """
     TODO
     :param df: (DataFrame)
-    :param features: Dictionary of features and associated averaging methods. If a column name in the
-        argument DataFrame (`df`) is NOT specified in this mapping, then
+    :param map_features_to_bin_methods: Dictionary of features and associated averaging methods. If a column name in the
+        argument DataFrame (`df`) is NOT specified in this mapping, then the first value in that batch of rows
+        will be chosen
         e.g.:   {'velocity': 'sum',
                 'distance_1': 'avg',
                 'distance_2': 'first', }
 
-    :param method:
     :param n_rows: (int)
     :param copy: (bool)
     :return:

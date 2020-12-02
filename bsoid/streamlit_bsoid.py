@@ -381,19 +381,21 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_path):
     if button_see_rebuild_options:  # Click button, flip state
         file_session[key_button_see_rebuild_options] = not file_session[key_button_see_rebuild_options]
     if file_session[key_button_see_rebuild_options]:  # Now check on value and display accordingly
+        st.markdown('---')
+        st.selectbox('select features', p.all_features)  # TODO: develop this feature selection tool!
         st.markdown('------------------------------------------------------------------------------------')
         st.markdown('## Model Parameters')
         st.markdown('### Gaussian Mixture Model Parameters')
         slider_gmm_n_components = st.slider(f'GMM Components (clusters)', value=p.gmm_n_components, min_value=2, max_value=40, step=1)
         # TODO: low: add GMM: probability = True
         # TODO: low: add: GMM: n_jobs = -2
+
         ### Other model info ###
         st.markdown('### Other model information')
         input_k_fold_cross_val = st.number_input(f'Set K for K-fold cross validation', value=int(p.cross_validation_k), min_value=2, format='%i')  # TODO: low: add max_value= number of data points (for k=n)?
         # TODO: med/high: add number input for % holdout for test/train split
 
         # Hack solution: specify params here so that the variable exists even though advanced params section not opened.
-
 
         st.markdown('')
         ### Advanced Parameters ###

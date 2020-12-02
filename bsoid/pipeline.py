@@ -15,7 +15,7 @@ TODOs:
 Add attrib checking for engineer_features? https://duckduckgo.com/?t=ffab&q=get+all+classes+within+a+file+python&ia=web&iax=qa
 
 """
-from bhtsne import tsne as TSNE_bhtsne
+# from bhtsne import tsne as TSNE_bhtsne
 from sklearn.manifold import TSNE as TSNE_sklearn
 from sklearn.metrics import accuracy_score
 from sklearn.mixture import GaussianMixture
@@ -103,7 +103,7 @@ class PipelineAttributeHolder(object):
     features_which_average_by_mean = ['DistFrontPawsTailbaseRelativeBodyLength',
                                       'DistBackPawsBaseTailRelativeBodyLength', 'InterforepawDistance', 'BodyLength', ]
     features_which_average_by_sum = ['SnoutToTailbaseChangeInAngle', 'SnoutSpeed', 'TailbaseSpeed']
-    features_names_7: List[str] = features_which_average_by_mean + features_which_average_by_sum
+    all_features = features_names_7 = tuple(features_which_average_by_mean + features_which_average_by_sum)
     test_col_name = 'is_test_data'
 
     label_0, label_1, label_2, label_3, label_4, label_5, label_6, label_7, label_8, label_9 = ['' for _ in range(10)]
@@ -615,13 +615,16 @@ class BasePipeline(PipelineAttributeHolder):
         check_arg.ensure_type(data, pd.DataFrame)
 
         # Do
-        if self.tsne_source == 'bhtsne':
-            arr_result = TSNE_bhtsne(
-                data[self.features_names_7],
-                dimensions=self.tsne_n_components,
-                perplexity=np.sqrt(len(self.features_names_7)),  # TODO: implement math somewhere else
-                rand_seed=self.random_state,
-            )
+        # TODO: uncommment this bhtsne later since it was originally commented-out because VCC distrib. problems
+        # if self.tsne_source == 'bhtsne':
+        #     arr_result = TSNE_bhtsne(
+        #         data[self.features_names_7],
+        #         dimensions=self.tsne_n_components,
+        #         perplexity=np.sqrt(len(self.features_names_7)),  # TODO: implement math somewhere else
+        #         rand_seed=self.random_state,
+        #     )
+        if False:
+            pass
         elif self.tsne_source == 'sklearn':
             # TODO: high: Save the TSNE object
             arr_result = TSNE_sklearn(
@@ -1169,7 +1172,7 @@ class PipelineTim(BasePipeline):
     feat_name_dist_AvgHindpaw_Nosetip = 'distAvgHindpawNoseTip'
     feat_name_dist_AvgForepaw_NoseTip = 'distAvgForepawNoseTip'
     feat_name_velocity_AvgForepaw = 'velocAvgForepaw'
-    all_features = [
+    all_features = (
         feat_name_dist_forepawleft_nosetip,
         feat_name_dist_forepawright_nosetip,
         feat_name_dist_forepawLeft_hindpawLeft,
@@ -1177,7 +1180,7 @@ class PipelineTim(BasePipeline):
         feat_name_dist_AvgHindpaw_Nosetip,
         feat_name_dist_AvgForepaw_NoseTip,
         feat_name_velocity_AvgForepaw,
-    ]
+    )
     n_rows_to_integrate_by: int = 3  # 3 = 3 frames = 100ms capture in a 30fps video. 100ms was used in original paper.
 
     def engineer_features(self, in_df: pd.DataFrame):
