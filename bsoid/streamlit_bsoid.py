@@ -382,7 +382,7 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_path):
         file_session[key_button_see_rebuild_options] = not file_session[key_button_see_rebuild_options]
     if file_session[key_button_see_rebuild_options]:  # Now check on value and display accordingly
         st.markdown('---')
-        st.selectbox('select features', p.all_features)  # TODO: develop this feature selection tool!
+        st.multiselect('select features', p.all_features, default=p.all_features)  # TODO: develop this feature selection tool!
         st.markdown('------------------------------------------------------------------------------------')
         st.markdown('## Model Parameters')
         st.markdown('### Gaussian Mixture Model Parameters')
