@@ -14,6 +14,7 @@ opencv-python
 openTSNE
 seaborn>=0.10.0
 scikit-learn>=0.22.1
+scipy>=1.5.2
 streamlit>=0.64.0
 tables
 tqdm>=4.46.0
