@@ -11,8 +11,7 @@ import pandas as pd
 import time
 
 # TODO: low: clean up imports
-from bsoid import classify, config, feature_engineering, io, logging_bsoid,\
-    streamlit_bsoid, train, util, videoprocessing, visuals
+from bsoid import classify, config, feature_engineering, io, logging_bsoid, streamlit_bsoid, util, videoprocessing, visuals  # train commented out because bhtsne missing on Ferrari
 from bsoid.config import OUTPUT_PATH, VIDEO_FPS
 
 
