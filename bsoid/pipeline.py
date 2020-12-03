@@ -23,7 +23,7 @@ from sklearn.model_selection import cross_val_score
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 from sklearn.utils import shuffle as sklearn_shuffle_dataframe
-from typing import Any, Dict, List, Optional, Tuple  # TODO: review all uses of Optional
+from typing import Any, Collection, Dict, List, Optional, Tuple, Union  # TODO: review all uses of Optional
 import inspect
 import joblib
 import numpy as np
@@ -540,7 +540,7 @@ class BasePipeline(PipelineAttributeHolder):
         Scales down features in place and does not keep original data.
         """
         # Check args
-        check_arg.ensure_type(features, list)
+        check_arg.ensure_type(features, list, tuple)
         check_arg.ensure_columns_in_DataFrame(df_data, features)
         # Execute
         if create_new_scaler:
@@ -554,7 +554,7 @@ class BasePipeline(PipelineAttributeHolder):
                 df_scaled_data[col] = df_data[col].values
         return df_scaled_data
 
-    def scale_transform_train_data(self, features: List[str] = None, create_new_scaler=True):
+    def scale_transform_train_data(self, features: Collection[str] = None, create_new_scaler=True):
         """
         Scales training data. By default, creates new scaler according to train
         data and stores it in pipeline
@@ -566,13 +566,13 @@ class BasePipeline(PipelineAttributeHolder):
         """
         # Queue up data to use
         if features is None:  # TODO: low: remove his if statement as a default feature
-            features = self.features_names_7
+            features = self.all_features
         df_features_train = self.df_features_train
         # Check args
-        check_arg.ensure_type(features, list)
+        check_arg.ensure_type(features, list, tuple)
         check_arg.ensure_columns_in_DataFrame(df_features_train, features)
         # Get scaled data
-        df_scaled_data = self._create_scaled_data(df_features_train, features, create_new_scaler=create_new_scaler)
+        df_scaled_data = self._create_scaled_data(df_features_train, list(features), create_new_scaler=create_new_scaler)
         check_arg.ensure_type(df_scaled_data, pd.DataFrame)  # Debugging effort. Remove later.
         # Save data. Return.
         self.df_features_train_scaled = df_scaled_data
@@ -587,10 +587,11 @@ class BasePipeline(PipelineAttributeHolder):
         """
         # Queue up data to use
         if features is None:
-            features = self.features_names_7
+            features = self.all_features
+        features = list(features)
         df_features_predict = self.df_features_predict
         # Check args
-        check_arg.ensure_type(features, list)
+        check_arg.ensure_type(features, list, tuple)
         check_arg.ensure_type(df_features_predict, pd.DataFrame)
         check_arg.ensure_columns_in_DataFrame(df_features_predict, features)
 
@@ -636,7 +637,7 @@ class BasePipeline(PipelineAttributeHolder):
                 early_exaggeration=self.tsne_early_exaggeration,
                 n_jobs=self.tsne_n_jobs,
                 verbose=self.tsne_verbose,
-            ).fit_transform(data[self.features_names_7])
+            ).fit_transform(data[list(self.all_features)])
         else:
             raise RuntimeError(f'Invalid TSNE source type fell through the cracks: {self.tsne_source}')
         return arr_result
@@ -675,7 +676,7 @@ class BasePipeline(PipelineAttributeHolder):
         )
         # Fit SVM to non-test data
         self._clf_svm.fit(
-            X=df.loc[~df[self.test_col_name]][self.features_names_7],  # TODO: too specific
+            X=df.loc[~df[self.test_col_name]][list(self.all_features)],  # TODO: too specific
             y=df.loc[~df[self.test_col_name]][self.gmm_assignment_col_name],
         )
         return self
@@ -701,7 +702,7 @@ class BasePipeline(PipelineAttributeHolder):
             self.engineer_features_train()
 
         # Scale data
-        self.scale_transform_train_data(features=self.features_names_7, create_new_scaler=True)
+        self.scale_transform_train_data(features=self.all_features, create_new_scaler=True)
 
         # TSNE -- create new dimensionally reduced data
         self.tsne_reduce_df_features_train()
@@ -718,21 +719,21 @@ class BasePipeline(PipelineAttributeHolder):
         # # Train SVM
         self.train_SVM()
         self.df_features_train_scaled[self.svm_assignment_col_name] = self.clf_svm.predict(
-            self.df_features_train_scaled[self.features_names_7].values)
+            self.df_features_train_scaled[list(self.all_features)].values)
         self.df_features_train_scaled[self.svm_assignment_col_name] = self.df_features_train_scaled[
             self.svm_assignment_col_name].astype(int)
 
         # # Get cross-val accuracy scores
         self._cross_val_scores = cross_val_score(
             self.clf_svm,
-            self.df_features_train_scaled[self.features_names_7],
+            self.df_features_train_scaled[list(self.all_features)],
             self.df_features_train_scaled[self.svm_assignment_col_name],
             cv=self.cross_validation_k,
         )
 
         df_features_train_scaled_test_data = self.df_features_train_scaled.loc[~self.df_features_train_scaled[self.test_col_name]]
         self._acc_score = accuracy_score(
-            y_pred=self.clf_svm.predict(df_features_train_scaled_test_data[self.features_names_7]),
+            y_pred=self.clf_svm.predict(df_features_train_scaled_test_data[list(self.all_features)]),
             y_true=df_features_train_scaled_test_data[self.svm_assignment_col_name].values)
         logger.debug(f'Pipeline train accuracy: {self.accuracy_score}')
 
@@ -764,7 +765,7 @@ class BasePipeline(PipelineAttributeHolder):
 
         # Add prediction labels
         self.df_features_predict_scaled[self.svm_assignment_col_name] = self.clf_svm.predict(
-            self.df_features_predict_scaled[self.features_names_7].values)
+            self.df_features_predict_scaled[list(self.all_features)].values)
 
         return self
 
@@ -1316,7 +1317,7 @@ if __name__ == '__main__':
     run = True
     if run:
         # Test build
-        nom = 'videoTest3adsddddddfasdf'
+        nom = 'deleteme'
         loc = 'C:\\Users\\killian\\Pictures'
         full_loc = os.path.join(loc, f'{nom}.pipeline')
         actual_save_loc = f'C:\\{nom}.pipeline'
