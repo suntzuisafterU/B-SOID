@@ -216,7 +216,7 @@ def show_pipeline_info(p: pipeline.PipelinePrime, pipeline_path, **kwargs):
     st.markdown(f'## Pipeline basic information')
     st.markdown(f'- Name: **{p.name}**')
     st.markdown(f'- Description: **{p.description}**')
-    st.markdown(f'- Local file location: **{kwargs.get("pipeline_path")}**')
+    st.markdown(f'- Local file location: **{pipeline_path}**')
     st.markdown(f'- Is the model built: **{p.is_built}**')
 
     ### Menu button: show more info
