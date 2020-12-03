@@ -55,7 +55,7 @@ key_button_show_example_videos_options = 'key_button_show_example_videos_options
 key_button_create_new_example_videos = 'key_button_create_new_example_videos'
 key_button_menu_label_entire_video = 'key_button_menu_label_entire_video'
 ### Page variables data ###
-streamlit_variables_dict = {  # Instantiate default variable values here
+streamlit_persitency_variables = {  # Instantiate default variable values here
     key_iteration_page_refresh_count: 0,
     key_button_show_adv_pipeline_information: False,
     key_button_see_rebuild_options: False,
@@ -82,7 +82,6 @@ streamlit_variables_dict = {  # Instantiate default variable values here
 def home(**kwargs):
     """
     The designated home page/entry point when Streamlit is used with B-SOiD.
-
     -------------
     kwargs
 
@@ -97,7 +96,7 @@ def home(**kwargs):
     """
     ### Set up initial variables
     global file_session
-    file_session = streamlit_session_state.get(**streamlit_variables_dict)
+    file_session = streamlit_session_state.get(**streamlit_persitency_variables)
     matplotlib.use('TkAgg')  # For allowing graphs to pop out as separate windows
     file_session[key_iteration_page_refresh_count] = file_session[key_iteration_page_refresh_count] + 1
     is_pipeline_loaded = False
@@ -315,7 +314,7 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_path):
                 # Add to pipeline, save
                 else:
                     p = p.add_train_data_source(input_new_data_source).save(os.path.dirname(pipeline_path))
-                    st.success(f'TODO: New training data added to pipeline successfully! Pipeline has been saved to .')  # TODO: finish statement. Add in suggestion to refresh page.
+                    st.success(f'TODO: New training data added to pipeline successfully! Pipeline has been saved to: "{pipeline_path}". Refresh the page to see changes.')  # TODO: finish statement. Add in suggestion to refresh page.
                     file_session[key_button_add_train_data_source] = False  # Reset menu to collapsed state
             st.markdown('')
         # 2/2: Button for adding data to prediction set
@@ -384,9 +383,11 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_path):
     if file_session[key_button_see_rebuild_options]:  # Now check on value and display accordingly
         st.markdown('------------------------------------------------------------------------------------')
         st.markdown('## Model Parameters')
-        st.markdown(f'### Select features')
-        st.multiselect('select features', p.all_features, default=p.all_features)  # TODO: develop this feature selection tool!
-        st.markdown('---')
+        # TODO: Low/Med: implement variable feature selection
+        # st.markdown(f'### Select features')
+        # st.multiselect('select features', p.all_features, default=p.all_features)  # TODO: develop this feature selection tool!
+        # st.markdown('---')
+
         st.markdown('### Gaussian Mixture Model Parameters')
         slider_gmm_n_components = st.slider(f'GMM Components (clusters)', value=p.gmm_n_components, min_value=2, max_value=40, step=1)
         # TODO: low: add GMM: probability = True
