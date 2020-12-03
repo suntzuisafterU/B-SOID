@@ -32,7 +32,7 @@ title = f'B-SOiD Streamlit app'
 valid_video_extensions = {'avi', 'mp4', }
 # Variables for buttons, drop-down menus, and other things
 start_new_project_option_text, load_existing_project_option_text = 'Create new', 'Load existing'
-pipeline_prime_name, pipeline_epm_name = 'PipelinePrime', 'pipeline_epm_name'
+pipeline_prime_name, pipeline_epm_name, pipelineTimName = 'PipelinePrime', 'pipeline_epm_name', 'PipelineTim'
 training_data_option, predict_data_option = 'Training Data', 'Predict Data'
 key_iteration_page_refresh_count = 'key_iteration_page_refresh_count'
 
@@ -129,8 +129,7 @@ def home(**kwargs):
         # Option: Start new project
         if start_new_opt == start_new_project_option_text:
             st.markdown(f'## Create new project pipeline')
-            select_pipe_type = st.selectbox('Select a pipeline implementation',
-                                            options=('', pipeline_prime_name, pipeline_epm_name))
+            select_pipe_type = st.selectbox('Select a pipeline implementation', options=('', pipeline_prime_name, pipeline_epm_name, pipelineTimName))
             if select_pipe_type:
                 text_input_new_project_name = st.text_input(
                     'Enter a name for your project pipeline. Please only use letters, numbers, and underscores.')
@@ -154,6 +153,8 @@ def home(**kwargs):
                         p = pipeline.PipelinePrime(text_input_new_project_name).save(path_to_pipeline_dir)
                     elif select_pipe_type == pipeline_epm_name:
                         p = pipeline.PipelineEPM(text_input_new_project_name).save(path_to_pipeline_dir)
+                    elif select_pipe_type == pipelineTimName:
+                        p = pipeline.PipelineTim(text_input_new_project_name).save(path_to_pipeline_dir)
                     else:
                         st.error(RuntimeError('Something unexpected happened'))
                         st.markdown(f'traceback: {traceback.format_exc()}')
@@ -381,10 +382,11 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_path):
     if button_see_rebuild_options:  # Click button, flip state
         file_session[key_button_see_rebuild_options] = not file_session[key_button_see_rebuild_options]
     if file_session[key_button_see_rebuild_options]:  # Now check on value and display accordingly
-        st.markdown('---')
-        st.multiselect('select features', p.all_features, default=p.all_features)  # TODO: develop this feature selection tool!
         st.markdown('------------------------------------------------------------------------------------')
         st.markdown('## Model Parameters')
+        st.markdown(f'### Select features')
+        st.multiselect('select features', p.all_features, default=p.all_features)  # TODO: develop this feature selection tool!
+        st.markdown('---')
         st.markdown('### Gaussian Mixture Model Parameters')
         slider_gmm_n_components = st.slider(f'GMM Components (clusters)', value=p.gmm_n_components, min_value=2, max_value=40, step=1)
         # TODO: low: add GMM: probability = True
