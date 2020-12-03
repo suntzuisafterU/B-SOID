@@ -103,7 +103,7 @@ class PipelineAttributeHolder(object):
     features_which_average_by_mean = ['DistFrontPawsTailbaseRelativeBodyLength',
                                       'DistBackPawsBaseTailRelativeBodyLength', 'InterforepawDistance', 'BodyLength', ]
     features_which_average_by_sum = ['SnoutToTailbaseChangeInAngle', 'SnoutSpeed', 'TailbaseSpeed']
-    all_features = features_names_7 = tuple(features_which_average_by_mean + features_which_average_by_sum)
+    _all_features: Tuple[str] = tuple(features_which_average_by_mean + features_which_average_by_sum)
     test_col_name = 'is_test_data'
 
     label_0, label_1, label_2, label_3, label_4, label_5, label_6, label_7, label_8, label_9 = ['' for _ in range(10)]
@@ -186,12 +186,17 @@ class PipelineAttributeHolder(object):
     @property
     def raw_assignments(self):  # List[str]
         return self.raw_assignments
-
     @property
     def unique_assignments(self) -> List[any]:
         if len(self.df_features_train_scaled) > 0:
             return list(np.unique(self.df_features_train_scaled[self.svm_col].values))
         return []
+    @property
+    def all_features(self) -> Collection[str]:
+        return self._all_features
+    @property
+    def all_features_list(self) -> List[str]:
+        return list(self._all_features)
 
     # Setters
     def set_name(self, name: str):
@@ -614,7 +619,7 @@ class BasePipeline(PipelineAttributeHolder):
         """
         # Check args
         check_arg.ensure_type(data, pd.DataFrame)
-
+        check_arg.ensure_columns_in_DataFrame(data, self.all_features_list)
         # Do
         # TODO: uncommment this bhtsne later since it was originally commented-out because VCC distrib. problems
         # if self.tsne_source == 'bhtsne':
@@ -637,7 +642,7 @@ class BasePipeline(PipelineAttributeHolder):
                 early_exaggeration=self.tsne_early_exaggeration,
                 n_jobs=self.tsne_n_jobs,
                 verbose=self.tsne_verbose,
-            ).fit_transform(data[list(self.all_features)])
+            ).fit_transform(data[list(self.all_features_list)])
         else:
             raise RuntimeError(f'Invalid TSNE source type fell through the cracks: {self.tsne_source}')
         return arr_result
@@ -1173,7 +1178,7 @@ class PipelineTim(BasePipeline):
     feat_name_dist_AvgHindpaw_Nosetip = 'distAvgHindpawNoseTip'
     feat_name_dist_AvgForepaw_NoseTip = 'distAvgForepawNoseTip'
     feat_name_velocity_AvgForepaw = 'velocAvgForepaw'
-    all_features = (
+    _all_features = (
         feat_name_dist_forepawleft_nosetip,
         feat_name_dist_forepawright_nosetip,
         feat_name_dist_forepawLeft_hindpawLeft,
