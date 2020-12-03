@@ -900,6 +900,8 @@ class BasePipeline(PipelineAttributeHolder):
         labels = list(map(self.get_assignment_label, svm_assignment_values_array))
         frames = list(df_data['frame'].values)
         # Generate video with variables
+        logger.debug(f'labels indices example: {labels[:5]}')
+        logger.debug(f'Frame indices example: {frames[:5]}')
         videoprocessing.make_labeled_video_according_to_frame(   # labels_list: Union[List, Tuple], frames_indices_list: Union[List, Tuple], output_file_name: str, video_source: str, current_behaviour_list: List[str] = [], output_fps=15, fourcc='H264', output_dir=config.EXAMPLE_VIDEOS_OUTPUT_PATH, **kwargs):
             labels,
             frames,
@@ -1239,6 +1241,7 @@ class PipelineTim(BasePipeline):
             self.feat_name_dist_AvgForepaw_NoseTip: 'avg',
             self.feat_name_velocity_AvgForepaw: 'sum',
         }
+
         df = feature_engineering.integrate_df_feature_into_bins(df, map_feature_to_integrate_method, self.n_rows_to_integrate_by)
 
         # # Debug effort/check: ensure columns don't get dropped by accident
