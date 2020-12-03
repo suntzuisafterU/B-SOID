@@ -521,7 +521,7 @@ def review_behaviours(p, pipeline_file_path):
     example_videos_file_list: List[str] = [video_file_name for video_file_name in os.listdir(config.EXAMPLE_VIDEOS_OUTPUT_PATH) if video_file_name.split('.')[-1] in valid_video_extensions]  # # TODO: low/med: add user intervention on default path to check?
     videos_dict: Dict[str: str] = {**{'': ''}, **{video_file_name: os.path.join(config.EXAMPLE_VIDEOS_OUTPUT_PATH, video_file_name) for video_file_name in example_videos_file_list}}
 
-    video_selection: str = st.selectbox(label=f"Select video to view. Total videos found: {len(videos_dict)-1}", options=list(videos_dict.keys()))
+    video_selection: str = st.selectbox(label=f"Select video to view. Total videos found in folder '{config.EXAMPLE_VIDEOS_OUTPUT_PATH}': {len(videos_dict)-1}", options=list(videos_dict.keys()))
     if video_selection:
         try:
             st.video(get_video_bytes(videos_dict[video_selection]))
