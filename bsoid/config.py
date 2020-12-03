@@ -14,7 +14,6 @@ Another way to od it is using the object method:
     e.g.: input: config.get('section', 'key') -> output: 'value of interest'
 
 """
-### Imports
 from ast import literal_eval
 from pathlib import Path
 from typing import List
@@ -25,7 +24,6 @@ import pandas as pd
 import random
 import sys
 import time
-
 
 from bsoid import logging_bsoid
 
@@ -43,22 +41,23 @@ np.set_printoptions(threshold=1_000)
 
 # Fetch the B-SOiD project directory regardless of clone location
 BSOID_BASE_PROJECT_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-# Output directory to where you want the analysis to be stored
+# Set the default output directory to where outcomes are stored
 default_output_path = os.path.join(BSOID_BASE_PROJECT_PATH, 'output')
-# Set runtime string for consistency
+# Set runtime string to track when scripts are run
 runtime_timestr: str = time.strftime("%Y-%m-%d_%HH%MM")
-# Set loggers default vars
+# Set logger default variables
 default_log_folder_path = Path(BSOID_BASE_PROJECT_PATH, 'logs').absolute()
 default_log_file_name = 'default.log'
-# set default config file name
+# set default config file name from which this module will read. File assumed to be in base project directory.
 config_file_name = 'config.ini'
-valid_dlc_output_extensions = {'csv', 'h5'}
+#
+valid_dlc_output_extensions = {'csv', 'h5', }
 # Load up config file
 configuration = configparser.ConfigParser()
 configuration.read(os.path.join(BSOID_BASE_PROJECT_PATH, config_file_name))
 
 # Default variables asserts
-
+assert os.path.isdir(default_log_folder_path), f'log file save folder does not exist: {default_log_folder_path}'
 
 ### PATH ################################################################################
 DLC_PROJECT_PATH = configuration.get('PATH', 'DLC_PROJECT_PATH')
@@ -192,7 +191,7 @@ gmm_n_init = configuration.getint('EM/GMM', 'n_init')
 gmm_init_params = configuration.get('EM/GMM', 'init_params')
 gmm_verbose = configuration.getint('EM/GMM', 'verbose')
 gmm_verbose_interval = configuration.getint('EM/GMM', 'verbose_interval') \
-    if configuration.get('EM/GMM', 'verbose_interval') else 10  # 10 is the default
+    if configuration.get('EM/GMM', 'verbose_interval') else 10  # 10 is a default that can be changed
 EMGMM_PARAMS = {
     'n_components': gmm_n_components,
     'covariance_type': gmm_covariance_type,
