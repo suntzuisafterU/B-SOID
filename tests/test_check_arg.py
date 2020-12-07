@@ -21,14 +21,13 @@ class TestCheckArg(TestCase):
 
     def test__(self):
         # Arrange
-        self.assertRaises()
+        # self.assertRaises()
 
         # Act
 
         # Assert
 
         self.assertEqual(None, None)
-        return
 
 
 

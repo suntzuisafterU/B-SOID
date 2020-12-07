@@ -36,7 +36,7 @@ from bsoid import check_arg, config, statistics, logging_bsoid
 logger = config.initialize_logger(__name__)
 
 
-### Attach features to DataFrame
+### Attach features as columns to a DataFrame of DLC data
 
 def attach_average_hindpaw_xy(df: pd.DataFrame, avg_hindpaw_x='AvgHindpaw_x', avg_hindpaw_y='AvgHindpaw_y', copy=False) -> pd.DataFrame:
     # TODO: low: deprecate later with generalized xy averaging function
@@ -205,10 +205,8 @@ def attach_distance_from_forepaw_left_to_nose(df, new_feature_name='distLeftShou
 
 def distance_between_two_arrays(arr1, arr2) -> float:
     """
-
-    :param arr1:
-    :param arr2:
-    :return:
+    Calculates the distance between two arrays of 2-dimensions (1 row, 2 columns), assuming the first column in
+    both arrays is the x-data and the second column is the y-data. Returns float distance between the two arrays.
     """
     # Arg checking
     # TODO: low: test for same shape b/w arrays

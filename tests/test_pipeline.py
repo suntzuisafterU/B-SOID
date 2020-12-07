@@ -90,14 +90,12 @@ list_of_sources_after_addition = {num_of_sources_actually_this_after_addition}
         expected_amount_of_dataframes = 0
 
         # Act
-        actual_amount_of_dataframes = len(p._dfs_list_raw_train_data)
+        actual_amount_of_dataframes = len(p.training_data_sources)
 
         # Assert
         err_msg = f"""
 expected_amount_of_dataframes = {expected_amount_of_dataframes}
 actual_amount_of_dataframes = {actual_amount_of_dataframes}
-
-df (head) =  \n{[str(len(df))+'___'+df.to_string() for df in p._dfs_list_raw_train_data]}
 """
         self.assertEqual(expected_amount_of_dataframes, actual_amount_of_dataframes, err_msg)
 
@@ -125,11 +123,11 @@ p.train_data_files_paths = {p.train_data_files_paths}
         """
         # Arrange
         p = bsoid.pipeline.PipelinePrime('Test_65465465465asddsfasdfde34asdf')
-        num_sources_before_adding_any = len(p.train_data_files_paths)
+        num_sources_before_adding_any = len(p.training_data_sources)
 
         # Act
         p = p.add_train_data_source(csv_test_file_path)
-        num_sources_after_adding_sources = len(p.train_data_files_paths)
+        num_sources_after_adding_sources = len(p.training_data_sources)
 
         is_equal = num_sources_before_adding_any + 1 == num_sources_after_adding_sources
         # Assert
@@ -165,9 +163,9 @@ p.train_data_files_paths = {p.train_data_files_paths}
         """
         # Arrange
         p = bsoid.pipeline.PipelinePrime('APipelineName_asdffdfsdf123987')
-        expected_label = None
+        expected_label = ''
         # Act
-        actual_label = p.get_assignment_label(1)
+        actual_label = p.get_assignment_label(0)
         # Assert
         self.assertEqual(expected_label, actual_label)
 
