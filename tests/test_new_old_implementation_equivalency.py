@@ -25,7 +25,7 @@ class TestNewFunctionEquivalencyToLegacy(TestCase):
         # Arrange
         # # 1/2: Tee up functions to be compared
         bsoid_py_extract_function__as_is: callable = \
-            bsoid.classify_LEGACY.bsoid_extract_features_py_without_assuming_100ms_bin_integration
+            bsoid.classify.bsoid_extract_features_py_without_assuming_100ms_bin_integration
         new_feature_extraction_function: callable = bsoid.feature_engineering.extract_7_features_bsoid_tsne_py
         # # 2/2: Set up data for function use
         df_input_data = pd.read_csv(test_file_name, nrows=bsoid.config.max_rows_to_read_in_from_csv)
