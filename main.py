@@ -7,9 +7,7 @@ TODO: Commands to implement:
     - clear output folder (+ prompt for confirm)
 """
 
-from typing import Any, Dict, List, Tuple
 import argparse
-# import sys
 
 import bsoid
 from bsoid.pipeline import *  # This line is required for Streamlit to load Pipeline objects. Do not delete. For a more robust solution, consider: https://rebeccabilbro.github.io/module-main-has-no-attribute/
@@ -34,8 +32,6 @@ map_command_to_func = {
 
 ########################################################################################################################
 
-# TODO: parse_args() needs to be properly and thoroughly implemented. Until there is enough
-#   time to actually do that, use temporary functions below
 def parse_args() -> argparse.Namespace:
     """
     Instantiate arguments that will be parsed from the command-line here.
@@ -46,7 +42,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(f'command', help=f'HELP: TODO: command. Valid commands: '
                                          f'{[""+x for x in list(map_command_to_func.keys())]}')
     parser.add_argument('-p', help=f'HELP: TODO: PIPELINE LOC')
-    # TODO: add more commands, subcommands
+    # TODO: add commands, sub-commands as necessary
 
     # Parse args, return
     args: argparse.Namespace = parser.parse_args()
@@ -58,8 +54,6 @@ def parse_args() -> argparse.Namespace:
     return args
 
 
-# TODO: do_command() needs to be properly and thoroughly implemented. Until there is enough
-#   time to actually do that, use temporary functions below
 def execute_command(args: argparse.Namespace) -> None:
     kwargs = {}
 
