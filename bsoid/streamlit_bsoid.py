@@ -240,7 +240,7 @@ def show_pipeline_info(p: pipeline.PipelinePrime, pipeline_path, **kwargs):
             st.markdown(f'- - **None**')
 
         st.markdown(f'- Number of data points in training data set: '
-                    f'**{len(p.df_features_train) if p.df_features_train is not None else None}**')
+                    f'**{len(p.df_features_train_scaled) if p.df_features_train_scaled is not None else None}**')
         st.markdown(f' - Total unique behaviours clusters: **{len(p.unique_assignments)}**')
         if len(p.cross_val_scores) > 0:
             decimals_round = 3
