@@ -107,7 +107,7 @@ def make_labeled_video_according_to_frame(labels_list: Union[List, Tuple], frame
     # Loop over all requested frames, add text, then append to list for later video creation
     for i in range(len(frames_indices_list)):
         label, frame_idx = labels_list[i], frames_indices_list[i]
-        logger.debug(f'label, frame_idx = {label}, {frame_idx}')
+        logger.debug(f'label, frame_idx = {label}, {frame_idx} // type(label), type(frame_idx) = {type(label)}, {type(frame_idx)}')
         cv2_source_video_object.set(1, frame_idx)
         is_frame_retrieved, frame = cv2_source_video_object.read()
         if not is_frame_retrieved:
