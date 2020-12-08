@@ -8,6 +8,7 @@ More on formatting: https://pyformat.info/
 from matplotlib.axes._axes import _log as matplotlib_axes_logger
 from mpl_toolkits.mplot3d import Axes3D  # Despite being "unused", this import MUST stay for 3d plotting to work. PLO!
 from typing import Dict, List
+import easygui
 import matplotlib
 import numpy as np
 import os
@@ -75,6 +76,7 @@ streamlit_persitency_variables = {  # Instantiate default variable values here
     key_button_create_new_example_videos: False,
     key_button_menu_label_entire_video: False,
 }
+# TODO: propagate file path thru session var?
 
 
 ##### Page layout #####
@@ -102,8 +104,8 @@ def home(**kwargs):
     is_pipeline_loaded = False
 
     ### SIDEBAR ###
-    st.sidebar.markdown(f'### Iteration: {file_session[key_iteration_page_refresh_count]}')
-    st.sidebar.markdown('------')
+    # st.sidebar.markdown(f'### Iteration: {file_session[key_iteration_page_refresh_count]}')
+    # st.sidebar.markdown('------')
 
     ### MAIN ###
     st.markdown(f'# {title}')
@@ -237,22 +239,23 @@ def show_pipeline_info(p: pipeline.PipelinePrime, pipeline_path, **kwargs):
         else:
             st.markdown(f'- - **None**')
 
-        st.markdown(f'- - Number of data points in training data set: '
+        st.markdown(f'- Number of data points in training data set: '
                     f'**{len(p.df_features_train) if p.df_features_train is not None else None}**')
-        st.markdown(f'- - Total unique behaviours clusters: **{len(p.unique_assignments)}**')
+        st.markdown(f' - Total unique behaviours clusters: **{len(p.unique_assignments)}**')
         if len(p.cross_val_scores) > 0:
             decimals_round = 3
             cross_val_score_text = \
                 f'- - Median cross validation score: **{round(np.median(p.cross_val_scores), decimals_round)}** ' \
                 f'(literal scores: {sorted([round(x, decimals_round) for x in list(p.cross_val_scores)])})'
         else:
-            cross_val_score_text = f'- - Cross validation score not available'
+            cross_val_score_text = f'- Cross validation score not available'
         st.markdown(f'{cross_val_score_text}')
         st.markdown(f'- Raw assignment values: **{p.unique_assignments}**')
     ###
 
     # Model check before displaying actions that could further change pipeline state.
     if p.is_in_inconsistent_state:
+        st.markdown('')
         st.info("""
 The pipeline is detected to be in an inconsistent state. 
 
@@ -313,6 +316,7 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_path):
                     st.error(FileNotFoundError(f'TODO: expand: File not found: {input_new_data_source}. Data not added to pipeline.'))
                 # Add to pipeline, save
                 else:
+                    st.markdown(f'os.path.dirname(pipeline_path) = {os.path.dirname(pipeline_path)}')
                     p = p.add_train_data_source(input_new_data_source).save(os.path.dirname(pipeline_path))
                     st.success(f'TODO: New training data added to pipeline successfully! Pipeline has been saved to: "{pipeline_path}". Refresh the page to see changes.')  # TODO: finish statement. Add in suggestion to refresh page.
                     file_session[key_button_add_train_data_source] = False  # Reset menu to collapsed state
@@ -333,14 +337,14 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_path):
 
                 else:
                     p = p.add_predict_data_source(input_new_predict_data_source).save(os.path.dirname(pipeline_path))
-                    st.success(f'New prediction data added to pipeline successfully! Pipeline has been saved.')
+                    st.success(f'New prediction data added to pipeline successfully! Pipeline has been saved. Refresh the page to see cehanges.')
                     file_session[key_button_add_predict_data_source] = False  # Reset menu to collapsed state
         st.markdown('')
         st.markdown('')
 
     ###
 
-    ### Menu button: remove data ###
+    ### Menu button: removing data ###
     button_remove_data = st.button('Expand/collapse: remove data from model', key_button_menu_remove_data)
     if button_remove_data:
         file_session[key_button_menu_remove_data] = not file_session[key_button_menu_remove_data]
@@ -412,13 +416,13 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_path):
             st.markdown('### Advanced TSNE Parameters')
             input_tsne_early_exaggeration = st.number_input(f'TSNE: early exaggeration', min_value=0., max_value=100., value=p.tsne_early_exaggeration, step=0.1, format='%.2f')
             input_tsne_n_components = st.slider(f'TSNE: n components/dimensions', value=p.tsne_n_components, min_value=1, max_value=10, step=1, format='%i')
-            input_tsne_n_iter = st.number_input(label=f'TSNE "n_iter"', value=p.tsne_n_iter, min_value=250, max_value=5_000)
+            input_tsne_n_iter = st.number_input(label=f'TSNE n iterations', value=p.tsne_n_iter, min_value=250, max_value=5_000)
             # TODO: n_jobs: n_jobs=-1: all cores being used, set to -2 for all cores but one.
             st.markdown(f'### Advanced GMM parameters')
             input_gmm_reg_covar = st.number_input(f'GMM "reg. covariance" ', value=p.gmm_reg_covar, format='%f')
             input_gmm_tolerance = st.number_input(f'GMM tolerance', value=p.gmm_tol, min_value=1e-10, max_value=50., step=0.1, format='%.2f')
-            input_gmm_max_iter = st.number_input(f'GMM max iterations', min_value=1, max_value=100_000, value=p.gmm_max_iter, step=1)
-            input_gmm_n_init = st.number_input(f'GMM "n_init". It is recommended that you use a value of 20', value=p.gmm_n_init, step=1, format="%i")
+            input_gmm_max_iter = st.number_input(f'GMM max iterations', min_value=1, max_value=100_000, value=p.gmm_max_iter, step=1, format='%f')
+            input_gmm_n_init = st.number_input(f'GMM "n_init" ("Number of initializations to perform. the best results is kept")  . It is recommended that you use a value of 20', value=p.gmm_n_init, step=1, format="%i")
             st.markdown('### Advanced SVM Parameters')
             ### SVM ###
             input_svm_c = st.number_input(f'SVM C', value=p.svm_c, format='%.2f')
@@ -467,7 +471,7 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_path):
                     # TODO: HIGH: make sure that model parameters are put into Pipeline before build() is called.
                     p = p.set_params(**model_vars)
                     p = p.build(True, True).save(os.path.dirname(pipeline_path))
-                st.success(f'Model was successfully re-built!')
+                st.success(f'Model was successfully re-built! Refresh the page to see changes.')
                 file_session[key_button_rebuild_model_confirmation] = False
         st.markdown('----------------------------------------------------------------------------------------------')
 
@@ -491,18 +495,26 @@ def see_model_diagnostics(p, pipeline_file_path):
     if button_view_assignments_distribution:
         file_session[key_button_view_assignments_distribution] = not file_session[key_button_view_assignments_distribution]
     if file_session[key_button_view_assignments_distribution]:
-        fig, ax = p.get_plot_svm_assignments_distribution()
-        st.pyplot(fig)
+        if p.is_built:
+            fig, ax = p.get_plot_svm_assignments_distribution()
+            st.pyplot(fig)
+        else:
+            st.info('There are no assignment distributions available for display because '
+                    'the model is not currently built.')
 
     ###
 
     # View 3d Plot
     gmm_button = st.button('Pop out window of cluster/assignment distribution')  # TODO: low: phrase this button better?
     if gmm_button:
-        try:
-            p.plot_assignments_in_3d(show_now=True)
-        except ValueError:
-            st.error('Cannot plot cluster distribution since the model is not currently built.')
+        if p.is_built:
+            try:
+                p.plot_assignments_in_3d(show_now=True)
+            except ValueError:
+                st.error('Cannot plot cluster distribution since the model is not currently built.')
+        else:
+            st.info('A 3d plot of the cluster distributions could not be created because '
+                    'the model is not built. ')
     ###
     st.markdown('--------------------------------------------------------------------------------------------------')
 
@@ -533,23 +545,6 @@ def review_behaviours(p, pipeline_file_path):
 
     st.markdown('')
 
-    ### Review labels for behaviours ###
-    button_review_assignments_is_clicked = st.button('Expand/collapse: review behaviour/assignments labels', key_button_review_assignments)
-    if button_review_assignments_is_clicked:  # Click button, flip state
-        file_session[key_button_review_assignments] = not file_session[key_button_review_assignments]
-    if file_session[key_button_review_assignments]:  # Depending on state, set behaviours to assignments
-        if not p.is_built:
-            st.info('The model has not been built yet, so there are no labeling options available.')
-        else:
-            ### View all assignments
-            st.markdown(f'#### All changes entered save automatically. After all changes, refresh page to see changes.')
-            for a in p.unique_assignments:
-                file_session[str(a)] = p.get_assignment_label(a)
-                existing_behaviour_label = p.get_assignment_label(a)
-                existing_behaviour_label = existing_behaviour_label if existing_behaviour_label is not None else '(No behaviour label assigned yet)'
-                text_input_new_label = st.text_input(f'Add behaviour label to assignment # {a}', value=existing_behaviour_label, key=f'key_new_behaviour_label_{a}')
-                if text_input_new_label != existing_behaviour_label:
-                    p = p.set_label(a, text_input_new_label).save(os.path.dirname(pipeline_file_path))
     ###
 
     st.markdown('')
@@ -621,6 +616,25 @@ def review_behaviours(p, pipeline_file_path):
                 text_input_new_label = st.text_input(f'Add behaviour label to assignment # {a}', value=existing_behaviour_label, key=f'key_new_behaviour_label_{a}')
                 if text_input_new_label != existing_behaviour_label:
                     p = p.set_label(a, text_input_new_label).save(os.path.dirname(pipeline_file_path))
+
+    ###
+    # ### Review labels for behaviours ###
+    # button_review_assignments_is_clicked = st.button('Expand/collapse: review behaviour/assignments labels', key_button_review_assignments)
+    # if button_review_assignments_is_clicked:  # Click button, flip state
+    #     file_session[key_button_review_assignments] = not file_session[key_button_review_assignments]
+    # if file_session[key_button_review_assignments]:  # Depending on state, set behaviours to assignments
+    #     if not p.is_built:
+    #         st.info('The model has not been built yet, so there are no labeling options available.')
+    #     else:
+    #         ### View all assignments
+    #         st.markdown(f'#### All changes entered save automatically. After all changes, refresh page to see changes.')
+    #         for a in p.unique_assignments:
+    #             file_session[str(a)] = p.get_assignment_label(a)
+    #             existing_behaviour_label = p.get_assignment_label(a)
+    #             existing_behaviour_label = existing_behaviour_label if existing_behaviour_label is not None else '(No behaviour label assigned yet)'
+    #             text_input_new_label = st.text_input(f'Add behaviour label to assignment # {a}', value=existing_behaviour_label, key=f'key_new_behaviour_label_{a}')
+    #             if text_input_new_label != existing_behaviour_label:
+    #                 p = p.set_label(a, text_input_new_label).save(os.path.dirname(pipeline_file_path))
 
     ###
 
