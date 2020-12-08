@@ -999,7 +999,7 @@ class BasePipeline(PipelineAttributeHolder):
                 labels_list = df_frames_selection[self.svm_assignment_col_name].values
                 logger.debug(f'df_frames_selection.dtypes: {df_frames_selection.dtypes}')
                 logger.debug(f'df_frames_selection["frame"].dypes.dtypes: {df_frames_selection["frame"].dtypes}')
-                frames_indices_list = df_frames_selection['frame'].astype(int).values
+                frames_indices_list = list(df_frames_selection['frame'].astype(int).values)
 
                 videoprocessing.make_labeled_video_according_to_frame(
                     labels_list,
