@@ -244,13 +244,12 @@ def show_pipeline_info(p: pipeline.PipelinePrime, pipeline_path, **kwargs):
         st.markdown(f' - Total unique behaviours clusters: **{len(p.unique_assignments)}**')
         if len(p.cross_val_scores) > 0:
             decimals_round = 3
-            cross_val_score_text = \
-                f'- - Median cross validation score: **{round(np.median(p.cross_val_scores), decimals_round)}** ' \
-                f'(literal scores: {sorted([round(x, decimals_round) for x in list(p.cross_val_scores)])})'
+            cross_val_score_text = f'- - Median cross validation score: **{round(np.median(p.cross_val_scores), decimals_round)}** (literal scores: {sorted([round(x, decimals_round) for x in list(p.cross_val_scores)])})'
         else:
             cross_val_score_text = f'- Cross validation score not available'
         st.markdown(f'{cross_val_score_text}')
         st.markdown(f'- Raw assignment values: **{p.unique_assignments}**')
+        st.markdown(f'- Features set: {p.all_features}')
     ###
 
     # Model check before displaying actions that could further change pipeline state.
@@ -316,7 +315,6 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_path):
                     st.error(FileNotFoundError(f'TODO: expand: File not found: {input_new_data_source}. Data not added to pipeline.'))
                 # Add to pipeline, save
                 else:
-                    st.markdown(f'os.path.dirname(pipeline_path) = {os.path.dirname(pipeline_path)}')
                     p = p.add_train_data_source(input_new_data_source).save(os.path.dirname(pipeline_path))
                     st.success(f'TODO: New training data added to pipeline successfully! Pipeline has been saved to: "{pipeline_path}". Refresh the page to see changes.')  # TODO: finish statement. Add in suggestion to refresh page.
                     file_session[key_button_add_train_data_source] = False  # Reset menu to collapsed state
@@ -490,6 +488,8 @@ def see_model_diagnostics(p, pipeline_file_path):
     st.markdown(f'## Model Diagnostics')
     st.markdown(f'See GMM distributions according to TSNE-reduced feature dimensions // TODO: make this shorter.')
     ### View Histogram for assignment distribution
+    st.markdown(f'This section is a work-in-progress. Opening a graph in this section is very volatile and there is '
+            f'high chance that by opening a graph the streamlit will crash. This is being worked on!')
     st.markdown(f'View distribution of assignments')
     button_view_assignments_distribution = st.button(f'View assignment distribution')
     if button_view_assignments_distribution:
@@ -559,7 +559,7 @@ def review_behaviours(p, pipeline_file_path):
         input_video = st.text_input(f'Input path to corresponding video relative to selected data source', value=config.BSOID_BASE_PROJECT_PATH)
         file_name_prefix = st.text_input(f'File name prefix. This helps us differentiate between example videos. OK to leave blank. ')
         number_input_output_fps = st.number_input(f'Output FPS for example videos', value=8, min_value=1)
-        number_input_max_examples_of_each_behaviour = st.number_input(f'Maximum number of examples for each behaviour', value=3, min_value=1)
+        number_input_max_examples_of_each_behaviour = st.number_input(f'Maximum number of videos created for each behaviour', value=5, min_value=1)
         number_input_min_rows = st.number_input(f'Min # of data rows required for a detection to occur', value=1, min_value=1, max_value=10_000)
         number_input_frames_leadup = st.number_input(f'min # of rows of data after/before behaviour has occurred that lead up // todo: precision', value=0, min_value=0)
 
