@@ -377,6 +377,7 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_path):
         st.markdown('')
 
     ###
+    st.markdown('')
 
     ### Menu button: rebuilding model ###
     button_see_rebuild_options = st.button('Expand/Collapse: Review Model Parameters & Rebuild Model', key_button_see_rebuild_options)
@@ -391,7 +392,7 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_path):
         # st.markdown('---')
 
         st.markdown('### Gaussian Mixture Model Parameters')
-        slider_gmm_n_components = st.slider(f'GMM Components (clusters)', value=p.gmm_n_components, min_value=2, max_value=40, step=1)
+        slider_gmm_n_components = st.slider(f'GMM Components (clusters)', value=10, min_value=2, max_value=40, step=1)
         # TODO: low: add GMM: probability = True
         # TODO: low: add: GMM: n_jobs = -2
 
@@ -472,9 +473,6 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_path):
                 st.success(f'Model was successfully re-built! Refresh the page to see changes.')
                 file_session[key_button_rebuild_model_confirmation] = False
         st.markdown('----------------------------------------------------------------------------------------------')
-
-    ###
-
 
     ###
 
@@ -616,25 +614,6 @@ def review_behaviours(p, pipeline_file_path):
                 text_input_new_label = st.text_input(f'Add behaviour label to assignment # {a}', value=existing_behaviour_label, key=f'key_new_behaviour_label_{a}')
                 if text_input_new_label != existing_behaviour_label:
                     p = p.set_label(a, text_input_new_label).save(os.path.dirname(pipeline_file_path))
-
-    ###
-    # ### Review labels for behaviours ###
-    # button_review_assignments_is_clicked = st.button('Expand/collapse: review behaviour/assignments labels', key_button_review_assignments)
-    # if button_review_assignments_is_clicked:  # Click button, flip state
-    #     file_session[key_button_review_assignments] = not file_session[key_button_review_assignments]
-    # if file_session[key_button_review_assignments]:  # Depending on state, set behaviours to assignments
-    #     if not p.is_built:
-    #         st.info('The model has not been built yet, so there are no labeling options available.')
-    #     else:
-    #         ### View all assignments
-    #         st.markdown(f'#### All changes entered save automatically. After all changes, refresh page to see changes.')
-    #         for a in p.unique_assignments:
-    #             file_session[str(a)] = p.get_assignment_label(a)
-    #             existing_behaviour_label = p.get_assignment_label(a)
-    #             existing_behaviour_label = existing_behaviour_label if existing_behaviour_label is not None else '(No behaviour label assigned yet)'
-    #             text_input_new_label = st.text_input(f'Add behaviour label to assignment # {a}', value=existing_behaviour_label, key=f'key_new_behaviour_label_{a}')
-    #             if text_input_new_label != existing_behaviour_label:
-    #                 p = p.set_label(a, text_input_new_label).save(os.path.dirname(pipeline_file_path))
 
     ###
 

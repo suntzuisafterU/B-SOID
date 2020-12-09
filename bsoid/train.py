@@ -37,7 +37,7 @@ logger = config.initialize_logger(__name__)
 
 
 @config.log_function_entry_exit(logger)
-def train_TSNE_NEW(list_of_arrays_data: pd.DataFrame, features, fps=config.VIDEO_FPS, dimensions: int = 3, comp=None, **kwargs) -> Tuple[pd.DataFrame, pd.DataFrame, TSNE_bthsne, StandardScaler]:
+def train_TSNE_NEW(list_of_arrays_data: pd.DataFrame, features, fps=config.VIDEO_FPS, dimensions: int = 3, comp=None, **kwargs) -> Tuple[pd.DataFrame, pd.DataFrame, object, StandardScaler]:
     """
     Encapsulates legacy implementation of training TSNE
 
