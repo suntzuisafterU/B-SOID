@@ -542,9 +542,6 @@ def review_behaviours(p, pipeline_file_path):
     ###
 
     st.markdown('')
-
-    ###
-
     st.markdown('')
 
     ### Create new example videos ###
@@ -628,20 +625,19 @@ def results_section(p, pipeline_file_path, **kwargs):
     st.markdown('---------------------------------------------------------------------------------------------')
     st.markdown(f'## Create results')
     ### Label an entire video ###
-    button_menu_label_entire_video = st.button('Expand/collapse: Use model to label to entire video', key=key_button_menu_label_entire_video)
+    button_menu_label_entire_video = st.button('Expand/collapse: Use pipeline model to label to entire video', key=key_button_menu_label_entire_video)
     if button_menu_label_entire_video:
         file_session[key_button_menu_label_entire_video] = not file_session[key_button_menu_label_entire_video]
     if file_session[key_button_menu_label_entire_video]:
         st.markdown('')
-        st.markdown(f'Expand/collapse: (WIP) Label an entire video with built pipeline')
-        input_video_to_label = st.text_input('Input path to video which is to be labeled',
-                                             value=f'{config.BSOID_BASE_PROJECT_PATH}')
-        selected_data_source = st.selectbox('Select a data source to use as the label set for '
-                                            'specified video (WIP: rewrite this line better :) )',
+        selected_data_source = st.selectbox('Select a data source to use as the labels set for '
+                                            'specified video:',
                                             options=['']+p.training_data_sources+p.predict_data_sources)
-        output_folder = st.text_input('Enter a directory into which the labeled video will be saved.',
+        input_video_to_label = st.text_input('Input path to corresponding video which will be labeled:',
+                                             value=f'{config.BSOID_BASE_PROJECT_PATH}')
+        output_folder = st.text_input('Enter a directory into which the labeled video will be saved:',
                                       value=config.OUTPUT_PATH)
-        input_new_video_name = st.text_input('Enter a file name for the labeled video output')
+        input_new_video_name = st.text_input('Enter a file name for the labeled video output:')
         # TODO: med/high: add FPS option for video out
         button_create_labeled_video = st.button('Create labeled video')
         if button_create_labeled_video:
@@ -658,14 +654,16 @@ def results_section(p, pipeline_file_path, **kwargs):
             if not error_detected:
                 with st.spinner('(WIP) Creating labeled video now. This could take a few minutes...'):
                     # app.sample_runtime_function(3)
-                    p.make_video(video_to_be_labeled=input_video_to_label, data_source=selected_data_source, video_name=input_new_video_name, output_dir=output_folder)  # TODO: med: add other options like adding output path and output fps?
+                    p.make_video(
+                        video_to_be_labeled=input_video_to_label,
+                        data_source=selected_data_source,
+                        video_name=input_new_video_name,
+                        output_dir=output_folder)
                 st.success('Success! Video was created at: TODO: get video out path')
         st.markdown('---------------------------------------------------------------------------------------')
 
     return display_footer(p, pipeline_file_path)
 
-
-#
 
 def display_footer(p, *args, **kwargs):
     """ Footer of Streamlit page """
@@ -674,11 +672,6 @@ def display_footer(p, *args, **kwargs):
 
 
 # Accessory functions #
-
-def line_break():
-    """ Displays a horizontal line-break on the Streamlit page. """
-    st.markdown('---')
-
 
 def get_video_bytes(path_to_video):
     """  """
@@ -703,7 +696,7 @@ def example_of_value_saving():
         if button2_is_clicked:
             session_state['TestButton2'] = not session_state['TestButton2']
         if session_state['TestButton2']:
-            line_break()
+            st.markdown('----------------------------')
             st.markdown('Button 2 pressed')
 
 
