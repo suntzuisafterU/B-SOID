@@ -322,6 +322,14 @@ assert os.path.isdir(config_value_alternate_output_path_for_annotated_frames), \
     f'config_value_alternate_output_path_for_annotated_frames = ' \
     f'\'{config_value_alternate_output_path_for_annotated_frames}\'. Check config.ini pathing.'
 
+######
+
+map_ext_to_fourcc = {
+    'mp4': 'mp4v',
+    'avi': 'MJPG',
+
+}
+
 
 ##### LEGACY VARIABLES #################################################################################################
 # This version requires the six body parts Snout/Head, Forepaws/Shoulders, Hindpaws/Hips, Tailbase.
