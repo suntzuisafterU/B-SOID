@@ -80,8 +80,8 @@ def ensure_is_valid_path(path):
 
 def ensure_frame_indices_are_integers(df: pd.DataFrame, frame_column_name='frame'):
     df_non_int_frame_indices = df.loc[df[frame_column_name].map(lambda x: x % 1 != 0)]
-    num_of_non_integer_frame_indicies = len(df_non_int_frame_indices)
-    if num_of_non_integer_frame_indicies != 0:
+    num_of_non_integer_frame_indices = len(df_non_int_frame_indices)
+    if num_of_non_integer_frame_indices != 0:
         err = f'Found non-integer frame indices which should never happen. Check the ' \
               f'following DataFrame data: {df_non_int_frame_indices.to_string()} ' \
               f'(dtypes={df_non_int_frame_indices.dtypes})'
