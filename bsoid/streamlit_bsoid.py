@@ -598,7 +598,7 @@ def review_behaviours(p, pipeline_file_path):
     ###
 
     ### Review labels for behaviours ###
-    button_review_assignments_is_clicked = st.button('Expand/collapse: review behaviour/assignments labels', key_button_review_assignments)
+    button_review_assignments_is_clicked = st.button('Expand/collapse: review behaviour/assignments labels', key=key_button_review_assignments)
     if button_review_assignments_is_clicked:  # Click button, flip state
         file_session[key_button_review_assignments] = not file_session[key_button_review_assignments]
     if file_session[key_button_review_assignments]:  # Depending on state, set behaviours to assignments
@@ -619,30 +619,48 @@ def review_behaviours(p, pipeline_file_path):
 
     st.markdown('')
 
+    ###
+
+    return results_section(p, pipeline_file_path)
+
+
+def results_section(p, pipeline_file_path, **kwargs):
+    st.markdown('---------------------------------------------------------------------------------------------')
+    st.markdown(f'## Create results')
     ### Label an entire video ###
     button_menu_label_entire_video = st.button('Expand/collapse: Use model to label to entire video', key=key_button_menu_label_entire_video)
     if button_menu_label_entire_video:
         file_session[key_button_menu_label_entire_video] = not file_session[key_button_menu_label_entire_video]
     if file_session[key_button_menu_label_entire_video]:
         st.markdown('')
-        st.markdown(f'(WIP) Menu to label entire video')
-        input_video_to_label = st.text_input('Input path to video which is to be labeled')
+        st.markdown(f'Expand/collapse: (WIP) Label an entire video with built pipeline')
+        input_video_to_label = st.text_input('Input path to video which is to be labeled',
+                                             value=f'{config.BSOID_BASE_PROJECT_PATH}')
         selected_data_source = st.selectbox('Select a data source to use as the label set for '
                                             'specified video (WIP: rewrite this line better :) )',
                                             options=['']+p.training_data_sources+p.predict_data_sources)
-
+        output_folder = st.text_input('Enter a directory into which the labeled video will be saved.',
+                                      value=config.OUTPUT_PATH)
+        input_new_video_name = st.text_input('Enter a file name for the labeled video output')
+        # TODO: med/high: add FPS option for video out
         button_create_labeled_video = st.button('Create labeled video')
         if button_create_labeled_video:
+            error_detected = False
+            if not os.path.isfile(input_video_to_label):
+                error_detected = True
+                st.error(f'Path to video not found: {input_video_to_label}')
             if not selected_data_source:
+                error_detected = True
                 st.error('An invalid data source was selected. Please change the data source and try again.')
-                st.stop()
-            with st.spinner('(WIP: Video creation efficiency still being worked on) Creating labeled video now. This could take several minutes...'):  # TODO: High
-                # app.sample_runtime_function(3)
-                p.make_video(input_video_to_label, 'magicvariable_in_streamlit')  # TODO: med: add other options like adding output path and output fps?
-            st.success('Success! Video was created at: TODO: get video out path')
+            if check_arg.has_invalid_chars_in_name_for_a_file(input_new_video_name):
+                error_detected = True
+                st.error(f'Invalid characters for new video name detected. Please review name: {input_new_video_name}')
+            if not error_detected:
+                with st.spinner('(WIP) Creating labeled video now. This could take a few minutes...'):
+                    # app.sample_runtime_function(3)
+                    p.make_video(video_to_be_labeled=input_video_to_label, data_source=selected_data_source, video_name=input_new_video_name, output_dir=output_folder)  # TODO: med: add other options like adding output path and output fps?
+                st.success('Success! Video was created at: TODO: get video out path')
         st.markdown('---------------------------------------------------------------------------------------')
-
-    ###
 
     return display_footer(p, pipeline_file_path)
 
