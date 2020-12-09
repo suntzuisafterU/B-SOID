@@ -345,11 +345,13 @@ def integrate_df_feature_into_bins(df: pd.DataFrame, map_features_to_bin_methods
     check_arg.ensure_type(n_rows, int)
     for feature in map_features_to_bin_methods.keys():
         if feature not in df.columns:
-            err = f'{logging_bsoid.get_current_function()}(): TODO: elaborate: feature not found. Cannot integrate into ?ms bins.'
+            err = f'{logging_bsoid.get_current_function()}(): TODO: elaborate: feature not found. ' \
+                  f'Cannot integrate into ?ms bins.'
             logger.error(err)
             raise ValueError(err)
     # Kwarg resolution
     df = df.copy() if copy else df
+
     # Execute
     data_list_of_arrays, corresponding_cols_list = [], []
     for col in df.columns:
@@ -499,7 +501,9 @@ def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.Da
     # Loop over data and do adaptive filtering.
     # logger.debug(f'{inspect.stack()[0][3]}: Loop over data and do adaptive filtering.')
     idx_col = 0
-    for idx_col_i in tqdm(range(data_likelihood.shape[1]), desc=f'{inspect.stack()[0][3]}(): Adaptively filtering DLC feature %d...' % idx_col):  # TODO: remove TQDM or make optional? How do we make it  silence-able?
+    for idx_col_i in tqdm(range(data_likelihood.shape[1]),
+                          desc=f'{logging_bsoid.get_current_function()}(): Adaptively filtering DLC data...',
+                          disable=False if config.stdout_log_level.strip().upper() == 'DEBUG' else True):
         # Get histogram of likelihood data in col_i (ignoring first row since its just labels (e.g.: [x  x  x  x ...]))
         histogram, bin_edges = np.histogram(data_likelihood[:, idx_col_i].astype(np.float))
         # Determine "rise".
