@@ -36,8 +36,8 @@ import time
 # import openTSNE  # openTSNE only supports n_components 2 or less
 # import warnings
 
-
-from bsoid import check_arg, config, feature_engineering, io, logging_bsoid, statistics, videoprocessing, visuals
+from bsoid.logging_bsoid import get_current_function
+from bsoid import check_arg, config, feature_engineering, io, statistics, videoprocessing, visuals
 
 
 logger = config.initialize_logger(__file__)
@@ -133,8 +133,8 @@ class PipelineAttributeHolder(object):
         try:  # This try/catch is a debugging effort. Remove try/catch later when ironed-out.
             label = getattr(self, f'label_{assignment}')
         except Exception as e:
-            logger.error(f'{logging_bsoid.get_current_function()}(): unexpected exception '
-                         f'occurred! Please address. Label not found: label_{assignment}')
+            logger.error(f'{get_current_function()}(): unexpected exception '
+                         f'occurred! Please address. Label not found: "label_{assignment}"')
             raise e
 
         return label
@@ -153,6 +153,7 @@ class PipelineAttributeHolder(object):
         relative to already-compiled model
         """
         return self._is_training_data_set_different_from_model_input
+
     @property
     def name(self): return self._name
     @property
@@ -244,20 +245,14 @@ class BasePipeline(PipelineAttributeHolder):
         # Pipeline name
         check_arg.ensure_type(name, str)
         self.set_name(name)
-        # # Save folder  # TODO: evaluate
-        # if save_folder is not None:
-        #     check_arg.ensure_type(save_folder, str)
-        #     check_arg.ensure_is_dir(save_folder)
-        #     self.set_save_location(save_folder)
         # TSNE source
         tsne_source = kwargs.get('tsne_source', '')
         check_arg.ensure_type(tsne_source, str)
         if tsne_source in self.valid_tsne_sources:
             self.tsne_source = tsne_source
-        
+        #
         self.kwargs = kwargs
         # Final setup
-
         self.set_params(read_config_on_missing_param=True, **kwargs)
 
     def set_params(self, read_config_on_missing_param=False, **kwargs):
@@ -265,7 +260,8 @@ class BasePipeline(PipelineAttributeHolder):
         Reads in variables to change for pipeline.
 
         If optional arg `read_config_on_missing_param` is True, then any parameter NOT mentioned
-        explicitly will be read in from the config.ini file and replace the current value in the pipeline.
+        explicitly will be read in from the config.ini file and then replace the current value
+        for that property in the pipeline.
         """
         # TODO: ADD KWARGS OPTION FOR OVERRIDING VERBOSE in CONFIG.INI!!!!!!!! ****
         # TODO: LOW: add kwargs parsing for averaging over n-frames
@@ -340,18 +336,31 @@ class BasePipeline(PipelineAttributeHolder):
         self._has_modified_model_variables = True
         return self
 
+    # Functions that should be overwritten by child classes
+    def engineer_features(self, data: pd.DataFrame):
+        """
+
+        """
+        err = f'{get_current_function()}(): Not Implemented for base ' \
+              f'Pipeline object {self.__name__}. You must implement this for all child objects.'
+        logger.error(err)
+        raise NotImplementedError(err)
+
     # Add & delete data
-    def add_train_data_source(self, *train_data_args):
+    def add_train_data_source(self, *train_data_paths_args):
         """
         Reads in new data and saves raw data. A source can be either a directory or a file.
+        If the source is a path, then all CSV files directly within that directory will
+        be read in as DLC files
+        # TODO: add in
 
         train_data_args: any number of args. Types submitted expected to be of type [str]
             In the case that an arg is List[str], the arg must be a list of strings that
         """
-        train_data_args = [path for path in train_data_args
-                           if os.path.split(path)[-1].split('.')[0]  # <- Get file name without extension
-                           not in set(self.df_features_train_raw['data_source'].values)]
-        for path in train_data_args:
+        train_data_paths_args = [path for path in train_data_paths_args
+                                 if os.path.split(path)[-1].split('.')[0]  # <- Get file name without extension
+                                 not in set(self.df_features_train_raw['data_source'].values)]
+        for path in train_data_paths_args:
             if os.path.isfile(path):
                 df_new_data = io.read_csv(path)
                 self.df_features_train_raw = self.df_features_train_raw.append(df_new_data)
@@ -376,17 +385,17 @@ class BasePipeline(PipelineAttributeHolder):
 
         return self
 
-    def add_predict_data_source(self, *predict_data_args):
+    def add_predict_data_source(self, *predict_data_path_args):
         """
         Reads in new data and saves raw data. A source can be either a directory or a file.
 
         predict_data_args: any number of args. Types submitted expected to be of type str.
             In the case that an arg is List[str], the arg must be a list of strings that
         """
-        predict_data_args = [path for path in predict_data_args
-                             if os.path.split(path)[-1].split('.')[0]  # <- Get file name without extension
-                             not in set(self.df_features_predict_raw['data_source'].values)]
-        for path in predict_data_args:
+        predict_data_path_args = [path for path in predict_data_path_args
+                                  if os.path.split(path)[-1].split('.')[0]  # <- Get file name without extension
+                                  not in set(self.df_features_predict_raw['data_source'].values)]
+        for path in predict_data_path_args:
             if os.path.isfile(path):
                 df_new_data = io.read_csv(path)
                 self.df_features_predict_raw = self.df_features_predict_raw.append(df_new_data)
@@ -440,61 +449,31 @@ class BasePipeline(PipelineAttributeHolder):
         return self
 
     # Engineer features
-    def engineer_features(self, data: pd.DataFrame):
-        err = f'{logging_bsoid.get_current_function()}(): Not Implemented for base ' \
-              f'Pipeline object {self.__name__}. You must implement this for all child objects.'
-        logger.error(err)
-        raise NotImplementedError(err)
-
-    def engineer_features_all_dfs(self, dfs: List[pd.DataFrame]) -> pd.DataFrame:
+    def engineer_features_all_dfs(self, list_dfs_of_raw_data: List[pd.DataFrame]) -> pd.DataFrame:
         """
-        The MAIN function that will build features for BOTH training and prediction data. This
-        ensures that processed data for training and prediction are processed in the same way.
+        The main function that can build features for BOTH training and prediction data.
+        Here we are ensuring that the data processing for both training and prediction occurs in the same way.
         """
         # TODO: MED: these cols really should be saved in
         #  engineer_7_features_dataframe_NOMISSINGDATA(),
         #  but that func can be amended later due to time constraints
 
-        list_dfs_raw_data = dfs
-
         # Reconcile args
-        if isinstance(list_dfs_raw_data, pd.DataFrame):
-            list_dfs_raw_data = [list_dfs_raw_data, ]
+        if isinstance(list_dfs_of_raw_data, pd.DataFrame):
+            list_dfs_raw_data = [list_dfs_of_raw_data, ]
 
-        check_arg.ensure_type(list_dfs_raw_data, list)
+        check_arg.ensure_type(list_dfs_of_raw_data, list)
 
+        # Execute
         list_dfs_engineered_features: List[pd.DataFrame] = []
-        for df in list_dfs_raw_data:
+        for i, df in enumerate(list_dfs_of_raw_data):
+            df = df.copy().astype({'frame': float})
+            check_arg.ensure_frame_indices_are_integers(df)
+            logger.debug(f'')
             df_engineered_features: pd.DataFrame = self.engineer_features(df)
             list_dfs_engineered_features.append(df_engineered_features)
 
-
-        # # Adaptively filter features
-        # dfs_list_adaptively_filtered: List[Tuple[pd.DataFrame, List[float]]] = [feature_engineering.adaptively_filter_dlc_output(df) for df in list_dfs_raw_data]
-        #
-        # # Engineer features as necessary
-        # dfs_features: List[pd.DataFrame] = []
-        # for df_i, _ in tqdm(dfs_list_adaptively_filtered, desc='Engineering features...'):
-        #     # Save scorer, source values because the current way of engineering features strips out that info.
-        #     df_features_i = feature_engineering.engineer_7_features_dataframe_NOMISSINGDATA(df_i, features_names_7=self.features_names_7)
-        #     for col in columns_to_save:
-        #         if col not in df_features_i.columns and col in df_i.columns:
-        #             df_features_i[col] = df_i[col].values
-        #     dfs_features.append(df_features_i)
-        #
-        # # Smooth over n-frame windows
-        # for i, df in tqdm(enumerate(dfs_features), desc='Smoothing values over frames...'):
-        #     # Mean
-        #     for feature in self.features_which_average_by_mean:
-        #         dfs_features[i][feature] = feature_engineering.average_values_over_moving_window(
-        #             df[feature].values, 'avg', self.average_over_n_frames)
-        #     # Sum
-        #     for feature in self.features_which_average_by_sum:
-        #         dfs_features[i][feature] = feature_engineering.average_values_over_moving_window(
-        #             df[feature].values, 'sum', self.average_over_n_frames)
-
-
-        # # Aggregate all data
+        # Aggregate all data into one DataFrame, return
         df_features = pd.concat(list_dfs_engineered_features)
 
         return df_features
@@ -505,17 +484,20 @@ class BasePipeline(PipelineAttributeHolder):
         All functions that take the raw data (data retrieved from using bsoid.read_csv()) and
         transforms it into classifier-ready data.
 
-        :return:
-        (Includes scorer, source cols)
+        Post-conditions: sets
+        Returns self.
         """
         # TODO: low: save feature engineering time for train data
         start = time.perf_counter()
         # Queue data
+
         list_dfs_raw_data = [self.df_features_train_raw.loc[self.df_features_train_raw['data_source'] == src]
-                                 .sort_values('frame').copy()
+                                 .astype({'frame': float}).sort_values('frame').copy()
                              for src in set(self.df_features_train_raw['data_source'].values)]
         # Call engineering function
+        logger.debug(f'Start engineering training data features.')
         df_features = self.engineer_features_all_dfs(list_dfs_raw_data)
+        logger.debug(f'Done engineering training data features.')
         # Save data
         self.df_features_train = df_features
         # Wrap up
@@ -532,7 +514,9 @@ class BasePipeline(PipelineAttributeHolder):
                                  .sort_values('frame').copy()
                              for src in set(self.df_features_predict_raw['data_source'].values)]
         # Call engineering function
+        logger.debug(f'Start engineering predict data features.')
         df_features = self.engineer_features_all_dfs(list_dfs_raw_data)
+        logger.debug(f'Done engineering predict data features.')
         # Save data, return
         self.df_features_predict = df_features
         self._has_unengineered_predict_data = False
@@ -707,14 +691,16 @@ class BasePipeline(PipelineAttributeHolder):
             self.engineer_features_train()
 
         # Scale data
+        logger.debug(f'Scaling data now...')
         self.scale_transform_train_data(features=self.all_features, create_new_scaler=True)
 
         # TSNE -- create new dimensionally reduced data
+        logger.debug(f'TSNE reducing features now...')
         self.tsne_reduce_df_features_train()
 
         # Train GMM, get assignments
+        logger.debug(f'Training GMM now...')
         self.train_GMM(self.df_features_train_scaled[self.dims_cols_names])
-
         self.df_features_train_scaled[self.gmm_assignment_col_name] = self.clf_gmm.predict(
             self.df_features_train_scaled[self.dims_cols_names].values)
 
@@ -722,6 +708,7 @@ class BasePipeline(PipelineAttributeHolder):
         self.add_test_data_column_to_scaled_train_data()
 
         # # Train SVM
+        logger.debug(f'Training SVM now...')
         self.train_SVM()
         self.df_features_train_scaled[self.svm_assignment_col_name] = self.clf_svm.predict(
             self.df_features_train_scaled[list(self.all_features)].values)
@@ -744,7 +731,7 @@ class BasePipeline(PipelineAttributeHolder):
 
         # Final touches. Save state of pipeline.
         self._is_built = True
-        self._is_training_data_set_different_from_model_input = False
+        self._is_training_data_set_different_from_model_input = False  # TODO: review these 3 variables
         self._has_modified_model_variables = False
         self._last_built = time.strftime("%Y-%m-%d_%Hh%Mm%Ss")
         logger.debug(f'All done with building classifiers/model!')
@@ -752,7 +739,7 @@ class BasePipeline(PipelineAttributeHolder):
         return self
 
     def build_classifier(self, reengineer_train_features: bool = False):
-        """ This is the legacy naming. Method kept for backwards compatibility. THis function will be delted later. """
+        """ This is the legacy naming. Method kept for backwards compatibility. This function will be deleted later. """
         return self.build_model(reengineer_train_features=reengineer_train_features)
 
     def generate_predict_data_assignments(self, reengineer_train_data_features: bool = False, reengineer_predict_features = False):  # TODO: low: rename?
@@ -834,7 +821,7 @@ class BasePipeline(PipelineAttributeHolder):
             with open(final_out_path, 'wb') as model_file:
                 joblib.dump(self, model_file)
         except Exception as e:
-            err = f'{logging_bsoid.get_current_function()}(): An unexpected error occurred: {repr(e)}'
+            err = f'{get_current_function()}(): An unexpected error occurred: {repr(e)}'
             logger.error(err)
             raise e
 
@@ -866,7 +853,7 @@ class BasePipeline(PipelineAttributeHolder):
 
     # Video stuff
 
-    def make_video(self, video_to_be_labeled: str, data_source: str, video_name: str, output_fps: int = config.OUTPUT_VIDEO_FPS):
+    def make_video(self, video_to_be_labeled: str, data_source: str, video_name: str, output_dir: str, output_fps: int = config.OUTPUT_VIDEO_FPS):
         """
 
         :param video_to_be_labeled:
@@ -892,7 +879,7 @@ class BasePipeline(PipelineAttributeHolder):
         elif data_source in self.predict_data_sources:
             df_data = self.df_features_predict_scaled.loc[self.df_features_predict_scaled['data_source'] == data_source]
         else:
-            err = f'{logging_bsoid.get_current_function()}(): Data source not found: "{data_source}"'
+            err = f'{get_current_function()}(): Data source not found: "{data_source}"'
             logger.error(err)
             raise ValueError(err)
 
@@ -908,6 +895,7 @@ class BasePipeline(PipelineAttributeHolder):
             video_name,
             video_to_be_labeled,
             output_fps=output_fps,
+            output_dir=output_dir,
 
         )
         # videoprocessing.generate_video_with_labels(
@@ -934,7 +922,7 @@ class BasePipeline(PipelineAttributeHolder):
         text_bgr = (255, 255, 255)
         # Args checking
         check_arg.ensure_type(num_frames_leadup, int)
-
+        check_arg.ensure_is_file(video_file_path)
         # Solve kwargs
         if file_name_prefix is None:
             file_name_prefix = ''
@@ -943,7 +931,7 @@ class BasePipeline(PipelineAttributeHolder):
             check_arg.ensure_has_valid_chars_for_path(file_name_prefix)
             file_name_prefix += '__'
 
-        # Get data
+        # Get data from data source name
         if data_source in self.training_data_sources:
             df = self.df_features_train_scaled
         elif data_source in self.predict_data_sources:
@@ -952,10 +940,10 @@ class BasePipeline(PipelineAttributeHolder):
             err = f'Data source not found: {data_source}'
             logger.error(err)
             raise KeyError(err)
-        logger.debug(f'{logging_bsoid.get_current_function()}(): Total records: {len(df)}')
+        logger.debug(f'{get_current_function()}(): Total records: {len(df)}')
 
         ### Execute
-        # Get data
+        # Get DataFrame of the data
         df = df.loc[df["data_source"] == data_source].sort_values('frame')
 
         # Get Run-Length Encoding of assignments
@@ -1031,7 +1019,7 @@ class BasePipeline(PipelineAttributeHolder):
         """
         # TODO: low: check for other runtime vars
         if not self.is_built:  # or not self._has_unused_raw_data:
-            e = f'{logging_bsoid.get_current_function()}(): The model has not been built. There is nothing to graph.'
+            e = f'{get_current_function()}(): The model has not been built. There is nothing to graph.'
             logger.warning(e)
             raise ValueError(e)
 
@@ -1072,6 +1060,8 @@ class DemoPipeline(BasePipeline):
     def engineer_features(self, data: pd.DataFrame):
         """ Sample feature engineering function since all
         implementations of BasePipeline must implement this single function. """
+        logger.debug(f'Engineering features for one data set...')
+        logger.debug(f'Done engineering features.')
         return data
 
 
@@ -1106,6 +1096,58 @@ class PipelinePrime(BasePipeline):
         for feature in self.features_which_average_by_sum:
             df_features[feature] = feature_engineering.average_values_over_moving_window(
                 df_features[feature].values, 'sum', self.average_over_n_frames)
+
+        return df_features
+
+    def engineer_features_all_dfs(self, list_dfs_of_raw_data: List[pd.DataFrame]) -> pd.DataFrame:
+        """
+        The main function that can build features for BOTH training and prediction data.
+        Here we are ensuring that the data processing for both training and prediction occurs in the same way.
+        """
+        # TODO: MED: these cols really should be saved in
+        #  engineer_7_features_dataframe_NOMISSINGDATA(),
+        #  but that func can be amended later due to time constraints
+
+        list_dfs_raw_data = list_dfs_of_raw_data
+
+        # Reconcile args
+        if isinstance(list_dfs_raw_data, pd.DataFrame):
+            list_dfs_raw_data = [list_dfs_raw_data, ]
+
+        check_arg.ensure_type(list_dfs_raw_data, list)
+
+        list_dfs_engineered_features: List[pd.DataFrame] = []
+        for df in list_dfs_raw_data:
+            df_engineered_features: pd.DataFrame = self.engineer_features(df)
+            list_dfs_engineered_features.append(df_engineered_features)
+
+
+        # # Adaptively filter features
+        # dfs_list_adaptively_filtered: List[Tuple[pd.DataFrame, List[float]]] = [feature_engineering.adaptively_filter_dlc_output(df) for df in list_dfs_raw_data]
+        #
+        # # Engineer features as necessary
+        # dfs_features: List[pd.DataFrame] = []
+        # for df_i, _ in tqdm(dfs_list_adaptively_filtered, desc='Engineering features...'):
+        #     # Save scorer, source values because the current way of engineering features strips out that info.
+        #     df_features_i = feature_engineering.engineer_7_features_dataframe_NOMISSINGDATA(df_i, features_names_7=self.features_names_7)
+        #     for col in columns_to_save:
+        #         if col not in df_features_i.columns and col in df_i.columns:
+        #             df_features_i[col] = df_i[col].values
+        #     dfs_features.append(df_features_i)
+        #
+        # # Smooth over n-frame windows
+        # for i, df in tqdm(enumerate(dfs_features), desc='Smoothing values over frames...'):
+        #     # Mean
+        #     for feature in self.features_which_average_by_mean:
+        #         dfs_features[i][feature] = feature_engineering.average_values_over_moving_window(
+        #             df[feature].values, 'avg', self.average_over_n_frames)
+        #     # Sum
+        #     for feature in self.features_which_average_by_sum:
+        #         dfs_features[i][feature] = feature_engineering.average_values_over_moving_window(
+        #             df[feature].values, 'sum', self.average_over_n_frames)
+
+        # # Aggregate all data
+        df_features = pd.concat(list_dfs_engineered_features)
 
         return df_features
 
@@ -1212,6 +1254,7 @@ class PipelineTim(BasePipeline):
         # Arg Checking
         check_arg.ensure_type(in_df, pd.DataFrame)
         # Execute
+        logger.debug(f'Engineering features for one data set...')
         df = in_df.sort_values('frame').copy()
         # Filter
         df, _ = feature_engineering.adaptively_filter_dlc_output(df)
@@ -1225,7 +1268,7 @@ class PipelineTim(BasePipeline):
         # 4
         df = feature_engineering.attach_distance_between_2_feats(df, 'FOREPAW_RIGHT', 'HINDPAW_RIGHT', self.feat_name_dist_forepawRight_hindpawRight, resolve_features_with_config_ini=True)
         # 5, 6
-        df = feature_engineering.attach_average_forepaw_xy(df)  # TODO: replace these two functions with the generalized xy averaging function
+        df = feature_engineering.attach_average_forepaw_xy(df)  # TODO: low: replace these two functions with the generalized xy averaging functions+output name?
         df = feature_engineering.attach_average_hindpaw_xy(df)
         df = feature_engineering.attach_distance_between_2_feats(df, 'AvgHindpaw', config.get_part('NOSETIP'), self.feat_name_dist_AvgHindpaw_Nosetip)
         # 7
@@ -1243,8 +1286,9 @@ class PipelineTim(BasePipeline):
             self.feat_name_dist_AvgForepaw_NoseTip: 'avg',
             self.feat_name_velocity_AvgForepaw: 'sum',
         }
-
+        logger.debug(f'{get_current_function()}(): # of rows in DataFrame before binning = {len(df)}')
         df = feature_engineering.integrate_df_feature_into_bins(df, map_feature_to_integrate_method, self.n_rows_to_integrate_by)
+        logger.debug(f'{get_current_function()}(): # of rows in DataFrame after binning = {len(df)}')
 
         # # Debug effort/check: ensure columns don't get dropped by accident
         # for col in in_df.columns:
@@ -1254,6 +1298,7 @@ class PipelineTim(BasePipeline):
         #         logger.error(err_missing_col)
         #         raise KeyError(err_missing_col)
 
+        logger.debug(f'Done engineering features.')
         return df
 
 
@@ -1330,26 +1375,29 @@ if __name__ == '__main__':
         nom = 'deleteme'
         loc = 'C:\\Users\\killian\\Pictures'
         full_loc = os.path.join(loc, f'{nom}.pipeline')
-        actual_save_loc = f'C:\\{nom}.pipeline'
 
-        make_new = True
-        save_new = True
+        make_new = 1
         if make_new:
+            save_new = 0
+
             p = PipelineTim(name=nom)
             p = p.add_train_data_source(test_file_1)
             p = p.add_predict_data_source(test_file_2)
-            p.average_over_n_frames = 5
-            p = p.build_classifier()
+            p = p.build()
             p = p.generate_predict_data_assignments()
             if save_new:
                 p = p.save(loc)
-            print(f'cross_val_scores: {p._cross_val_scores}')
 
-        read_existing = False
+
+        read_existing = True
         if read_existing:
-            # p = bsoid.read_pipeline(actual_save_loc)
             p = io.read_pipeline(full_loc)
-            p.plot_assignments_in_3d(show_now=True)
+            # Do stuff
+
+
+
+
+
 
 
 # streamlit run main.py streamlit -- -p "C:\Users\killian\projects\B-SOID\output\example2.pipeline"
