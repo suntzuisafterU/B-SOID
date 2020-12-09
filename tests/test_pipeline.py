@@ -150,7 +150,7 @@ p.train_data_files_paths = {p.train_data_files_paths}
         original_number_of_data_rows = len(bsoid.read_csv(csv_test_file_path))
 
         # Act
-        p = p.build_classifier()
+        p = p.build()
         actual_total_rows_after_feature_engineering = len(p.df_features_train)
 
         # Assert
