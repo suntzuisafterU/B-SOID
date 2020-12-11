@@ -16,7 +16,7 @@ Another way to od it is using the object method:
 """
 from ast import literal_eval
 from pathlib import Path
-from typing import List
+from typing import List, Tuple
 import configparser
 import numpy as np
 import os
@@ -322,14 +322,21 @@ assert os.path.isdir(config_value_alternate_output_path_for_annotated_frames), \
     f'config_value_alternate_output_path_for_annotated_frames = ' \
     f'\'{config_value_alternate_output_path_for_annotated_frames}\'. Check config.ini pathing.'
 
-######
+
+###### VIDEO PARAMETERS #####
+DEFAULT_FONT_SCALE: int = configuration.getint('VIDEO', 'DEFAULT_FONT_SCALE')
+DEFAULT_TEXT_BGR: Tuple[int] = literal_eval(configuration.get('VIDEO', 'DEFAULT_TEXT_BGR'))
+DEFAULT_TEXT_BACKGROUND_BGR: Tuple[int] = literal_eval(configuration.get('VIDEO', 'DEFAULT_TEXT_BACKGROUND_BGR'))
 
 map_ext_to_fourcc = {
     'mp4': 'mp4v',
     'avi': 'MJPG',
 
 }
-
+assert isinstance(DEFAULT_TEXT_BGR, tuple), f''
+assert len(DEFAULT_TEXT_BGR) == 3, f''
+assert isinstance(DEFAULT_TEXT_BACKGROUND_BGR, tuple), f''
+assert len(DEFAULT_TEXT_BACKGROUND_BGR) == 3, f''
 
 ##### LEGACY VARIABLES #################################################################################################
 # This version requires the six body parts Snout/Head, Forepaws/Shoulders, Hindpaws/Hips, Tailbase.
