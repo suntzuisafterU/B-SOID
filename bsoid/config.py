@@ -333,10 +333,20 @@ map_ext_to_fourcc = {
     'avi': 'MJPG',
 
 }
-assert isinstance(DEFAULT_TEXT_BGR, tuple), f''
-assert len(DEFAULT_TEXT_BGR) == 3, f''
-assert isinstance(DEFAULT_TEXT_BACKGROUND_BGR, tuple), f''
-assert len(DEFAULT_TEXT_BACKGROUND_BGR) == 3, f''
+
+# VIDEO asserts
+assert isinstance(DEFAULT_TEXT_BGR, tuple), f'DEFAULT_TEXT_BGR was expected to be a tuple but ' \
+                                            f'instead found type: {type(DEFAULT_TEXT_BGR)}  (value = {DEFAULT_TEXT_BGR}'
+assert len(DEFAULT_TEXT_BGR) == 3, f'DEFAULT_TEXT_BGR was expected to have 3 elements but ' \
+                                   f'instead found: {len(DEFAULT_TEXT_BGR)}'
+
+assert isinstance(DEFAULT_TEXT_BACKGROUND_BGR, tuple), f'DEFAULT_TEXT_BACKGROUND_BGR was expected to be a tuple but ' \
+                                            f'instead found type: {type(DEFAULT_TEXT_BACKGROUND_BGR)}  ' \
+                                                       f'(value = {DEFAULT_TEXT_BACKGROUND_BGR}'
+
+assert len(DEFAULT_TEXT_BACKGROUND_BGR) == 3, f'DEFAULT_TEXT_BACKGROUND_BGR was expected to have 3 elements but ' \
+                                   f'instead found: {len(DEFAULT_TEXT_BACKGROUND_BGR)}'
+
 
 ##### LEGACY VARIABLES #################################################################################################
 # This version requires the six body parts Snout/Head, Forepaws/Shoulders, Hindpaws/Hips, Tailbase.
