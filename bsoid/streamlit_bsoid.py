@@ -635,9 +635,11 @@ def results_section(p, pipeline_file_path, **kwargs):
                                             options=['']+p.training_data_sources+p.predict_data_sources)
         input_video_to_label = st.text_input('Input path to corresponding video which will be labeled:',
                                              value=f'{config.BSOID_BASE_PROJECT_PATH}')
+        st.markdown('')
+        st.markdown('')
+        input_new_video_name = st.text_input('Enter a file name for the labeled video output:')
         output_folder = st.text_input('Enter a directory into which the labeled video will be saved:',
                                       value=config.OUTPUT_PATH)
-        input_new_video_name = st.text_input('Enter a file name for the labeled video output:')
         # TODO: med/high: add FPS option for video out
         button_create_labeled_video = st.button('Create labeled video')
         if button_create_labeled_video:
