@@ -883,11 +883,14 @@ class BasePipeline(PipelineAttributeHolder):
             logger.error(err)
             raise ValueError(err)
 
+        df_data = df_data.astype({'frame': int}).sort_values('frame')
+
         svm_assignment_values_array = df_data[self.svm_assignment].values
         labels = list(map(self.get_assignment_label, svm_assignment_values_array))
-        frames = list(df_data['frame'].values)
+        frames = list(df_data['frame'].astype(int).values)
+
         # Generate video with variables
-        logger.debug(f'labels indices example: {labels[:5]}')
+        logger.debug(f'{get_current_function()}(): labels indices example: {labels[:5]}')
         logger.debug(f'Frame indices example: {frames[:5]}')
         videoprocessing.make_labeled_video_according_to_frame(   # labels_list: Union[List, Tuple], frames_indices_list: Union[List, Tuple], output_file_name: str, video_source: str, current_behaviour_list: List[str] = [], output_fps=15, fourcc='H264', output_dir=config.EXAMPLE_VIDEOS_OUTPUT_PATH, **kwargs):
             labels,
@@ -960,7 +963,7 @@ class BasePipeline(PipelineAttributeHolder):
         rle_by_assignment: Dict[Any: List[int, int]] = {}  # Dict[Any: List[int, int]]
         for label, idx, additional_length in rle_zipped_by_entry:
             rle_by_assignment[label] = []
-            if additional_length - 1 >= min_rows_of_behaviour:
+            if additional_length >= min_rows_of_behaviour - 1:
                 rle_by_assignment[label].append([idx, additional_length])
         for key in rle_by_assignment.keys():
             rle_by_assignment[key] = sorted(rle_by_assignment[key], key=lambda x: x[1])
@@ -970,7 +973,103 @@ class BasePipeline(PipelineAttributeHolder):
         for key, values_list in rle_by_assignment.items():
             # Loop over examples
             num_examples = min(max_examples, len(values_list))
-            logger.debug(f'')
+            # logger.debug(f'')
+            for i in range(num_examples):  # TODO: HIGH: this part dumbly loops over first n examples...In the future, it would be better to ensure that at least one of the examples has a long runtime for analysis
+                output_file_name = f'{file_name_prefix}{time.strftime("%y-%m-%d_%Hh%Mm")}_' \
+                                   f'BehaviourExample__assignment_{key}__example_{i+1}_of_{num_examples}'
+                frame_text_prefix = f'Target: {key} / '  # TODO: med/high: magic variable
+
+                idx, additional_length_i = values_list[i]
+
+                lower_bound_row_idx: int = max(0, int(idx) - num_frames_leadup)
+                upper_bound_row_idx: int = min(len(df)-1, idx + additional_length_i + 1 + num_frames_leadup)
+
+                df_frames_selection = df.iloc[lower_bound_row_idx:upper_bound_row_idx, :]
+
+                # Compile labels list via SVM assignment for now...Later, we should get the actual behavioural labels instead of the numerical assignments
+                labels_list = df_frames_selection[self.svm_assignment_col_name].values
+                logger.debug(f'df_frames_selection.dtypes: {df_frames_selection.dtypes}')
+                logger.debug(f'df_frames_selection["frame"].dypes.dtypes: {df_frames_selection["frame"].dtypes}')
+                frames_indices_list = list(df_frames_selection['frame'].astype(int).values)
+
+                videoprocessing.make_labeled_video_according_to_frame(
+                    labels_list,
+                    frames_indices_list,
+                    output_file_name,
+                    video_file_path,
+                    text_prefix=frame_text_prefix,
+                    text_bgr=text_bgr,
+                    output_fps=output_fps,
+                )
+
+        return self
+
+    def new_make_behaviour_example_videos(self, data_source: str, video_file_path: str, file_name_prefix=None, min_rows_of_behaviour=1, max_examples=3, num_frames_leadup=0, output_fps=15):
+        """
+        Create video clips of behaviours
+
+        :param data_source:
+        :param video_file_path:
+        :param file_name_prefix:
+        :param min_rows_of_behaviour:
+        :param max_examples:
+        :return:
+        """
+        # TODO: WIP
+        text_bgr = (255, 255, 255)
+        # Args checking
+        check_arg.ensure_type(num_frames_leadup, int)
+        check_arg.ensure_is_file(video_file_path)
+        # Solve kwargs
+        if file_name_prefix is None:
+            file_name_prefix = ''
+        else:
+            check_arg.ensure_type(file_name_prefix, str)
+            check_arg.ensure_has_valid_chars_for_path(file_name_prefix)
+            file_name_prefix += '__'
+
+        # Get data from data source name
+        if data_source in self.training_data_sources:
+            df = self.df_features_train_scaled
+        elif data_source in self.predict_data_sources:
+            df = self.df_features_predict_scaled
+        else:
+            err = f'Data source not found: {data_source}'
+            logger.error(err)
+            raise KeyError(err)
+        logger.debug(f'{get_current_function()}(): Total records: {len(df)}')
+
+        ### Execute
+        # Get DataFrame of the data
+        df = df.loc[df["data_source"] == data_source].sort_values('frame')
+
+        # Get Run-Length Encoding of assignments
+        assignments = df[self.svm_assignment_col_name].values
+        rle: Tuple[List, List, List] = statistics.augmented_runlength_encoding(assignments)
+
+        # Zip RLE according to order
+        # First index is value, second is index, third is additional length
+        rle_zipped_by_entry = []
+        for row__assignment_idx_addedLength in zip(*rle):
+            rle_zipped_by_entry.append(list(row__assignment_idx_addedLength))
+
+        # Roll up assignments into a dict. Keys are labels, values are lists of [index, additional length]
+        rle_by_assignment: Dict[Any, List[int]] = {}  # Dict[Any: List[int, int]]
+        for label, idx, additional_length in rle_zipped_by_entry:
+            rle_by_assignment[label] = []
+            if additional_length >= min_rows_of_behaviour - 1:
+                rle_by_assignment[label].append([idx, additional_length])
+
+        # Sort to get longest possible sections
+        for key in rle_by_assignment.keys():
+            rle_by_assignment[key] = sorted(rle_by_assignment[key], key=lambda x: x[1])
+
+        ### Finally: make video clips
+        # Loop over assignments
+        for key, values_list in rle_by_assignment.items():
+            # Loop over examples
+            num_examples = min(max_examples, len(values_list))
+            # logger.debug(f'')
             for i in range(num_examples):  # TODO: HIGH: this part dumbly loops over first n examples...In the future, it would be better to ensure that at least one of the examples has a long runtime for analysis
                 output_file_name = f'{file_name_prefix}{time.strftime("%y-%m-%d_%Hh%Mm")}_' \
                                    f'BehaviourExample__assignment_{key}__example_{i+1}_of_{num_examples}'
@@ -1371,28 +1470,41 @@ if __name__ == '__main__':
 
     run = True
     if run:
-        # Test build
-        nom = 'deleteme'
-        loc = 'C:\\Users\\killian\\Pictures'
-        full_loc = os.path.join(loc, f'{nom}.pipeline')
+        # # Test build
+        # new_name = 'deleteme'
+        # new_location_to_save_at = 'C:\\Users\\killian\\Pictures'
+        # new_full_loc_to_read = os.path.join(new_location_to_save_at, f'{new_name}.pipeline')
+        # make_new = 0
+        # if make_new:
+        #     save_new = 1
+        #
+        #     p = PipelineTim(name=new_name)
+        #     p = p.add_train_data_source(test_file_1)
+        #     p = p.add_predict_data_source(test_file_2)
+        #     p = p.build()
+        #     p = p.generate_predict_data_assignments()
+        #     if save_new:
+        #         p = p.save(new_location_to_save_at)
 
-        make_new = 1
-        if make_new:
-            save_new = 0
+        pipe_in_output = 'colorme.pipeline'
+        pipe_path = os.path.join(config.BSOID_BASE_PROJECT_PATH, 'output', pipe_in_output)
+        data_source = 'Vid3DLC_resnet50_Change_BlindnessNov11shuffle1_850000'
+        vidpath = os.path.join(config.BSOID_BASE_PROJECT_PATH, 'chbo1', 'Vid3.mp4')
+        assert os.path.isfile(pipe_path);assert os.path.isfile(vidpath)
 
-            p = PipelineTim(name=nom)
-            p = p.add_train_data_source(test_file_1)
-            p = p.add_predict_data_source(test_file_2)
-            p = p.build()
-            p = p.generate_predict_data_assignments()
-            if save_new:
-                p = p.save(loc)
+        p = io.read_pipeline(pipe_path)
 
+        #     def make_behaviour_example_videos(self, data_source: str, video_file_path: str, file_name_prefix=None, min_rows_of_behaviour=1, max_examples=3, num_frames_leadup=0, output_fps=15):
+        p.new_make_behaviour_example_videos(
+            data_source,
+            vidpath,
+            file_name_prefix='FirstTryColourMe2',
+            min_rows_of_behaviour=1,
+            max_examples=1,
+            output_fps=0.1,
 
-        read_existing = True
-        if read_existing:
-            p = io.read_pipeline(full_loc)
-            # Do stuff
+        )
+
 
 
 
@@ -1402,3 +1514,25 @@ if __name__ == '__main__':
 
 # streamlit run main.py streamlit -- -p "C:\Users\killian\projects\B-SOID\output\example2.pipeline"
 # streamlit run main.py streamlit -- -p "C:\Users\killian\projects\B-SOID\output\example2.pipeline"
+# import cv2
+# def modify_text_color(frame: np.ndarray, text, font, font_scale, text_offset_x, text_offset_y,text_colour_bgr, rectangle_colour_bgr,  ):
+#     text_for_frame = text  # f'{text_prefix}Current Assignment: {label}'
+#
+#     text_width, text_height = cv2.getTextSize(text_for_frame, font, fontScale=font_scale, thickness=1)[0]
+#     box_top_left, box_top_right = (
+#         (text_offset_x - 12, text_offset_y + 12),  # pt1, or top left point
+#         (text_offset_x + text_width + 12, text_offset_y - text_height - 8),  # pt2, or bottom right point
+#     )
+#
+#     # Add background colour for text
+#     cv2.rectangle(frame, box_top_left, box_top_right, rectangle_colour_bgr, cv2.FILLED)
+#     # Add text
+#     cv2.putText(
+#         img=frame,
+#         text=str(text_for_frame),
+#         org=(text_offset_x, text_offset_y),
+#         fontFace=font,
+#         fontScale=font_scale,
+#         color=text_colour_bgr,
+#         thickness=1
+#     )
