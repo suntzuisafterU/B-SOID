@@ -17,7 +17,7 @@ import time
 from bsoid import check_arg, config, logging_bsoid, statistics
 from bsoid.logging_bsoid import get_current_function
 
-logger = config.initialize_logger(__name__)
+logger = config.initialize_logger(__file__)
 
 
 ### In development
@@ -91,15 +91,17 @@ def make_labeled_video_according_to_frame(labels_list: Union[List, Tuple], frame
     cv2_source_video_object.set(1, 0)
     is_frame_retrieved, frame = cv2_source_video_object.read()
     if not is_frame_retrieved:
-        err = f''
+        err = f'Frame not retrieved. Is video path correct? video_source = {video_source} '
         logger.error(err)
-        raise RuntimeError(err)
+        raise ValueError(err)
     height, width, _layers = frame.shape
 
     # Open video writer object
     four_character_code = cv2.VideoWriter_fourcc(*fourcc)
+    full_output_video_path = os.path.join(output_dir, f'{output_file_name}.mp4')
+    logger.debug(f'Video saving to: {full_output_video_path}')
     video_writer = cv2.VideoWriter(
-        os.path.join(output_dir, f'{output_file_name}.mp4'),    # Full output file path
+        full_output_video_path,                                 # Full output file path
         four_character_code,                                    # fourcc -- four character code
         output_fps,                                             # fps
         (width, height)                                         # frameSize
@@ -145,7 +147,7 @@ def make_labeled_video_according_to_frame(labels_list: Union[List, Tuple], frame
     # All done. Release video, clean up, then return.
     video_writer.release()
     cv2.destroyAllWindows()
-
+    logger.debug(f'{get_current_function()}(): Done writing video.')
     return
 
 
@@ -907,4 +909,4 @@ def a():
 #     #         )
 #
 
-#
+# cd $bsoid ; conda activate bsoid
