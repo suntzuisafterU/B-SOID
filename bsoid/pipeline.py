@@ -472,7 +472,7 @@ class BasePipeline(PipelineAttributeHolder):
         for i, df in enumerate(list_dfs_of_raw_data):
             df = df.copy().astype({'frame': float})
             check_arg.ensure_frame_indices_are_integers(df)
-            logger.debug(f'')
+            logger.debug(f'{get_current_function()}(): Engineering df feature set {i}')
             df_engineered_features: pd.DataFrame = self.engineer_features(df)
             list_dfs_engineered_features.append(df_engineered_features)
 
@@ -925,8 +925,6 @@ class BasePipeline(PipelineAttributeHolder):
         :param max_examples:
         :return:
         """
-        # TODO: WIP
-        text_bgr = (255, 255, 255)
         # Args checking
         check_arg.ensure_type(num_frames_leadup, int)
         check_arg.ensure_is_file(video_file_path)
@@ -1002,7 +1000,6 @@ class BasePipeline(PipelineAttributeHolder):
                     output_file_name,
                     video_file_path,
                     text_prefix=frame_text_prefix,
-                    text_bgr=text_bgr,
                     output_fps=output_fps,
                 )
 
