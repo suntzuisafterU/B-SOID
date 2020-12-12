@@ -23,6 +23,7 @@ import traceback
 
 
 from bsoid import check_arg, config, io, pipeline, streamlit_session_state
+# from bsoid.pipeline import *
 
 logger = config.initialize_logger(__file__)
 
@@ -612,6 +613,7 @@ def review_behaviours(p, pipeline_file_path):
                 existing_behaviour_label = existing_behaviour_label if existing_behaviour_label else '(Behaviour label not yet assigned)'
                 text_input_new_label = st.text_input(f'Add behaviour label to assignment # {assignment_a}', value=existing_behaviour_label, key=f'key_new_behaviour_label_{assignment_a}')
                 if text_input_new_label != existing_behaviour_label:
+                    st.markdown(f'Attempting to save label ({text_input_new_label}) to pipeline (found at: {pipeline_file_path})')
                     st.markdown(f'Debug statement: pipe file path = {os.path.dirname(pipeline_file_path)}')
                     if not os.path.isfile(pipeline_file_path):
                         st.error(f'ERROR FOUND: The following path was not detected to be a file: {pipeline_file_path}')
