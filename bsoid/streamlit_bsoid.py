@@ -680,7 +680,7 @@ def results_section(p, pipeline_file_path, **kwargs):
 
 def display_footer(p, *args, **kwargs):
     """ Footer of Streamlit page """
-
+    logger.debug('')
     return p
 
 
