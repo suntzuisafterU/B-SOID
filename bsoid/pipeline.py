@@ -40,7 +40,7 @@ import time
 # import warnings
 
 from bsoid.logging_bsoid import get_current_function
-from bsoid import check_arg, config, feature_engineering, bsoid_io, statistics, videoprocessing, visuals
+from bsoid import check_arg, config, feature_engineering, io, statistics, videoprocessing, visuals
 
 
 logger = config.initialize_logger(__file__)
@@ -365,7 +365,7 @@ class BasePipeline(PipelineAttributeHolder):
                                  not in set(self.df_features_train_raw['data_source'].values)]
         for path in train_data_paths_args:
             if os.path.isfile(path):
-                df_new_data = bsoid_io.read_csv(path)
+                df_new_data = io.read_csv(path)
                 self.df_features_train_raw = self.df_features_train_raw.append(df_new_data)
                 self._is_training_data_set_different_from_model_input = True
                 logger.debug(f'Added file to train data: {path}')
@@ -376,7 +376,7 @@ class BasePipeline(PipelineAttributeHolder):
                                            if file_name.split('.')[-1] in config.valid_dlc_output_extensions
                                            and file_name not in set(self.df_features_train_raw['data_source'].values)]
                 for file_path in data_sources:
-                    df_new_data_i = bsoid_io.read_csv(file_path)
+                    df_new_data_i = io.read_csv(file_path)
                     self.df_features_train_raw = self.df_features_train_raw.append(df_new_data_i)
                     self._is_training_data_set_different_from_model_input = True
                     logger.debug(f'Added file to train data: {file_path}')
@@ -400,7 +400,7 @@ class BasePipeline(PipelineAttributeHolder):
                                   not in set(self.df_features_predict_raw['data_source'].values)]
         for path in predict_data_path_args:
             if os.path.isfile(path):
-                df_new_data = bsoid_io.read_csv(path)
+                df_new_data = io.read_csv(path)
                 self.df_features_predict_raw = self.df_features_predict_raw.append(df_new_data)
                 self._has_unengineered_predict_data = True
                 logger.debug(f'Added file to predict data: {path}')
@@ -411,7 +411,7 @@ class BasePipeline(PipelineAttributeHolder):
                                            if file_name.split('.')[-1] in config.valid_dlc_output_extensions
                                            and file_name not in set(self.df_features_predict_raw['data_source'].values)]
                 for file_path in data_sources:
-                    df_new_data_i = bsoid_io.read_csv(file_path)
+                    df_new_data_i = io.read_csv(file_path)
                     self.df_features_predict_raw = self.df_features_predict_raw.append(df_new_data_i)
                     self._has_unengineered_predict_data = True
                     logger.debug(f'Added file to predict data: {file_path}')
@@ -830,7 +830,7 @@ class BasePipeline(PipelineAttributeHolder):
             raise e
 
         logger.debug(f'{inspect.stack()[0][3]}(): Pipeline ({self.name}) saved to: {final_out_path}')
-        return bsoid_io.read_pipeline(final_out_path)
+        return io.read_pipeline(final_out_path)
 
     def save_to_folder(self, dir: str):
         """  """
@@ -960,15 +960,16 @@ class BasePipeline(PipelineAttributeHolder):
         rle_zipped_by_entry = []
         for row__assignment_idx_addedLength in zip(*rle):
             rle_zipped_by_entry.append(list(row__assignment_idx_addedLength))
-        # Zip'd RLE according to order example: [[15, 0, 0], [4, 1, 1], [14, 3, 0], [15, 4, 0], ... ]
-        # Roll up assignments into a dict. Keys are labels, values are lists of [index, additional length]
+        # EXAMPLE RESULT: Zip'd RLE according to order: [[15, 0, 0], [4, 1, 1], [14, 3, 0], [15, 4, 0], ... ]
 
-        rle_by_assignment: Dict[Any: List[int, int]] = {}  # Dict[Any: List[int, int]]
+        # Roll up assignments into a dict. Keys are labels, values are lists of [index, additional length]
+        rle_by_assignment: Dict[Any: List[int, int]] = {}  # Dict[Any: List[int, int]] // First element in list is the frame index, second element is the additional length duration of behaviour
         for label, idx, additional_length in rle_zipped_by_entry:
             if label not in rle_by_assignment:
                 rle_by_assignment[label] = []
             if additional_length >= min_rows_of_behaviour - 1:
                 rle_by_assignment[label].append([idx, additional_length])
+        # Sort from longest additional length (ostensibly the duration of behaviour) to least
         for key in rle_by_assignment.keys():
             rle_by_assignment[key] = sorted(rle_by_assignment[key], key=lambda x: x[1], reverse=True)
 
@@ -983,7 +984,7 @@ class BasePipeline(PipelineAttributeHolder):
                                    f'BehaviourExample__assignment_{key}__example_{i+1}_of_{num_examples}'
                 frame_text_prefix = f'Target: {key} / '  # TODO: med/high: magic variable
 
-                idx, additional_length_i = values_list[i]
+                idx, additional_length_i = values_list[i]  # Recall: first elem is frame idx, second elem is additional length
 
                 lower_bound_row_idx: int = max(0, int(idx) - num_frames_leadup)
                 upper_bound_row_idx: int = min(len(df)-1, idx + additional_length_i + 1 + num_frames_leadup)
@@ -1416,6 +1417,7 @@ def generate_pipeline_filename_from_pipeline(pipeline_obj: BasePipeline) -> str:
 
 if __name__ == '__main__':
     # Debugging Objective: ensure that making videos is working well using existing pipeline
+    example_videos_prefix = 'FirstTryColourMe10'
     pipe_in_output = 'colorme.pipeline'
     pipe_path = os.path.join(config.BSOID_BASE_PROJECT_PATH, 'output', pipe_in_output)
     data_source = 'Vid3DLC_resnet50_Change_BlindnessNov11shuffle1_850000'
@@ -1423,17 +1425,16 @@ if __name__ == '__main__':
     assert os.path.isfile(pipe_path)
     assert os.path.isfile(vidpath)
 
-    p = bsoid_io.read_pipeline(pipe_path)
+    p = io.read_pipeline(pipe_path)
 
     p.make_behaviour_example_videos(
         data_source,
         vidpath,
-        file_name_prefix='FirstTryColourMe4',
+        file_name_prefix=example_videos_prefix,
         min_rows_of_behaviour=1,
-        max_examples=1,
+        max_examples=2,
         output_fps=0.8,
         num_frames_leadup=1,
-
     )
 
 
