@@ -22,7 +22,7 @@ logger = config.initialize_logger(__file__)
 
 ### In development
 
-def make_labeled_video_according_to_frame(labels_list: Union[List, Tuple], frames_indices_list: Union[List, Tuple], output_file_name: str, video_source: str, current_behaviour_list: List[str] = [], output_fps=15, fourcc='mp4v', output_dir=config.EXAMPLE_VIDEOS_OUTPUT_PATH, **kwargs):
+def make_labeled_video_according_to_frame(labels_list: Union[List, Tuple], frames_indices_list: Union[List, Tuple], output_file_name: str, video_source: str, current_behaviour_list: List[str] = [], output_fps=15, fourcc='mp4v', output_dir=config.OUTPUT_PATH, **kwargs):
     """
     # PREVIOUSLY: fourcc='mp4v' was default
     # PREVIOUSLY code was 'H264'
@@ -55,8 +55,8 @@ def make_labeled_video_according_to_frame(labels_list: Union[List, Tuple], frame
 
     # Kwargs
     font_scale = kwargs.get('font_scale', config.DEFAULT_FONT_SCALE)
-    rectangle_colour_bgr: Tuple[int, int, int] = kwargs.get('rectangle_bgr', (0, 0, 0))  # 000=Black box?
-    text_colour_bgr = kwargs.get('text_bgr', (255, 255, 255))  # 255 = white?
+    rectangle_colour_bgr: Tuple[int, int, int] = kwargs.get('rectangle_bgr', config.DEFAULT_TEXT_BACKGROUND_BGR)  # 000=Black box?
+    text_colour_bgr = kwargs.get('text_bgr', config.DEFAULT_TEXT_BGR)  # 255 = white?
     text_prefix = kwargs.get('text_prefix', '')
     text_offset_x = kwargs.get('text_offset_x', 50)
     text_offset_y = kwargs.get('text_offset_y', 125)
@@ -67,19 +67,18 @@ def make_labeled_video_according_to_frame(labels_list: Union[List, Tuple], frame
     check_arg.ensure_has_valid_chars_for_path(output_file_name)
     check_arg.ensure_is_dir(output_dir)
     # check_arg.ensure_type(output_fps, int)
-    if len(labels_list) != len(frames_indices_list):
-        non_matching_lengths_err = f'{get_current_function()}(): the number of ' \
-                                   f'labels and the list of frames do not match'
-        logger.error(non_matching_lengths_err)
-        raise ValueError(non_matching_lengths_err)
     # # Check kwargs
     check_arg.ensure_type(font_scale, int)
     check_arg.ensure_type(rectangle_colour_bgr, tuple)
+    check_arg.ensure_type(rectangle_colour_bgr[0], int)
     check_arg.ensure_type(text_colour_bgr, tuple)
     check_arg.ensure_type(text_prefix, str)
     check_arg.ensure_type(text_offset_x, int)
     check_arg.ensure_type(text_offset_y, int)
-
+    if len(labels_list) != len(frames_indices_list):
+        non_matching_lengths_err = f'{get_current_function()}(): the number of labels and the list of frames do not match. Number of labels = {len(labels_list)} while number of frames = {len(frames_indices_list)}'
+        logger.error(non_matching_lengths_err)
+        raise ValueError(non_matching_lengths_err)
     ### Execute ###
     # Open source video
     cv2_source_video_object = cv2.VideoCapture(video_source)
@@ -87,7 +86,7 @@ def make_labeled_video_according_to_frame(labels_list: Union[List, Tuple], frame
     logger.debug(f"Total # of frames in video: {total_frames_of_source_vid}")
     logger.debug(f"Is it opened? {cv2_source_video_object.isOpened()}")
 
-    # Get dimensions of first frame in video, use that to instantiate VideoWriter
+    # Get dimensions of first frame in video, use that to instantiate VideoWriter dimensions
     cv2_source_video_object.set(1, 0)
     is_frame_retrieved, frame = cv2_source_video_object.read()
     if not is_frame_retrieved:
@@ -110,7 +109,7 @@ def make_labeled_video_according_to_frame(labels_list: Union[List, Tuple], frame
     # Loop over all requested frames, add text, then append to list for later video creation
     for i in range(len(frames_indices_list)):
         label, frame_idx = labels_list[i], frames_indices_list[i]
-        logger.debug(f'label, frame_idx = {label}, {frame_idx} // type(label), type(frame_idx) = {type(label)}, {type(frame_idx)}')
+        # logger.debug(f'label, frame_idx = {label}, {frame_idx} // type(label), type(frame_idx) = {type(label)}, {type(frame_idx)}')  # TODO: remove this line after type debugging
         cv2_source_video_object.set(1, frame_idx)
         is_frame_retrieved, frame = cv2_source_video_object.read()
         if not is_frame_retrieved:
@@ -226,7 +225,7 @@ def generate_video_with_labels(labels: Union[List, Tuple, np.ndarray], source_vi
 
         ### TIGHTLY BOUND - TEXT ADDITION ###
         # TODO: Note: if the label is not a string, the below line will fail!
-        text_width, text_height = cv2.getTextSize(text_for_frame, font, fontScale=font_scale, thickness=1)[0]
+        text_width, text_height = cv2.getTextSize(str(text_for_frame), font, fontScale=font_scale, thickness=1)[0]
 
         text_offset_x, text_offset_y = 50, 50  # TODO: low: address magic variables later
         box_coordinates = (
