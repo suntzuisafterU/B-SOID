@@ -13,11 +13,11 @@ import re
 import sys
 
 
-import bsoid
-# from bsoid import bsoid.check_arg, bsoid.config, bsoid.logging_bsoid, pipeline, statistics
+# import bsoid
+from bsoid import check_arg, config, logging_bsoid, pipeline, statistics
 
 
-logger = bsoid.config.initialize_logger(__file__)
+logger = config.initialize_logger(__file__)
 
 
 ########################################################################################################################
@@ -126,7 +126,7 @@ def read_dlc_data(data_file_path: str, **kwargs) -> pd.DataFrame:
     :param kwargs:
     :return:
     """
-    bsoid.check_arg.ensure_is_file(data_file_path)
+    check_arg.ensure_is_file(data_file_path)
     file_extension = data_file_path.split('.')[-1]
 
     if file_extension == 'csv':
@@ -134,7 +134,7 @@ def read_dlc_data(data_file_path: str, **kwargs) -> pd.DataFrame:
     elif file_extension == 'h5':
         return read_h5(data_file_path)
     else:
-        invalid_ext_err = f'{bsoid.logging_bsoid.get_current_function()}(): the input DLC data file had ' \
+        invalid_ext_err = f'{logging_bsoid.get_current_function()}(): the input DLC data file had ' \
                           f'an unexpected extension. Please check file path: {data_file_path}'
         logger.error(invalid_ext_err)
         raise ValueError(invalid_ext_err)
@@ -147,15 +147,15 @@ def read_pipeline(path_to_file: str):
     :return:
     """
     # TODO: do final checks on this function
-    bsoid.check_arg.ensure_is_file(path_to_file)
-    logger.debug(f'{bsoid.logging_bsoid.get_current_function()}(): Trying to open: {path_to_file}')
+    check_arg.ensure_is_file(path_to_file)
+    logger.debug(f'{logging_bsoid.get_current_function()}(): Trying to open: {path_to_file}')
     with open(path_to_file, 'rb') as file:
         p = joblib.load(file)
-    logger.debug(f'{bsoid.logging_bsoid.get_current_function()}(): Pipeline at {path_to_file} opened successfully!')
+    logger.debug(f'{logging_bsoid.get_current_function()}(): Pipeline at {path_to_file} opened successfully!')
     return p
 
 
-def save_pipeline(pipeline_obj, dir_path: str = bsoid.config.OUTPUT_PATH):
+def save_pipeline(pipeline_obj, dir_path: str = config.OUTPUT_PATH):
     """
     With a valid path, save an existing pipeline
     :param pipeline_obj:
@@ -163,12 +163,12 @@ def save_pipeline(pipeline_obj, dir_path: str = bsoid.config.OUTPUT_PATH):
     :return:
     """
     # Arg checking
-    bsoid.check_arg.ensure_type(dir_path, str)
-    bsoid.check_arg.ensure_is_valid_path(dir_path)
+    check_arg.ensure_type(dir_path, str)
+    check_arg.ensure_is_valid_path(dir_path)
     did_not_delete_file = False
     final_out_path = os.path.join(
         dir_path,
-        bsoid.pipeline.generate_pipeline_filename_from_pipeline(pipeline_obj)
+        pipeline.generate_pipeline_filename_from_pipeline(pipeline_obj)
     )
     # # TODO: high: check if its being overwritten without os.remove usage
     # if os.path.isfile(final_out_path):
@@ -211,13 +211,13 @@ def check_folder_for_dlc_output_files(folder_path: str, file_extension: str,
     else:
         path_to_check_for_csvs = f'{folder_path}{os.path.sep}*.{file_extension}'
 
-    logger.debug(f'{bsoid.logging_bsoid.get_current_function()}: Path that is being '
+    logger.debug(f'{logging_bsoid.get_current_function()}: Path that is being '
                  f'checked using glob selection: {path_to_check_for_csvs}')
 
     file_names: List[str] = glob.glob(path_to_check_for_csvs, recursive=check_recursively)
 
     if sort_names:
-        bsoid.statistics.sort_list_nicely_in_place(file_names)
+        statistics.sort_list_nicely_in_place(file_names)
 
     return file_names
 
@@ -241,10 +241,10 @@ def check_folder_contents_for_csv_files(absolute_folder_path: str, check_recursi
         raise ValueError(value_err)
     # Continue if values valid
     path_to_check_for_csvs = f'{absolute_folder_path}{os.path.sep}**{os.path.sep}*.csv'
-    logger.debug(f'{bsoid.logging_bsoid.get_current_function()}: Path that is being checked using glob selection: {path_to_check_for_csvs}')
+    logger.debug(f'{logging_bsoid.get_current_function()}: Path that is being checked using glob selection: {path_to_check_for_csvs}')
     filenames = glob.glob(path_to_check_for_csvs, recursive=check_recursively)
-    bsoid.statistics.sort_list_nicely_in_place(filenames)
-    logger.info(f'{bsoid.logging_bsoid.get_current_function()}: Total files found: {len(filenames)}. List of files found: {filenames}.')
+    statistics.sort_list_nicely_in_place(filenames)
+    logger.info(f'{logging_bsoid.get_current_function()}: Total files found: {len(filenames)}. List of files found: {filenames}.')
     return filenames
 
 
@@ -255,11 +255,11 @@ def get_filenames_csvs_from_folders_recursively_in_dlc_project_path(folder: str)
     :param folder:
     :return:
     """
-    path_to_check_for_csvs = f'{bsoid.config.DLC_PROJECT_PATH}{os.path.sep}{folder}{os.path.sep}**{os.path.sep}*.csv'
-    logger.debug(f'{bsoid.logging_bsoid.get_current_function()}():Path that is being checked using glob selection:{path_to_check_for_csvs}')
+    path_to_check_for_csvs = f'{config.DLC_PROJECT_PATH}{os.path.sep}{folder}{os.path.sep}**{os.path.sep}*.csv'
+    logger.debug(f'{logging_bsoid.get_current_function()}():Path that is being checked using glob selection:{path_to_check_for_csvs}')
     filenames = glob.glob(path_to_check_for_csvs, recursive=True)
-    bsoid.statistics.sort_list_nicely_in_place(filenames)
-    logger.info(f'{bsoid.logging_bsoid.get_current_function()}(): Total files found: {len(filenames)}. List of files found: {filenames}.')
+    statistics.sort_list_nicely_in_place(filenames)
+    logger.info(f'{logging_bsoid.get_current_function()}(): Total files found: {len(filenames)}. List of files found: {filenames}.')
     return filenames
 
 
