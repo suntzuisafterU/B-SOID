@@ -8,14 +8,18 @@ For ever new pipeline implementation by the user, make sure you do the following
 Notes
     - the OpenTSNE implementation does not allow more than 2 components
     - GMM's "reg covar" == "regularization covariance"
-TODOs:
+TODO:
+    med/high: review use of UMAP -- potential alternative to SVC?
+    med/high: review use of HDBSCAN -- possible replacement for GMM clustering?
     low: implement ACTUAL random state s.t. all random state property calls beget a truly random integer
     low: review "theta"(/angle) for TSNE
 
 Add attrib checking for engineer_features? https://duckduckgo.com/?t=ffab&q=get+all+classes+within+a+file+python&ia=web&iax=qa
 
+
 """
-# from bhtsne import tsne as TSNE_bhtsne
+from bhtsne import tsne as TSNE_bhtsne
+from pandas.core.common import SettingWithCopyWarning
 from sklearn.manifold import TSNE as TSNE_sklearn
 from sklearn.metrics import accuracy_score
 from sklearn.mixture import GaussianMixture
@@ -23,7 +27,7 @@ from sklearn.model_selection import cross_val_score
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 from sklearn.utils import shuffle as sklearn_shuffle_dataframe
-from typing import Any, Collection, Dict, List, Optional, Tuple, Union  # TODO: review all uses of Optional
+from typing import Any, Collection, Dict, List, Optional, Tuple, Union  # TODO: med: review all uses of Optional
 import inspect
 import joblib
 import numpy as np
@@ -31,7 +35,6 @@ import os
 import pandas as pd
 import sys
 import time
-# from pandas.core.common import SettingWithCopyWarning
 # from tqdm import tqdm
 # import openTSNE  # openTSNE only supports n_components 2 or less
 # import warnings
@@ -570,7 +573,7 @@ class BasePipeline(PipelineAttributeHolder):
     def scale_transform_predict_data(self, features: Optional[List[str]] = None):
         """
         Scales prediction data. Utilizes existing scaler.
-
+        If no feature set is explicitly specified, then the default features set in the Pipeline are used.
         :param features:
         :return:
         """
@@ -579,7 +582,8 @@ class BasePipeline(PipelineAttributeHolder):
             features = self.all_features
         features = list(features)
         df_features_predict = self.df_features_predict
-        # Check args
+
+        # Check args before execution
         check_arg.ensure_type(features, list, tuple)
         check_arg.ensure_type(df_features_predict, pd.DataFrame)
         check_arg.ensure_columns_in_DataFrame(df_features_predict, features)
@@ -947,7 +951,7 @@ class BasePipeline(PipelineAttributeHolder):
 
         ### Execute
         # Get DataFrame of the data
-        df = df.loc[df["data_source"] == data_source].sort_values('frame')
+        df = df.loc[df["data_source"] == data_source].astype({'frame': int}).sort_values('frame').copy()
 
         # Get Run-Length Encoding of assignments
         assignments = df[self.svm_assignment_col_name].values
@@ -965,102 +969,6 @@ class BasePipeline(PipelineAttributeHolder):
             rle_by_assignment[label] = []
             if additional_length >= min_rows_of_behaviour - 1:
                 rle_by_assignment[label].append([idx, additional_length])
-        for key in rle_by_assignment.keys():
-            rle_by_assignment[key] = sorted(rle_by_assignment[key], key=lambda x: x[1])
-
-        ### Finally: make video clips
-        # Loop over assignments
-        for key, values_list in rle_by_assignment.items():
-            # Loop over examples
-            num_examples = min(max_examples, len(values_list))
-            # logger.debug(f'')
-            for i in range(num_examples):  # TODO: HIGH: this part dumbly loops over first n examples...In the future, it would be better to ensure that at least one of the examples has a long runtime for analysis
-                output_file_name = f'{file_name_prefix}{time.strftime("%y-%m-%d_%Hh%Mm")}_' \
-                                   f'BehaviourExample__assignment_{key}__example_{i+1}_of_{num_examples}'
-                frame_text_prefix = f'Target: {key} / '  # TODO: med/high: magic variable
-
-                idx, additional_length_i = values_list[i]
-
-                lower_bound_row_idx: int = max(0, int(idx) - num_frames_leadup)
-                upper_bound_row_idx: int = min(len(df)-1, idx + additional_length_i + 1 + num_frames_leadup)
-
-                df_frames_selection = df.iloc[lower_bound_row_idx:upper_bound_row_idx, :]
-
-                # Compile labels list via SVM assignment for now...Later, we should get the actual behavioural labels instead of the numerical assignments
-                labels_list = df_frames_selection[self.svm_assignment_col_name].values
-                logger.debug(f'df_frames_selection.dtypes: {df_frames_selection.dtypes}')
-                logger.debug(f'df_frames_selection["frame"].dypes.dtypes: {df_frames_selection["frame"].dtypes}')
-                frames_indices_list = list(df_frames_selection['frame'].astype(int).values)
-
-                videoprocessing.make_labeled_video_according_to_frame(
-                    labels_list,
-                    frames_indices_list,
-                    output_file_name,
-                    video_file_path,
-                    text_prefix=frame_text_prefix,
-                    text_bgr=text_bgr,
-                    output_fps=output_fps,
-                )
-
-        return self
-
-    def new_make_behaviour_example_videos(self, data_source: str, video_file_path: str, file_name_prefix=None, min_rows_of_behaviour=1, max_examples=3, num_frames_leadup=0, output_fps=15):
-        """
-        Create video clips of behaviours
-
-        :param data_source:
-        :param video_file_path:
-        :param file_name_prefix:
-        :param min_rows_of_behaviour:
-        :param max_examples:
-        :return:
-        """
-        # TODO: WIP
-        text_bgr = (255, 255, 255)
-        # Args checking
-        check_arg.ensure_type(num_frames_leadup, int)
-        check_arg.ensure_is_file(video_file_path)
-        # Solve kwargs
-        if file_name_prefix is None:
-            file_name_prefix = ''
-        else:
-            check_arg.ensure_type(file_name_prefix, str)
-            check_arg.ensure_has_valid_chars_for_path(file_name_prefix)
-            file_name_prefix += '__'
-
-        # Get data from data source name
-        if data_source in self.training_data_sources:
-            df = self.df_features_train_scaled
-        elif data_source in self.predict_data_sources:
-            df = self.df_features_predict_scaled
-        else:
-            err = f'Data source not found: {data_source}'
-            logger.error(err)
-            raise KeyError(err)
-        logger.debug(f'{get_current_function()}(): Total records: {len(df)}')
-
-        ### Execute
-        # Get DataFrame of the data
-        df = df.loc[df["data_source"] == data_source].sort_values('frame')
-
-        # Get Run-Length Encoding of assignments
-        assignments = df[self.svm_assignment_col_name].values
-        rle: Tuple[List, List, List] = statistics.augmented_runlength_encoding(assignments)
-
-        # Zip RLE according to order
-        # First index is value, second is index, third is additional length
-        rle_zipped_by_entry = []
-        for row__assignment_idx_addedLength in zip(*rle):
-            rle_zipped_by_entry.append(list(row__assignment_idx_addedLength))
-
-        # Roll up assignments into a dict. Keys are labels, values are lists of [index, additional length]
-        rle_by_assignment: Dict[Any, List[int]] = {}  # Dict[Any: List[int, int]]
-        for label, idx, additional_length in rle_zipped_by_entry:
-            rle_by_assignment[label] = []
-            if additional_length >= min_rows_of_behaviour - 1:
-                rle_by_assignment[label].append([idx, additional_length])
-
-        # Sort to get longest possible sections
         for key in rle_by_assignment.keys():
             rle_by_assignment[key] = sorted(rle_by_assignment[key], key=lambda x: x[1])
 
@@ -1180,7 +1088,7 @@ class PipelinePrime(BasePipeline):
         df_filtered, _ = feature_engineering.adaptively_filter_dlc_output(df)
         # Engineer features
         df_features: pd.DataFrame = feature_engineering.engineer_7_features_dataframe(
-            df_filtered, features_names_7=self.features_names_7)
+            df_filtered, features_names_7=self.all_features)
 
         # Ensure columns don't get dropped by accident
         for col in columns_to_save:
@@ -1458,55 +1366,76 @@ def generate_pipeline_filename_from_pipeline(pipeline_obj: BasePipeline) -> str:
 #             p.plot_assignments_in_3d(show_now=True)
 
 
+# if __name__ == '__main__':
+#     # This __main__ section is a debugging effort and holds no value to the final product.
+#     BSOID = os.path.dirname(os.path.dirname(__file__))
+#     if BSOID not in sys.path: sys.path.append(BSOID)
+#     test_file_1 = os.path.join(BSOID, 'restraint', 'Restraint-1DLC_resnet50_EPM-RESTRAINTNov2shuffle1_1030000.csv')
+#     test_file_2 = os.path.join(BSOID, 'restraint', 'Restraint-2DLC_resnet50_EPM-RESTRAINTNov2shuffle1_1030000.csv')
+#
+#     assert os.path.isfile(test_file_1), f'path does not exist: {test_file_1}'
+#     assert os.path.isfile(test_file_2)
+#
+#     run = True
+#     if run:
+#         # # Test build
+#         # new_name = 'deleteme'
+#         # new_location_to_save_at = 'C:\\Users\\killian\\Pictures'
+#         # new_full_loc_to_read = os.path.join(new_location_to_save_at, f'{new_name}.pipeline')
+#         # make_new = 0
+#         # if make_new:
+#         #     save_new = 1
+#         #
+#         #     p = PipelineTim(name=new_name)
+#         #     p = p.add_train_data_source(test_file_1)
+#         #     p = p.add_predict_data_source(test_file_2)
+#         #     p = p.build()z
+#         #     p = p.generate_predict_data_assignments()
+#         #     if save_new:
+#         #         p = p.save(new_location_to_save_at)
+#
+#         pipe_in_output = 'colorme.pipeline'
+#         pipe_path = os.path.join(config.BSOID_BASE_PROJECT_PATH, 'output', pipe_in_output)
+#         data_source = 'Vid3DLC_resnet50_Change_BlindnessNov11shuffle1_850000'
+#         vidpath = os.path.join(config.BSOID_BASE_PROJECT_PATH, 'chbo1', 'Vid3.mp4')
+#         assert os.path.isfile(pipe_path)
+#         assert os.path.isfile(vidpath)
+#
+#         p = b_io.read_pipeline(pipe_path)
+#
+#         #     def make_behaviour_example_videos(self, data_source: str, video_file_path: str, file_name_prefix=None, min_rows_of_behaviour=1, max_examples=3, num_frames_leadup=0, output_fps=15):
+#         p.make_behaviour_example_videos(
+#             data_source,
+#             vidpath,
+#             file_name_prefix='FirstTryColourMe4',
+#             min_rows_of_behaviour=1,
+#             max_examples=1,
+#             output_fps=0.8,
+#             num_frames_leadup=1,
+#         )
+
+
 if __name__ == '__main__':
-    # This __main__ section is a debugging effort and holds no value to the final product.
-    BSOID = os.path.dirname(os.path.dirname(__file__))
-    if BSOID not in sys.path: sys.path.append(BSOID)
-    test_file_1 = os.path.join(BSOID, 'restraint', 'Restraint-1DLC_resnet50_EPM-RESTRAINTNov2shuffle1_1030000.csv')
-    test_file_2 = os.path.join(BSOID, 'restraint', 'Restraint-2DLC_resnet50_EPM-RESTRAINTNov2shuffle1_1030000.csv')
+    # Debugging Objective: ensure that making videos is working well using existing pipeline
+    pipe_in_output = 'colorme.pipeline'
+    pipe_path = os.path.join(config.BSOID_BASE_PROJECT_PATH, 'output', pipe_in_output)
+    data_source = 'Vid3DLC_resnet50_Change_BlindnessNov11shuffle1_850000'
+    vidpath = os.path.join(config.BSOID_BASE_PROJECT_PATH, 'chbo1', 'Vid3.mp4')
+    assert os.path.isfile(pipe_path)
+    assert os.path.isfile(vidpath)
 
-    assert os.path.isfile(test_file_1), f'path does not exist: {test_file_1}'
-    assert os.path.isfile(test_file_2)
+    p = io.read_pipeline(pipe_path)
 
-    run = True
-    if run:
-        # # Test build
-        # new_name = 'deleteme'
-        # new_location_to_save_at = 'C:\\Users\\killian\\Pictures'
-        # new_full_loc_to_read = os.path.join(new_location_to_save_at, f'{new_name}.pipeline')
-        # make_new = 0
-        # if make_new:
-        #     save_new = 1
-        #
-        #     p = PipelineTim(name=new_name)
-        #     p = p.add_train_data_source(test_file_1)
-        #     p = p.add_predict_data_source(test_file_2)
-        #     p = p.build()
-        #     p = p.generate_predict_data_assignments()
-        #     if save_new:
-        #         p = p.save(new_location_to_save_at)
+    p.make_behaviour_example_videos(
+        data_source,
+        vidpath,
+        file_name_prefix='FirstTryColourMe4',
+        min_rows_of_behaviour=1,
+        max_examples=1,
+        output_fps=0.8,
+        num_frames_leadup=1,
 
-        pipe_in_output = 'colorme.pipeline'
-        pipe_path = os.path.join(config.BSOID_BASE_PROJECT_PATH, 'output', pipe_in_output)
-        data_source = 'Vid3DLC_resnet50_Change_BlindnessNov11shuffle1_850000'
-        vidpath = os.path.join(config.BSOID_BASE_PROJECT_PATH, 'chbo1', 'Vid3.mp4')
-        assert os.path.isfile(pipe_path);assert os.path.isfile(vidpath)
-
-        p = io.read_pipeline(pipe_path)
-
-        #     def make_behaviour_example_videos(self, data_source: str, video_file_path: str, file_name_prefix=None, min_rows_of_behaviour=1, max_examples=3, num_frames_leadup=0, output_fps=15):
-        p.new_make_behaviour_example_videos(
-            data_source,
-            vidpath,
-            file_name_prefix='FirstTryColourMe2',
-            min_rows_of_behaviour=1,
-            max_examples=1,
-            output_fps=0.1,
-
-        )
-
-
-
+    )
 
 
 
@@ -1536,3 +1465,5 @@ if __name__ == '__main__':
 #         color=text_colour_bgr,
 #         thickness=1
 #     )
+
+# cd $bsoid ; conda activate bsoid
