@@ -605,9 +605,11 @@ def review_behaviours(p, pipeline_file_path):
             ### View all assignments
             st.markdown(f'#### All changes entered save automatically. After all changes, refresh page to see changes.')
             for assignment_a in p.unique_assignments:
+                st.markdown(f'Debug info. Current assignment = {assignment_a}')
                 file_session[str(assignment_a)] = p.get_assignment_label(assignment_a)
                 existing_behaviour_label = p.get_assignment_label(assignment_a)
-                existing_behaviour_label = existing_behaviour_label if not existing_behaviour_label else '(Behaviour label not yet assigned)'
+                st.markdown(f'Debug info: current label = {existing_behaviour_label}')
+                existing_behaviour_label = existing_behaviour_label if existing_behaviour_label else '(Behaviour label not yet assigned)'
                 text_input_new_label = st.text_input(f'Add behaviour label to assignment # {assignment_a}', value=existing_behaviour_label, key=f'key_new_behaviour_label_{assignment_a}')
                 if text_input_new_label != existing_behaviour_label:
                     p = p.set_label(assignment_a, text_input_new_label).save(os.path.dirname(pipeline_file_path))
@@ -622,6 +624,7 @@ def review_behaviours(p, pipeline_file_path):
 
 
 def results_section(p, pipeline_file_path, **kwargs):
+    assert os.path.isfile(pipeline_file_path)
     st.markdown('---------------------------------------------------------------------------------------------')
     st.markdown(f'## Create results')
     ### Label an entire video ###
