@@ -608,10 +608,16 @@ def review_behaviours(p, pipeline_file_path):
                 st.markdown(f'Debug info. Current assignment = {assignment_a}')
                 file_session[str(assignment_a)] = p.get_assignment_label(assignment_a)
                 existing_behaviour_label = p.get_assignment_label(assignment_a)
-                st.markdown(f'Debug info: current label = {existing_behaviour_label}')
+                st.markdown(f'Debug info: Current label = {existing_behaviour_label}')
                 existing_behaviour_label = existing_behaviour_label if existing_behaviour_label else '(Behaviour label not yet assigned)'
                 text_input_new_label = st.text_input(f'Add behaviour label to assignment # {assignment_a}', value=existing_behaviour_label, key=f'key_new_behaviour_label_{assignment_a}')
                 if text_input_new_label != existing_behaviour_label:
+                    st.markdown(f'Debug statement: pipe file path = {os.path.dirname(pipeline_file_path)}')
+                    if not os.path.isfile(pipeline_file_path):
+                        st.error(f'ERROR FOUND: The following path was not detected to be a file: {pipeline_file_path}')
+                    if not os.path.isdir(os.path.dirname(pipeline_file_path)):
+                        st.error(f'ERROR FOUND: The following path was not detected to be a directory: {os.path.isdir(os.path.dirname(pipeline_file_path))}')
+                    # assert os.path.isdir(os.path.dirname(pipeline_file_path))
                     p = p.set_label(assignment_a, text_input_new_label).save(os.path.dirname(pipeline_file_path))
 
     ###
