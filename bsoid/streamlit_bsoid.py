@@ -587,7 +587,7 @@ def review_behaviours(p, pipeline_file_path):
                         min_rows_of_behaviour=number_input_min_rows,
                         max_examples=number_input_max_examples_of_each_behaviour,
                         output_fps=number_input_output_fps,
-                        num_frames_leadup=number_input_frames_leadup,
+                        num_frames_buffer=number_input_frames_leadup,
                     )
                 st.success(f'Example videos created!')  # TODO: low: improve message
         st.markdown('--------------------------------------------------------------------------------------')

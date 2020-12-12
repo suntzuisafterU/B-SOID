@@ -914,7 +914,7 @@ class BasePipeline(PipelineAttributeHolder):
 
         return self
 
-    def make_behaviour_example_videos(self, data_source: str, video_file_path: str, file_name_prefix=None, min_rows_of_behaviour=1, max_examples=3, num_frames_leadup=0, output_fps=15):
+    def make_behaviour_example_videos(self, data_source: str, video_file_path: str, file_name_prefix=None, min_rows_of_behaviour=1, max_examples=3, num_frames_buffer=0, output_fps=15):
         """
         Create video clips of behaviours
 
@@ -926,7 +926,7 @@ class BasePipeline(PipelineAttributeHolder):
         :return:
         """
         # Args checking
-        check_arg.ensure_type(num_frames_leadup, int)
+        check_arg.ensure_type(num_frames_buffer, int)
         check_arg.ensure_is_file(video_file_path)
         # Solve kwargs
         if file_name_prefix is None:
@@ -957,18 +957,18 @@ class BasePipeline(PipelineAttributeHolder):
 
         # Zip RLE according to order
         # First index is value, second is index, third is *additional* length of value occurrence in sequence.
+        # EXAMPLE RESULT: Zip'd RLE according to order: [[15, 0, 0], [4, 1, 1], [14, 3, 0], [15, 4, 0], ... ]
         rle_zipped_by_entry = []
         for row__assignment_idx_addedLength in zip(*rle):
             rle_zipped_by_entry.append(list(row__assignment_idx_addedLength))
-        # EXAMPLE RESULT: Zip'd RLE according to order: [[15, 0, 0], [4, 1, 1], [14, 3, 0], [15, 4, 0], ... ]
 
         # Roll up assignments into a dict. Keys are labels, values are lists of [index, additional length]
         rle_by_assignment: Dict[Any: List[int, int]] = {}  # Dict[Any: List[int, int]] // First element in list is the frame index, second element is the additional length duration of behaviour
-        for label, idx, additional_length in rle_zipped_by_entry:
+        for label, frame_idx, additional_length in rle_zipped_by_entry:
             if label not in rle_by_assignment:
                 rle_by_assignment[label] = []
             if additional_length >= min_rows_of_behaviour - 1:
-                rle_by_assignment[label].append([idx, additional_length])
+                rle_by_assignment[label].append([frame_idx, additional_length])
         # Sort from longest additional length (ostensibly the duration of behaviour) to least
         for key in rle_by_assignment.keys():
             rle_by_assignment[key] = sorted(rle_by_assignment[key], key=lambda x: x[1], reverse=True)
@@ -978,16 +978,15 @@ class BasePipeline(PipelineAttributeHolder):
         for key, values_list in rle_by_assignment.items():
             # Loop over examples
             num_examples = min(max_examples, len(values_list))
-            # logger.debug(f'')
             for i in range(num_examples):  # TODO: HIGH: this part dumbly loops over first n examples...In the future, it would be better to ensure that at least one of the examples has a long runtime for analysis
                 output_file_name = f'{file_name_prefix}{time.strftime("%y-%m-%d_%Hh%Mm")}_' \
                                    f'BehaviourExample__assignment_{key}__example_{i+1}_of_{num_examples}'
                 frame_text_prefix = f'Target: {key} / '  # TODO: med/high: magic variable
 
-                idx, additional_length_i = values_list[i]  # Recall: first elem is frame idx, second elem is additional length
+                frame_idx, additional_length_i = values_list[i]  # Recall: first elem is frame idx, second elem is additional length
 
-                lower_bound_row_idx: int = max(0, int(idx) - num_frames_leadup)
-                upper_bound_row_idx: int = min(len(df)-1, idx + additional_length_i + 1 + num_frames_leadup)
+                lower_bound_row_idx: int = max(0, int(frame_idx) - num_frames_buffer)
+                upper_bound_row_idx: int = min(len(df) - 1, frame_idx + additional_length_i - 1 + num_frames_buffer)
 
                 df_frames_selection = df.iloc[lower_bound_row_idx:upper_bound_row_idx, :]
 
@@ -1004,6 +1003,8 @@ class BasePipeline(PipelineAttributeHolder):
                     video_file_path,
                     text_prefix=frame_text_prefix,
                     output_fps=output_fps,
+                    output_dir=config.EXAMPLE_VIDEOS_OUTPUT_PATH,
+                    # text_bgr=(255,00,00)
                 )
 
         return self
@@ -1417,7 +1418,7 @@ def generate_pipeline_filename_from_pipeline(pipeline_obj: BasePipeline) -> str:
 
 if __name__ == '__main__':
     # Debugging Objective: ensure that making videos is working well using existing pipeline
-    example_videos_prefix = 'FirstTryColourMe10'
+    example_videos_prefix = 'FirstTryColourMe11'
     pipe_in_output = 'colorme.pipeline'
     pipe_path = os.path.join(config.BSOID_BASE_PROJECT_PATH, 'output', pipe_in_output)
     data_source = 'Vid3DLC_resnet50_Change_BlindnessNov11shuffle1_850000'
@@ -1432,9 +1433,9 @@ if __name__ == '__main__':
         vidpath,
         file_name_prefix=example_videos_prefix,
         min_rows_of_behaviour=1,
-        max_examples=2,
+        max_examples=1,
         output_fps=0.8,
-        num_frames_leadup=1,
+        num_frames_buffer=1,
     )
 
 
