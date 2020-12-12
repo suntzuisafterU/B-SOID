@@ -105,8 +105,8 @@ def home(**kwargs):
     is_pipeline_loaded = False
 
     ### SIDEBAR ###
-    # st.sidebar.markdown(f'### Iteration: {file_session[key_iteration_page_refresh_count]}')
-    # st.sidebar.markdown('------')
+    st.sidebar.markdown(f'### Iteration: {file_session[key_iteration_page_refresh_count]}')
+    st.sidebar.markdown('------')
 
     ### MAIN ###
     st.markdown(f'# {title}')
@@ -136,7 +136,8 @@ def home(**kwargs):
                 text_input_new_project_name = st.text_input(
                     'Enter a name for your project pipeline. Please only use letters, numbers, and underscores.')
                 path_to_pipeline_dir = st.text_input(
-                    'Enter a path to a folder where the new project pipeline will be stored. Press Enter when done.')
+                    'Enter a path to a folder where the new project pipeline will be stored. Press Enter when done.',
+                    value=config.OUTPUT_PATH)
                 button_project_info_submitted_is_clicked = st.button('Submit', key='SubmitNewProjectInfo')
                 if button_project_info_submitted_is_clicked:
                     # Error checking first
@@ -271,11 +272,13 @@ We recommend that you rebuild the model to avoid future problems. """.strip())
     return show_actions(p, pipeline_path)
 
 
-def show_actions(p: pipeline.PipelinePrime, pipeline_path):
+def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
     """ Show basic actions that we can perform on the model """
     ### SIDEBAR ###
 
     ### MAIN PAGE ###
+    if not os.path.isfile(pipeline_file_path):
+        st.error(f'An unexpected error occurred. Your pipeline file path was lost along the way. Currently, your pipeline file path reads as: "{pipeline_file_path}"')
     st.markdown(f'## Actions')
 
     ################################# CHANGE PIPELINE INFORMATION ###############################################
@@ -286,7 +289,7 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_path):
     if file_session[key_button_update_description]:
         text_input_change_desc = st.text_input(f'WORK IN PROGRESS, not yet functional: Change project description here')
         if text_input_change_desc:
-            p.set_description(text_input_change_desc).save(os.path.dirname(pipeline_path))
+            p.set_description(text_input_change_desc).save(os.path.dirname(pipeline_file_path))
             st.success(f'Pipeline description was changed! Refresh the '
                        f'page (by clicking the page and pressing "R") to see changes.')
 
@@ -309,15 +312,15 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_path):
             file_session[key_button_add_predict_data_source] = False  # Close the menu for adding prediction data
         if file_session[key_button_add_train_data_source]:
             st.markdown('')
-            input_new_data_source = st.text_input("Input a file path below to data which will be used to train the model")
+            input_new_data_source = st.text_input("Input a file path below to data which will be used to train the model", value=config.BSOID_BASE_PROJECT_PATH)
             if input_new_data_source:
                 # Check if file exists
                 if not os.path.isfile(input_new_data_source):
                     st.error(FileNotFoundError(f'TODO: expand: File not found: {input_new_data_source}. Data not added to pipeline.'))
                 # Add to pipeline, save
                 else:
-                    p = p.add_train_data_source(input_new_data_source).save(os.path.dirname(pipeline_path))
-                    st.success(f'TODO: New training data added to pipeline successfully! Pipeline has been saved to: "{pipeline_path}". Refresh the page to see changes.')  # TODO: finish statement. Add in suggestion to refresh page.
+                    p = p.add_train_data_source(input_new_data_source).save(os.path.dirname(pipeline_file_path))
+                    st.success(f'TODO: New training data added to pipeline successfully! Pipeline has been saved to: "{pipeline_file_path}". Refresh the page to see changes.')  # TODO: finish statement. Add in suggestion to refresh page.
                     file_session[key_button_add_train_data_source] = False  # Reset menu to collapsed state
             st.markdown('')
         # 2/2: Button for adding data to prediction set
@@ -327,7 +330,7 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_path):
             file_session[key_button_add_train_data_source] = False  # Close the menu for adding training data
         if file_session[key_button_add_predict_data_source]:
             st.markdown(f'TODO: add in new predict data')
-            input_new_predict_data_source = st.text_input(f'Input a file path below to a new data source which will be analyzed by the model.')
+            input_new_predict_data_source = st.text_input(f'Input a file path below to a new data source which will be analyzed by the model.', value=config.BSOID_BASE_PROJECT_PATH)
             if input_new_predict_data_source:
                 # Check if file exists
                 if not os.path.isfile(input_new_predict_data_source):
@@ -335,7 +338,7 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_path):
                                                f'No data was added to pipeline prediction data set.'))
 
                 else:
-                    p = p.add_predict_data_source(input_new_predict_data_source).save(os.path.dirname(pipeline_path))
+                    p = p.add_predict_data_source(input_new_predict_data_source).save(os.path.dirname(pipeline_file_path))
                     st.success(f'New prediction data added to pipeline successfully! Pipeline has been saved. Refresh the page to see cehanges.')
                     file_session[key_button_add_predict_data_source] = False  # Reset menu to collapsed state
         st.markdown('')
@@ -359,7 +362,7 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_path):
                 confirm = st.button('Confirm')
                 if confirm:
                     with st.spinner(f'Removing {select_train_data_to_remove} from training data set...'):
-                        p = p.remove_train_data_source(select_train_data_to_remove).save(os.path.dirname(pipeline_path))
+                        p = p.remove_train_data_source(select_train_data_to_remove).save(os.path.dirname(pipeline_file_path))
                     file_session[key_button_menu_remove_data] = False
                     st.success(f'{select_train_data_to_remove} data successfully removed!')
 
@@ -370,7 +373,7 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_path):
                 confirm = st.button('Confirm')
                 if confirm:
                     with st.spinner(f'Removing {select_predict_option_to_remove} from predict data set'):
-                        p.remove_predict_data_source(select_predict_option_to_remove).save(os.path.dirname(pipeline_path))
+                        p.remove_predict_data_source(select_predict_option_to_remove).save(os.path.dirname(pipeline_file_path))
                     st.success(f'{select_predict_option_to_remove} data was successfully removed!')
                     file_session[key_button_menu_remove_data] = False
                 st.markdown('')
@@ -470,7 +473,10 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_path):
 
                     # TODO: HIGH: make sure that model parameters are put into Pipeline before build() is called.
                     p = p.set_params(**model_vars)
-                    p = p.build(True, True).save(os.path.dirname(pipeline_path))
+                    if not os.path.isdir(os.path.dirname(pipeline_file_path)):
+                        st.error(f'UNEXPECTED ERROR: pipeline file DIRECTORY parsed as: {os.path.dirname(pipeline_file_path)}')
+                        st.stop()
+                    p = p.build(True, True).save(os.path.dirname(pipeline_file_path))
                 st.success(f'Model was successfully re-built! Refresh the page to see changes.')
                 file_session[key_button_rebuild_model_confirmation] = False
         st.markdown('----------------------------------------------------------------------------------------------')
@@ -479,7 +485,7 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_path):
 
     st.markdown('--------------------------------------------------------------------------------------------------')
 
-    return see_model_diagnostics(p, pipeline_path)
+    return see_model_diagnostics(p, pipeline_file_path)
 
 
 def see_model_diagnostics(p, pipeline_file_path):
@@ -522,6 +528,8 @@ def see_model_diagnostics(p, pipeline_file_path):
 
 def review_behaviours(p, pipeline_file_path):
     """"""
+    if not os.path.isfile(pipeline_file_path):
+        st.error(f'An unexpected error occurred. Your pipeline file path was lost along the way. Currently, your pipeline file path reads as: "{pipeline_file_path}"')
     ### SIDEBAR
 
     ### MAIN
@@ -632,7 +640,8 @@ def review_behaviours(p, pipeline_file_path):
 
 
 def results_section(p, pipeline_file_path, **kwargs):
-    assert os.path.isfile(pipeline_file_path)
+    if not os.path.isfile(pipeline_file_path):
+        st.error(f'An unexpected error occurred. Your pipeline file path was lost along the way. Currently, your pipeline file path reads as: "{pipeline_file_path}"')
     st.markdown('---------------------------------------------------------------------------------------------')
     st.markdown(f'## Create results')
     ### Label an entire video ###
@@ -678,7 +687,7 @@ def results_section(p, pipeline_file_path, **kwargs):
     return display_footer(p, pipeline_file_path)
 
 
-def display_footer(p, *args, **kwargs):
+def display_footer(p, pipeline_file_path, *args, **kwargs):
     """ Footer of Streamlit page """
     logger.debug('')
     return p
