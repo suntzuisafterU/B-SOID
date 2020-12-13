@@ -44,6 +44,8 @@ def make_labeled_video_according_to_frame(labels_list: Union[List, Tuple], frame
 
         text_colour_bgr : Tuple[int, int, int]
 
+        rectangle_colour_bgr : Tuple[int, int, int]
+
         text_offset_x : int
 
         text_offset_y : int

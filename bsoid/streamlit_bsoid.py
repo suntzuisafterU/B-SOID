@@ -7,21 +7,31 @@ More on formatting: https://pyformat.info/
 """
 from matplotlib.axes._axes import _log as matplotlib_axes_logger
 from mpl_toolkits.mplot3d import Axes3D  # Despite being "unused", this import MUST stay for 3d plotting to work. PLO!
-from typing import Dict, List
+from typing import Dict, List, Tuple
 import easygui
 import matplotlib
 import numpy as np
 import os
 import streamlit as st
 import sys
+import tkinter as tk
 import traceback
 # import matplotlib.pyplot as plt
 # import pandas as pd
 # import time
 # import tkinter
 # import cPickle as pickle
+# C:\Users\killian\projects\B-SOID\chbo1\Vid1DLC_resnet50_Change_BlindnessNov11shuffle1_850000.csv
+"""
+import tkinter as tk
+from tkinter import filedialog
 
+root = tk.Tk()
+root.withdraw()
 
+file_path = filedialog.askopenfilename()
+
+"""
 from bsoid import check_arg, config, io, pipeline, streamlit_session_state
 # from bsoid.pipeline import *
 
@@ -100,13 +110,13 @@ def home(**kwargs):
     ### Set up initial variables
     global file_session
     file_session = streamlit_session_state.get(**streamlit_persitency_variables)
-    matplotlib.use('TkAgg')  # For allowing graphs to pop out as separate windows
+    matplotlib.use('TkAgg')  # For allowing graphs to pop out as separate windows  # TODO: HIGH: look at using "Agg" instead of 'TkAgg'  to fix runtime issues!
     file_session[key_iteration_page_refresh_count] = file_session[key_iteration_page_refresh_count] + 1
     is_pipeline_loaded = False
 
-    ### SIDEBAR ###
-    st.sidebar.markdown(f'### Iteration: {file_session[key_iteration_page_refresh_count]}')
-    st.sidebar.markdown('------')
+    # ### SIDEBAR ###
+    # st.sidebar.markdown(f'### Iteration: {file_session[key_iteration_page_refresh_count]}')
+    # st.sidebar.markdown('------')
 
     ### MAIN ###
     st.markdown(f'# {title}')
@@ -139,18 +149,22 @@ def home(**kwargs):
                     'Enter a path to a folder where the new project pipeline will be stored. Press Enter when done.',
                     value=config.OUTPUT_PATH)
                 button_project_info_submitted_is_clicked = st.button('Submit', key='SubmitNewProjectInfo')
+
                 if button_project_info_submitted_is_clicked:
                     # Error checking first
                     if check_arg.has_invalid_chars_in_name_for_a_file(text_input_new_project_name):
                         char_err = ValueError(f'Project name has invalid characters present. '
                                               f'Re-submit project pipeline name. {text_input_new_project_name}')
+                        logger.error(char_err)
                         st.error(char_err)
                         st.stop()
                     if not os.path.isdir(path_to_pipeline_dir):
                         dir_err = NotADirectoryError(f'The following (in double quotes) is not a valid '
-                                                     f'directory: "{path_to_pipeline_dir}". TODO: elaborate on error')
+                                                     f'directory: "{path_to_pipeline_dir}"')
+                        logger.error(dir_err)
                         st.error(dir_err)
                         st.stop()
+
                     # If OK: create default pipeline, save, continue
                     if select_pipe_type == pipeline_prime_name:
                         p = pipeline.PipelinePrime(text_input_new_project_name).save(path_to_pipeline_dir)
@@ -245,8 +259,8 @@ def show_pipeline_info(p: pipeline.PipelinePrime, pipeline_path, **kwargs):
                     f'**{len(p.df_features_train_scaled) if p.df_features_train_scaled is not None else None}**')
         st.markdown(f' - Total unique behaviours clusters: **{len(p.unique_assignments)}**')
         if len(p.cross_val_scores) > 0:
-            decimals_round = 3
-            cross_val_score_text = f'- - Median cross validation score: **{round(np.median(p.cross_val_scores), decimals_round)}** (literal scores: {sorted([round(x, decimals_round) for x in list(p.cross_val_scores)])})'
+            cross_val_decimals_round = 3
+            cross_val_score_text = f'- - Median cross validation score: **{round(np.median(p.cross_val_scores), cross_val_decimals_round)}** (literal scores: {sorted([round(x, cross_val_decimals_round) for x in list(p.cross_val_scores)])})'
         else:
             cross_val_score_text = f'- Cross validation score not available'
         st.markdown(f'{cross_val_score_text}')
@@ -279,6 +293,7 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
     ### MAIN PAGE ###
     if not os.path.isfile(pipeline_file_path):
         st.error(f'An unexpected error occurred. Your pipeline file path was lost along the way. Currently, your pipeline file path reads as: "{pipeline_file_path}"')
+        st.stop()
     st.markdown(f'## Actions')
 
     ################################# CHANGE PIPELINE INFORMATION ###############################################
@@ -311,17 +326,35 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
             file_session[key_button_add_train_data_source] = not file_session[key_button_add_train_data_source]
             file_session[key_button_add_predict_data_source] = False  # Close the menu for adding prediction data
         if file_session[key_button_add_train_data_source]:
-            st.markdown('')
-            input_new_data_source = st.text_input("Input a file path below to data which will be used to train the model", value=config.BSOID_BASE_PROJECT_PATH)
+            # # New implementation
+            # st.markdown('')
+            # root = tk.Tk()
+            # root.withdraw()
+            # # file_paths: Tuple[str] = tk.filedialog.askopenfilenames(initialdir=config.BSOID_BASE_PROJECT_PATH)
+            # root.destroy()
+            # uf = st.file_uploader('upload file')
+            # st.markdown(f'uf.name = {uf.name}')
+            # st.markdown(f'uf.label = {uf.label}')
+            #
+            # p = p.add_train_data_source(*file_paths).save(os.path.dirname(pipeline_file_path))
+            # st.success(f'Success! The following files have been added to the pipeline as training data: '
+            #            f'{", ".join([os.path.split(x)[-1] for x in file_paths])}. Refresh the page to see the changes')
+            # file_session[key_button_add_new_data] = False
+            # st.stop()
+
+
+            # Old implementation: Below is a code fragment that should NOT be deleted. Since it
+            input_new_data_source = st.text_input("Input a file path below to data which will be used to train the model")
             if input_new_data_source:
                 # Check if file exists
                 if not os.path.isfile(input_new_data_source):
-                    st.error(FileNotFoundError(f'TODO: expand: File not found: {input_new_data_source}. Data not added to pipeline.'))
+                    st.error(FileNotFoundError(f'File not found: {input_new_data_source}. Data not added to pipeline.'))
                 # Add to pipeline, save
                 else:
                     p = p.add_train_data_source(input_new_data_source).save(os.path.dirname(pipeline_file_path))
                     st.success(f'TODO: New training data added to pipeline successfully! Pipeline has been saved to: "{pipeline_file_path}". Refresh the page to see changes.')  # TODO: finish statement. Add in suggestion to refresh page.
                     file_session[key_button_add_train_data_source] = False  # Reset menu to collapsed state
+
             st.markdown('')
         # 2/2: Button for adding data to prediction set
         button_add_predict_data_source = st.button('-> Add data to be evaluated by the model', key=key_button_add_predict_data_source)
@@ -341,6 +374,7 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
                     p = p.add_predict_data_source(input_new_predict_data_source).save(os.path.dirname(pipeline_file_path))
                     st.success(f'New prediction data added to pipeline successfully! Pipeline has been saved. Refresh the page to see cehanges.')
                     file_session[key_button_add_predict_data_source] = False  # Reset menu to collapsed state
+        st.markdown('')
         st.markdown('')
         st.markdown('')
 
@@ -364,7 +398,10 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
                     with st.spinner(f'Removing {select_train_data_to_remove} from training data set...'):
                         p = p.remove_train_data_source(select_train_data_to_remove).save(os.path.dirname(pipeline_file_path))
                     file_session[key_button_menu_remove_data] = False
-                    st.success(f'{select_train_data_to_remove} data successfully removed!')
+                    st.success(f'{select_train_data_to_remove} data successfully removed! Refresh the page to see the changes')
+                    st.stop()
+                st.stop()
+                st.markdown('------------------------------------------')
 
         if select_train_or_predict_remove == predict_data_option:
             select_predict_option_to_remove = st.selectbox('Select a source of data to be removed', options=['']+p.predict_data_sources)
@@ -374,14 +411,13 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
                 if confirm:
                     with st.spinner(f'Removing {select_predict_option_to_remove} from predict data set'):
                         p.remove_predict_data_source(select_predict_option_to_remove).save(os.path.dirname(pipeline_file_path))
-                    st.success(f'{select_predict_option_to_remove} data was successfully removed!')
+                    st.success(f'{select_predict_option_to_remove} data was successfully removed! Refresh the page to see the changes.')
                     file_session[key_button_menu_remove_data] = False
+                    st.stop()
+                st.markdown('------------------------------------------')
                 st.markdown('')
 
         st.markdown('')
-
-    ###
-    st.markdown('')
 
     ### Menu button: rebuilding model ###
     button_see_rebuild_options = st.button('Expand/Collapse: Review Model Parameters & Rebuild Model', key_button_see_rebuild_options)
@@ -390,6 +426,13 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
     if file_session[key_button_see_rebuild_options]:  # Now check on value and display accordingly
         st.markdown('------------------------------------------------------------------------------------')
         st.markdown('## Model Parameters')
+        st.markdown(f'### General parameters')
+        # TODO: average over n frames
+        video_fps = st.number_input(f'Video FPS', value=config.VIDEO_FPS, min_value=0, format='%f')
+        average_over_n_frames = st.slider('Select number of frames to average over', value=p.average_over_n_frames, min_value=1, max_value=10)
+        st.markdown(f'By averaging features over **{average_over_n_frames}** frame at a time, it is effectively averaging features over a **{round(average_over_n_frames / config.VIDEO_FPS * 1_000)}ms** window')
+        st.markdown(f'By averaging over larger windows, there is better generalizability, but using smaller windows is more likely to find more minute actions')
+
         # TODO: Low/Med: implement variable feature selection
         # st.markdown(f'### Select features')
         # st.multiselect('select features', p.all_features, default=p.all_features)  # TODO: develop this feature selection tool!
@@ -409,12 +452,13 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
 
         st.markdown('')
         ### Advanced Parameters ###
-        button_see_advanced_options = st.button('Expand: advanced parameters')
+        button_see_advanced_options = st.button('Toggle: advanced parameters')
         if button_see_advanced_options:
             file_session[key_button_see_advanced_options] = not file_session[key_button_see_advanced_options]
         if file_session[key_button_see_advanced_options]:
-            st.markdown('### Advanced model options. Do not change things here unless you know what you are doing!')
-            st.markdown('If you collapse the advanced options menu, all changes made will revert unless you rebuild the model.')
+            st.markdown('## Advanced model options. ')
+            st.markdown('### Do not change things here unless you know what you are doing!')
+            st.markdown('*Note: If you collapse the advanced options menu, all changes made will revert to default unless you rebuild the model with the menu open.*')
             # See advanced options for model
             st.markdown('### Advanced TSNE Parameters')
             input_tsne_early_exaggeration = st.number_input(f'TSNE: early exaggeration', min_value=0., max_value=100., value=p.tsne_early_exaggeration, step=0.1, format='%.2f')
@@ -440,7 +484,7 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
 
         st.markdown('')
 
-        st.markdown(f'Note: changing the above parameters without rebuilding the model will have no effect.')
+        st.markdown(f'*Note: changing the above parameters without rebuilding the model will have no effect.*')
 
         # Save above info + rebuild model
         st.markdown('## Rebuild model with new parameters above?')
@@ -479,6 +523,7 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
                     p = p.build(True, True).save(os.path.dirname(pipeline_file_path))
                 st.success(f'Model was successfully re-built! Refresh the page to see changes.')
                 file_session[key_button_rebuild_model_confirmation] = False
+                st.stop()
         st.markdown('----------------------------------------------------------------------------------------------')
 
     ###
@@ -614,15 +659,15 @@ def review_behaviours(p, pipeline_file_path):
             ### View all assignments
             st.markdown(f'#### All changes entered save automatically. After all changes, refresh page to see changes.')
             for assignment_a in p.unique_assignments:
-                st.markdown(f'Debug info. Current assignment = {assignment_a}')
+                # st.markdown(f'Debug info. Current assignment = {assignment_a}')
                 file_session[str(assignment_a)] = p.get_assignment_label(assignment_a)
                 existing_behaviour_label = p.get_assignment_label(assignment_a)
-                st.markdown(f'Debug info: Current label = {existing_behaviour_label}')
-                existing_behaviour_label = existing_behaviour_label if existing_behaviour_label else '(Behaviour label not yet assigned)'
+                # st.markdown(f'Debug info: Current label = {existing_behaviour_label}')
+                existing_behaviour_label = existing_behaviour_label if existing_behaviour_label else ''  # '(Behaviour label not yet assigned)'
                 text_input_new_label = st.text_input(f'Add behaviour label to assignment # {assignment_a}', value=existing_behaviour_label, key=f'key_new_behaviour_label_{assignment_a}')
                 if text_input_new_label != existing_behaviour_label:
-                    st.markdown(f'Attempting to save label ({text_input_new_label}) to pipeline (found at: {pipeline_file_path})')
-                    st.markdown(f'Debug statement: pipe file path = {os.path.dirname(pipeline_file_path)}')
+                    # st.markdown(f'Attempting to save label ({text_input_new_label}) to pipeline (found at: {pipeline_file_path})')
+                    # st.markdown(f'Debug statement: pipe file path = {os.path.dirname(pipeline_file_path)}')
                     if not os.path.isfile(pipeline_file_path):
                         st.error(f'ERROR FOUND: The following path was not detected to be a file: {pipeline_file_path}')
                     if not os.path.isdir(os.path.dirname(pipeline_file_path)):
