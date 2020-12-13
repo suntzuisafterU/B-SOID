@@ -314,11 +314,13 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
     if button_update_description:
         file_session[key_button_update_description] = not file_session[key_button_update_description]
     if file_session[key_button_update_description]:
-        text_input_change_desc = st.text_input(f'WORK IN PROGRESS, not yet functional: Change project description here')
-        if text_input_change_desc:
+        text_input_change_desc = st.text_input(f'(WORK IN PROGRESS) Change project description here', value=p.description)
+        if text_input_change_desc != p.description:
             p.set_description(text_input_change_desc).save(os.path.dirname(pipeline_file_path))
             st.success(f'Pipeline description was changed! Refresh the '
                        f'page (by clicking the page and pressing "R") to see changes.')
+            file_session[key_button_update_description] = False
+            st.stop()
 
     # TODO: low: add a "change save location" option?
 
@@ -388,7 +390,7 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
 
                 else:
                     p = p.add_predict_data_source(input_new_predict_data_source).save(os.path.dirname(pipeline_file_path))
-                    st.success(f'New prediction data added to pipeline successfully! Pipeline has been saved. Refresh the page to see cehanges.')
+                    st.success(f'New prediction data added to pipeline successfully! Pipeline has been saved. Refresh the page (press "R") to see changes.')
                     file_session[key_button_add_predict_data_source] = False  # Reset menu to collapsed state
         st.markdown('')
         st.markdown('')
