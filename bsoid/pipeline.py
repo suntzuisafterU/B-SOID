@@ -78,6 +78,7 @@ class PipelineAttributeHolder(object):
     df_features_predict_scaled = pd.DataFrame(columns=default_cols)
 
     # Other model vars (Rename this)
+    input_videos_fps = config.VIDEO_FPS
     cross_validation_k: int = config.CROSSVALIDATION_K
     _random_state: int = None
     average_over_n_frames: int = 3  # TODO: low: add to kwargs? Address later.
@@ -215,6 +216,8 @@ class PipelineAttributeHolder(object):
         self._description = description
         return self
 
+    def __bool__(self): return True
+
 
 class BasePipeline(PipelineAttributeHolder):
     """BasePipeline
@@ -265,7 +268,26 @@ class BasePipeline(PipelineAttributeHolder):
         If optional arg `read_config_on_missing_param` is True, then any parameter NOT mentioned
         explicitly will be read in from the config.ini file and then replace the current value
         for that property in the pipeline.
+
+        Valid Kwargs:
+            - input_video_fps
+            - random_state
+            - tsne_n_components
+            - tsne_n_iter
+            - tsne_early_exaggeration
+            - tsne_n_jobs
+            - tsne_verbose
+            TODO: complete list
+
         """
+        video_fps = kwargs.get('input_videos_fps', config.VIDEO_FPS if read_config_on_missing_param else self.input_videos_fps)
+        check_arg.ensure_type(video_fps, int, float)
+        self.input_videos_fps = video_fps
+
+        average_over_n_frames = kwargs.get('average_over_n_frames', self.average_over_n_frames)  # TODO: low: add a default option for this in config.ini+config.py
+        check_arg.ensure_type(average_over_n_frames, int)
+        self.average_over_n_frames = average_over_n_frames
+
         # TODO: ADD KWARGS OPTION FOR OVERRIDING VERBOSE in CONFIG.INI!!!!!!!! ****
         # TODO: LOW: add kwargs parsing for averaging over n-frames
         # Random state  # TODO: low ensure random state correct
@@ -719,6 +741,7 @@ class BasePipeline(PipelineAttributeHolder):
         self.df_features_train_scaled[self.svm_assignment_col_name] = self.df_features_train_scaled[
             self.svm_assignment_col_name].astype(int)
 
+        logger.debug(f'Generating cross-validation scores...')
         # # Get cross-val accuracy scores
         self._cross_val_scores = cross_val_score(
             self.clf_svm,
@@ -1064,7 +1087,7 @@ self._is_training_data_set_different_from_model_input: {self._is_training_data_s
 # Concrete pipeline implementations
 
 class DemoPipeline(BasePipeline):
-    """ Demo pipeline used for demonstration on usage. Do not implement this into any real projects. """
+    """ Demo pipeline used for demonstration on Pipeline usage. Do not implement this into any real projects. """
     def engineer_features(self, data: pd.DataFrame):
         """ Sample feature engineering function since all
         implementations of BasePipeline must implement this single function. """
@@ -1241,7 +1264,7 @@ class PipelineTim(BasePipeline):
         feat_name_dist_AvgForepaw_NoseTip,
         feat_name_velocity_AvgForepaw,
     )
-    n_rows_to_integrate_by: int = 3  # 3 = 3 frames = 100ms capture in a 30fps video. 100ms was used in original paper.
+    n_rows_to_integrate_by: int = 3  # 3 => 3 frames = 100ms capture in a 30fps video. 100ms was used in original paper.
 
     def engineer_features(self, in_df: pd.DataFrame):
         # TODO: WIP
@@ -1332,45 +1355,6 @@ def generate_pipeline_filename_from_pipeline(pipeline_obj: BasePipeline) -> str:
 #     # This __main__ section is a debugging effort and holds no value to the final product.
 #     BSOID = os.path.dirname(os.path.dirname(__file__))
 #     if BSOID not in sys.path: sys.path.append(BSOID)
-#     test_file_1 = "C:\\Users\\killian\\projects\\OST-with-DLC\\bsoid_train_videos\\" \
-#                   "Video1DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000.csv"
-#     test_file_2 = "C:\\Users\\killian\\projects\\OST-with-DLC\\bsoid_train_videos\\" \
-#                   "Video2DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000.csv"
-#     assert os.path.isfile(test_file_1)
-#     assert os.path.isfile(test_file_2)
-#
-#     run = True
-#     if run:
-#         # Test build
-#         nom = 'videoTest3adsddddddfasdf'
-#         loc = 'C:\\Users\\killian\\Pictures'
-#         full_loc = os.path.join(loc, f'{nom}.pipeline')
-#         actual_save_loc = f'C:\\{nom}.pipeline'
-#
-#         make_new = True
-#         save_new = True
-#         if make_new:
-#             p = PipelinePrime(name=nom)
-#             p = p.add_train_data_source(test_file_1)
-#             p = p.add_predict_data_source(test_file_2)
-#             p.average_over_n_frames = 5
-#             p = p.build_classifier()
-#             p = p.generate_predict_data_assignments()
-#             if save_new:
-#                 p = p.save(loc)
-#             print(f'cross_val_scores: {p._cross_val_scores}')
-#
-#         read_existing = False
-#         if read_existing:
-#             # p = bsoid.read_pipeline(actual_save_loc)
-#             p = io.read_pipeline(full_loc)
-#             p.plot_assignments_in_3d(show_now=True)
-
-
-# if __name__ == '__main__':
-#     # This __main__ section is a debugging effort and holds no value to the final product.
-#     BSOID = os.path.dirname(os.path.dirname(__file__))
-#     if BSOID not in sys.path: sys.path.append(BSOID)
 #     test_file_1 = os.path.join(BSOID, 'restraint', 'Restraint-1DLC_resnet50_EPM-RESTRAINTNov2shuffle1_1030000.csv')
 #     test_file_2 = os.path.join(BSOID, 'restraint', 'Restraint-2DLC_resnet50_EPM-RESTRAINTNov2shuffle1_1030000.csv')
 #
@@ -1379,41 +1363,41 @@ def generate_pipeline_filename_from_pipeline(pipeline_obj: BasePipeline) -> str:
 #
 #     run = True
 #     if run:
-#         # # Test build
-#         # new_name = 'deleteme'
-#         # new_location_to_save_at = 'C:\\Users\\killian\\Pictures'
-#         # new_full_loc_to_read = os.path.join(new_location_to_save_at, f'{new_name}.pipeline')
-#         # make_new = 0
-#         # if make_new:
-#         #     save_new = 1
+#         # Test build
+#         new_name = 'deleteme'
+#         new_location_to_save_at = 'C:\\Users\\killian\\Pictures'
+#         new_full_loc_to_read = os.path.join(new_location_to_save_at, f'{new_name}.pipeline')
+#         make_new = 1
+#         if make_new:
+#             save_new = 1
+#
+#             p = PipelineTim(name=new_name)
+#             p = p.add_train_data_source(test_file_1)
+#             p = p.add_predict_data_source(test_file_2)
+#             p = p.build()
+#             p = p.generate_predict_data_assignments()
+#             if save_new:
+#                 p = p.save(new_location_to_save_at)
+#
+#         # pipe_in_output = 'colorme.pipeline'
+#         # pipe_path = os.path.join(config.BSOID_BASE_PROJECT_PATH, 'output', pipe_in_output)
+#         # data_source = 'Vid3DLC_resnet50_Change_BlindnessNov11shuffle1_850000'
+#         # vidpath = os.path.join(config.BSOID_BASE_PROJECT_PATH, 'chbo1', 'Vid3.mp4')
+#         # assert os.path.isfile(pipe_path)
+#         # assert os.path.isfile(vidpath)
 #         #
-#         #     p = PipelineTim(name=new_name)
-#         #     p = p.add_train_data_source(test_file_1)
-#         #     p = p.add_predict_data_source(test_file_2)
-#         #     p = p.build()z
-#         #     p = p.generate_predict_data_assignments()
-#         #     if save_new:
-#         #         p = p.save(new_location_to_save_at)
-#
-#         pipe_in_output = 'colorme.pipeline'
-#         pipe_path = os.path.join(config.BSOID_BASE_PROJECT_PATH, 'output', pipe_in_output)
-#         data_source = 'Vid3DLC_resnet50_Change_BlindnessNov11shuffle1_850000'
-#         vidpath = os.path.join(config.BSOID_BASE_PROJECT_PATH, 'chbo1', 'Vid3.mp4')
-#         assert os.path.isfile(pipe_path)
-#         assert os.path.isfile(vidpath)
-#
-#         p = b_io.read_pipeline(pipe_path)
-#
-#         #     def make_behaviour_example_videos(self, data_source: str, video_file_path: str, file_name_prefix=None, min_rows_of_behaviour=1, max_examples=3, num_frames_leadup=0, output_fps=15):
-#         p.make_behaviour_example_videos(
-#             data_source,
-#             vidpath,
-#             file_name_prefix='FirstTryColourMe4',
-#             min_rows_of_behaviour=1,
-#             max_examples=1,
-#             output_fps=0.8,
-#             num_frames_leadup=1,
-#         )
+#         # p = b_io.read_pipeline(pipe_path)
+#         #
+#         # #     def make_behaviour_example_videos(self, data_source: str, video_file_path: str, file_name_prefix=None, min_rows_of_behaviour=1, max_examples=3, num_frames_leadup=0, output_fps=15):
+#         # p.make_behaviour_example_videos(
+#         #     data_source,
+#         #     vidpath,
+#         #     file_name_prefix='FirstTryColourMe4',
+#         #     min_rows_of_behaviour=1,
+#         #     max_examples=1,
+#         #     output_fps=0.8,
+#         #     num_frames_leadup=1,
+#         # )
 
 
 if __name__ == '__main__':
