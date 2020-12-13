@@ -598,7 +598,6 @@ def see_model_diagnostics(p, pipeline_file_path):
     return review_behaviours(p, pipeline_file_path)
 
 
-
 def review_behaviours(p, pipeline_file_path):
     """"""
     if not os.path.isfile(pipeline_file_path):
