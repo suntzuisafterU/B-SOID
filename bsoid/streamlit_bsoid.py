@@ -7,6 +7,7 @@ More on formatting: https://pyformat.info/
 """
 from matplotlib.axes._axes import _log as matplotlib_axes_logger
 from mpl_toolkits.mplot3d import Axes3D  # Despite being "unused", this import MUST stay for 3d plotting to work. PLO!
+from traceback import format_exc as get_traceback_string
 from typing import Dict, List, Tuple
 import easygui
 import matplotlib
@@ -15,25 +16,13 @@ import os
 import streamlit as st
 import sys
 import tkinter as tk
-import traceback
-# import matplotlib.pyplot as plt
-# import pandas as pd
 # import time
-# import tkinter
-# import cPickle as pickle
+import traceback
+
 # C:\Users\killian\projects\B-SOID\chbo1\Vid1DLC_resnet50_Change_BlindnessNov11shuffle1_850000.csv
-"""
-import tkinter as tk
-from tkinter import filedialog
 
-root = tk.Tk()
-root.withdraw()
+from bsoid import check_arg, config, io, logging_bsoid, pipeline, streamlit_session_state
 
-file_path = filedialog.askopenfilename()
-
-"""
-from bsoid import check_arg, config, io, pipeline, streamlit_session_state
-# from bsoid.pipeline import *
 
 logger = config.initialize_logger(__file__)
 
@@ -49,6 +38,7 @@ training_data_option, predict_data_option = 'Training Data', 'Predict Data'
 key_iteration_page_refresh_count = 'key_iteration_page_refresh_count'
 
 # Set keys for objects (mostly buttons) for streamlit components that need some form of persistence.
+key_pipeline_path = 'key_pipeline_path'
 key_button_show_adv_pipeline_information = 'key_button_show_more_pipeline_information'
 key_button_see_rebuild_options = 'key_button_see_model_options'
 key_button_see_advanced_options = 'key_button_see_advanced_options'
@@ -66,8 +56,10 @@ key_button_save_assignment = 'key_button_save_assignment'
 key_button_show_example_videos_options = 'key_button_show_example_videos_options'
 key_button_create_new_example_videos = 'key_button_create_new_example_videos'
 key_button_menu_label_entire_video = 'key_button_menu_label_entire_video'
+
 ### Page variables data ###
 streamlit_persitency_variables = {  # Instantiate default variable values here
+    key_pipeline_path: '',  #  TODO: deprecate? Doesn't see much use
     key_iteration_page_refresh_count: 0,
     key_button_show_adv_pipeline_information: False,
     key_button_see_rebuild_options: False,
@@ -110,7 +102,7 @@ def home(**kwargs):
     ### Set up initial variables
     global file_session
     file_session = streamlit_session_state.get(**streamlit_persitency_variables)
-    matplotlib.use('TkAgg')  # For allowing graphs to pop out as separate windows  # TODO: HIGH: look at using "Agg" instead of 'TkAgg'  to fix runtime issues!
+    matplotlib.use('TkAgg')  # For allowing graphs to pop out as separate windows
     file_session[key_iteration_page_refresh_count] = file_session[key_iteration_page_refresh_count] + 1
     is_pipeline_loaded = False
 
@@ -121,24 +113,25 @@ def home(**kwargs):
     ### MAIN ###
     st.markdown(f'# {title}')
     st.markdown('------------------------------------------------------------------------------------------')
-    try:
-        # Load up pipeline if specified on command line or config.ini
-        pipeline_file_path = kwargs.get('pipeline_path', '')
-        if not pipeline_file_path:  # If not specified on command line, use config.ini path as default if possible.
-            if config.default_pipeline_file_path and os.path.isfile(config.default_pipeline_file_path):
-                pipeline_file_path = config.default_pipeline_file_path
-            # If no config.ini path, then let user choose on page
-
+    # Load up pipeline if specified on command line or config.ini
+    pipeline_file_path: str = kwargs.get('pipeline_path', '')
+    if not pipeline_file_path:  # If not specified on command line, use config.ini path as default if possible.
+        if config.default_pipeline_file_path and os.path.isfile(config.default_pipeline_file_path):
+            pipeline_file_path = config.default_pipeline_file_path
+        # If no config.ini path, then let user choose on page
         ## Start/open project using drop-down menu ##
         st.markdown('## Open project')
-        start_new_opt = st.selectbox(
-            label='Start a new project or load an existing one?',
-            options=('', start_new_project_option_text, load_existing_project_option_text),
-            key='StartProjectSelectBox',
-            index=2 if os.path.isfile(pipeline_file_path) else 0
-        )
-        st.markdown('')
-        # Option: Start new project
+
+    # asdf
+    start_new_opt = st.selectbox(
+        label='Start a new project or load an existing one?',
+        options=('', start_new_project_option_text, load_existing_project_option_text),
+        key='StartProjectSelectBox',
+        index=2 if os.path.isfile(pipeline_file_path) else 0
+    )
+    st.markdown('')
+    try:
+        # Option 1/2: Start new project
         if start_new_opt == start_new_project_option_text:
             st.markdown(f'## Create new project pipeline')
             select_pipe_type = st.selectbox('Select a pipeline implementation', options=('', pipeline_prime_name, pipeline_epm_name, pipelineTimName))
@@ -185,49 +178,65 @@ It is recommended that you copy the following path to your clipboard:
 
 Refresh the page and load up your new pipeline file!
 """)
-        # Option: Load existing project
+        # Option 2/2: Load existing project
         elif start_new_opt == load_existing_project_option_text:
-            st.write('Load existing project pipeline')
-            path_to_pipeline_file = st.text_input(
+            st.markdown('## Load existing project pipeline')
+            input_text_path_to_pipeline_file = st.text_input(
                 'Enter full path to existing project pipeline file',
                 value=pipeline_file_path,  # TODO: remove this line later, or change to a config default?
                 key='text_input_load_existing_pipeline'
             )
+
             # Do checks
-            if path_to_pipeline_file:
+            if input_text_path_to_pipeline_file:
                 # Error checking first
-                if not os.path.isfile(path_to_pipeline_file) or not path_to_pipeline_file.endswith('.pipeline'):
-                    raise FileNotFoundError(f'Path to valid BSOID pipeline file was not found. '
-                                            f'User submitted path: {path_to_pipeline_file}')
+                if not os.path.isfile(input_text_path_to_pipeline_file) or not input_text_path_to_pipeline_file.endswith('.pipeline'):
+                    err = f'Path to valid BSOID pipeline file was not found. User submitted path: {input_text_path_to_pipeline_file}'
+                    st.error(FileNotFoundError(err))
+                    st.stop()
                 # If OK: load project, continue
-                logger.debug(f'Attempting to open: {path_to_pipeline_file}')
-                p = io.read_pipeline(path_to_pipeline_file)
-                logger.info(f'Streamlit: successfully opened: {path_to_pipeline_file}')
+                pipeline_file_path = input_text_path_to_pipeline_file
+                if file_session[key_pipeline_path] != pipeline_file_path:
+                    file_session[key_pipeline_path] = pipeline_file_path
+                logger.debug(f'Attempting to open: {pipeline_file_path}')
+                p = io.read_pipeline(pipeline_file_path)
+                logger.info(f'Streamlit: successfully opened: {pipeline_file_path}')
                 st.success('Pipeline loaded successfully.')
                 is_pipeline_loaded = True
+
         # Option: no (valid) selection made. Wait for user to select differently.
         else:
             return
     except Exception as e:
         # In case of error, show error and do not continue
         st.markdown('An unexpected error occurred. See below:')
-        from traceback import format_exc as get_traceback_string
-
         st.info(f'Traceback: {get_traceback_string()}')
         st.error(e)
-        st.markdown(f'Stack trace for error: {str(traceback.extract_stack())}')
-        logger.error(str(traceback.extract_stack()))
+        st.info(f'Stack trace for error: {str(traceback.extract_stack())}')
+        logger.error(f'{repr(e)} // {str(traceback.extract_stack())}')
         return
 
+    logger.debug(f"After all dropdown menu work is done, `is_pipeline_loaded` = {is_pipeline_loaded} // pipeline_file_path = {pipeline_file_path}")
+    logger.debug(f'is_pipeline_loaded = {is_pipeline_loaded}')
     if is_pipeline_loaded:
+        logger.debug(f"pipeline_file_path = {pipeline_file_path}")
+        logger.debug(f'file_session[pipe] = {file_session[key_pipeline_path]}')
+        # file_session[key_pipeline_file_path] = pipeline_file_path
+        logger.debug(f'Leaving home().file_session[key_pipeline_file_path] == file_session[key_pipeline_file_path] ')
         start_new_opt = load_existing_project_option_text
         # path_to_project_file = p._source_folder
         st.markdown('----------------------------------------------------------------------------------------------')
-        show_pipeline_info(p, pipeline_path=pipeline_file_path)
+        if not os.path.isfile(pipeline_file_path):
+            err = f'Pipeline file path got lost along the way. Path = {pipeline_file_path}'
+            st.error(FileNotFoundError(err))
+            st.stop()
+        show_pipeline_info(p, pipeline_file_path)
 
 
 def show_pipeline_info(p: pipeline.PipelinePrime, pipeline_path, **kwargs):
     """  """
+    logger.debug(f'{logging_bsoid.get_current_function()}(): Starting. pipeline_path = {pipeline_path}')
+
     ### SIDEBAR ###
 
     ### MAIN PAGE ###
@@ -265,7 +274,9 @@ def show_pipeline_info(p: pipeline.PipelinePrime, pipeline_path, **kwargs):
             cross_val_score_text = f'- Cross validation score not available'
         st.markdown(f'{cross_val_score_text}')
         st.markdown(f'- Raw assignment values: **{p.unique_assignments}**')
-        st.markdown(f'- Features set: {p.all_features}')
+        st.markdown(f'Model Features:')
+        for feat in p.all_features:
+            st.markdown(f'- {feat}')
     ###
 
     # Model check before displaying actions that could further change pipeline state.
@@ -282,12 +293,13 @@ We recommend that you rebuild the model to avoid future problems. """.strip())
     # # TODO: for below commented-out: add a CONFIRM button to confirm model re-build, then re-instate
 
     st.markdown('------------------------------------------------------------------------------------------------')
-
+    logger.debug(f'{logging_bsoid.get_current_function()}(): ending. pipeline_path = {pipeline_path}')
     return show_actions(p, pipeline_path)
 
 
 def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
     """ Show basic actions that we can perform on the model """
+    logger.debug(f'Starting show_actions(). pipeline_file_path = {pipeline_file_path}')
     ### SIDEBAR ###
 
     ### MAIN PAGE ###
@@ -330,19 +342,23 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
             # st.markdown('')
             # root = tk.Tk()
             # root.withdraw()
-            # # file_paths: Tuple[str] = tk.filedialog.askopenfilenames(initialdir=config.BSOID_BASE_PROJECT_PATH)
+            # file_paths: Tuple[str] = tk.filedialog.askopenfilenames(initialdir=config.BSOID_BASE_PROJECT_PATH)
             # root.destroy()
+
             # uf = st.file_uploader('upload file')
             # st.markdown(f'uf.name = {uf.name}')
             # st.markdown(f'uf.label = {uf.label}')
-            #
+
             # p = p.add_train_data_source(*file_paths).save(os.path.dirname(pipeline_file_path))
+            # st.success(f'Success! Refresh page to see changes')
+            # file_session[key_button_add_train_data_source] = False
+            # st.stop()
             # st.success(f'Success! The following files have been added to the pipeline as training data: '
             #            f'{", ".join([os.path.split(x)[-1] for x in file_paths])}. Refresh the page to see the changes')
             # file_session[key_button_add_new_data] = False
             # st.stop()
 
-
+            # Original implementation below: dont delete yet!
             # Old implementation: Below is a code fragment that should NOT be deleted. Since it
             input_new_data_source = st.text_input("Input a file path below to data which will be used to train the model")
             if input_new_data_source:
@@ -428,12 +444,12 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
         st.markdown('## Model Parameters')
         st.markdown(f'### General parameters')
         # TODO: average over n frames
-        video_fps = st.number_input(f'Video FPS', value=config.VIDEO_FPS, min_value=0, format='%f')
+        video_fps = st.number_input(f'Video FPS of input data', value=config.VIDEO_FPS, min_value=0, format='%f')
         average_over_n_frames = st.slider('Select number of frames to average over', value=p.average_over_n_frames, min_value=1, max_value=10)
         st.markdown(f'By averaging features over **{average_over_n_frames}** frame at a time, it is effectively averaging features over a **{round(average_over_n_frames / config.VIDEO_FPS * 1_000)}ms** window')
-        st.markdown(f'By averaging over larger windows, there is better generalizability, but using smaller windows is more likely to find more minute actions')
+        st.markdown(f'*By averaging over larger windows, the model can provide better generalizability, but using smaller windows is more likely to find more minute actions*')
 
-        # TODO: Low/Med: implement variable feature selection
+        # # TODO: Low/Med: implement variable feature selection
         # st.markdown(f'### Select features')
         # st.multiselect('select features', p.all_features, default=p.all_features)  # TODO: develop this feature selection tool!
         # st.markdown('---')
@@ -479,7 +495,7 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
             input_tsne_n_iter, input_gmm_reg_covar, input_gmm_tolerance = p.tsne_n_iter, p.gmm_reg_covar, p.gmm_tol
             input_gmm_max_iter, input_gmm_n_init = p.gmm_max_iter, p.gmm_n_init
             input_svm_c, input_svm_gamma = p.svm_c, p.svm_gamma
-
+            video_fps, average_over_n_frames = p.input_videos_fps, p.average_over_n_frames
         ###
 
         st.markdown('')
@@ -498,6 +514,9 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
             if file_session[key_button_rebuild_model_confirmation]:  # Rebuild model confirmed.
                 with st.spinner('Rebuilding model...'):
                     model_vars = {
+                        'input_videos_fps': video_fps,
+                        'average_over_n_frames': average_over_n_frames,
+
                         'gmm_n_components': slider_gmm_n_components,
                         'cross_validation_k': input_k_fold_cross_val,
                         # Advanced opts
@@ -734,6 +753,9 @@ def results_section(p, pipeline_file_path, **kwargs):
 
 def display_footer(p, pipeline_file_path, *args, **kwargs):
     """ Footer of Streamlit page """
+    st.markdown('')
+    st.markdown('---')
+    st.markdown(f'*Click on the page and press "R" to refresh.*')
     logger.debug('')
     return p
 
