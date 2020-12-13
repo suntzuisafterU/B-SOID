@@ -340,7 +340,7 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
             file_session[key_button_add_train_data_source] = not file_session[key_button_add_train_data_source]
             file_session[key_button_add_predict_data_source] = False  # Close the menu for adding prediction data
         if file_session[key_button_add_train_data_source]:
-            # # New implementation
+            # # New implementation via tkinter (NOT WORKING YET - THREAD SAFE PROBS)
             # st.markdown('')
             # root = tk.Tk()
             # root.withdraw()
@@ -372,7 +372,8 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
                     p = p.add_train_data_source(input_new_data_source).save(os.path.dirname(pipeline_file_path))
                     st.success(f'TODO: New training data added to pipeline successfully! Pipeline has been saved to: "{pipeline_file_path}". Refresh the page to see changes.')  # TODO: finish statement. Add in suggestion to refresh page.
                     file_session[key_button_add_train_data_source] = False  # Reset menu to collapsed state
-
+                    st.stop()
+            st.stop()
             st.markdown('')
         # 2/2: Button for adding data to prediction set
         button_add_predict_data_source = st.button('-> Add data to be evaluated by the model', key=key_button_add_predict_data_source)
@@ -392,6 +393,7 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
                     p = p.add_predict_data_source(input_new_predict_data_source).save(os.path.dirname(pipeline_file_path))
                     st.success(f'New prediction data added to pipeline successfully! Pipeline has been saved. Refresh the page (press "R") to see changes.')
                     file_session[key_button_add_predict_data_source] = False  # Reset menu to collapsed state
+                    st.stop()
         st.markdown('')
         st.markdown('')
         st.markdown('')
@@ -446,9 +448,9 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
         st.markdown('## Model Parameters')
         st.markdown(f'### General parameters')
         # TODO: average over n frames
-        video_fps = st.number_input(f'Video FPS of input data', value=config.VIDEO_FPS, min_value=0, format='%f')
+        video_fps = st.number_input(f'Video FPS of input data', value=float(p.input_videos_fps), min_value=0., max_value=500., format='%.2f', step=1.0)
         average_over_n_frames = st.slider('Select number of frames to average over', value=p.average_over_n_frames, min_value=1, max_value=10)
-        st.markdown(f'By averaging features over **{average_over_n_frames}** frame at a time, it is effectively averaging features over a **{round(average_over_n_frames / config.VIDEO_FPS * 1_000)}ms** window')
+        st.markdown(f'By averaging features over **{average_over_n_frames}** frame at a time, it is effectively averaging features over **{round(average_over_n_frames / config.VIDEO_FPS * 1_000)}ms** windows')
         st.markdown(f'*By averaging over larger windows, the model can provide better generalizability, but using smaller windows is more likely to find more minute actions*')
 
         # # TODO: Low/Med: implement variable feature selection
@@ -493,6 +495,7 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
             input_svm_c = st.number_input(f'SVM C', value=p.svm_c, format='%.2f')
             input_svm_gamma = st.number_input(f'SVM gamma', value=p.svm_gamma, format='%.2f')
         else:
+            features = p.all_features
             input_tsne_early_exaggeration, input_tsne_n_components = p.tsne_early_exaggeration, p.tsne_n_components
             input_tsne_n_iter, input_gmm_reg_covar, input_gmm_tolerance = p.tsne_n_iter, p.gmm_reg_covar, p.gmm_tol
             input_gmm_max_iter, input_gmm_n_init = p.gmm_max_iter, p.gmm_n_init
@@ -542,8 +545,9 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
                         st.error(f'UNEXPECTED ERROR: pipeline file DIRECTORY parsed as: {os.path.dirname(pipeline_file_path)}')
                         st.stop()
                     p = p.build(True, True).save(os.path.dirname(pipeline_file_path))
-                st.success(f'Model was successfully re-built! Refresh the page to see changes.')
+                st.success(f'Model was successfully re-built! Refresh the page (press "R") to see changes.')
                 file_session[key_button_rebuild_model_confirmation] = False
+                file_session[key_button_see_rebuild_options] = False
                 st.stop()
         st.markdown('----------------------------------------------------------------------------------------------')
 
@@ -559,16 +563,17 @@ def see_model_diagnostics(p, pipeline_file_path):
     st.markdown(f'## Model Diagnostics')
     st.markdown(f'See GMM distributions according to TSNE-reduced feature dimensions // TODO: make this shorter.')
     ### View Histogram for assignment distribution
-    st.markdown(f'This section is a work-in-progress. Opening a graph in this section is very volatile and there is '
-            f'high chance that by opening a graph the streamlit will crash. This is being worked on!')
+    st.markdown(f'*This section is a work-in-progress. Opening a graph in this section is very volatile and there is high chance that by opening a graph then streamlit will crash. A fix is actively being worked-on!*')
     st.markdown(f'View distribution of assignments')
     button_view_assignments_distribution = st.button(f'View assignment distribution')
     if button_view_assignments_distribution:
         file_session[key_button_view_assignments_distribution] = not file_session[key_button_view_assignments_distribution]
     if file_session[key_button_view_assignments_distribution]:
         if p.is_built:
+            matplotlib.use('Agg')  # <- Hopefully this fixes crashes
             fig, ax = p.get_plot_svm_assignments_distribution()
             st.pyplot(fig)
+            matplotlib.use('TkAgg')
         else:
             st.info('There are no assignment distributions available for display because '
                     'the model is not currently built.')
@@ -583,6 +588,7 @@ def see_model_diagnostics(p, pipeline_file_path):
                 p.plot_assignments_in_3d(show_now=True)
             except ValueError:
                 st.error('Cannot plot cluster distribution since the model is not currently built.')
+                st.stop()
         else:
             st.info('A 3d plot of the cluster distributions could not be created because '
                     'the model is not built. ')
@@ -590,6 +596,7 @@ def see_model_diagnostics(p, pipeline_file_path):
     st.markdown('--------------------------------------------------------------------------------------------------')
 
     return review_behaviours(p, pipeline_file_path)
+
 
 
 def review_behaviours(p, pipeline_file_path):
