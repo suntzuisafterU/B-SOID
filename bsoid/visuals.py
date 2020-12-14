@@ -22,6 +22,22 @@ TM = NotImplementedError('TODO: HIGH: The source of TM has not been determined. 
 
 ### New
 
+def generate_color_map(n_colors: int) -> np.ndarray:
+    """
+    :param n_colors: (int) Number of colors to generate
+    :return: a 2-d array of shape (n_colors, 4).
+        E.g.: If n = 4,
+        array([[0.61960784, 0.00392157, 0.25882353, 1.        ],
+               [0.99346405, 0.74771242, 0.43529412, 1.        ],
+               [0.74771242, 0.89803922, 0.62745098, 1.        ],
+               [0.36862745, 0.30980392, 0.63529412, 1.        ]])
+
+    """
+    R = np.linspace(0, 1, n_colors)
+    colormap = plt.cm.get_cmap("Spectral")(R)
+    return colormap
+
+
 def plot_GM_assignments_in_3d_new(data: np.ndarray, assignments, show_now=True, **kwargs) -> Tuple[object, object]:
     """
     Plot trained TSNE for EM-GMM assignments.
