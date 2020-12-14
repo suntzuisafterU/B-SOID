@@ -6,18 +6,24 @@ Number formatting: https://python-reference.readthedocs.io/en/latest/docs/str/fo
 More on formatting: https://pyformat.info/
 """
 from matplotlib.axes._axes import _log as matplotlib_axes_logger
-from mpl_toolkits.mplot3d import Axes3D  # Despite being "unused", this import MUST stay for 3d plotting to work. PLO!
+from mpl_toolkits.mplot3d import Axes3D  # Despite being "unused", this import MUST stay in for 3d plotting to work.
 from traceback import format_exc as get_traceback_string
 from typing import Dict, List, Tuple
-import easygui
 import matplotlib
 import numpy as np
 import os
+import random
 import streamlit as st
 import sys
-import tkinter as tk
-# import time
+import time
 import traceback
+
+
+import easygui
+from tkinter import filedialog
+# from mttkinter import mtTkinter as tk
+import tkinter as tk
+
 
 # C:\Users\killian\projects\B-SOID\chbo1\Vid1DLC_resnet50_Change_BlindnessNov11shuffle1_850000.csv
 
@@ -38,7 +44,8 @@ training_data_option, predict_data_option = 'Training Data', 'Predict Data'
 key_iteration_page_refresh_count = 'key_iteration_page_refresh_count'
 
 # Set keys for objects (mostly buttons) for streamlit components that need some form of persistence.
-key_pipeline_path = 'key_pipeline_path'
+key_pipeline_path = 'key_pipeline_path'  # <- for saving pipe path when loaded??? ????
+key_open_pipeline_path = 'key_open_pipeline_path'  # For selecting a pipeline using hack dialog box
 key_button_show_adv_pipeline_information = 'key_button_show_more_pipeline_information'
 key_button_see_rebuild_options = 'key_button_see_model_options'
 key_button_see_advanced_options = 'key_button_see_advanced_options'
@@ -60,6 +67,7 @@ key_button_menu_label_entire_video = 'key_button_menu_label_entire_video'
 ### Page variables data ###
 streamlit_persitency_variables = {  # Instantiate default variable values here
     key_pipeline_path: '',  #  TODO: deprecate? Doesn't see much use
+    key_open_pipeline_path: config.BSOID_BASE_PROJECT_PATH,
     key_iteration_page_refresh_count: 0,
     key_button_show_adv_pipeline_information: False,
     key_button_see_rebuild_options: False,
@@ -84,6 +92,43 @@ streamlit_persitency_variables = {  # Instantiate default variable values here
 
 ##### Page layout #####
 
+def st_file_selector(st_placeholder, label='', path='.'):
+    """
+    TODO: THIS FUNCTION DOES NOT CURRENTLY WORK!!!
+    """
+    # get base path (directory)
+    logger.debug(f'st_file_selector(): label = {label} / path = {path}')
+    initial_base_path = '.' if not path else path
+    # If initial base path is a file, get the directory
+    base_path = initial_base_path if os.path.isdir(initial_base_path) else os.path.dirname(initial_base_path)
+
+    base_path = '.' if not base_path else base_path
+    logger.debug(f'st_file_selector(): base_path finally resolves to: {base_path}')
+
+    # list files in base path directory
+    files: List[str] = ['.', '..', ] + os.listdir(base_path)
+    # logger.debug(f'st_file_selector(): files list: {files} ')
+    # Create select box
+    selected_file = st_placeholder.selectbox(label=label, options=files, key=base_path+str(random.randint(0, 1000)))
+    selected_path = os.path.normpath(os.path.join(base_path, selected_file))
+    logger.debug(f'st_file_selector(): ')
+
+    if selected_file == '.':
+        logger.debug(f'st_file_selector(): selected_file = {selected_file}')
+        return selected_path
+    if selected_file == '..':
+        logger.debug(f'st_file_selector(): SELECTED PATH = {selected_path}')
+        selected_path = st_file_selector(st_placeholder=st_placeholder,
+                                         path=os.path.dirname(base_path),
+                                         label=label)
+    if os.path.isdir(selected_path):
+        logger.debug(f'st_file_selector(): SELECTED PATH = {selected_path}')
+        selected_path = st_file_selector(st_placeholder=st_placeholder,
+                                         path=selected_path,
+                                         label=label)
+    return selected_path
+
+
 def home(**kwargs):
     """
     The designated home page/entry point when Streamlit is used with B-SOiD.
@@ -99,13 +144,22 @@ def home(**kwargs):
         up to the user to fill out.
 
     """
-    ### Set up initial variables
+    ### Set up session variables
     global file_session
     file_session = streamlit_session_state.get(**streamlit_persitency_variables)
     matplotlib.use('TkAgg')  # For allowing graphs to pop out as separate windows
     file_session[key_iteration_page_refresh_count] = file_session[key_iteration_page_refresh_count] + 1
     is_pipeline_loaded = False
 
+    # Load up pipeline if specified on command line or specified in config.ini
+    pipeline_file_path: str = kwargs.get('pipeline_path', '')
+    if not pipeline_file_path:  # If not specified on command line, use config.ini path as default if possible.
+        if config.default_pipeline_file_path and os.path.isfile(config.default_pipeline_file_path):
+            pipeline_file_path = config.default_pipeline_file_path
+        # If no config.ini path, then let user choose on page
+
+
+    ######################################################################################
     # ### SIDEBAR ###
     # st.sidebar.markdown(f'### Iteration: {file_session[key_iteration_page_refresh_count]}')
     # st.sidebar.markdown('------')
@@ -113,26 +167,19 @@ def home(**kwargs):
     ### MAIN ###
     st.markdown(f'# {title}')
     st.markdown('------------------------------------------------------------------------------------------')
-    # Load up pipeline if specified on command line or config.ini
-    pipeline_file_path: str = kwargs.get('pipeline_path', '')
-    if not pipeline_file_path:  # If not specified on command line, use config.ini path as default if possible.
-        if config.default_pipeline_file_path and os.path.isfile(config.default_pipeline_file_path):
-            pipeline_file_path = config.default_pipeline_file_path
-        # If no config.ini path, then let user choose on page
-        ## Start/open project using drop-down menu ##
-        st.markdown('## Open project')
 
-    # asdf
-    start_new_opt = st.selectbox(
+    ## Start/open project using drop-down menu ##
+    start_select_option = st.selectbox(
         label='Start a new project or load an existing one?',
         options=('', start_new_project_option_text, load_existing_project_option_text),
         key='StartProjectSelectBox',
         index=2 if os.path.isfile(pipeline_file_path) else 0
     )
     st.markdown('')
+
     try:
         # Option 1/2: Start new project
-        if start_new_opt == start_new_project_option_text:
+        if start_select_option == start_new_project_option_text:
             st.markdown(f'## Create new project pipeline')
             select_pipe_type = st.selectbox('Select a pipeline implementation', options=('', pipeline_prime_name, pipeline_epm_name, pipelineTimName))
             if select_pipe_type:
@@ -179,8 +226,24 @@ It is recommended that you copy the following path to your clipboard:
 Refresh the page and load up your new pipeline file!
 """)
         # Option 2/2: Load existing project
-        elif start_new_opt == load_existing_project_option_text:
+        elif start_select_option == load_existing_project_option_text:
+            logger.debug(f'Open LOAD EXISTING option')
             st.markdown('## Load existing project pipeline')
+
+            # input_text_path_to_pipeline_file = st_file_selector(pl)
+            # pl = st.empty()
+            #
+            # file_session[key_open_pipeline_path] = st_file_selector(
+            #     st_placeholder=pl,
+            #     path=file_session[key_open_pipeline_path],
+            #     label=f'Input path')
+            #
+            # st.text(f'> Selected \'{file_session[key_open_pipeline_path]}\'')
+            # logger.debug(f'LOAD: file_session[key_open_pipeline_path] = {file_session[key_open_pipeline_path]}')
+            # input_text_path_to_pipeline_file = file_session[key_open_pipeline_path]
+
+
+            ############ orginal below
             input_text_path_to_pipeline_file = st.text_input(
                 'Enter full path to existing project pipeline file',
                 value=pipeline_file_path,  # TODO: remove this line later, or change to a config default?
@@ -223,7 +286,7 @@ Refresh the page and load up your new pipeline file!
         logger.debug(f'file_session[pipe] = {file_session[key_pipeline_path]}')
         # file_session[key_pipeline_file_path] = pipeline_file_path
         logger.debug(f'Leaving home().file_session[key_pipeline_file_path] == file_session[key_pipeline_file_path] ')
-        start_new_opt = load_existing_project_option_text
+        start_select_option = load_existing_project_option_text
         # path_to_project_file = p._source_folder
         st.markdown('----------------------------------------------------------------------------------------------')
         if not os.path.isfile(pipeline_file_path):
@@ -248,7 +311,7 @@ def show_pipeline_info(p: pipeline.PipelinePrime, pipeline_path, **kwargs):
 
     ### Menu button: show more info
     button_show_advanced_pipeline_information = st.button(
-        f'Expand/collapse advanced info', key=key_button_show_adv_pipeline_information)
+        f'Toggle advanced info', key=key_button_show_adv_pipeline_information)
     if button_show_advanced_pipeline_information:
         file_session[key_button_show_adv_pipeline_information] = not file_session[key_button_show_adv_pipeline_information]
     if file_session[key_button_show_adv_pipeline_information]:
@@ -310,17 +373,19 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
 
     ################################# CHANGE PIPELINE INFORMATION ###############################################
     st.markdown(f'### Pipeline information')
-    button_update_description = st.button(f'Expand/collapse: Change project description', key_button_update_description)
+    button_update_description = st.button(f'Toggle: Change project description', key_button_update_description)
     if button_update_description:
         file_session[key_button_update_description] = not file_session[key_button_update_description]
     if file_session[key_button_update_description]:
         text_input_change_desc = st.text_input(f'(WORK IN PROGRESS) Change project description here', value=p.description)
         if text_input_change_desc != p.description:
             p.set_description(text_input_change_desc).save(os.path.dirname(pipeline_file_path))
-            st.success(f'Pipeline description was changed! Refresh the '
-                       f'page (by clicking the page and pressing "R") to see changes.')
+            st.success(f'Pipeline description has been changed!')
+            st.info(f'This page will refresh automatically to reflect your changes, or you can manually refresh the page (by clicking the page and pressing "R") to see changes.')
             file_session[key_button_update_description] = False
-            st.stop()
+            time.sleep(3)
+            st.experimental_rerun()
+            # st.stop()
 
     # TODO: low: add a "change save location" option?
 
@@ -328,7 +393,7 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
     st.markdown(f'## Model building & information')
 
     ### Menu button: adding new data ###
-    button_add_new_data = st.button('Expand/collapse: Add new data to model', key_button_add_new_data)
+    button_add_new_data = st.button('Toggle: Add new data to model', key_button_add_new_data)
     if button_add_new_data:  # Click button, flip state
         file_session[key_button_add_new_data] = not file_session[key_button_add_new_data]
     if file_session[key_button_add_new_data]:  # Now check on value and display accordingly
@@ -342,6 +407,7 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
         if file_session[key_button_add_train_data_source]:
             # # New implementation via tkinter (NOT WORKING YET - THREAD SAFE PROBS)
             # st.markdown('')
+
             # root = tk.Tk()
             # root.withdraw()
             # file_paths: Tuple[str] = tk.filedialog.askopenfilenames(initialdir=config.BSOID_BASE_PROJECT_PATH)
@@ -360,6 +426,7 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
             # file_session[key_button_add_new_data] = False
             # st.stop()
 
+
             # Original implementation below: dont delete yet!
             # Old implementation: Below is a code fragment that should NOT be deleted. Since it
             input_new_data_source = st.text_input("Input a file path below to data which will be used to train the model")
@@ -370,9 +437,14 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
                 # Add to pipeline, save
                 else:
                     p = p.add_train_data_source(input_new_data_source).save(os.path.dirname(pipeline_file_path))
-                    st.success(f'TODO: New training data added to pipeline successfully! Pipeline has been saved to: "{pipeline_file_path}". Refresh the page to see changes.')  # TODO: finish statement. Add in suggestion to refresh page.
                     file_session[key_button_add_train_data_source] = False  # Reset menu to collapsed state
-                    st.stop()
+                    n = 4
+                    st.balloons()
+                    st.success(f'New training data added to pipeline successfully! Pipeline has been saved to: "{pipeline_file_path}". Refresh the page to see changes.')  # TODO: finish statement. Add in suggestion to refresh page.
+                    st.info('This page will refresh itself in {n} seconds')
+                    time.sleep(n)
+                    st.experimental_rerun()  # TODO: <------ experimental re-run <-------------------------------------------------- -****
+                    # st.stop()
             st.stop()
             st.markdown('')
         # 2/2: Button for adding data to prediction set
@@ -397,11 +469,12 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
         st.markdown('')
         st.markdown('')
         st.markdown('')
+        st.stop()
 
     ###
 
     ### Menu button: removing data ###
-    button_remove_data = st.button('Expand/collapse: remove data from model', key_button_menu_remove_data)
+    button_remove_data = st.button('Toggle: remove data from model', key_button_menu_remove_data)
     if button_remove_data:
         file_session[key_button_menu_remove_data] = not file_session[key_button_menu_remove_data]
     if file_session[key_button_menu_remove_data]:
@@ -419,6 +492,7 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
                         p = p.remove_train_data_source(select_train_data_to_remove).save(os.path.dirname(pipeline_file_path))
                     file_session[key_button_menu_remove_data] = False
                     st.success(f'{select_train_data_to_remove} data successfully removed! Refresh the page to see the changes')
+                    # TODO: add in experimental rerun?
                     st.stop()
                 st.stop()
                 st.markdown('------------------------------------------')
@@ -433,18 +507,21 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
                         p.remove_predict_data_source(select_predict_option_to_remove).save(os.path.dirname(pipeline_file_path))
                     st.success(f'{select_predict_option_to_remove} data was successfully removed! Refresh the page to see the changes.')
                     file_session[key_button_menu_remove_data] = False
+                    # TODO: add in experimental rerun?
                     st.stop()
                 st.markdown('------------------------------------------')
                 st.markdown('')
-
         st.markdown('')
+        st.stop()
+
+    st.markdown('')
 
     ### Menu button: rebuilding model ###
-    button_see_rebuild_options = st.button('Expand/Collapse: Review Model Parameters & Rebuild Model', key_button_see_rebuild_options)
+    button_see_rebuild_options = st.button('Toggle: Review Model Parameters & Rebuild Model', key_button_see_rebuild_options)
     if button_see_rebuild_options:  # Click button, flip state
         file_session[key_button_see_rebuild_options] = not file_session[key_button_see_rebuild_options]
     if file_session[key_button_see_rebuild_options]:  # Now check on value and display accordingly
-        st.markdown('------------------------------------------------------------------------------------')
+        st.markdown('')
         st.markdown('## Model Parameters')
         st.markdown(f'### General parameters')
         # TODO: average over n frames
@@ -472,6 +549,8 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
 
         st.markdown('')
         ### Advanced Parameters ###
+        st.markdown('### Advanced Parameters')
+        st.markdown('*Toggle advanced parameters at your own risk. Many require special knowledge of ML parameters*')
         button_see_advanced_options = st.button('Toggle: advanced parameters')
         if button_see_advanced_options:
             file_session[key_button_see_advanced_options] = not file_session[key_button_see_advanced_options]
@@ -505,6 +584,8 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
 
         st.markdown('')
 
+
+        st.markdown('### Rebuilding Model')
         st.markdown(f'*Note: changing the above parameters without rebuilding the model will have no effect.*')
 
         # Save above info + rebuild model
@@ -545,10 +626,12 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
                         st.error(f'UNEXPECTED ERROR: pipeline file DIRECTORY parsed as: {os.path.dirname(pipeline_file_path)}')
                         st.stop()
                     p = p.build(True, True).save(os.path.dirname(pipeline_file_path))
+                st.balloons()
                 st.success(f'Model was successfully re-built! Refresh the page (press "R") to see changes.')
                 file_session[key_button_rebuild_model_confirmation] = False
                 file_session[key_button_see_rebuild_options] = False
                 st.stop()
+        st.stop()
         st.markdown('----------------------------------------------------------------------------------------------')
 
     ###
@@ -561,7 +644,8 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
 def see_model_diagnostics(p, pipeline_file_path):
     ######################################### MODEL DIAGNOSTICS ########################################################
     st.markdown(f'## Model Diagnostics')
-    st.markdown(f'See GMM distributions according to TSNE-reduced feature dimensions // TODO: make this shorter.')
+
+
     ### View Histogram for assignment distribution
     st.markdown(f'*This section is a work-in-progress. Opening a graph in this section is very volatile and there is high chance that by opening a graph then streamlit will crash. A fix is actively being worked-on!*')
     st.markdown(f'View distribution of assignments')
@@ -579,8 +663,8 @@ def see_model_diagnostics(p, pipeline_file_path):
                     'the model is not currently built.')
 
     ###
-
     # View 3d Plot
+    st.markdown(f'See GMM distributions according to TSNE-reduced feature dimensions // TODO: make this shorter.')
     gmm_button = st.button('Pop out window of cluster/assignment distribution')  # TODO: low: phrase this button better?
     if gmm_button:
         if p.is_built:
@@ -626,18 +710,18 @@ def review_behaviours(p, pipeline_file_path):
     st.markdown('')
 
     ### Create new example videos ###
-    button_create_new_ex_videos = st.button(f'Expand/collapse: Create new example videos // TODO: elaborate', key=key_button_show_example_videos_options)
+    button_create_new_ex_videos = st.button(f'Toggle: Create new example videos for each behaviour', key=key_button_show_example_videos_options)
     if button_create_new_ex_videos:
         file_session[key_button_show_example_videos_options] = not file_session[key_button_show_example_videos_options]
     if file_session[key_button_show_example_videos_options]:
-        st.markdown(f'Fill in variables for making new example videos of behaviours')
+        # st.markdown(f'Fill in variables for making new example videos of behaviours')
         select_data_source = st.selectbox('Select a data source', options=['']+p.training_data_sources)
         input_video = st.text_input(f'Input path to corresponding video relative to selected data source', value=config.BSOID_BASE_PROJECT_PATH)
         file_name_prefix = st.text_input(f'File name prefix. This helps us differentiate between example videos. OK to leave blank. ')
         number_input_output_fps = st.number_input(f'Output FPS for example videos', value=8, min_value=1)
         number_input_max_examples_of_each_behaviour = st.number_input(f'Maximum number of videos created for each behaviour', value=5, min_value=1)
-        number_input_min_rows = st.number_input(f'Min # of data rows required for a detection to occur', value=1, min_value=1, max_value=10_000)
-        number_input_frames_leadup = st.number_input(f'min # of rows of data after/before behaviour has occurred that lead up // todo: precision', value=0, min_value=0)
+        number_input_min_rows = st.number_input(f'Number of rows of data required for a detection to occur', value=1, min_value=1, max_value=10_000)
+        number_input_frames_leadup = st.number_input(f'Number of rows of data that lead up to/follow target behaviour', value=1, min_value=0)
 
         st.markdown('')
 
@@ -676,7 +760,7 @@ def review_behaviours(p, pipeline_file_path):
     ###
 
     ### Review labels for behaviours ###
-    button_review_assignments_is_clicked = st.button('Expand/collapse: review behaviour/assignments labels', key=key_button_review_assignments)
+    button_review_assignments_is_clicked = st.button('Toggle: review behaviour/assignments labels', key=key_button_review_assignments)
     if button_review_assignments_is_clicked:  # Click button, flip state
         file_session[key_button_review_assignments] = not file_session[key_button_review_assignments]
     if file_session[key_button_review_assignments]:  # Depending on state, set behaviours to assignments
@@ -717,7 +801,7 @@ def results_section(p, pipeline_file_path, **kwargs):
     st.markdown('---------------------------------------------------------------------------------------------')
     st.markdown(f'## Create results')
     ### Label an entire video ###
-    button_menu_label_entire_video = st.button('Expand/collapse: Use pipeline model to label to entire video', key=key_button_menu_label_entire_video)
+    button_menu_label_entire_video = st.button('Toggle: Use pipeline model to label to entire video', key=key_button_menu_label_entire_video)
     if button_menu_label_entire_video:
         file_session[key_button_menu_label_entire_video] = not file_session[key_button_menu_label_entire_video]
     if file_session[key_button_menu_label_entire_video]:
@@ -797,7 +881,7 @@ def example_of_value_saving():
             st.markdown('Button 2 pressed')
 
 
-# Main: likely to be deleted later.
+# Main: only use for debugging. It will be deleted later.
 
 if __name__ == '__main__':
     # Note: this import only necessary when running streamlit onto this file specifically rather than
