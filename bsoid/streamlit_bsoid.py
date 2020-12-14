@@ -37,7 +37,13 @@ title = f'B-SOiD Streamlit app'
 valid_video_extensions = {'avi', 'mp4', }
 # Variables for buttons, drop-down menus, and other things
 start_new_project_option_text, load_existing_project_option_text = 'Create new', 'Load existing'
-pipeline_prime_name, pipeline_epm_name, pipelineTimName = 'PipelinePrime', 'pipeline_epm_name', 'PipelineTim'
+pipeline_options = {
+    'PipelinePrime': pipeline.PipelinePrime,
+    'pipeline_epm_name': pipeline.PipelineEPM,
+    'PipelineTim': pipeline.PipelineTim,
+    'Change Blind Odor Test': pipeline.PipelineCHBO,
+}
+# pipeline_prime_name, pipeline_epm_name, pipelineTimName, pipelineCHBO = 'PipelinePrime', 'pipeline_epm_name', 'PipelineTim', 'CHBO Pipeline'  # TODO: deprecate this line
 training_data_option, predict_data_option = 'Training Data', 'Predict Data'
 key_iteration_page_refresh_count = 'key_iteration_page_refresh_count'
 
@@ -149,14 +155,13 @@ def home(**kwargs):
     file_session = streamlit_session_state.get(**streamlit_persitency_variables)
     matplotlib.use('TkAgg')  # For allowing graphs to pop out as separate windows
     file_session[key_iteration_page_refresh_count] = file_session[key_iteration_page_refresh_count] + 1
-    is_pipeline_loaded = False
 
     # Load up pipeline if specified on command line or specified in config.ini
     pipeline_file_path: str = kwargs.get('pipeline_path', '')
     if not pipeline_file_path:  # If not specified on command line, use config.ini path as default if possible.
         if config.default_pipeline_file_path and os.path.isfile(config.default_pipeline_file_path):
             pipeline_file_path = config.default_pipeline_file_path
-        # If no config.ini path, then let user choose on page
+        # Else: If no config.ini path, then let user choose on page
 
     ######################################################################################
     ### SIDEBAR ###
@@ -171,6 +176,7 @@ def home(**kwargs):
     st.markdown('------------------------------------------------------------------------------------------')
 
     ## Start/open project using drop-down menu ##
+    is_pipeline_loaded = False
     start_select_option = st.selectbox(
         label='Start a new project or load an existing one?',
         options=('', start_new_project_option_text, load_existing_project_option_text),
@@ -178,12 +184,11 @@ def home(**kwargs):
         index=2 if os.path.isfile(pipeline_file_path) else 0
     )
     st.markdown('')
-
     try:
         # Option 1/2: Start new project
         if start_select_option == start_new_project_option_text:
             st.markdown(f'## Create new project pipeline')
-            select_pipe_type = st.selectbox('Select a pipeline implementation', options=('', pipeline_prime_name, pipeline_epm_name, pipelineTimName))
+            select_pipe_type = st.selectbox('Select a pipeline implementation', options=['']+list(pipeline_options.keys()))  # ('', pipeline_prime_name, pipeline_epm_name, pipelineTimName, pipelineCHBO))
             if select_pipe_type:
                 text_input_new_project_name = st.text_input(
                     'Enter a name for your project pipeline. Please only use letters, numbers, and underscores.')
@@ -207,15 +212,18 @@ def home(**kwargs):
                         st.stop()
 
                     # If OK: create default pipeline, save, continue
-                    if select_pipe_type == pipeline_prime_name:
-                        p = pipeline.PipelinePrime(text_input_new_project_name).save(input_path_to_pipeline_dir)
-                    elif select_pipe_type == pipeline_epm_name:
-                        p = pipeline.PipelineEPM(text_input_new_project_name).save(input_path_to_pipeline_dir)
-                    elif select_pipe_type == pipelineTimName:
-                        p = pipeline.PipelineTim(text_input_new_project_name).save(input_path_to_pipeline_dir)
+                    if select_pipe_type in pipeline_options:
+                        p = pipeline_options[select_pipe_type](text_input_new_project_name).save(input_path_to_pipeline_dir)
+
+                    # if select_pipe_type == pipeline_prime_name:
+                    #     p = pipeline.PipelinePrime(text_input_new_project_name).save(input_path_to_pipeline_dir)
+                    # elif select_pipe_type == pipeline_epm_name:
+                    #     p = pipeline.PipelineEPM(text_input_new_project_name).save(input_path_to_pipeline_dir)
+                    # elif select_pipe_type == pipelineTimName:
+                    #     p = pipeline.PipelineTim(text_input_new_project_name).save(input_path_to_pipeline_dir)
+                    # elif select_pipe_type == pipelineCHBO
                     else:
-                        err = 'Something unexpected happened on instantiating new Pipeline'
-                        st.error(RuntimeError(err))
+                        st.error(RuntimeError('Something unexpected happened on instantiating new Pipeline'))
                         st.info(f'traceback: {traceback.format_exc()}')
                         st.stop()
                     # Success
