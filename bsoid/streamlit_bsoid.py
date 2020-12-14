@@ -161,7 +161,8 @@ def home(**kwargs):
     if not pipeline_file_path:  # If not specified on command line, use config.ini path as default if possible.
         if config.default_pipeline_file_path and os.path.isfile(config.default_pipeline_file_path):
             pipeline_file_path = config.default_pipeline_file_path
-        # Else: If no config.ini path, then let user choose on page
+        else:
+            pipeline_file_path = file_session[key_pipeline_path]
 
     ######################################################################################
     ### SIDEBAR ###
@@ -214,29 +215,25 @@ def home(**kwargs):
                     # If OK: create default pipeline, save, continue
                     if select_pipe_type in pipeline_options:
                         p = pipeline_options[select_pipe_type](text_input_new_project_name).save(input_path_to_pipeline_dir)
+                        pipeline_file_path = os.path.join(input_path_to_pipeline_dir, pipeline.generate_pipeline_filename(text_input_new_project_name))
+                        file_session[key_pipeline_path] = pipeline_file_path
+                        st.balloons()
+                        st.success(f"""
+Success! Your new project pipeline has been saved to disk to the following path: 
 
-                    # if select_pipe_type == pipeline_prime_name:
-                    #     p = pipeline.PipelinePrime(text_input_new_project_name).save(input_path_to_pipeline_dir)
-                    # elif select_pipe_type == pipeline_epm_name:
-                    #     p = pipeline.PipelineEPM(text_input_new_project_name).save(input_path_to_pipeline_dir)
-                    # elif select_pipe_type == pipelineTimName:
-                    #     p = pipeline.PipelineTim(text_input_new_project_name).save(input_path_to_pipeline_dir)
-                    # elif select_pipe_type == pipelineCHBO
+{os.path.join(input_path_to_pipeline_dir, f'{text_input_new_project_name}.pipeline')}
+
+""")
+                        n_secs_til_refresh = file_session[default_n_seconds_wait_until_auto_refresh]
+                        st.info(f'The page will automatically refresh with your new pipeline in {n_secs_til_refresh} seconds.')
+                        time.sleep(n_secs_til_refresh)
+                        st.experimental_rerun()
                     else:
                         st.error(RuntimeError('Something unexpected happened on instantiating new Pipeline'))
                         st.info(f'traceback: {traceback.format_exc()}')
                         st.stop()
                     # Success
-                    st.balloons()
-                    st.success(f"""
-Success! Your new project pipeline has been saved to disk. 
 
-It is recommended that you copy the following path to your clipboard:
-
-{os.path.join(input_path_to_pipeline_dir, f'{text_input_new_project_name}.pipeline')}
-
-Refresh the page and load up your new pipeline file!
-""")
         # Option 2/2: Load existing project
         elif start_select_option == load_existing_project_option_text:
             logger.debug(f'Open LOAD EXISTING option')
