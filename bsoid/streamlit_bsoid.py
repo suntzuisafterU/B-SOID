@@ -446,7 +446,7 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
                     n = 4
                     st.balloons()
                     st.success(f'New training data added to pipeline successfully! Pipeline has been saved to: "{pipeline_file_path}". Refresh the page to see changes.')  # TODO: finish statement. Add in suggestion to refresh page.
-                    st.info('This page will refresh itself in {n} seconds')
+                    st.info(f'This page will refresh itself in {n} seconds')
                     time.sleep(n)
                     st.experimental_rerun()  # TODO: <------ experimental re-run <-------------------------------------------------- -****
                     # st.stop()
