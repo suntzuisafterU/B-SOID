@@ -162,6 +162,10 @@ def home(**kwargs):
     ### SIDEBAR ###
     st.sidebar.markdown(f'### Iteration: {file_session[key_iteration_page_refresh_count]}')
     st.sidebar.markdown('------')
+    button_refresh_page = st.sidebar.button('Refresh page safely')
+    if button_refresh_page:
+        st.experimental_rerun()
+
 
     ### MAIN ###
     st.markdown(f'# {title}')
