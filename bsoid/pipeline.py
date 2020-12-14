@@ -203,7 +203,7 @@ class PipelineAttributeHolder(object):
         return self.seconds_to_engineer_train_features
     # Setters
     def set_name(self, name: str):
-        # TODO: will this cause problems later with naming convention?
+        # TODO: MED: will this cause problems later with naming convention?
         check_arg.ensure_has_valid_chars_for_path(name)
         self._name = name
         return self
@@ -249,6 +249,7 @@ class BasePipeline(PipelineAttributeHolder):
         # Pipeline name
         check_arg.ensure_type(name, str)
         self.set_name(name)
+        # TODO: low: evaluate remove tsne source since its in set_params?
         # TSNE source
         tsne_source = kwargs.get('tsne_source', '')
         check_arg.ensure_type(tsne_source, str)
@@ -278,22 +279,20 @@ class BasePipeline(PipelineAttributeHolder):
             TODO: complete list
 
         """
+        ### General Params ###
+        # TODO: MED: ADD KWARGS OPTION FOR OVERRIDING VERBOSE in CONFIG.INI!!!!!!!! ?
         video_fps = kwargs.get('input_videos_fps', config.VIDEO_FPS if read_config_on_missing_param else self.input_videos_fps)
         check_arg.ensure_type(video_fps, int, float)
         self.input_videos_fps = video_fps
-
         average_over_n_frames = kwargs.get('average_over_n_frames', self.average_over_n_frames)  # TODO: low: add a default option for this in config.ini+config.py
         check_arg.ensure_type(average_over_n_frames, int)
         self.average_over_n_frames = average_over_n_frames
-
-        # TODO: ADD KWARGS OPTION FOR OVERRIDING VERBOSE in CONFIG.INI!!!!!!!! ****
-        # TODO: LOW: add kwargs parsing for averaging over n-frames
-        # Random state  # TODO: low ensure random state correct
+        # TODO: low ensure random state correct
         random_state = kwargs.get('random_state', config.RANDOM_STATE if read_config_on_missing_param else self.random_state)
         check_arg.ensure_type(random_state, int)
         self._random_state = random_state
         ### TSNE ###
-        ## SKLEARN ##
+        # TODO: add `tsne_source`?
         tsne_n_components = kwargs.get('tsne_n_components', config.TSNE_N_COMPONENTS if read_config_on_missing_param else self.tsne_n_components)  # TODO: low: shape up kwarg name for n components? See string name
         check_arg.ensure_type(tsne_n_components, int)
         self.tsne_n_components = tsne_n_components
@@ -991,41 +990,46 @@ class BasePipeline(PipelineAttributeHolder):
             if additional_length >= min_rows_of_behaviour - 1:
                 rle_by_assignment[label].append([frame_idx, additional_length])
         # Sort from longest additional length (ostensibly the duration of behaviour) to least
-        for key in rle_by_assignment.keys():
-            rle_by_assignment[key] = sorted(rle_by_assignment[key], key=lambda x: x[1], reverse=True)
+        for assignment_val in rle_by_assignment.keys():
+            rle_by_assignment[assignment_val] = sorted(rle_by_assignment[assignment_val], key=lambda x: x[1], reverse=True)
 
         ### Finally: make video clips
         # Loop over assignments
-        for key, values_list in rle_by_assignment.items():
+        for assignment_val, values_list in rle_by_assignment.items():
             # Loop over examples
             num_examples = min(max_examples, len(values_list))
             for i in range(num_examples):  # TODO: HIGH: this part dumbly loops over first n examples...In the future, it would be better to ensure that at least one of the examples has a long runtime for analysis
                 output_file_name = f'{file_name_prefix}{time.strftime("%y-%m-%d_%Hh%Mm")}_' \
-                                   f'BehaviourExample__assignment_{key}__example_{i+1}_of_{num_examples}'
-                frame_text_prefix = f'Target: {key} / '  # TODO: med/high: magic variable
+                                   f'BehaviourExample__assignment_{assignment_val}__example_{i+1}_of_{num_examples}'
+                frame_text_prefix = f'Target assignment: {assignment_val} / '  # TODO: med/high: magic variable
 
                 frame_idx, additional_length_i = values_list[i]  # Recall: first elem is frame idx, second elem is additional length
 
                 lower_bound_row_idx: int = max(0, int(frame_idx) - num_frames_buffer)
                 upper_bound_row_idx: int = min(len(df) - 1, frame_idx + additional_length_i - 1 + num_frames_buffer)
-
                 df_frames_selection = df.iloc[lower_bound_row_idx:upper_bound_row_idx, :]
 
                 # Compile labels list via SVM assignment for now...Later, we should get the actual behavioural labels instead of the numerical assignments
-                labels_list = df_frames_selection[self.svm_assignment_col_name].values
-                logger.debug(f'df_frames_selection.dtypes: {df_frames_selection.dtypes}')
                 logger.debug(f'df_frames_selection["frame"].dypes.dtypes: {df_frames_selection["frame"].dtypes}')
+                assignments_list = list(df_frames_selection[self.svm_assignment_col_name].values)
+                current_behaviour_list = [self.get_assignment_label(a) for a in assignments_list]
                 frames_indices_list = list(df_frames_selection['frame'].astype(int).values)
+                color_map_array = visuals.generate_color_map(len(self.unique_assignments))
+                text_colors_list: List[Tuple[float]] = [tuple(float(min(255.*x, 255.))
+                                                              for x in tuple(color_map_array[a][:3]))
+                                                        for a in assignments_list]
 
+                #
                 videoprocessing.make_labeled_video_according_to_frame(
-                    labels_list,
+                    assignments_list,
                     frames_indices_list,
                     output_file_name,
                     video_file_path,
+                    current_behaviour_list=current_behaviour_list,
                     text_prefix=frame_text_prefix,
                     output_fps=output_fps,
                     output_dir=config.EXAMPLE_VIDEOS_OUTPUT_PATH,
-                    # text_bgr=(255,00,00)
+                    text_colors_list=text_colors_list,
                 )
 
         return self
@@ -1491,7 +1495,7 @@ def generate_pipeline_filename_from_pipeline(pipeline_obj: BasePipeline) -> str:
 if __name__ == '__main__':
     # Debugging Objective: ensure that making videos is working well using existing pipeline
     example_videos_prefix = 'FirstTryColourMe11'
-    pipe_in_output = 'colorme.pipeline'
+    pipe_in_output = 'asdf6.pipeline'
     pipe_path = os.path.join(config.BSOID_BASE_PROJECT_PATH, 'output', pipe_in_output)
     data_source = 'Vid3DLC_resnet50_Change_BlindnessNov11shuffle1_850000'
     vidpath = os.path.join(config.BSOID_BASE_PROJECT_PATH, 'chbo1', 'Vid3.mp4')
@@ -1507,7 +1511,7 @@ if __name__ == '__main__':
         min_rows_of_behaviour=1,
         max_examples=1,
         output_fps=0.8,
-        num_frames_buffer=1,
+        num_frames_buffer=2,
     )
 
 
