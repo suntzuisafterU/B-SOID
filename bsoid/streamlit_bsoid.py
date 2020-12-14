@@ -166,7 +166,6 @@ def home(**kwargs):
     if button_refresh_page:
         st.experimental_rerun()
 
-
     ### MAIN ###
     st.markdown(f'# {title}')
     st.markdown('------------------------------------------------------------------------------------------')
@@ -450,15 +449,14 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
                 else:
                     p = p.add_train_data_source(input_new_data_source).save(os.path.dirname(pipeline_file_path))
                     file_session[key_button_add_train_data_source] = False  # Reset menu to collapsed state
-                    n = 4
+                    n = file_session[default_n_seconds_wait_until_auto_refresh]
                     st.balloons()
                     st.success(f'New training data added to pipeline successfully! Pipeline has been saved to: "{pipeline_file_path}". Refresh the page to see changes.')  # TODO: finish statement. Add in suggestion to refresh page.
                     st.info(f'This page will refresh itself in {n} seconds')
                     time.sleep(n)
                     st.experimental_rerun()  # TODO: <------ experimental re-run <-------------------------------------------------- -****
-                    # st.stop()
-            st.stop()
             st.markdown('')
+
         # 2/2: Button for adding data to prediction set
         button_add_predict_data_source = st.button('-> Add data to be evaluated by the model', key=key_button_add_predict_data_source)
         if button_add_predict_data_source:
@@ -476,7 +474,7 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
                 else:
                     p = p.add_predict_data_source(input_new_predict_data_source).save(os.path.dirname(pipeline_file_path))
                     file_session[key_button_add_predict_data_source] = False  # Reset menu to collapsed state
-                    n_wait_secs = 5
+                    n_wait_secs = file_session[default_n_seconds_wait_until_auto_refresh]
                     st.success(f'New prediction data added to pipeline successfully! Pipeline has been saved. Refresh the page (press "R") to see changes.')
                     time.sleep(n_wait_secs)
                     st.experimental_rerun()
@@ -484,7 +482,6 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
         st.markdown('')
         st.markdown('')
         st.markdown('')
-        st.stop()
 
     ###
 
@@ -512,7 +509,6 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
                     time.sleep(n)
                     # TODO: add in experimental rerun?
                     st.stop()
-                st.stop()
                 st.markdown('------------------------------------------')
 
         if select_train_or_predict_remove == predict_data_option:
@@ -530,7 +526,6 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
                 st.markdown('------------------------------------------')
                 st.markdown('')
         st.markdown('')
-        st.stop()
 
     st.markdown('')
 
@@ -643,12 +638,14 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
                         st.error(f'UNEXPECTED ERROR: pipeline file DIRECTORY parsed as: {os.path.dirname(pipeline_file_path)}')
                         st.stop()
                     p = p.build(True, True).save(os.path.dirname(pipeline_file_path))
+
                 st.balloons()
-                st.success(f'Model was successfully re-built! Refresh the page (press "R") to see changes.')
                 file_session[key_button_rebuild_model_confirmation] = False
                 file_session[key_button_see_rebuild_options] = False
-                st.stop()
-        st.stop()
+                st.success(f'Model was successfully re-built! This page will auto-refresh, or you can manually refresh the page (press "R") to see changes.')
+                n = file_session[default_n_seconds_wait_until_auto_refresh]
+                time.sleep(n)
+                st.experimental_rerun()
 
     ### End of rebuild model section
 
@@ -687,7 +684,7 @@ def see_model_diagnostics(p, pipeline_file_path):
                 p.plot_assignments_in_3d(show_now=True)
             except ValueError:
                 st.error('Cannot plot cluster distribution since the model is not currently built.')
-                st.stop()
+                # st.stop()
         else:
             st.info('A 3d plot of the cluster distributions could not be created because '
                     'the model is not built. ')
@@ -854,9 +851,8 @@ def results_section(p, pipeline_file_path, **kwargs):
                         data_source=selected_data_source,
                         video_name=input_new_video_name,
                         output_dir=output_folder)
-                st.success('Success! Video was created at: TODO: get video out path')
+                st.success('Success! Video was created at: TODO: get video out path')  # todo: MED
         st.markdown('---------------------------------------------------------------------------------------')
-        st.stop()
 
     return display_footer(p, pipeline_file_path)
 
