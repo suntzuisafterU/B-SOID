@@ -134,17 +134,13 @@ class PipelineAttributeHolder(object):
             logger.error(err)
             raise ValueError(err)
 
-        try:  # This try/catch is a debugging effort. Remove try/catch later when ironed-out.
-            label = getattr(self, f'label_{assignment}')
-        except Exception as e:
-            logger.error(f'{get_current_function()}(): unexpected exception '
-                         f'occurred! Please address. Label not found: "label_{assignment}"')
-            raise e
+        label = getattr(self, f'label_{assignment}', '')
 
         return label
 
-    def set_label(self, assignment, label: str):
+    def set_label(self, assignment: int, label: str):
         """ Set behavioural label for a given model assignment number/value """
+        check_arg.ensure_type(label, str)
         assignment = int(assignment)
         setattr(self, f'label_{assignment}', label)
         return self
@@ -202,7 +198,9 @@ class PipelineAttributeHolder(object):
     @property
     def all_features_list(self) -> List[str]:
         return list(self._all_features)
-
+    @property
+    def total_build_time(self):
+        return self.seconds_to_engineer_train_features
     # Setters
     def set_name(self, name: str):
         # TODO: will this cause problems later with naming convention?
