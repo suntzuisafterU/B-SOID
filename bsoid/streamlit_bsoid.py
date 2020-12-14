@@ -279,13 +279,13 @@ Refresh the page and load up your new pipeline file!
         logger.error(f'{repr(e)} // {str(traceback.extract_stack())}')
         return
 
-    logger.debug(f"After all dropdown menu work is done, `is_pipeline_loaded` = {is_pipeline_loaded} // pipeline_file_path = {pipeline_file_path}")
-    logger.debug(f'is_pipeline_loaded = {is_pipeline_loaded}')
+    # logger.debug(f"After all dropdown menu work is done, `is_pipeline_loaded` = {is_pipeline_loaded} // pipeline_file_path = {pipeline_file_path}")
+    # logger.debug(f'is_pipeline_loaded = {is_pipeline_loaded}')
     if is_pipeline_loaded:
-        logger.debug(f"pipeline_file_path = {pipeline_file_path}")
-        logger.debug(f'file_session[pipe] = {file_session[key_pipeline_path]}')
+        logger.debug(f"Leaving home: pipeline_file_path = {pipeline_file_path}")
+        # logger.debug(f'file_session[pipe] = {file_session[key_pipeline_path]}')
         # file_session[key_pipeline_file_path] = pipeline_file_path
-        logger.debug(f'Leaving home().file_session[key_pipeline_file_path] == file_session[key_pipeline_file_path] ')
+        # logger.debug(f'Leaving home().file_session[key_pipeline_file_path] == file_session[key_pipeline_file_path] ')
         start_select_option = load_existing_project_option_text
         # path_to_project_file = p._source_folder
         st.markdown('----------------------------------------------------------------------------------------------')
@@ -340,6 +340,9 @@ def show_pipeline_info(p: pipeline.PipelinePrime, pipeline_path, **kwargs):
         st.markdown(f'Model Features:')
         for feat in p.all_features:
             st.markdown(f'- {feat}')
+
+        if p.is_built:
+            st.markdown(f'Seconds to build model: {p.seconds_to_engineer_train_features}')
     ###
 
     # Model check before displaying actions that could further change pipeline state.
@@ -380,12 +383,14 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
         text_input_change_desc = st.text_input(f'(WORK IN PROGRESS) Change project description here', value=p.description)
         if text_input_change_desc != p.description:
             p.set_description(text_input_change_desc).save(os.path.dirname(pipeline_file_path))
-            st.success(f'Pipeline description has been changed!')
-            st.info(f'This page will refresh automatically to reflect your changes, or you can manually refresh the page (by clicking the page and pressing "R") to see changes.')
             file_session[key_button_update_description] = False
-            time.sleep(3)
+            wait_seconds = 5
+            st.success(f'Pipeline description has been changed!')
+            st.info(f'This page will refresh automatically to reflect your changes in {wait_seconds} seconds, or you can manually refresh the page (by clicking the page and pressing "R") to see changes.')
+            time.sleep(wait_seconds)
             st.experimental_rerun()
-            # st.stop()
+        st.markdown('')
+        st.stop()
 
     # TODO: low: add a "change save location" option?
 
@@ -580,10 +585,9 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
             input_gmm_max_iter, input_gmm_n_init = p.gmm_max_iter, p.gmm_n_init
             input_svm_c, input_svm_gamma = p.svm_c, p.svm_gamma
             video_fps, average_over_n_frames = p.input_videos_fps, p.average_over_n_frames
-        ###
+        ### End of Show Advanced Params Section
 
         st.markdown('')
-
 
         st.markdown('### Rebuilding Model')
         st.markdown(f'*Note: changing the above parameters without rebuilding the model will have no effect.*')
@@ -632,9 +636,8 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
                 file_session[key_button_see_rebuild_options] = False
                 st.stop()
         st.stop()
-        st.markdown('----------------------------------------------------------------------------------------------')
 
-    ###
+    ### End of rebuild model section
 
     st.markdown('--------------------------------------------------------------------------------------------------')
 
@@ -644,7 +647,6 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
 def see_model_diagnostics(p, pipeline_file_path):
     ######################################### MODEL DIAGNOSTICS ########################################################
     st.markdown(f'## Model Diagnostics')
-
 
     ### View Histogram for assignment distribution
     st.markdown(f'*This section is a work-in-progress. Opening a graph in this section is very volatile and there is high chance that by opening a graph then streamlit will crash. A fix is actively being worked-on!*')
@@ -686,6 +688,7 @@ def review_behaviours(p, pipeline_file_path):
     """"""
     if not os.path.isfile(pipeline_file_path):
         st.error(f'An unexpected error occurred. Your pipeline file path was lost along the way. Currently, your pipeline file path reads as: "{pipeline_file_path}"')
+
     ### SIDEBAR
 
     ### MAIN
@@ -806,8 +809,7 @@ def results_section(p, pipeline_file_path, **kwargs):
         file_session[key_button_menu_label_entire_video] = not file_session[key_button_menu_label_entire_video]
     if file_session[key_button_menu_label_entire_video]:
         st.markdown('')
-        selected_data_source = st.selectbox('Select a data source to use as the labels set for '
-                                            'specified video:',
+        selected_data_source = st.selectbox('Select a data source to use as the labels set for specified video:',
                                             options=['']+p.training_data_sources+p.predict_data_sources)
         input_video_to_label = st.text_input('Input path to corresponding video which will be labeled:',
                                              value=f'{config.BSOID_BASE_PROJECT_PATH}')
@@ -839,6 +841,7 @@ def results_section(p, pipeline_file_path, **kwargs):
                         output_dir=output_folder)
                 st.success('Success! Video was created at: TODO: get video out path')
         st.markdown('---------------------------------------------------------------------------------------')
+        st.stop()
 
     return display_footer(p, pipeline_file_path)
 
