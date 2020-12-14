@@ -478,7 +478,6 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
                     st.success(f'New prediction data added to pipeline successfully! Pipeline has been saved. Refresh the page (press "R") to see changes.')
                     time.sleep(n_wait_secs)
                     st.experimental_rerun()
-                    st.stop()
         st.markdown('')
         st.markdown('')
         st.markdown('')
@@ -503,12 +502,12 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
                     with st.spinner(f'Removing {select_train_data_to_remove} from training data set...'):
                         p = p.remove_train_data_source(select_train_data_to_remove).save(os.path.dirname(pipeline_file_path))
                     file_session[key_button_menu_remove_data] = False
-                    n = 4
+                    n = file_session[default_n_seconds_wait_until_auto_refresh]
                     st.balloons()
-                    st.success(f'{select_train_data_to_remove} data successfully removed! Refresh the page to see the changes')
+                    st.success(f'{select_train_data_to_remove} data successfully removed!')
+                    st.info(f'The page will refresh shortly, or you can manually refresh the page to see the changes')
                     time.sleep(n)
-                    # TODO: add in experimental rerun?
-                    st.stop()
+                    st.experimental_rerun()
                 st.markdown('------------------------------------------')
 
         if select_train_or_predict_remove == predict_data_option:
@@ -519,10 +518,13 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
                 if confirm:
                     with st.spinner(f'Removing {select_predict_option_to_remove} from predict data set'):
                         p.remove_predict_data_source(select_predict_option_to_remove).save(os.path.dirname(pipeline_file_path))
-                    st.success(f'{select_predict_option_to_remove} data was successfully removed! Refresh the page to see the changes.')
                     file_session[key_button_menu_remove_data] = False
-                    # TODO: add in experimental rerun?
-                    st.stop()
+                    st.balloons()
+                    st.success(f'{select_predict_option_to_remove} data was successfully removed!')
+                    st.info(f'The page will refresh shortly, or you can manually refresh the page to see the changes')
+                    n = file_session[default_n_seconds_wait_until_auto_refresh]
+                    time.sleep(n)
+                    st.experimental_rerun()
                 st.markdown('------------------------------------------')
                 st.markdown('')
         st.markdown('')
@@ -643,6 +645,7 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
                 file_session[key_button_rebuild_model_confirmation] = False
                 file_session[key_button_see_rebuild_options] = False
                 st.success(f'Model was successfully re-built! This page will auto-refresh, or you can manually refresh the page (press "R") to see changes.')
+                st.info(f'The page will refresh shortly, or you can manually refresh the page (press "R") to see the changes')
                 n = file_session[default_n_seconds_wait_until_auto_refresh]
                 time.sleep(n)
                 st.experimental_rerun()
@@ -845,12 +848,12 @@ def results_section(p, pipeline_file_path, **kwargs):
                 st.error(f'Invalid characters for new video name detected. Please review name: {input_new_video_name}')
             if not error_detected:
                 with st.spinner('(WIP) Creating labeled video now. This could take a few minutes...'):
-                    # app.sample_runtime_function(3)
                     p.make_video(
                         video_to_be_labeled=input_video_to_label,
                         data_source=selected_data_source,
                         video_name=input_new_video_name,
                         output_dir=output_folder)
+                st.balloons()
                 st.success('Success! Video was created at: TODO: get video out path')  # todo: MED
         st.markdown('---------------------------------------------------------------------------------------')
 
