@@ -1,5 +1,8 @@
 """
 Functionality for visualizing plots and saving those plots.
+
+Color map information: https://matplotlib.org/3.1.0/tutorials/colors/colormaps.html
+
 """
 from matplotlib.axes._axes import _log as matplotlib_axes_logger
 from mpl_toolkits.mplot3d import Axes3D  # Despite being "unused", this import MUST stay for 3d plotting to work. PLO!
@@ -22,11 +25,12 @@ TM = NotImplementedError('TODO: HIGH: The source of TM has not been determined. 
 
 ### New
 
-def generate_color_map(n_colors: int) -> np.ndarray:
+def generate_color_map(n_colors: int, map_type='Spectral') -> np.ndarray:
     """
+    :param map_type:
     :param n_colors: (int) Number of colors to generate
     :return: a 2-d array of shape (n_colors, 4).
-        E.g.: If n = 4,
+        E.g.: If n = 4, then output will look like below:
         array([[0.61960784, 0.00392157, 0.25882353, 1.        ],
                [0.99346405, 0.74771242, 0.43529412, 1.        ],
                [0.74771242, 0.89803922, 0.62745098, 1.        ],
@@ -34,7 +38,7 @@ def generate_color_map(n_colors: int) -> np.ndarray:
 
     """
     R = np.linspace(0, 1, n_colors)
-    colormap = plt.cm.get_cmap("Spectral")(R)
+    colormap = plt.cm.get_cmap(map_type)(R)
     return colormap
 
 
@@ -62,10 +66,12 @@ def plot_GM_assignments_in_3d_new(data: np.ndarray, assignments, show_now=True, 
     alpha = kwargs.get('alpha', 0.8)
     title = kwargs.get('title', 'Assignments by GMM')
     azim_elev = kwargs.get('azim_elev', (70, 135))
+
     # Plot graph
     unique_assignments = list(np.unique(assignments))
-    R = np.linspace(0, 1, len(unique_assignments))
-    colormap = plt.cm.get_cmap("Spectral")(R)
+    # R = np.linspace(0, 1, len(unique_assignments))
+    # colormap = plt.cm.get_cmap("Spectral")(R)
+    colormap = generate_color_map(len(unique_assignments))
     tsne_x, tsne_y, tsne_z = data[:, 0], data[:, 1], data[:, 2]
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
