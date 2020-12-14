@@ -1333,6 +1333,96 @@ class PipelineTim(BasePipeline):
         return df
 
 
+class PipelineCHBO(BasePipeline):
+    """
+
+    """
+    # Feature names
+    feat_name_dist_forepawleft_nosetip = 'distForepawLeftNosetip'
+    feat_name_dist_forepawright_nosetip = 'distForepawRightNosetip'
+    feat_name_dist_forepawLeft_hindpawLeft = 'distForepawLeftHindpawLeft'
+    feat_name_dist_forepawRight_hindpawRight = 'distForepawRightHindpawRight'
+    feat_name_dist_AvgHindpaw_Nosetip = 'distAvgHindpawNoseTip'
+    feat_name_dist_AvgForepaw_NoseTip = 'distAvgForepawNoseTip'
+    feat_name_velocity_AvgForepaw = 'velocAvgForepaw'
+    _all_features = (
+        feat_name_dist_forepawleft_nosetip,
+        feat_name_dist_forepawright_nosetip,
+        feat_name_dist_forepawLeft_hindpawLeft,
+        feat_name_dist_forepawRight_hindpawRight,
+        feat_name_dist_AvgHindpaw_Nosetip,
+        feat_name_dist_AvgForepaw_NoseTip,
+        feat_name_velocity_AvgForepaw,
+    )
+    n_rows_to_integrate_by: int = 3  # 3 => 3 frames = 100ms capture in a 30fps video. 100ms was used in original paper.
+
+    def engineer_features(self, in_df: pd.DataFrame):
+        # TODO: WIP
+        """
+        # Head dips
+        1. d(forepaw left to nose)
+        2. d(forepaw right to nose)
+        # Rears
+        3. d(forepaw left to hindpaw left)
+        4. d(forepaw right to hindpaw right)
+        5. d(nose to avg hindpaw)
+        # Stretch attends
+        6. d(avg hindpaw to nose) - same as #5
+        7. d(avg forepaw to nose)
+        8. v(avgForepaw)
+
+        """
+        # Arg Checking
+        check_arg.ensure_type(in_df, pd.DataFrame)
+        # Execute
+        logger.debug(f'Engineering features for one data set...')
+        df = in_df.sort_values('frame').copy()
+        # Filter
+        df, _ = feature_engineering.adaptively_filter_dlc_output(df)
+        # Engineer features
+        # 1
+        df = feature_engineering.attach_distance_between_2_feats(df, 'FOREPAW_LEFT', 'NOSETIP', self.feat_name_dist_forepawleft_nosetip, resolve_features_with_config_ini=True)
+        # 2
+        df = feature_engineering.attach_distance_between_2_feats(df, 'FOREPAW_RIGHT', 'NOSETIP', self.feat_name_dist_forepawright_nosetip, resolve_features_with_config_ini=True)
+        # 3
+        df = feature_engineering.attach_distance_between_2_feats(df, 'FOREPAW_LEFT', 'HINDPAW_LEFT', self.feat_name_dist_forepawLeft_hindpawLeft, resolve_features_with_config_ini=True)
+        # 4
+        df = feature_engineering.attach_distance_between_2_feats(df, 'FOREPAW_RIGHT', 'HINDPAW_RIGHT', self.feat_name_dist_forepawRight_hindpawRight, resolve_features_with_config_ini=True)
+        # 5, 6
+        df = feature_engineering.attach_average_forepaw_xy(df)  # TODO: low: replace these two functions with the generalized xy averaging functions+output name?
+        df = feature_engineering.attach_average_hindpaw_xy(df)
+        df = feature_engineering.attach_distance_between_2_feats(df, 'AvgHindpaw', config.get_part('NOSETIP'), self.feat_name_dist_AvgHindpaw_Nosetip)
+        # 7
+        df = feature_engineering.attach_distance_between_2_feats(df, 'AvgForepaw', config.get_part('NOSETIP'), self.feat_name_dist_AvgForepaw_NoseTip)
+        # 8
+        df = feature_engineering.attach_velocity_of_feature(df, 'AvgForepaw', 1/config.VIDEO_FPS, self.feat_name_velocity_AvgForepaw)
+
+        # Binning
+        map_feature_to_integrate_method = {
+            self.feat_name_dist_forepawleft_nosetip: 'avg',
+            self.feat_name_dist_forepawright_nosetip: 'avg',
+            self.feat_name_dist_forepawLeft_hindpawLeft: 'avg',
+            self.feat_name_dist_forepawRight_hindpawRight: 'avg',
+            self.feat_name_dist_AvgHindpaw_Nosetip: 'avg',
+            self.feat_name_dist_AvgForepaw_NoseTip: 'avg',
+            self.feat_name_velocity_AvgForepaw: 'sum',
+        }
+        logger.debug(f'{get_current_function()}(): # of rows in DataFrame before binning = {len(df)}')
+        df = feature_engineering.integrate_df_feature_into_bins(df, map_feature_to_integrate_method, self.n_rows_to_integrate_by)
+        logger.debug(f'{get_current_function()}(): # of rows in DataFrame after binning = {len(df)}')
+
+        # # Debug effort/check: ensure columns don't get dropped by accident
+        # for col in in_df.columns:
+        #     if col not in list(df.columns):
+        #         err_missing_col = f'Missing col should not have been lost in feature engineering but was. ' \
+        #                           f'Column = {col}. (df={df.head().to_string()})'  # TODO: low: improve err message
+        #         logger.error(err_missing_col)
+        #         raise KeyError(err_missing_col)
+
+        logger.debug(f'Done engineering features.')
+        return df
+
+
 ### Accessory functions ###
 
 def generate_pipeline_filename(name: str):
