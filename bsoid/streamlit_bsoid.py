@@ -63,12 +63,13 @@ key_button_save_assignment = 'key_button_save_assignment'
 key_button_show_example_videos_options = 'key_button_show_example_videos_options'
 key_button_create_new_example_videos = 'key_button_create_new_example_videos'
 key_button_menu_label_entire_video = 'key_button_menu_label_entire_video'
-
+default_n_seconds_wait_until_auto_refresh = 'default_n_seconds_wait_until_auto_refresh'
 ### Page variables data ###
 streamlit_persitency_variables = {  # Instantiate default variable values here
     key_pipeline_path: '',  #  TODO: deprecate? Doesn't see much use
     key_open_pipeline_path: config.BSOID_BASE_PROJECT_PATH,
     key_iteration_page_refresh_count: 0,
+    default_n_seconds_wait_until_auto_refresh: 4,
     key_button_show_adv_pipeline_information: False,
     key_button_see_rebuild_options: False,
     key_button_see_advanced_options: False,
@@ -144,6 +145,7 @@ def home(**kwargs):
         up to the user to fill out.
 
     """
+    logger.debug('    < Start of streamlit page >    ')
     ### Set up session variables
     global file_session
     file_session = streamlit_session_state.get(**streamlit_persitency_variables)
@@ -158,11 +160,10 @@ def home(**kwargs):
             pipeline_file_path = config.default_pipeline_file_path
         # If no config.ini path, then let user choose on page
 
-
     ######################################################################################
-    # ### SIDEBAR ###
-    # st.sidebar.markdown(f'### Iteration: {file_session[key_iteration_page_refresh_count]}')
-    # st.sidebar.markdown('------')
+    ### SIDEBAR ###
+    st.sidebar.markdown(f'### Iteration: {file_session[key_iteration_page_refresh_count]}')
+    st.sidebar.markdown('------')
 
     ### MAIN ###
     st.markdown(f'# {title}')
@@ -185,7 +186,7 @@ def home(**kwargs):
             if select_pipe_type:
                 text_input_new_project_name = st.text_input(
                     'Enter a name for your project pipeline. Please only use letters, numbers, and underscores.')
-                path_to_pipeline_dir = st.text_input(
+                input_path_to_pipeline_dir = st.text_input(
                     'Enter a path to a folder where the new project pipeline will be stored. Press Enter when done.',
                     value=config.OUTPUT_PATH)
                 button_project_info_submitted_is_clicked = st.button('Submit', key='SubmitNewProjectInfo')
@@ -198,30 +199,32 @@ def home(**kwargs):
                         logger.error(char_err)
                         st.error(char_err)
                         st.stop()
-                    if not os.path.isdir(path_to_pipeline_dir):
-                        dir_err = NotADirectoryError(f'The following (in double quotes) is not a valid '
-                                                     f'directory: "{path_to_pipeline_dir}"')
+                    if not os.path.isdir(input_path_to_pipeline_dir):
+                        dir_err = f'The following (in double quotes) is not a valid directory: "{input_path_to_pipeline_dir}"'
                         logger.error(dir_err)
-                        st.error(dir_err)
+                        st.error(NotADirectoryError(dir_err))
                         st.stop()
 
                     # If OK: create default pipeline, save, continue
                     if select_pipe_type == pipeline_prime_name:
-                        p = pipeline.PipelinePrime(text_input_new_project_name).save(path_to_pipeline_dir)
+                        p = pipeline.PipelinePrime(text_input_new_project_name).save(input_path_to_pipeline_dir)
                     elif select_pipe_type == pipeline_epm_name:
-                        p = pipeline.PipelineEPM(text_input_new_project_name).save(path_to_pipeline_dir)
+                        p = pipeline.PipelineEPM(text_input_new_project_name).save(input_path_to_pipeline_dir)
                     elif select_pipe_type == pipelineTimName:
-                        p = pipeline.PipelineTim(text_input_new_project_name).save(path_to_pipeline_dir)
+                        p = pipeline.PipelineTim(text_input_new_project_name).save(input_path_to_pipeline_dir)
                     else:
-                        st.error(RuntimeError('Something unexpected happened'))
-                        st.markdown(f'traceback: {traceback.format_exc()}')
+                        err = 'Something unexpected happened on instantiating new Pipeline'
+                        st.error(RuntimeError(err))
+                        st.info(f'traceback: {traceback.format_exc()}')
                         st.stop()
+                    # Success
+                    st.balloons()
                     st.success(f"""
 Success! Your new project pipeline has been saved to disk. 
 
 It is recommended that you copy the following path to your clipboard:
 
-{os.path.join(path_to_pipeline_dir, f'{text_input_new_project_name}.pipeline')}
+{os.path.join(input_path_to_pipeline_dir, f'{text_input_new_project_name}.pipeline')}
 
 Refresh the page and load up your new pipeline file!
 """)
@@ -242,8 +245,7 @@ Refresh the page and load up your new pipeline file!
             # logger.debug(f'LOAD: file_session[key_open_pipeline_path] = {file_session[key_open_pipeline_path]}')
             # input_text_path_to_pipeline_file = file_session[key_open_pipeline_path]
 
-
-            ############ orginal below
+            ############ Original, working implementation below
             input_text_path_to_pipeline_file = st.text_input(
                 'Enter full path to existing project pipeline file',
                 value=pipeline_file_path,  # TODO: remove this line later, or change to a config default?
@@ -376,6 +378,8 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
 
     ################################# CHANGE PIPELINE INFORMATION ###############################################
     st.markdown(f'### Pipeline information')
+
+    ### Change pipeline description
     button_update_description = st.button(f'Toggle: Change project description', key_button_update_description)
     if button_update_description:
         file_session[key_button_update_description] = not file_session[key_button_update_description]
@@ -384,14 +388,15 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
         if text_input_change_desc != p.description:
             p.set_description(text_input_change_desc).save(os.path.dirname(pipeline_file_path))
             file_session[key_button_update_description] = False
-            wait_seconds = 5
+            wait_seconds = file_session[default_n_seconds_wait_until_auto_refresh]
             st.success(f'Pipeline description has been changed!')
             st.info(f'This page will refresh automatically to reflect your changes in {wait_seconds} seconds, or you can manually refresh the page (by clicking the page and pressing "R") to see changes.')
             time.sleep(wait_seconds)
             st.experimental_rerun()
-        st.markdown('')
-        st.stop()
-
+        for i in range(4):
+            st.markdown('')
+    ### End: Change pipeline description
+    st.markdown('')
     # TODO: low: add a "change save location" option?
 
     ####################################### MODEL BUILDING #############################################
@@ -468,8 +473,11 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
 
                 else:
                     p = p.add_predict_data_source(input_new_predict_data_source).save(os.path.dirname(pipeline_file_path))
-                    st.success(f'New prediction data added to pipeline successfully! Pipeline has been saved. Refresh the page (press "R") to see changes.')
                     file_session[key_button_add_predict_data_source] = False  # Reset menu to collapsed state
+                    n_wait_secs = 5
+                    st.success(f'New prediction data added to pipeline successfully! Pipeline has been saved. Refresh the page (press "R") to see changes.')
+                    time.sleep(n_wait_secs)
+                    st.experimental_rerun()
                     st.stop()
         st.markdown('')
         st.markdown('')
@@ -496,7 +504,10 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
                     with st.spinner(f'Removing {select_train_data_to_remove} from training data set...'):
                         p = p.remove_train_data_source(select_train_data_to_remove).save(os.path.dirname(pipeline_file_path))
                     file_session[key_button_menu_remove_data] = False
+                    n = 4
+                    st.balloons()
                     st.success(f'{select_train_data_to_remove} data successfully removed! Refresh the page to see the changes')
+                    time.sleep(n)
                     # TODO: add in experimental rerun?
                     st.stop()
                 st.stop()
@@ -650,8 +661,8 @@ def see_model_diagnostics(p, pipeline_file_path):
 
     ### View Histogram for assignment distribution
     st.markdown(f'*This section is a work-in-progress. Opening a graph in this section is very volatile and there is high chance that by opening a graph then streamlit will crash. A fix is actively being worked-on!*')
-    st.markdown(f'View distribution of assignments')
-    button_view_assignments_distribution = st.button(f'View assignment distribution')
+    st.markdown(f'### View distribution of assignments')
+    button_view_assignments_distribution = st.button(f'Toggle: View assignment distribution')
     if button_view_assignments_distribution:
         file_session[key_button_view_assignments_distribution] = not file_session[key_button_view_assignments_distribution]
     if file_session[key_button_view_assignments_distribution]:
@@ -666,7 +677,7 @@ def see_model_diagnostics(p, pipeline_file_path):
 
     ###
     # View 3d Plot
-    st.markdown(f'See GMM distributions according to TSNE-reduced feature dimensions // TODO: make this shorter.')
+    st.markdown(f'### See GMM distributions according to TSNE-reduced feature dimensions')  # TODO: phrase beter?
     gmm_button = st.button('Pop out window of cluster/assignment distribution')  # TODO: low: phrase this button better?
     if gmm_button:
         if p.is_built:
@@ -686,8 +697,9 @@ def see_model_diagnostics(p, pipeline_file_path):
 
 def review_behaviours(p, pipeline_file_path):
     """"""
+    # Debugging effort
     if not os.path.isfile(pipeline_file_path):
-        st.error(f'An unexpected error occurred. Your pipeline file path was lost along the way. Currently, your pipeline file path reads as: "{pipeline_file_path}"')
+        st.error(FileNotFoundError(f'An unexpected error occurred. Your pipeline file path was lost along the way. Currently, your pipeline file path reads as: "{pipeline_file_path}"'))
 
     ### SIDEBAR
 
@@ -696,10 +708,11 @@ def review_behaviours(p, pipeline_file_path):
     ## Review Behaviour Example Videos ##
     st.markdown(f'## Behaviour clustering review')
 
+    ### Section: create drop-down menu to review videos
     example_videos_file_list: List[str] = [video_file_name for video_file_name in os.listdir(config.EXAMPLE_VIDEOS_OUTPUT_PATH) if video_file_name.split('.')[-1] in valid_video_extensions]  # # TODO: low/med: add user intervention on default path to check?
     videos_dict: Dict[str: str] = {**{'': ''}, **{video_file_name: os.path.join(config.EXAMPLE_VIDEOS_OUTPUT_PATH, video_file_name) for video_file_name in example_videos_file_list}}
 
-    video_selection: str = st.selectbox(label=f"Select video to view. Total videos found in folder '{config.EXAMPLE_VIDEOS_OUTPUT_PATH}': {len(videos_dict)-1}", options=list(videos_dict.keys()))
+    video_selection: str = st.selectbox(label=f"Select video to view. Total videos found in example videos folder ({config.EXAMPLE_VIDEOS_OUTPUT_PATH}): {len(videos_dict)-1}", options=list(videos_dict.keys()))
     if video_selection:
         try:
             st.video(get_video_bytes(videos_dict[video_selection]))
@@ -707,7 +720,7 @@ def review_behaviours(p, pipeline_file_path):
             st.error(FileNotFoundError(f'No example behaviour videos were found at this time. Try '
                                        f'generating them at check back again after. // '
                                        f'DEBUG INFO: path checked: {config.EXAMPLE_VIDEOS_OUTPUT_PATH} // {repr(fe)}'))
-    ###
+    ### End section: create drop-down menu to review videos
 
     st.markdown('')
     st.markdown('')
@@ -849,9 +862,9 @@ def results_section(p, pipeline_file_path, **kwargs):
 def display_footer(p, pipeline_file_path, *args, **kwargs):
     """ Footer of Streamlit page """
     st.markdown('')
-    st.markdown('---')
-    st.markdown(f'*Click on the page and press "R" to refresh.*')
-    logger.debug('')
+    # st.markdown('---')
+    # st.markdown(f'*Click on the page and press "R" to refresh.*')
+    logger.debug('   < End of streamlit page >   ')
     return p
 
 
