@@ -22,7 +22,7 @@ logger = config.initialize_logger(__file__)
 
 ### In development
 
-def make_labeled_video_according_to_frame(labels_list: Union[List, Tuple], frames_indices_list: Union[List, Tuple], output_file_name: str, video_source: str, current_behaviour_list: List[str] = [], output_fps=15, fourcc='mp4v', output_dir=config.OUTPUT_PATH, **kwargs):
+def make_labeled_video_according_to_frame(labels_list: Union[List, Tuple], frames_indices_list: Union[List, Tuple], output_file_name: str, video_source: str, current_behaviour_list: List[str] = (), output_fps=15, fourcc='mp4v', output_dir=config.OUTPUT_PATH, text_colors_list: Union[Tuple, List] = (), **kwargs):
     """
     # PREVIOUSLY: fourcc='mp4v' was default
     # PREVIOUSLY code was 'H264'
@@ -32,10 +32,11 @@ def make_labeled_video_according_to_frame(labels_list: Union[List, Tuple], frame
     :param frames_indices_list: (List[int]) a list of frames by index to be labeled and included in final video
     :param video_source: (str) a path to a video file ___
     :param current_behaviour_list:
-    :param output_file_name:
+    :param output_file_name: (str)
     :param output_fps: (int)
     :param fourcc: (str)
     :param output_dir: (str)
+    :param text_colors_list:
 
     :param kwargs:
         text_prefix : str
@@ -51,24 +52,23 @@ def make_labeled_video_according_to_frame(labels_list: Union[List, Tuple], frame
         text_offset_y : int
 
 
-    :return:
+    :return: None
     """
     font: int = cv2.FONT_HERSHEY_COMPLEX
 
     # Kwargs
     font_scale = kwargs.get('font_scale', config.DEFAULT_FONT_SCALE)
     rectangle_colour_bgr: Tuple[int, int, int] = kwargs.get('rectangle_bgr', config.DEFAULT_TEXT_BACKGROUND_BGR)  # 000=Black box?
-    text_colour_bgr = kwargs.get('text_bgr', config.DEFAULT_TEXT_BGR)  # 255 = white?
+    text_colour_bgr = kwargs.get('text_colour_bgr', config.DEFAULT_TEXT_BGR)
     text_prefix = kwargs.get('text_prefix', '')
     text_offset_x = kwargs.get('text_offset_x', 50)
     text_offset_y = kwargs.get('text_offset_y', 125)
 
     # Arg checking
-    # # Check args
     check_arg.ensure_is_file(video_source)
     check_arg.ensure_has_valid_chars_for_path(output_file_name)
     check_arg.ensure_is_dir(output_dir)
-    # check_arg.ensure_type(output_fps, int)
+    check_arg.ensure_type(output_fps, int, float)  # TODO: uncomment this later
     # # Check kwargs
     check_arg.ensure_type(font_scale, int)
     check_arg.ensure_type(rectangle_colour_bgr, tuple)
@@ -77,10 +77,31 @@ def make_labeled_video_according_to_frame(labels_list: Union[List, Tuple], frame
     check_arg.ensure_type(text_prefix, str)
     check_arg.ensure_type(text_offset_x, int)
     check_arg.ensure_type(text_offset_y, int)
+    check_arg.ensure_type(text_colors_list, list, tuple)
     if len(labels_list) != len(frames_indices_list):
         non_matching_lengths_err = f'{get_current_function()}(): the number of labels and the list of frames do not match. Number of labels = {len(labels_list)} while number of frames = {len(frames_indices_list)}'
         logger.error(non_matching_lengths_err)
         raise ValueError(non_matching_lengths_err)
+    ### Optional inputs
+    # Text colors list
+    if len(text_colors_list) != 0:
+        if len(text_colors_list) != len(labels_list):
+            err = f'The number of text colors list entries does not match the number of labels provided'
+            logger.error(err)
+            raise ValueError(err)
+    else:
+        text_colors_list = [text_colour_bgr for _ in range(len(labels_list))]
+    # Behaviour text
+    if len(current_behaviour_list) != 0:
+        # First, arg check
+        if len(current_behaviour_list) != len(labels_list):
+            err = f"Incorrect # of behaviours doesn't match # of labels"  # TODO: low improve err msg
+            logger.error(err)
+            raise ValueError(err)
+
+    else:
+        current_behaviour_list = ['' for _ in range(len(labels_list))]
+
     ### Execute ###
     # Open source video
     cv2_source_video_object = cv2.VideoCapture(video_source)
@@ -88,7 +109,7 @@ def make_labeled_video_according_to_frame(labels_list: Union[List, Tuple], frame
     logger.debug(f"Total # of frames in video: {total_frames_of_source_vid}")
     logger.debug(f"Is it opened? {cv2_source_video_object.isOpened()}")
 
-    # Get dimensions of first frame in video, use that to instantiate VideoWriter dimensions
+    # Get dimensions of first frame in video, use that to instantiate VideoWriter parameters
     cv2_source_video_object.set(1, 0)
     is_frame_retrieved, frame = cv2_source_video_object.read()
     if not is_frame_retrieved:
@@ -110,7 +131,8 @@ def make_labeled_video_according_to_frame(labels_list: Union[List, Tuple], frame
 
     # Loop over all requested frames, add text, then append to list for later video creation
     for i in range(len(frames_indices_list)):
-        label, frame_idx = labels_list[i], frames_indices_list[i]
+        label, frame_idx, text_color_tuple = labels_list[i], frames_indices_list[i], text_colors_list[i]
+        current_behaviour = current_behaviour_list[i]
         # logger.debug(f'label, frame_idx = {label}, {frame_idx} // type(label), type(frame_idx) = {type(label)}, {type(frame_idx)}')  # TODO: remove this line after type debugging
         cv2_source_video_object.set(1, frame_idx)
         is_frame_retrieved, frame = cv2_source_video_object.read()
@@ -119,7 +141,7 @@ def make_labeled_video_according_to_frame(labels_list: Union[List, Tuple], frame
                            f'video: {int(cv2_source_video_object.get(cv2.CAP_PROP_FRAME_COUNT))}'
             raise Exception(no_frame_err)
 
-        text_for_frame = f'Frame index: {frame_idx} // {text_prefix}Current Assignment: {label}'
+        text_for_frame = f'Frame index: {frame_idx} // {text_prefix}Current Assignment: {label} // Current behaviour label: {current_behaviour}'
 
         text_width, text_height = cv2.getTextSize(text_for_frame, font, fontScale=font_scale, thickness=1)[0]
         box_top_left, box_top_right = (
@@ -136,7 +158,7 @@ def make_labeled_video_according_to_frame(labels_list: Union[List, Tuple], frame
             org=(text_offset_x, text_offset_y),
             fontFace=font,
             fontScale=font_scale,
-            color=text_colour_bgr,
+            color=text_color_tuple,
             thickness=1
         )
         # numpy_frames.append(frame)
