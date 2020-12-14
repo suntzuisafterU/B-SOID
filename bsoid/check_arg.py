@@ -24,7 +24,7 @@ def ensure_type(var, *expected_types):
         if isinstance(var, t):
             return
     type_err = f'Caller: {get_caller_function()}(): For object (value = {var}), ' \
-               f'expected type was {expected_types} but instead found {type(var)}'
+               f'expected type(s) was {expected_types} but instead found {type(var)}'
     logger.error(type_err)
     raise TypeError(type_err)
 
