@@ -494,7 +494,7 @@ class BasePipeline(PipelineAttributeHolder):
         for i, df in enumerate(list_dfs_of_raw_data):
             df = df.copy().astype({'frame': float})
             check_arg.ensure_frame_indices_are_integers(df)
-            logger.debug(f'{get_current_function()}(): Engineering df feature set {i}')
+            logger.debug(f'{get_current_function()}(): Engineering df feature set {i+1} of {len(list_dfs_of_raw_data)}')
             df_engineered_features: pd.DataFrame = self.engineer_features(df)
             list_dfs_engineered_features.append(df_engineered_features)
 
