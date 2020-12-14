@@ -18,19 +18,17 @@ import sys
 import time
 import traceback
 
-
 import easygui
 from tkinter import filedialog
 # from mttkinter import mtTkinter as tk
 import tkinter as tk
 
-
-# C:\Users\killian\projects\B-SOID\chbo1\Vid1DLC_resnet50_Change_BlindnessNov11shuffle1_850000.csv
-
 from bsoid import check_arg, config, io, logging_bsoid, pipeline, streamlit_session_state
 
 
 logger = config.initialize_logger(__file__)
+
+matplotlib_axes_logger.setLevel('ERROR')
 
 
 ##### Instantiate names for buttons, options that can be changed on the fly but logic below stays the same #####
