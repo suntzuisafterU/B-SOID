@@ -12,7 +12,7 @@ import argparse
 import bsoid
 from bsoid.pipeline import *  # This line is required for Streamlit to load Pipeline objects. Do not delete. For a more robust solution, consider: https://rebeccabilbro.github.io/module-main-has-no-attribute/
 
-logger = bsoid.config.initialize_logger(__name__)
+logger = bsoid.config.initialize_logger(__file__)
 
 
 ########################################################################################################################
@@ -47,6 +47,7 @@ def parse_args() -> argparse.Namespace:
     # Parse args, return
     args: argparse.Namespace = parser.parse_args()
 
+    # TODO: uncomment below later
     logger.debug(f'ARGS: {args}')
     logger.debug(f'args.command = {args.command}')
     logger.debug(f'args.p = {args.p}')
@@ -60,7 +61,8 @@ def execute_command(args: argparse.Namespace) -> None:
     if args.p:
         kwargs['pipeline_path'] = args.p
 
-        logger.debug(f'arg.p parsed as: {args.p}')
+        # TODO: uncoment below later any time
+        logger.debug(f'main.py: arg.p parsed as: {args.p}')
 
     return map_command_to_func[args.command](**kwargs)
 
@@ -71,8 +73,10 @@ def parse_args_using_sysargv() -> List[str]:
     """
     Stand-in function for parse_args().
     """
-    args = sys.argv
-    return args
+
+    # args = sys.argv
+    # return args
+    raise NotImplementedError(f'Deprecated')
 
 
 def do_command_from_sysargv_parse(args: List[str]) -> None:
@@ -80,25 +84,24 @@ def do_command_from_sysargv_parse(args: List[str]) -> None:
     Stand-in function for do_command(). Because parsing functions using argparse is not complete/ready,
     we use this function for now to execute command-line commands
     """
-    kwargs = {}
-
+    # kwargs = {}
+    # if len(args) < 2:
+    #     err = f'No command detected. Command-line args = {args}.'
+    #     logger.error(err)
+    #     raise NotImplementedError(err)
     #
-    if len(args) < 2:
-        err = f'No command detected. Command-line args = {args}.'
-        logger.error(err)
-        raise NotImplementedError(err)
-
-    cmd = args[1]
-    if cmd in map_command_to_func:
-        if len(args) >= 3:
-            kwargs['subcommand'] = args[2]
-
-        map_command_to_func[cmd](**kwargs)
-    else:
-        err = f'Command was not found: `{cmd}` (args: {args}). ' \
-              f'Check {os.path.abspath(__file__)} to see if application implemented.'
-        logger.error(err)
-        raise ValueError(err)
+    # cmd = args[1]
+    # if cmd in map_command_to_func:
+    #     if len(args) >= 3:
+    #         kwargs['subcommand'] = args[2]
+    #
+    #     map_command_to_func[cmd](**kwargs)
+    # else:
+    #     err = f'Command was not found: `{cmd}` (args: {args}). ' \
+    #           f'Check {os.path.abspath(__file__)} to see if application implemented.'
+    #     logger.error(err)
+    #     raise ValueError(err)
+    raise NotImplementedError(f'Deprecated')
 
 
 ### Main execution #####################################################################################################
