@@ -21,8 +21,8 @@ logger = config.initialize_logger(__file__)
 
 
 ### In development
-
-def make_labeled_video_according_to_frame(labels_list: Union[List, Tuple], frames_indices_list: Union[List, Tuple], output_file_name: str, video_source: str, current_behaviour_list: List[str] = (), output_fps=15, fourcc='mp4v', output_dir=config.OUTPUT_PATH, text_colors_list: Union[Tuple, List] = (), **kwargs):
+# fourcc='mp4v'
+def make_labeled_video_according_to_frame(labels_list: Union[List, Tuple], frames_indices_list: Union[List, Tuple], output_file_name: str, video_source: str, current_behaviour_list: List[str] = (), output_fps=15, fourcc='avc1', output_dir=config.OUTPUT_PATH, text_colors_list: Union[Tuple, List] = (), **kwargs):
     """
     # PREVIOUSLY: fourcc='mp4v' was default
     # PREVIOUSLY code was 'H264'
@@ -164,9 +164,10 @@ def make_labeled_video_according_to_frame(labels_list: Union[List, Tuple], frame
         # )
         # # numpy_frames.append(frame)
 
-        # New attempt implementation for functional addition of text/color
-        # def put_text_over_box_on_image(frame, text_for_frame, font, font_scale, text_offset_x, text_offset_y, text_color_tuple: Tuple[int], rectangle_colour_bgr: Tuple[int], disposition_x: int = 0, disposition_y: int = 0):
-        # 1/2: top level text
+
+        # # New attempt implementation for functional addition of text/color
+        # # def put_text_over_box_on_image(frame, text_for_frame, font, font_scale, text_offset_x, text_offset_y, text_color_tuple: Tuple[int], rectangle_colour_bgr: Tuple[int], disposition_x: int = 0, disposition_y: int = 0):
+        # # 1/2: top level text
         frame = put_text_over_box_on_image(frame, text_for_frame, font, font_scale, text_offset_x, text_offset_y, text_color_tuple, rectangle_colour_bgr)
 
         # 2/2: Bottom level text (STILL WIP! -- put_text_over_box_on_image() needs to be debugged first before uncomment below

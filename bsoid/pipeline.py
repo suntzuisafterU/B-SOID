@@ -931,7 +931,7 @@ class BasePipeline(PipelineAttributeHolder):
             output_dir=output_dir,
 
         )
-        
+
         # videoprocessing.generate_video_with_labels(
         #     labels,
         #     video_to_be_labeled,

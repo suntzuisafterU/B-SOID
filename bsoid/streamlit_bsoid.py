@@ -755,7 +755,7 @@ def review_behaviours(p, pipeline_file_path):
         number_input_output_fps = st.number_input(f'Output FPS for example videos', value=8., min_value=1., step=1., format='%.2f')
         number_input_max_examples_of_each_behaviour = st.number_input(f'Maximum number of videos created for each behaviour', value=5, min_value=1)
         number_input_min_rows = st.number_input(f'Number of rows of data required for a detection to occur', value=1, min_value=1, max_value=100, step=1)
-        number_input_frames_leadup = st.number_input(f'Number of rows of data that lead up to/follow target behaviour', value=2, min_value=0)
+        number_input_frames_leadup = st.number_input(f'Number of rows of data that lead up to/follow target behaviour', value=3, min_value=0)
 
         st.markdown('')
 
