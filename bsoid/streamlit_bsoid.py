@@ -225,7 +225,7 @@ Success! Your new project pipeline has been saved to disk to the following path:
 
 """.strip())
                         n_secs_til_refresh = file_session[default_n_seconds_wait_until_auto_refresh]
-                        st.info(f'The page will automatically refresh with your new pipeline in {n_secs_til_refresh} seconds.')
+                        st.info(f'The page will automatically refresh with your new pipeline in {n_secs_til_refresh} seconds...')
                         time.sleep(n_secs_til_refresh)
                         st.experimental_rerun()
                     else:
@@ -457,12 +457,13 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
                 else:
                     p = p.add_train_data_source(input_new_data_source).save(os.path.dirname(pipeline_file_path))
                     file_session[key_button_add_train_data_source] = False  # Reset menu to collapsed state
+                    file_session[key_button_add_new_data] = False
                     n = file_session[default_n_seconds_wait_until_auto_refresh]
                     st.balloons()
                     st.success(f'New training data added to pipeline successfully! Pipeline has been saved to: "{pipeline_file_path}".')  # TODO: finish statement. Add in suggestion to refresh page.
                     st.info(f'This page will refresh automatically in {n} seconds')
                     time.sleep(n)
-                    st.experimental_rerun()  # TODO: <------ experimental re-run <-------------------------------------------------- -****
+                    st.experimental_rerun()
             st.markdown('')
 
         # 2/2: Button for adding data to prediction set
@@ -481,7 +482,8 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
 
                 else:
                     p = p.add_predict_data_source(input_new_predict_data_source).save(os.path.dirname(pipeline_file_path))
-                    file_session[key_button_add_predict_data_source] = False  # Reset menu to collapsed state
+                    file_session[key_button_add_predict_data_source] = False  # Reset add predict data menu to collapsed state
+                    file_session[key_button_add_new_data] = False  # Reset add menu to collapsed state
                     n_wait_secs = file_session[default_n_seconds_wait_until_auto_refresh]
                     st.success(f'New prediction data added to pipeline successfully! Pipeline has been saved.')
                     st.info(f'This page will refresh with your new changes in {n_wait_secs} seconds.')
@@ -623,6 +625,7 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
             if file_session[key_button_rebuild_model_confirmation]:  # Rebuild model confirmed.
                 with st.spinner('Rebuilding model...'):
                     model_vars = {
+                        # General opts
                         'input_videos_fps': video_fps,
                         'average_over_n_frames': average_over_n_frames,
 
@@ -711,6 +714,7 @@ def review_behaviours(p, pipeline_file_path):
     if not os.path.isfile(pipeline_file_path):
         st.error(FileNotFoundError(f'An unexpected error occurred. Your pipeline file path was lost along the way. Currently, your pipeline file path reads as: "{pipeline_file_path}"'))
 
+    ###############################################################################################################
     ### SIDEBAR
 
     ### MAIN
@@ -748,10 +752,10 @@ def review_behaviours(p, pipeline_file_path):
             logger.error(err)
             st.error(FileNotFoundError(err))
         file_name_prefix = st.text_input(f'File name prefix. This prefix will help differentiate between example video sets.')
-        number_input_output_fps = st.number_input(f'Output FPS for example videos', value=8, min_value=1)
+        number_input_output_fps = st.number_input(f'Output FPS for example videos', value=8., min_value=1., step=1., format='%.2f')
         number_input_max_examples_of_each_behaviour = st.number_input(f'Maximum number of videos created for each behaviour', value=5, min_value=1)
-        number_input_min_rows = st.number_input(f'Number of rows of data required for a detection to occur', value=6.0, min_value=0.1, max_value=1_000., format='%.1f', step=1.)
-        number_input_frames_leadup = st.number_input(f'Number of rows of data that lead up to/follow target behaviour', value=1, min_value=0)
+        number_input_min_rows = st.number_input(f'Number of rows of data required for a detection to occur', value=1.0, min_value=0.1, max_value=1_000., format='%.1f', step=1.)
+        number_input_frames_leadup = st.number_input(f'Number of rows of data that lead up to/follow target behaviour', value=2, min_value=0)
 
         st.markdown('')
 
@@ -785,6 +789,10 @@ def review_behaviours(p, pipeline_file_path):
                         num_frames_buffer=number_input_frames_leadup,
                     )
                 st.success(f'Example videos created!')  # TODO: low: improve message
+                n = file_session[default_n_seconds_wait_until_auto_refresh]
+                st.info(f'This page will automatically refresh in {n} seconds.')
+                time.sleep(n)
+                st.experimental_rerun()
         st.markdown('--------------------------------------------------------------------------------------')
 
     ###
