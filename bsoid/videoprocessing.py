@@ -144,24 +144,35 @@ def make_labeled_video_according_to_frame(labels_list: Union[List, Tuple], frame
         text_for_frame = f'Frame index: {frame_idx} // {text_prefix}Current Assignment: {label} // Current behaviour label: {current_behaviour}'
 
         text_width, text_height = cv2.getTextSize(text_for_frame, font, fontScale=font_scale, thickness=1)[0]
-        box_top_left, box_top_right = (
-            (text_offset_x - 12, text_offset_y + 12),  # pt1, or top left point
-            (text_offset_x + text_width + 12, text_offset_y - text_height - 8),  # pt2, or bottom right point
-        )
 
-        # Add background colour for text
-        cv2.rectangle(frame, box_top_left, box_top_right, rectangle_colour_bgr, cv2.FILLED)
-        # Add text
-        cv2.putText(
-            img=frame,
-            text=str(text_for_frame),
-            org=(text_offset_x, text_offset_y),
-            fontFace=font,
-            fontScale=font_scale,
-            color=text_color_tuple,
-            thickness=1
-        )
-        # numpy_frames.append(frame)
+        # # Old, working implementation below
+        # # Add background colour for text
+        # box_top_left, box_top_right = (
+        #     (text_offset_x - 12, text_offset_y + 12),  # pt1, or top left point
+        #     (text_offset_x + text_width + 12, text_offset_y - text_height - 8),  # pt2, or bottom right point
+        # )
+        # cv2.rectangle(frame, box_top_left, box_top_right, rectangle_colour_bgr, cv2.FILLED)
+        # # Add text
+        # cv2.putText(
+        #     img=frame,
+        #     text=str(text_for_frame),
+        #     org=(text_offset_x, text_offset_y),
+        #     fontFace=font,
+        #     fontScale=font_scale,
+        #     color=text_color_tuple,
+        #     thickness=1
+        # )
+        # # numpy_frames.append(frame)
+
+        # New attempt implementation for functional addition of text/color
+        # def put_text_over_box_on_image(frame, text_for_frame, font, font_scale, text_offset_x, text_offset_y, text_color_tuple: Tuple[int], rectangle_colour_bgr: Tuple[int], disposition_x: int = 0, disposition_y: int = 0):
+        # 1/2: top level text
+        frame = put_text_over_box_on_image(frame, text_for_frame, font, font_scale, text_offset_x, text_offset_y, text_color_tuple, rectangle_colour_bgr)
+
+        # 2/2: Bottom level text (STILL WIP! -- put_text_over_box_on_image() needs to be debugged first before uncomment below
+        # frame = put_text_over_box_on_image(frame, text_for_frame, font, font_scale, text_offset_x, text_offset_y, text_color_tuple, rectangle_colour_bgr, disposition_x=100, disposition_y=50)
+
+        # Write to video
         video_writer.write(frame)
 
     ###########################################################################################
@@ -172,6 +183,33 @@ def make_labeled_video_according_to_frame(labels_list: Union[List, Tuple], frame
     cv2.destroyAllWindows()
     logger.debug(f'{get_current_function()}(): Done writing video.')
     return
+
+
+def put_text_over_box_on_image(frame, text_for_frame, font, font_scale, text_offset_x, text_offset_y, text_color_tuple: Tuple[int, int, int], rectangle_colour_bgr: Tuple[int, int, int], disposition_x: int = 0, disposition_y: int = 0) -> np.ndarray:
+    text_offset_x = text_offset_x + disposition_x
+    text_offset_y = text_offset_y + disposition_y
+    text_width, text_height = cv2.getTextSize(text_for_frame, font, fontScale=font_scale, thickness=1)[0]
+    box_top_left = (text_offset_x - 12, text_offset_y + 12)
+    box_top_right = (text_offset_x + text_width + 12, text_offset_y - text_height - 8)
+    box_top_left, box_top_right = (
+        (text_offset_x - 12, text_offset_y + 12),  # pt1, or top left point
+        (text_offset_x + text_width + 12, text_offset_y - text_height - 8),  # pt2, or bottom right point
+    )
+
+    # Add background rectangle for text
+    cv2.rectangle(frame, box_top_left, box_top_right, rectangle_colour_bgr, cv2.FILLED)
+
+    # Add text
+    cv2.putText(
+        img=frame,
+        text=str(text_for_frame),
+        org=(text_offset_x, text_offset_y),
+        fontFace=font,
+        fontScale=font_scale,
+        color=text_color_tuple,
+        thickness=1
+    )
+    return frame
 
 
 ### Previously used

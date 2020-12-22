@@ -18,10 +18,10 @@ import sys
 import time
 import traceback
 
-import easygui
-from tkinter import filedialog
+# import easygui
+# from tkinter import filedialog
 # from mttkinter import mtTkinter as tk
-import tkinter as tk
+# import tkinter as tk
 
 from bsoid import check_arg, config, io, logging_bsoid, pipeline, streamlit_session_state
 
@@ -41,7 +41,7 @@ pipeline_options = {
     'PipelinePrime': pipeline.PipelinePrime,
     'pipeline_epm_name': pipeline.PipelineEPM,
     'PipelineTim': pipeline.PipelineTim,
-    'Change Blind Odor Test': pipeline.PipelineCHBO,
+    'Change Blindness Odor Test Pipeline': pipeline.PipelineCHBO,
 }
 # pipeline_prime_name, pipeline_epm_name, pipelineTimName, pipelineCHBO = 'PipelinePrime', 'pipeline_epm_name', 'PipelineTim', 'CHBO Pipeline'  # TODO: deprecate this line
 training_data_option, predict_data_option = 'Training Data', 'Predict Data'
@@ -223,22 +223,23 @@ Success! Your new project pipeline has been saved to disk to the following path:
 
 {os.path.join(input_path_to_pipeline_dir, f'{text_input_new_project_name}.pipeline')}
 
-""")
+""".strip())
                         n_secs_til_refresh = file_session[default_n_seconds_wait_until_auto_refresh]
                         st.info(f'The page will automatically refresh with your new pipeline in {n_secs_til_refresh} seconds.')
                         time.sleep(n_secs_til_refresh)
                         st.experimental_rerun()
                     else:
-                        st.error(RuntimeError('Something unexpected happened on instantiating new Pipeline'))
+                        err = f'Something unexpected happened on instantiating new Pipeline. Selected pipeline = {select_pipe_type}'
+                        st.error(RuntimeError(err))
                         st.info(f'traceback: {traceback.format_exc()}')
                         st.stop()
-                    # Success
 
         # Option 2/2: Load existing project
         elif start_select_option == load_existing_project_option_text:
             logger.debug(f'Open LOAD EXISTING option')
             st.markdown('## Load existing project pipeline')
 
+            # # Code frament of potential file selector...not yet working
             # input_text_path_to_pipeline_file = st_file_selector(pl)
             # pl = st.empty()
             #
@@ -258,11 +259,12 @@ Success! Your new project pipeline has been saved to disk to the following path:
                 key='text_input_load_existing_pipeline'
             )
 
-            # Do checks
+            # Do checks on pipeline load
             if input_text_path_to_pipeline_file:
                 # Error checking first
                 if not os.path.isfile(input_text_path_to_pipeline_file) or not input_text_path_to_pipeline_file.endswith('.pipeline'):
                     err = f'Path to valid BSOID pipeline file was not found. User submitted path: {input_text_path_to_pipeline_file}'
+                    logger.error(err)
                     st.error(FileNotFoundError(err))
                     st.stop()
                 # If OK: load project, continue
@@ -344,13 +346,14 @@ def show_pipeline_info(p: pipeline.PipelinePrime, pipeline_path, **kwargs):
         else:
             cross_val_score_text = f'- Cross validation score not available'
         st.markdown(f'{cross_val_score_text}')
-        st.markdown(f'- Raw assignment values: **{p.unique_assignments}**')
         st.markdown(f'Model Features:')
         for feat in p.all_features:
             st.markdown(f'- {feat}')
 
         if p.is_built:
-            st.markdown(f'Seconds to build model: {p.seconds_to_engineer_train_features}')
+            st.markdown(f'- Seconds to build model: {p.seconds_to_engineer_train_features}')
+            st.markdown(f'- Raw assignment values: **{p.unique_assignments}**')
+
     ###
 
     # Model check before displaying actions that could further change pipeline state.
@@ -456,8 +459,8 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
                     file_session[key_button_add_train_data_source] = False  # Reset menu to collapsed state
                     n = file_session[default_n_seconds_wait_until_auto_refresh]
                     st.balloons()
-                    st.success(f'New training data added to pipeline successfully! Pipeline has been saved to: "{pipeline_file_path}". Refresh the page to see changes.')  # TODO: finish statement. Add in suggestion to refresh page.
-                    st.info(f'This page will refresh itself in {n} seconds')
+                    st.success(f'New training data added to pipeline successfully! Pipeline has been saved to: "{pipeline_file_path}".')  # TODO: finish statement. Add in suggestion to refresh page.
+                    st.info(f'This page will refresh automatically in {n} seconds')
                     time.sleep(n)
                     st.experimental_rerun()  # TODO: <------ experimental re-run <-------------------------------------------------- -****
             st.markdown('')
@@ -480,7 +483,8 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
                     p = p.add_predict_data_source(input_new_predict_data_source).save(os.path.dirname(pipeline_file_path))
                     file_session[key_button_add_predict_data_source] = False  # Reset menu to collapsed state
                     n_wait_secs = file_session[default_n_seconds_wait_until_auto_refresh]
-                    st.success(f'New prediction data added to pipeline successfully! Pipeline has been saved. Refresh the page (press "R") to see changes.')
+                    st.success(f'New prediction data added to pipeline successfully! Pipeline has been saved.')
+                    st.info(f'This page will refresh with your new changes in {n_wait_secs} seconds.')
                     time.sleep(n_wait_secs)
                     st.experimental_rerun()
         st.markdown('')
@@ -645,9 +649,8 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
                         st.error(f'UNEXPECTED ERROR: pipeline file DIRECTORY parsed as: {os.path.dirname(pipeline_file_path)}')
                         st.stop()
                     p = p.build(True, True).save(os.path.dirname(pipeline_file_path))
-
+                    file_session[key_button_rebuild_model_confirmation] = False
                 st.balloons()
-                file_session[key_button_rebuild_model_confirmation] = False
                 file_session[key_button_see_rebuild_options] = False
                 st.success(f'Model was successfully re-built! This page will auto-refresh, or you can manually refresh the page (press "R") to see changes.')
                 st.info(f'The page will refresh shortly, or you can manually refresh the page (press "R") to see the changes')
@@ -740,10 +743,14 @@ def review_behaviours(p, pipeline_file_path):
         # st.markdown(f'Fill in variables for making new example videos of behaviours')
         select_data_source = st.selectbox('Select a data source', options=['']+p.training_data_sources)
         input_video = st.text_input(f'Input path to corresponding video relative to selected data source', value=config.BSOID_BASE_PROJECT_PATH)
-        file_name_prefix = st.text_input(f'File name prefix. This helps us differentiate between example videos. OK to leave blank. ')
+        if input_video and not os.path.isfile(input_video):
+            err = f'Video source File not found: {input_video}'
+            logger.error(err)
+            st.error(FileNotFoundError(err))
+        file_name_prefix = st.text_input(f'File name prefix. This prefix will help differentiate between example video sets.')
         number_input_output_fps = st.number_input(f'Output FPS for example videos', value=8, min_value=1)
         number_input_max_examples_of_each_behaviour = st.number_input(f'Maximum number of videos created for each behaviour', value=5, min_value=1)
-        number_input_min_rows = st.number_input(f'Number of rows of data required for a detection to occur', value=1, min_value=1, max_value=10_000)
+        number_input_min_rows = st.number_input(f'Number of rows of data required for a detection to occur', value=6.0, min_value=0.1, max_value=1_000., format='%.1f', step=1.)
         number_input_frames_leadup = st.number_input(f'Number of rows of data that lead up to/follow target behaviour', value=1, min_value=0)
 
         st.markdown('')
