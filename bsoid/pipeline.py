@@ -78,10 +78,10 @@ class PipelineAttributeHolder(object):
     df_features_predict_scaled = pd.DataFrame(columns=default_cols)
 
     # Other model vars (Rename this)
-    input_videos_fps = config.VIDEO_FPS
-    cross_validation_k: int = config.CROSSVALIDATION_K
+    input_videos_fps = config.VIDEO_FPS  # TODO: remove default as config?
+    cross_validation_k: int = config.CROSSVALIDATION_K  # TODO remove default as config?
     _random_state: int = None
-    average_over_n_frames: int = 3  # TODO: low: add to kwargs? Address later.
+    average_over_n_frames: int = 3  # TODO: low: add to kwargs? Address later.  TODO: change to `n_rows_to_integrate_by`
     test_train_split_pct: float = None
 
     # Model objects
@@ -92,7 +92,7 @@ class PipelineAttributeHolder(object):
     tsne_source: str = 'sklearn'
     tsne_n_components: int = 3
     tsne_n_iter: int = None
-    tsne_early_exaggeration: float = None  # Defaults to config.ini value if not specified in kwargs
+    tsne_early_exaggeration: float = None
     tsne_n_jobs: int = None  # n cores used during process
     tsne_verbose: int = None
     # GMM
@@ -651,7 +651,9 @@ class BasePipeline(PipelineAttributeHolder):
                 verbose=self.tsne_verbose,
             ).fit_transform(data[list(self.all_features_list)])
         else:
-            raise RuntimeError(f'Invalid TSNE source type fell through the cracks: {self.tsne_source}')
+            err = f'Invalid TSNE source type fell through the cracks: {self.tsne_source}'
+            logger.error(err)
+            raise RuntimeError(err)
         return arr_result
 
     def train_GMM(self, data: pd.DataFrame):
@@ -752,6 +754,7 @@ class BasePipeline(PipelineAttributeHolder):
             y_pred=self.clf_svm.predict(df_features_train_scaled_test_data[list(self.all_features)]),
             y_true=df_features_train_scaled_test_data[self.svm_assignment_col_name].values)
         logger.debug(f'Pipeline train accuracy: {self.accuracy_score}')
+        # TODO: low: save the confusion matrix after accuracy score too?
 
         # Final touches. Save state of pipeline.
         self._is_built = True
@@ -1356,7 +1359,6 @@ class PipelineCHBO(BasePipeline):
         feat_name_dist_AvgForepaw_NoseTip,
         feat_name_velocity_AvgForepaw,
     )
-    n_rows_to_integrate_by: int = 3  # 3 => 3 frames = 100ms capture in a 30fps video. 100ms was used in original paper.
 
     def engineer_features(self, in_df: pd.DataFrame):
         # TODO: WIP
@@ -1410,7 +1412,7 @@ class PipelineCHBO(BasePipeline):
             self.feat_name_velocity_AvgForepaw: 'sum',
         }
         logger.debug(f'{get_current_function()}(): # of rows in DataFrame before binning = {len(df)}')
-        df = feature_engineering.integrate_df_feature_into_bins(df, map_feature_to_integrate_method, self.n_rows_to_integrate_by)
+        df = feature_engineering.integrate_df_feature_into_bins(df, map_feature_to_integrate_method, self.average_over_n_frames)
         logger.debug(f'{get_current_function()}(): # of rows in DataFrame after binning = {len(df)}')
 
         # # Debug effort/check: ensure columns don't get dropped by accident
