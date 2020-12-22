@@ -754,7 +754,7 @@ def review_behaviours(p, pipeline_file_path):
         file_name_prefix = st.text_input(f'File name prefix. This prefix will help differentiate between example video sets.')
         number_input_output_fps = st.number_input(f'Output FPS for example videos', value=8., min_value=1., step=1., format='%.2f')
         number_input_max_examples_of_each_behaviour = st.number_input(f'Maximum number of videos created for each behaviour', value=5, min_value=1)
-        number_input_min_rows = st.number_input(f'Number of rows of data required for a detection to occur', value=1.0, min_value=0.1, max_value=1_000., format='%.1f', step=1.)
+        number_input_min_rows = st.number_input(f'Number of rows of data required for a detection to occur', value=1, min_value=1, max_value=100, step=1)
         number_input_frames_leadup = st.number_input(f'Number of rows of data that lead up to/follow target behaviour', value=2, min_value=0)
 
         st.markdown('')
@@ -789,6 +789,7 @@ def review_behaviours(p, pipeline_file_path):
                         num_frames_buffer=number_input_frames_leadup,
                     )
                 st.success(f'Example videos created!')  # TODO: low: improve message
+                file_session[key_button_show_example_videos_options] = False
                 n = file_session[default_n_seconds_wait_until_auto_refresh]
                 st.info(f'This page will automatically refresh in {n} seconds.')
                 time.sleep(n)
