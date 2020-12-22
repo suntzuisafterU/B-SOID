@@ -768,6 +768,8 @@ class BasePipeline(PipelineAttributeHolder):
 
     def build_classifier(self, reengineer_train_features: bool = False):
         """ This is the legacy naming. Method kept for backwards compatibility. This function will be deleted later. """
+        warn = f'Pipeline.build_classifier(): was called, but this is the legacy name. Instead, use Pipeline.build_model() from now on.'
+        logger.warning(warn)
         return self.build_model(reengineer_train_features=reengineer_train_features)
 
     def generate_predict_data_assignments(self, reengineer_train_data_features: bool = False, reengineer_predict_features = False):  # TODO: low: rename?
@@ -775,7 +777,7 @@ class BasePipeline(PipelineAttributeHolder):
         # TODO: add arg checking for empty predict data?
 
         # Check that classifiers are built on the training data
-        if not self.is_built or reengineer_train_data_features:
+        if reengineer_train_data_features or not self.is_built or self.is_in_inconsistent_state:
             self.build_model()
 
         # Check if predict features have been engineered
@@ -812,7 +814,7 @@ class BasePipeline(PipelineAttributeHolder):
 
         # with warnings.catch_warnings():
         #     warnings.filterwarnings('ignore', category=SettingWithCopyWarning)
-        df_shuffled[test_data_col_name] = False  # TODO: Setting with copy warning occurs on this exact line. is this not how to instantiate it? https://realpython.com/pandas-settingwithcopywarning/
+        df_shuffled[test_data_col_name] = False  # TODO: med: Setting with copy warning occurs on this exact line. is this not how to instantiate it? https://realpython.com/pandas-settingwithcopywarning/
         df_shuffled.loc[:int(len(df) * self.test_train_split_pct), test_data_col_name] = True
 
         df_shuffled = df_shuffled.reset_index()
@@ -856,7 +858,7 @@ class BasePipeline(PipelineAttributeHolder):
         logger.debug(f'{inspect.stack()[0][3]}(): Pipeline ({self.name}) saved to: {final_out_path}')
         return io.read_pipeline(final_out_path)
 
-    def save_to_folder(self, dir: str):
+    def save_to_folder(self, dir: str):  # TODO: med: review
         """  """
         # Arg checking
         if not os.path.isdir(dir):
@@ -864,10 +866,10 @@ class BasePipeline(PipelineAttributeHolder):
             logger.error(not_a_dir_err)
             raise NotADirectoryError(not_a_dir_err)
         # Execute
-        # TODO: implement execution
+        # TODO: low: implement execution
         return
 
-    def save_as(self, file_path):
+    def save_as(self, file_path):  # TODO: med: review
         """
 
         :param file_path:
@@ -929,6 +931,7 @@ class BasePipeline(PipelineAttributeHolder):
             output_dir=output_dir,
 
         )
+        
         # videoprocessing.generate_video_with_labels(
         #     labels,
         #     video_to_be_labeled,
