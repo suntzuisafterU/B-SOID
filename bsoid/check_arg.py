@@ -73,7 +73,7 @@ def ensure_is_dir(path):
 
 def ensure_is_valid_path(path):
     if not is_pathname_valid(path):  # TODO:
-        err = f'TODO: elaborate -- has INVALID chars in path: {path}'
+        err = f'TODO: elaborate -- has INVALID chars in proposed path: {path}'
         logger.error(err)
         raise ValueError(err)
 
