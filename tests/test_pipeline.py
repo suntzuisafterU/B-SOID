@@ -3,11 +3,12 @@
 """
 from typing import Any, Dict, List, Set
 from unittest import TestCase, skip
+import itertools
+import numpy as np
 import os
-# import time
-# import itertools
-# import numpy as np
-# import pandas as pd
+import pandas as pd
+import random
+import time
 
 import bsoid
 
@@ -16,10 +17,10 @@ csv_test_file_path = os.path.join(bsoid.config.BSOID_BASE_PROJECT_PATH, 'tests',
 assert os.path.isfile(csv_test_file_path)
 
 
+# TODO: add test for pipeline.set_params()
 class TestPipeline(TestCase):
 
     # Param adds, changes, checks
-    # TODO: add test for pipeline.set_params()
     def test__set_params__shouldKeepDefaultsWhileChangingSpecifiedVars__whenOptionalArgForReadingInConfigVarsNotTrue(self):
         # Arrange
         p = bsoid.pipeline.PipelinePrime('TestPipe07dfdp')
@@ -35,8 +36,20 @@ class TestPipeline(TestCase):
 """
         self.assertEqual(default_gmm_n_components, gmm_n_components_after_set_param, err_msg)
 
+    def test__set_params__shouldDetectVars__whenNewPipelineInstantiatedAsSuch(self):
+        # Arrange
+        cv = expected_cv = 5
+
+        # Act
+        p = bsoid.pipeline.PipelinePrime(f'TestPipeline_{random.randint(0, 100_000_000)}', cross_validation_k=cv)
+        actual_cv = p.cross_validation_k
+
+        # Assert
+        err = f"""Error: cv cross val did not get read-in correctly. TODO: elaborate. """.strip()
+        self.assertEqual(expected_cv, actual_cv, err)
+
     # SCALING DATA
-    @skip   # Temporary skip since it takes forever to run this due to sample size
+    @skip  # Temporary skip since it takes forever to run this due to sample size
     def test__scale_data__shouldReturnDataFrameWithSameColumnNames__afterScalingData(self):
         # Arrange
         p = bsoid.pipeline.PipelinePrime('TestPipe987dfdp').add_train_data_source(csv_test_file_path).build(True)
@@ -194,9 +207,6 @@ p.train_data_files_paths = {p.train_data_files_paths}
         # Act
         p_write = p_write.set_label(assignment, input_label)
         p_write.save()
-        # p_write = None
-        # del p_write
-        # time.sleep(1)
 
         p_read = bsoid.read_pipeline(os.path.join(
             bsoid.config.OUTPUT_PATH,
@@ -213,18 +223,6 @@ Actual label: {actual_label}
 
 """  # All labels map: {p_read._map_assignment_to_behaviour}
         self.assertEqual(input_label, actual_label, err)
-
-    @skip
-    def test__stub6(self):
-        """
-
-        """
-        # Arrange
-
-        # Act
-        is_equal = 1 + 1 == 2
-        # Assert
-        self.assertTrue(is_equal)
 
     @skip
     def test__stub7(self):
