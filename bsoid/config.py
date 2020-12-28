@@ -162,9 +162,12 @@ assert os.path.isdir(log_file_folder_path), f'Path does not exist: {log_file_fol
 
 ##### TESTING VARIABLES ################################################################################################
 
-DEFAULT_PIPELINE__PRIME__CSV_TEST_FILE: str = os.path.join(BSOID_BASE_PROJECT_PATH, 'tests', 'test_data', configuration.get('TESTING', 'DEFAULT_PIPELINE_PRIME_CSV_TEST_FILE'))
+DEFAULT_PIPELINE__PRIME__CSV_TEST_FILE: str = configuration.get('TESTING', 'DEFAULT_PIPELINE_PRIME_CSV_TEST_FILE')
+DEFAULT_PIPELINE__PRIME__CSV_TEST_FILE_PATH = os.path.join(BSOID_BASE_PROJECT_PATH, 'tests', 'test_data', DEFAULT_PIPELINE__PRIME__CSV_TEST_FILE)
+
 # DEFAULT_PIPELINE__CHBO__CSV_TEST_FILE: str = os.path.join()
 DEFAULT_H5_TEST_FILE: str = os.path.join(BSOID_BASE_PROJECT_PATH, 'tests', 'test_data', configuration.get('TESTING', 'DEFAULT_H5_TEST_FILE'))
+
 
 ## TODO: low: address comments below
 # try:
@@ -175,7 +178,8 @@ DEFAULT_H5_TEST_FILE: str = os.path.join(BSOID_BASE_PROJECT_PATH, 'tests', 'test
 max_rows_to_read_in_from_csv: int = configuration.getint('TESTING', 'max_rows_to_read_in_from_csv') if configuration.get('TESTING', 'max_rows_to_read_in_from_csv') else sys.maxsize  # TODO: potentially remove this variable. When comparing pd.read_csv and bsoid.read_csv, they dont match due to header probs
 
 
-assert os.path.isfile(DEFAULT_PIPELINE__PRIME__CSV_TEST_FILE), f'CSV test file was not found: {DEFAULT_PIPELINE__PRIME__CSV_TEST_FILE}'
+assert os.path.isfile(DEFAULT_PIPELINE__PRIME__CSV_TEST_FILE_PATH), f'CSV test file was not found: {DEFAULT_PIPELINE__PRIME__CSV_TEST_FILE_PATH}'
+
 # assert os.path.isfile(DEFAULT_H5_TEST_FILE), f'h5 test file was not found: {DEFAULT_H5_TEST_FILE}'  # TODO: low: when h5 format finally figured-out (From an actual DLC project outcome), re-instate this assert
 
 
@@ -189,8 +193,7 @@ gmm_max_iter = configuration.getint('EM/GMM', 'max_iter')
 gmm_n_init = configuration.getint('EM/GMM', 'n_init')
 gmm_init_params = configuration.get('EM/GMM', 'init_params')
 gmm_verbose = configuration.getint('EM/GMM', 'verbose')
-gmm_verbose_interval = configuration.getint('EM/GMM', 'verbose_interval') \
-    if configuration.get('EM/GMM', 'verbose_interval') else 10  # 10 is a default that can be changed
+gmm_verbose_interval = configuration.getint('EM/GMM', 'verbose_interval') if configuration.get('EM/GMM', 'verbose_interval') else 10  # 10 is a default that can be changed  # TODO: low: address
 EMGMM_PARAMS = {
     'n_components': gmm_n_components,
     'covariance_type': gmm_covariance_type,
