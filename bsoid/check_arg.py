@@ -89,6 +89,21 @@ def ensure_frame_indices_are_integers(df: pd.DataFrame, frame_column_name='frame
         raise ValueError(err)
 
 
+def ensure_numpy_arrays_are_same_shape(*arrays):
+    # Ensure that at least one array is put in
+    if len(arrays) < 1:
+        err = f'Caller = "{get_caller_function()}()". Error: 0 arrays were submitted in checkarg.thisfunction'
+        logger.error(err)
+        raise Exception(err)
+
+    set_of_shapes = set([arr.shape for arr in arrays])
+    if set_of_shapes != 1:
+        err = f'Caller = "{get_caller_function()}(). Error: One of the following ' \
+              f'arrays does not have the same shape."'
+        logger.error(err)
+        raise ValueError(err)
+
+
 ###
 
 def has_invalid_chars_in_name_for_a_file(file_name, additional_characters: Optional[Collection[str]] = None) -> bool:
