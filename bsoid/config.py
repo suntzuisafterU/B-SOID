@@ -162,25 +162,24 @@ assert os.path.isdir(log_file_folder_path), f'Path does not exist: {log_file_fol
 
 ##### TESTING VARIABLES ################################################################################################
 
-DEFAULT_CSV_TEST_FILE: str = os.path.join(
-    BSOID_BASE_PROJECT_PATH, 'tests', 'test_data', configuration.get('TESTING', 'DEFAULT_CSV_TEST_FILE'))
-DEFAULT_H5_TEST_FILE: str = os.path.join(
-    BSOID_BASE_PROJECT_PATH, 'tests', 'test_data', configuration.get('TESTING', 'DEFAULT_H5_TEST_FILE'))
+DEFAULT_PIPELINE__PRIME__CSV_TEST_FILE: str = os.path.join(BSOID_BASE_PROJECT_PATH, 'tests', 'test_data', configuration.get('TESTING', 'DEFAULT_PIPELINE_PRIME_CSV_TEST_FILE'))
+# DEFAULT_PIPELINE__CHBO__CSV_TEST_FILE: str = os.path.join()
+DEFAULT_H5_TEST_FILE: str = os.path.join(BSOID_BASE_PROJECT_PATH, 'tests', 'test_data', configuration.get('TESTING', 'DEFAULT_H5_TEST_FILE'))
 
 ## TODO: low: address comments below
 # try:
 #     max_rows_to_read_in_from_csv = configuration.getint('TESTING', 'MAX_ROWS_TO_READ_IN_FROM_CSV')
 # except ValueError:  # In the case that the value is empty (since it is optional), assign max possible size to read in
 #     max_rows_to_read_in_from_csv = sys.maxsize
-max_rows_to_read_in_from_csv: int = configuration.getint('TESTING', 'max_rows_to_read_in_from_csv') \
-    if configuration.get('TESTING', 'max_rows_to_read_in_from_csv') else sys.maxsize  # TODO: potentially remove this variable. When comparing pd.read_csv and bsoid.read_csv, they dont match due to header probs
+
+max_rows_to_read_in_from_csv: int = configuration.getint('TESTING', 'max_rows_to_read_in_from_csv') if configuration.get('TESTING', 'max_rows_to_read_in_from_csv') else sys.maxsize  # TODO: potentially remove this variable. When comparing pd.read_csv and bsoid.read_csv, they dont match due to header probs
 
 
-assert os.path.isfile(DEFAULT_CSV_TEST_FILE), f'CSV test file was not found: {DEFAULT_CSV_TEST_FILE}'
+assert os.path.isfile(DEFAULT_PIPELINE__PRIME__CSV_TEST_FILE), f'CSV test file was not found: {DEFAULT_PIPELINE__PRIME__CSV_TEST_FILE}'
 # assert os.path.isfile(DEFAULT_H5_TEST_FILE), f'h5 test file was not found: {DEFAULT_H5_TEST_FILE}'  # TODO: low: when h5 format finally figured-out (From an actual DLC project outcome), re-instate this assert
 
 
-### GMM PARAMS ########################################
+### GMM PARAMS #########################################################################################################
 
 gmm_n_components = configuration.getint('EM/GMM', 'n_components')
 gmm_covariance_type = configuration.get('EM/GMM', 'covariance_type')
@@ -204,14 +203,14 @@ EMGMM_PARAMS = {
     'random_state': RANDOM_STATE,
 }
 
-### HDBSCAN -- Density-based clustering ########################################
+### HDBSCAN -- Density-based clustering ################################################################################
 hdbscan_min_samples: int = configuration.getint('HDBSCAN', 'min_samples')
 HDBSCAN_PARAMS = {
     'min_samples': hdbscan_min_samples,
 }
 
 
-### MLP -- Feedforward neural network (MLP) params ########################################
+### MLP -- Feedforward neural network (MLP) params #####################################################################
 MLP_PARAMS = {
     'hidden_layer_sizes': literal_eval(configuration.get('MLP', 'hidden_layer_sizes')),
     'activation': configuration.get('MLP', 'activation'),
@@ -224,7 +223,7 @@ MLP_PARAMS = {
     'verbose': configuration.getint('MLP', 'verbose'),
 }
 
-### SVM ################################################################################
+### SVM ################################################################################################################
 svm_c = configuration.getfloat('SVM', 'C')
 svm_gamma = configuration.getfloat('SVM', 'gamma')
 svm_probability = configuration.getboolean('SVM', 'probability')
@@ -249,12 +248,12 @@ UMAP_PARAMS = {
 # TSNE parameters, can tweak if you are getting undersplit/oversplit behaviors
 # the missing perplexity is scaled with data size (1% of data for nearest neighbors)
 
-TSNE_EARLY_EXAGGERATION = configuration.getfloat('TSNE', 'early_exaggeration')
-TSNE_N_COMPONENTS = configuration.getint('TSNE', 'n_components')
-TSNE_N_ITER = configuration.getint('TSNE', 'n_iter')
-TSNE_N_JOBS = configuration.getint('TSNE', 'n_jobs')
-TSNE_THETA = configuration.getfloat('TSNE', 'theta')
-TSNE_VERBOSE = configuration.getint('TSNE', 'verbose')
+TSNE_EARLY_EXAGGERATION: float = configuration.getfloat('TSNE', 'early_exaggeration')
+TSNE_N_COMPONENTS: int = configuration.getint('TSNE', 'n_components')
+TSNE_N_ITER: int = configuration.getint('TSNE', 'n_iter')
+TSNE_N_JOBS: int = configuration.getint('TSNE', 'n_jobs')
+TSNE_THETA: float = configuration.getfloat('TSNE', 'theta')
+TSNE_VERBOSE: int = configuration.getint('TSNE', 'verbose')
 
 TSNE_SKLEARN_PARAMS = {  # TODO: low: deprecate? This was the old, opaque way of packing kwargs. Not used much anymore.
     'n_components': TSNE_N_COMPONENTS,
@@ -266,7 +265,7 @@ TSNE_SKLEARN_PARAMS = {  # TODO: low: deprecate? This was the old, opaque way of
 }
 
 assert isinstance(TSNE_N_ITER, int) and TSNE_N_ITER >= 250, \
-    f'TSNE_N_ITER should be an integer above 250 but was found to be: {TSNE_N_ITER}'
+    f'TSNE_N_ITER should be an integer above 250 but was found to be: {TSNE_N_ITER} (type: {type(TSNE_N_ITER)})'
 
 ########################################################################################################################
 # TODO: below under construction
