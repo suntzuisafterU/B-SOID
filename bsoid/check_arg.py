@@ -95,7 +95,7 @@ def ensure_numpy_arrays_are_same_shape(*arrays):
         err = f'Caller = "{get_caller_function()}()". Error: 0 arrays were submitted in checkarg.thisfunction'
         logger.error(err)
         raise Exception(err)
-
+    # Do heavy lifting
     set_of_shapes = set([arr.shape for arr in arrays])
     if set_of_shapes != 1:
         err = f'Caller = "{get_caller_function()}(). Error: One of the following ' \
