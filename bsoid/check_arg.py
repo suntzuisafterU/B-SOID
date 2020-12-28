@@ -97,9 +97,11 @@ def ensure_numpy_arrays_are_same_shape(*arrays):
         raise Exception(err)
     # Do heavy lifting
     set_of_shapes = set([arr.shape for arr in arrays])
-    if set_of_shapes != 1:
-        err = f'Caller = "{get_caller_function()}(). Error: One of the following ' \
-              f'arrays does not have the same shape."'
+    if len(set_of_shapes) != 1:
+        err = f'Caller = "{get_caller_function()}()". Error: One of the following ' \
+              f'arrays does not have the same shape. Set of shapes = "{set_of_shapes}". '
+        for arr in arrays:
+            err += f'Array = "{arr}" (shape = "{arr.shape}"). '.replace('\n', ' ')
         logger.error(err)
         raise ValueError(err)
 
