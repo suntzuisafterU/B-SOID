@@ -205,21 +205,44 @@ def attach_distance_from_forepaw_left_to_nose(df, new_feature_name='distLeftShou
 
 def distance_between_two_arrays(arr1, arr2) -> float:
     """
-    Calculates the distance between two arrays of 2-dimensions (1 row, 2 columns), assuming the first column in
-    both arrays is the x-data and the second column is the y-data. Returns float distance between the two arrays.
+    Calculates the distance between two arrays of 2-dimensions (1 row, n columns), assuming
+    the first column in both arrays is the x-data and the second column is the y-data.
+    Returns float distance between the two arrays.
+
+    :param arr1: (Array)
+    :param arr2: (Array)
+        arr1/arr2 Example:
+            [[5.   2.   3.75]]
+            [[20.  15.5  7. ]]
+
+    :returns: (float)
+        Example output: 20.573040611440984
+
     """
-    # Arg checking
-    # TODO: low: test for same shape b/w arrays
+    # check_arg.ensure_numpy_arrays_are_same_shape(arr1, arr2)  # TODO: low: Uncomment later when test for function implemented
 
     # Execute
-    distance = (np.sum((arr1 - arr2)**2))**0.5
+    try:
+        distance = (np.sum((arr1 - arr2)**2))**0.5
+    except ValueError as ve:
+        # Raises ValueError if array shape is not the same
+        err = f'Error occurred when calculating distance between two arrays. ' \
+              f'Array 1 = "{arr1}" (shape = "{arr1.shape}"). ' \
+              f'Array 2 = "{arr2}" (shape = "{arr2.shape}"). Error raised is: {repr(ve)}.'
+        logger.error(err)
+        raise ve
     return distance
 
 
 def velocity_of_xy_feature(arr, secs_between_rows) -> np.ndarray:
     """
-    outputs a 1-d array of velocities of each row
-    since v(xy1) = (xy1 - xy0) / (t1 - t0), we will also need the time between each row
+
+    :param arr:
+        Example:
+
+    :param secs_between_rows: (float) Should be the value obtained from (t_n - t_n-1).
+    :return: outputs a 1-d array of velocities of each row
+        since v(xy1) = (xy1 - xy0) / (t1 - t0), we will also need the time between each row
     """
     # Arg checking
     check_arg.ensure_type(arr, np.ndarray)
@@ -241,6 +264,7 @@ def velocity_of_xy_feature(arr, secs_between_rows) -> np.ndarray:
 
     veloc_array = np.array(veloc_values)
 
+    # Sanity check
     if veloc_array.shape != (len(arr), ):
         err_incorrect_columns = f'The return array should just have one column of velocities but an incorrect number of columns was discovered. Number of columns = {veloc_array.shape[1]} (return array shape = {veloc_array.shape}).'
         logging_bsoid.log_then_raise(err_incorrect_columns, logger, ValueError)
