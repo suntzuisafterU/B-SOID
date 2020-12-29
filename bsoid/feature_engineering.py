@@ -38,19 +38,19 @@ logger = config.initialize_logger(__name__)
 
 ### Attach features as columns to a DataFrame of DLC data
 
-def attach_average_hindpaw_xy(df: pd.DataFrame, avg_hindpaw_x='AvgHindpaw_x', avg_hindpaw_y='AvgHindpaw_y', copy=False) -> pd.DataFrame:
+def attach_average_hindpaw_xy(df: pd.DataFrame, hindpaw_left: str = None, hindpaw_right: str = None, avg_hindpaw_x='AvgHindpaw_x', avg_hindpaw_y='AvgHindpaw_y', copy=False) -> pd.DataFrame:
     # TODO: low: deprecate later with generalized xy averaging function
     """
     Returns 2-d array where the average location of the hindpaws are
-    :param df:
-    :return:
+
     """
     # Arg checking
     check_arg.ensure_type(df, pd.DataFrame)
-    hindpaw_left, hindpaw_right = config.get_part('HINDPAW_LEFT'), config.get_part('HINDPAW_RIGHT')
+    hindpaw_left = config.get_part('HINDPAW_LEFT') if hindpaw_left is None else hindpaw_left
+    hindpaw_right = config.get_part('HINDPAW_RIGHT') if hindpaw_right is None else hindpaw_right
     for feat, xy in itertools.product((hindpaw_left, hindpaw_right), ['x', 'y']):
         if f'{feat}_{xy}' not in df.columns:
-            err_missing_feature = f'{logging_bsoid.get_current_function()}(): missing feature column "{feat}_{xy}", so cannot calculate avg position. Columns = {list(df.columns)}'
+            err_missing_feature = f'{logging_bsoid.get_current_function()}(): missing feature column "{feat}_{xy}", so cannot calculate avg position. Columns = {list(df.columns)}'.replace('\\', '')
             logging_bsoid.log_then_raise(err_missing_feature, logger, KeyError)
     # Resolve kwargs
     df = df.copy() if copy else df
@@ -137,8 +137,7 @@ def average_xy_between_2_features(df: pd.DataFrame, feature1, feature2, result_f
     check_arg.ensure_type(df, pd.DataFrame)
     for feat, xy in itertools.product((feature1, feature2), ['x', 'y']):
         if f'{feat}_{xy}' not in df.columns:
-            err_missing_feature = f'{logging_bsoid.get_current_function()}(): missing feature column "{feat}_{xy}", ' \
-                                  f'so cannot calculate avg position. Columns = {list(df.columns)}'
+            err_missing_feature = f'{logging_bsoid.get_current_function()}(): missing feature column "{feat}_{xy}", so cannot calculate avg position. Columns = {list(df.columns)}'
             logging_bsoid.log_then_raise(err_missing_feature, logger, KeyError)
     # Resolve kwargs
     df = df.copy() if copy else df
@@ -600,6 +599,7 @@ def average_vector_between_n_vectors(*arrays) -> np.ndarray:
     for arr in arrays:
         check_arg.ensure_type(arr, np.ndarray)
     # Ensure all array shapes are the same
+    check_arg.ensure_numpy_arrays_are_same_shape(*arrays)
     set_of_shapes = set([arr.shape for arr in arrays])
     if len(set_of_shapes) > 1:
         err_disparate_shapes_of_arrays = f'Array shapes are not the same. Shapes: [{set_of_shapes}]'  # TODO
@@ -1510,14 +1510,17 @@ if __name__ == '__main__':
               [103, 104],
               [105, 106]]
     arr2 = np.array(data_n)
-    dfl = pd.DataFrame(data_l, columns=[f'{config.get_part("NOSETIP")}_x', f"{config.get_part('HINDPAW_LEFT')}_y"])
+    dfl = pd.DataFrame(data_l, columns=[f'{config.get_part("HINDPAW_LEFT")}_x', f"{config.get_part('HINDPAW_LEFT')}_y"])
     dfn = pd.DataFrame(data_n, columns=[f'{config.get_part("HINDPAW_RIGHT")}_x', f"{config.get_part('HINDPAW_RIGHT')}_y"])
 
     # dfn = pd.DataFrame(data_n, columns=['nose_x', 'nose_y'])
     df = pd.concat([dfl, dfn], axis=1)
-    print(attach_average_hindpaw_xy(df).to_string())
+    # def attach_average_hindpaw_xy(df: pd.DataFrame, avg_hindpaw_x='AvgHindpaw_x', avg_hindpaw_y='AvgHindpaw_y', copy=False) -> pd.DataFrame:
+    df_attached = attach_average_hindpaw_xy(df)  #, hindpaw_left='Hindpaw_Left', hindpaw_right='Hindpaw_Right')
 
+    print(df_attached.to_string())
 
+    # # #
     data_l = [[1, 2, ],
               [3, 4],
               [5, 6]]
