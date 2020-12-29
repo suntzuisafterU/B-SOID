@@ -236,12 +236,6 @@ class BasePipeline(PipelineAttributeHolder):
 
     tsne_source : {'sklearn', 'bhtsne'}
         Specify a TSNE implementation to use for dimensionality reduction.
-        Must be one of:
-
-        'sklearn'
-            sklearn explanation goes here
-        'bhtsne'
-            bhtsne explanation goes here
 
         # TODO: med: expand on further kwargs
     """
@@ -361,9 +355,6 @@ class BasePipeline(PipelineAttributeHolder):
 
     # Functions that should be overwritten by child classes
     def engineer_features(self, data: pd.DataFrame):
-        """
-
-        """
         err = f'{get_current_function()}(): Not Implemented for base ' \
               f'Pipeline object {self.__name__}. You must implement this for all child objects.'
         logger.error(err)
@@ -1216,6 +1207,7 @@ class PipelineEPM(BasePipeline):
 
         # Filter
         df_filtered, _ = feature_engineering.adaptively_filter_dlc_output(df)
+
         # Engineer features
         df_features: pd.DataFrame = feature_engineering.engineer_7_features_dataframe(
             df_filtered,
@@ -1449,76 +1441,76 @@ def generate_pipeline_filename_from_pipeline(pipeline_obj: BasePipeline) -> str:
 
 # Debugging efforts
 
-# if __name__ == '__main__':
-#     # This __main__ section is a debugging effort and holds no value to the final product.
-#     BSOID = os.path.dirname(os.path.dirname(__file__))
-#     if BSOID not in sys.path: sys.path.append(BSOID)
-#     test_file_1 = os.path.join(BSOID, 'restraint', 'Restraint-1DLC_resnet50_EPM-RESTRAINTNov2shuffle1_1030000.csv')
-#     test_file_2 = os.path.join(BSOID, 'restraint', 'Restraint-2DLC_resnet50_EPM-RESTRAINTNov2shuffle1_1030000.csv')
-#
-#     assert os.path.isfile(test_file_1), f'path does not exist: {test_file_1}'
-#     assert os.path.isfile(test_file_2)
-#
-#     run = True
-#     if run:
-#         # Test build
-#         new_name = 'deleteme'
-#         new_location_to_save_at = 'C:\\Users\\killian\\Pictures'
-#         new_full_loc_to_read = os.path.join(new_location_to_save_at, f'{new_name}.pipeline')
-#         make_new = 1
-#         if make_new:
-#             save_new = 1
-#
-#             p = PipelineTim(name=new_name)
-#             p = p.add_train_data_source(test_file_1)
-#             p = p.add_predict_data_source(test_file_2)
-#             p = p.build()
-#             p = p.generate_predict_data_assignments()
-#             if save_new:
-#                 p = p.save(new_location_to_save_at)
-#
-#         # pipe_in_output = 'colorme.pipeline'
-#         # pipe_path = os.path.join(config.BSOID_BASE_PROJECT_PATH, 'output', pipe_in_output)
-#         # data_source = 'Vid3DLC_resnet50_Change_BlindnessNov11shuffle1_850000'
-#         # vidpath = os.path.join(config.BSOID_BASE_PROJECT_PATH, 'chbo1', 'Vid3.mp4')
-#         # assert os.path.isfile(pipe_path)
-#         # assert os.path.isfile(vidpath)
-#         #
-#         # p = b_io.read_pipeline(pipe_path)
-#         #
-#         # #     def make_behaviour_example_videos(self, data_source: str, video_file_path: str, file_name_prefix=None, min_rows_of_behaviour=1, max_examples=3, num_frames_leadup=0, output_fps=15):
-#         # p.make_behaviour_example_videos(
-#         #     data_source,
-#         #     vidpath,
-#         #     file_name_prefix='FirstTryColourMe4',
-#         #     min_rows_of_behaviour=1,
-#         #     max_examples=1,
-#         #     output_fps=0.8,
-#         #     num_frames_leadup=1,
-#         # )
-
-
 if __name__ == '__main__':
-    # Debugging Objective: ensure that making videos is working well using existing pipeline
-    example_videos_prefix = 'FirstTryColourMe11'
-    pipe_in_output = 'asdf6.pipeline'
-    pipe_path = os.path.join(config.BSOID_BASE_PROJECT_PATH, 'output', pipe_in_output)
-    data_source = 'Vid3DLC_resnet50_Change_BlindnessNov11shuffle1_850000'
-    vidpath = os.path.join(config.BSOID_BASE_PROJECT_PATH, 'chbo1', 'Vid3.mp4')
-    assert os.path.isfile(pipe_path)
-    assert os.path.isfile(vidpath)
+    # This __main__ section is a debugging effort and holds no value to the final product.
+    BSOID = os.path.dirname(os.path.dirname(__file__))
+    if BSOID not in sys.path: sys.path.append(BSOID)
+    test_file_1 = os.path.join(BSOID, 'restraint', 'Restraint-1DLC_resnet50_EPM-RESTRAINTNov2shuffle1_1030000.csv')
+    test_file_2 = os.path.join(BSOID, 'restraint', 'Restraint-2DLC_resnet50_EPM-RESTRAINTNov2shuffle1_1030000.csv')
 
-    p = io.read_pipeline(pipe_path)
+    assert os.path.isfile(test_file_1), f'path does not exist: {test_file_1}'
+    assert os.path.isfile(test_file_2)
 
-    p.make_behaviour_example_videos(
-        data_source,
-        vidpath,
-        file_name_prefix=example_videos_prefix,
-        min_rows_of_behaviour=1,
-        max_examples=1,
-        output_fps=0.8,
-        num_frames_buffer=2,
-    )
+    run = True
+    if run:
+        # Test build
+        new_name = 'deleteme'
+        new_location_to_save_at = 'C:\\Users\\killian\\Pictures'
+        new_full_loc_to_read = os.path.join(new_location_to_save_at, f'{new_name}.pipeline')
+        make_new = 1
+        if make_new:
+            save_new = 1
+
+            p = PipelineTim(name=new_name)
+            p = p.add_train_data_source(test_file_1)
+            p = p.add_predict_data_source(test_file_2)
+            p = p.build()
+            p = p.generate_predict_data_assignments()
+            if save_new:
+                p = p.save(new_location_to_save_at)
+
+        # pipe_in_output = 'colorme.pipeline'
+        # pipe_path = os.path.join(config.BSOID_BASE_PROJECT_PATH, 'output', pipe_in_output)
+        # data_source = 'Vid3DLC_resnet50_Change_BlindnessNov11shuffle1_850000'
+        # vidpath = os.path.join(config.BSOID_BASE_PROJECT_PATH, 'chbo1', 'Vid3.mp4')
+        # assert os.path.isfile(pipe_path)
+        # assert os.path.isfile(vidpath)
+        #
+        # p = b_io.read_pipeline(pipe_path)
+        #
+        # #     def make_behaviour_example_videos(self, data_source: str, video_file_path: str, file_name_prefix=None, min_rows_of_behaviour=1, max_examples=3, num_frames_leadup=0, output_fps=15):
+        # p.make_behaviour_example_videos(
+        #     data_source,
+        #     vidpath,
+        #     file_name_prefix='FirstTryColourMe4',
+        #     min_rows_of_behaviour=1,
+        #     max_examples=1,
+        #     output_fps=0.8,
+        #     num_frames_leadup=1,
+        # )
+
+
+# if __name__ == '__main__':
+#     # Debugging Objective: ensure that making videos is working well using existing pipeline
+#     example_videos_prefix = 'FirstTryColourMe11'
+#     pipe_in_output = 'asdf6.pipeline'
+#     pipe_path = os.path.join(config.BSOID_BASE_PROJECT_PATH, 'output', pipe_in_output)
+#     data_source = 'Vid3DLC_resnet50_Change_BlindnessNov11shuffle1_850000'
+#     vidpath = os.path.join(config.BSOID_BASE_PROJECT_PATH, 'chbo1', 'Vid3.mp4')
+#     assert os.path.isfile(pipe_path)
+#     assert os.path.isfile(vidpath)
+#
+#     p = io.read_pipeline(pipe_path)
+#
+#     p.make_behaviour_example_videos(
+#         data_source,
+#         vidpath,
+#         file_name_prefix=example_videos_prefix,
+#         min_rows_of_behaviour=1,
+#         max_examples=1,
+#         output_fps=0.8,
+#         num_frames_buffer=2,
+#     )
 
 
 
