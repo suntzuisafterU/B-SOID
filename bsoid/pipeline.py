@@ -1423,6 +1423,76 @@ class PipelineCHBO(BasePipeline):
         return df
 
 
+class PipelineMimic(BasePipeline):
+    """
+    A pipeline implementation for mimicking original B-SOID implementation
+
+    7 Features listed in paper (terms in brackets are cursive and were written in math format. See paper page 12/13):
+    1. body length (or "[d_ST]"): distance from snout to base of tail
+    2. [d_SF]: distance of front paws to base of tail relative to body length (formally: [d_SF] = [d_ST] - [d_FT],
+        where [d_FT] is the distance between front paws and base of tail
+    3. [d_SB]: distance of back paws to base of tail relative to body length (formally: [d_SB] = [d_ST] - [d_BT]
+    4. Inter-forepaw distance (or "[d_FP]"): the distance between the two front paws
+
+    5. snout speed (or "[v_s]"): the displacement of the snout location over a period of 16ms
+    6. base-of-tail speed (or ["v_T"]): the displacement of the base of the tail over a period of 16ms
+    7. snout to base-of-tail change in angle:
+    """
+
+    # Feature names
+    feat_body_length = 'bodyLength'
+    feat_dist_bw_front_paws = 'distBetweenFrontPaws'
+    feat_dist_front_paws_to_tailbase_relative_to_body_length = ''
+
+
+    _all_features = (
+
+        feat_dist_bw_front_paws,
+        feat_dist_front_paws_to_tailbase_relative_to_body_length
+
+    )
+
+    def engineer_features(self, df: pd.DataFrame):
+        """
+        7 Features listed in paper (terms in brackets are cursive and were written in math format. See paper page 12/13):
+    1. body length (or "[d_ST]"): distance from snout to base of tail
+    2. [d_SF]: distance of front paws to base of tail relative to body length (formally: [d_SF] = [d_ST] - [d_FT], where [d_FT] is the distance between front paws and base of tail
+    3. [d_SB]: distance of back paws to base of tail relative to body length (formally: [d_SB] = [d_ST] - [d_BT]
+    4. Inter-forepaw distance (or "[d_FP]"): the distance between the two front paws
+
+    5. snout speed (or "[v_s]"): the displacement of the snout location over a period of 16ms
+    6. base-of-tail speed (or ["v_T"]): the displacement of the base of the tail over a period of 16ms
+    7. snout to base-of-tail change in angle:
+        """
+
+        check_arg.ensure_type(df, pd.DataFrame)
+        # Execute
+        logger.debug(f'Engineering features for one data set...')
+        df = df.sort_values('frame').copy()
+
+        # 1 dist snout to tail
+        df = feature_engineering.attach_distance_between_2_feats(df, snout, baseOfTail, resultant_feature_name=)#  feature_1, feature_2, resultant_feature_name, resolve_features_with_config_ini=False, copy=False) -> pd.DataFrame:
+
+        # 2: dist front paws
+        df = feature_engineering.attach_distance_between_2_feats(df, feature1, feature2, resultant_feature_name=)  # feature_1, feature_2, resultant_feature_name, resolve_features_with_config_ini=False, copy=False) -> pd.DataFrame:
+        df = feature_engineering.attach_distance_front_paws_to_tail_base_relative_to_body_length(df, frontpawsavgname, tailbasename, resultant_feature_name=)
+        # 3 distance of bacpwas to base of tail relative to body olelngth
+        df = feature_engineering.attach_distance_between_2_feats(df, feature1, feature2, resultant_feature_name=)#  feature_1, feature_2, resultant_feature_name, resolve_features_with_config_ini=False, copy=False) -> pd.DataFrame:
+
+        # 4: distance between 2 front paws
+        df = feature_engineering.attach_distance_between_2_feats(df, feature1, feature2, resultant_feature_name=)  # feature_1, feature_2, resultant_feature_name, resolve_features_with_config_ini=False, copy=False) -> pd.DataFrame:
+        # 5: snout speed
+        df = feature_engineering.attach_velocity_of_feature(df, SNOUT, secs_between_points=, resultant_feature_name=)
+
+        # 6 tail speed
+        df = feature_engineering.attach_velocity_of_feature(df, TAIL, secs_between_points=, resultant_feature_name=,)
+
+        #7: snout to base of tail change in angle
+
+
+        return df
+
+
 ### Accessory functions ###
 
 def generate_pipeline_filename(name: str):

@@ -201,11 +201,6 @@ def attach_distance_from_forepaw_left_to_nose(df, new_feature_name='distLeftShou
 
 
 
-def attach_distance_snout_to_tailbase(df, output_feature_name='', copy=False) -> pd.DataFrame:
-    # TODO: implement USAGE
-    # 1/7
-    # TODO: HIGH: finish
-    return df
 
 def attach_distance_front_paws_to_tail_base_relative_to_body_length(df, output_feature_name='', copy=False) -> pd.DataFrame:
     """
