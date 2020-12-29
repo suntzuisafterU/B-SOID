@@ -12,8 +12,9 @@ import time
 
 import bsoid
 
-long_csv_test_file_path = "FullSample_Video1DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000.csv"
-csv_test_file_path = os.path.join(bsoid.config.BSOID_BASE_PROJECT_PATH, 'tests', 'test_data', long_csv_test_file_path)
+# long_csv_test_file_path = "FullSample_Video1DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000.csv"
+# csv_test_file_path = os.path.join(bsoid.config.BSOID_BASE_PROJECT_PATH, 'tests', 'test_data', long_csv_test_file_path)
+csv_test_file_path = bsoid.config.DEFAULT_PIPELINE__PRIME__CSV_TEST_FILE_PATH
 assert os.path.isfile(csv_test_file_path)
 
 
