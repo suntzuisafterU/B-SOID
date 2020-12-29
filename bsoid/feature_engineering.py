@@ -200,6 +200,52 @@ def attach_distance_from_forepaw_left_to_nose(df, new_feature_name='distLeftShou
     return df
 
 
+
+def attach_distance_snout_to_tailbase(df, output_feature_name='', copy=False) -> pd.DataFrame:
+    # TODO: implement USAGE
+    # 1/7
+    # TODO: HIGH: finish
+    return df
+
+def attach_distance_front_paws_to_tail_base_relative_to_body_length(df, output_feature_name='', copy=False) -> pd.DataFrame:
+    """
+    2. [d_SF]: distance of front paws to base of tail relative to body length (formally: [d_SF] = [d_ST] - [d_FT],
+        where [d_FT] is the distance between front paws and base of tail
+    """
+    df = df.copy() if copy else df
+    # TODO: HIGH FINISH IMPLEMENTING
+    return df
+def attach_distance_back_paws_to_tail_base_relative_to_body_length(df, output_feature_name="", copy=False) -> pd.DataFrame:
+    # 3. [d_SB]: distance of back paws to base of tail relative to body length (formally: [d_SB] = [d_ST] - [d_BT]
+
+
+    return df
+
+
+def attach_distance_between_forepaws(df, output_feature_name="",
+                                                                   copy=False) -> pd.DataFrame:
+    # 4. Inter-forepaw distance (or "[d_FP]"): the distance between the two front paws
+
+    return df
+
+
+def attach_snout_speed(df, output_feature_name="", copy=False) -> pd.DataFrame:
+    # snout speed (or "[v_s]"): the displacement of the snout location over a period of 16ms
+
+    return df
+
+
+def attach_tail_base_speed(df, output_feature_name="", copy=False) -> pd.DataFrame:
+    # 6. base-of-tail speed (or ["v_T"]): the displacement of the base of the tail over a period of 16ms
+
+    return df
+
+def attach_snout_to_tail_base_change_in_angle(df, output_feature_name):
+
+    return df
+
+
+
 ### Numpy array feature creation (TODO: rename this section?)
 
 def distance_between_two_arrays(arr1, arr2) -> float:
