@@ -19,9 +19,11 @@ from bsoid.logging_bsoid import get_current_function
 
 logger = config.initialize_logger(__file__)
 
+# HOW TO GET FPS: fps = video.get(cv2.cv.CV_CAP_PROP_FPS)
+
 
 ### In development
-# fourcc='mp4v'
+# Previuosly: fourcc='mp4v', but then videos weren't being created well
 def make_labeled_video_according_to_frame(labels_list: Union[List, Tuple], frames_indices_list: Union[List, Tuple], output_file_name: str, video_source: str, current_behaviour_list: List[str] = (), output_fps=15, fourcc='avc1', output_dir=config.OUTPUT_PATH, text_colors_list: Union[Tuple, List] = (), **kwargs):
     """
     # PREVIOUSLY: fourcc='mp4v' was default
@@ -59,7 +61,7 @@ def make_labeled_video_according_to_frame(labels_list: Union[List, Tuple], frame
     # Kwargs
     font_scale = kwargs.get('font_scale', config.DEFAULT_FONT_SCALE)
     rectangle_colour_bgr: Tuple[int, int, int] = kwargs.get('rectangle_bgr', config.DEFAULT_TEXT_BACKGROUND_BGR)  # 000=Black box?
-    text_colour_bgr = kwargs.get('text_colour_bgr', config.DEFAULT_TEXT_BGR)
+    text_colour_bgr: Tuple[int, int, int] = kwargs.get('text_colour_bgr', config.DEFAULT_TEXT_BGR)
     text_prefix = kwargs.get('text_prefix', '')
     text_offset_x = kwargs.get('text_offset_x', 50)
     text_offset_y = kwargs.get('text_offset_y', 125)
@@ -169,6 +171,7 @@ def make_labeled_video_according_to_frame(labels_list: Union[List, Tuple], frame
         # # def put_text_over_box_on_image(frame, text_for_frame, font, font_scale, text_offset_x, text_offset_y, text_color_tuple: Tuple[int], rectangle_colour_bgr: Tuple[int], disposition_x: int = 0, disposition_y: int = 0):
         # # 1/2: top level text
         frame = put_text_over_box_on_image(frame, text_for_frame, font, font_scale, text_offset_x, text_offset_y, text_color_tuple, rectangle_colour_bgr)
+        frame = add_border(frame, color=text_colour_bgr, pixel_width=10)
 
         # 2/2: Bottom level text (STILL WIP! -- put_text_over_box_on_image() needs to be debugged first before uncomment below
         # frame = put_text_over_box_on_image(frame, text_for_frame, font, font_scale, text_offset_x, text_offset_y, text_color_tuple, rectangle_colour_bgr, disposition_x=100, disposition_y=50)
@@ -190,14 +193,11 @@ def put_text_over_box_on_image(frame, text_for_frame, font, font_scale, text_off
     text_offset_x = text_offset_x + disposition_x
     text_offset_y = text_offset_y + disposition_y
     text_width, text_height = cv2.getTextSize(text_for_frame, font, fontScale=font_scale, thickness=1)[0]
-    box_top_left = (text_offset_x - 12, text_offset_y + 12)
-    box_top_right = (text_offset_x + text_width + 12, text_offset_y - text_height - 8)
-    box_top_left, box_top_right = (
-        (text_offset_x - 12, text_offset_y + 12),  # pt1, or top left point
-        (text_offset_x + text_width + 12, text_offset_y - text_height - 8),  # pt2, or bottom right point
-    )
 
-    # Add background rectangle for text
+    box_top_left: tuple = (text_offset_x - 12, text_offset_y + 12)
+    box_top_right: tuple = (text_offset_x + text_width + 12, text_offset_y - text_height - 8)
+
+    # Add background rectangle for text contrast
     cv2.rectangle(frame, box_top_left, box_top_right, rectangle_colour_bgr, cv2.FILLED)
 
     # Add text
@@ -211,6 +211,23 @@ def put_text_over_box_on_image(frame, text_for_frame, font, font_scale, text_off
         thickness=1
     )
     return frame
+
+
+def add_border(frame: np.ndarray, color: Tuple[int, int, int], pixel_width: int):
+    """
+    Add color border around frame without changing dimensions
+    :param frame:
+    :param color:
+    :param pixel_width:
+    :return:
+    """
+    # Set number of pixels of insets on respective side
+    top, bottom, left, right = pixel_width, pixel_width, pixel_width, pixel_width
+
+    image = cv2.copyMakeBorder(frame[top:-bottom, left:-right, :], top, bottom, left, right, cv2.BORDER_CONSTANT,
+                               value=color)
+
+    return image
 
 
 ### Previously used
@@ -490,66 +507,6 @@ def write_individual_frame_to_file(is_frame_retrieved: bool, frame: np.ndarray, 
             image_name = generate_frame_filename(frame_idx)
             cv2.imwrite(os.path.join(output_path, image_name), frame)
     return 1
-
-
-def label_frame(frame, label):
-    """
-    A first attempt at encapsulating the "labeling" process (adding text to a
-    specified video frame). So far, it hasn't been confirmed to work.
-    """
-    # TODO: high: evaluate if returning the frame is necessary...don't all CV2 changes occur in place?
-    font_scale, font = 1, cv2.FONT_HERSHEY_COMPLEX
-    rectangle_bgr_black = (0, 0, 0)
-    color_white_bgr = (255, 255, 255)
-
-    text_width, text_height = 10, 10  #cv2.getTextSize(label, font, fontScale=font_scale, thickness=1)[0]
-    # TODO: evaluate magic variables RE: text offsetting on images
-    text_offset_x, text_offset_y = 50, 50
-    box_coordinates_topleft, box_coordinates_bottom_right = (
-        (text_offset_x - 12, text_offset_y + 12),  # pt1, or top left point
-        (text_offset_x + text_width + 12, text_offset_y - text_height - 8),  # pt2, or bottom right point
-    )
-    cv2.rectangle(frame, box_coordinates_topleft, box_coordinates_bottom_right, rectangle_bgr_black, cv2.FILLED)
-    cv2.putText(img=frame, text=label, org=(text_offset_x, text_offset_y),
-                fontFace=font, fontScale=font_scale, color=color_white_bgr, thickness=1)
-    return frame
-
-
-def get_frames_from_video(path_to_video, frames_to_skip_after_each_write=1, **kwargs) -> List[np.ndarray]:
-    """
-    For a given video, retrieve all specified video frames and return as a list of those frames
-    """
-    frames = []
-    # TODO: resolve fails
-
-    # Arg checking
-    assert os.path.isfile(path_to_video), f'Video does not exist: {path_to_video}'
-    # Do
-    cv2_video_object = cv2.VideoCapture(path_to_video)
-    total_frames = int(cv2_video_object.get(cv2.CAP_PROP_FRAME_COUNT))
-    logger.debug(f'Total frames: {total_frames}')  # Debugging
-    i_frame, frame_count = 0, 0
-    frames_queue: List[Tuple[bool, Any, str, int]] = []
-    # queue up images to write
-    done = False
-    # Iterate over frames extracted from video. Generate a queue of frames to be labeled later.
-    while not done:
-        is_frame_retrieved, frame = cv2_video_object.read()
-        if is_frame_retrieved:
-            frames.append(frame)
-            # Save & set metrics, prepare for next frame, and update progress bar
-            frame_count += frames_to_skip_after_each_write
-            # Skip ahead to a specified frame?
-            cv2_video_object.set(1, frame_count)
-            # progress_bar.update(frames_to_skip_after_each_write)
-            i_frame += 1
-        else:  # No more frames left to retrieve. Release object and finish.
-            done = True
-            cv2_video_object.release()
-            break
-
-    cv2_video_object.release()
-    return frames
 
 
 def write_annotated_frames_to_disk_from_video_source_with_multiprocessing(path_to_video: str, labels, pct_frames_to_label: float = config.PERCENT_FRAMES_TO_LABEL) -> None:
@@ -972,3 +929,23 @@ def a():
 #
 
 # cd $bsoid ; conda activate bsoid
+
+
+### HOW TO GET FPS OF A VIDEO
+# import cv2
+# if __name__ == '__main__' :
+#
+#     video = cv2.VideoCapture("test.mp4");
+#
+#     # Find OpenCV version
+#     (major_ver, minor_ver, subminor_ver) = (cv2.__version__).split('.')
+#
+#     if int(major_ver)  < 3 :
+#         fps = video.get(cv2.cv.CV_CAP_PROP_FPS)
+#         print "Frames per second using video.get(cv2.cv.CV_CAP_PROP_FPS): {0}".format(fps)
+#     else :
+#         fps = video.get(cv2.CAP_PROP_FPS)
+#         print "Frames per second using video.get(cv2.CAP_PROP_FPS) : {0}".format(fps)
+#
+#     video.release();
+###
