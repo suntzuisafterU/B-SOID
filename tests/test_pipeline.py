@@ -132,9 +132,6 @@ p.train_data_files_paths = {p.train_data_files_paths}
         self.assertTrue(is_path_now_in_list_of_paths, err_msg)
 
     def test__pipeline_add_train_data__(self):  # TODO: add should/when
-        """
-
-        """
         # Arrange
         p = bsoid.pipeline.PipelinePrime('Test_65465465465asddsfasdfde34asdf')
         num_sources_before_adding_any = len(p.training_data_sources)
@@ -156,7 +153,6 @@ p.train_data_files_paths = {p.train_data_files_paths}
         After adding just 1 train data source,
 
         *** NOTE: This test usually takes a while since it builds the entire model as part of the test ***
-
         """
         # Arrange
         p = bsoid.pipeline.PipelinePrime('asdfasdfdfs44444')
@@ -184,9 +180,6 @@ p.train_data_files_paths = {p.train_data_files_paths}
         self.assertEqual(expected_label, actual_label)
 
     def test__updatingAssignmentActuallyworks(self):
-        """
-
-        """
         # Arrange
         p = bsoid.pipeline.PipelinePrime('DeleteMe___6APipelineName12398asdfasdfaasdfdf989dsdf7')
         assignment, input_label = 1, 'Behaviour1'
@@ -199,7 +192,6 @@ p.train_data_files_paths = {p.train_data_files_paths}
         self.assertEqual(input_label, actual_label)
 
     def test__updatingAssignment__shouldSaveLabel__whenSavedAndRereadIn(self):
-        """  """
         # Arrange
         name = 'DELETE_ME__APipelineName12398asdzzz1614154fasdfsdf7_'
         p_write = bsoid.pipeline.PipelinePrime(name)

@@ -14,12 +14,13 @@ import bsoid
 # test_file_name = 'RowsDeleted_FullSample_Video1DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000.csv'
 test_file_name = bsoid.config.DEFAULT_PIPELINE__PRIME__CSV_TEST_FILE_PATH
 
-single_test_file_location = os.path.join(bsoid.config.BSOID_BASE_PROJECT_PATH, 'tests', 'test_data', test_file_name)
+single_test_file_location = test_file_name  # os.path.join(bsoid.config.BSOID_BASE_PROJECT_PATH, 'tests', 'test_data', test_file_name)
+assert os.path.isfile(single_test_file_location), f'Could not find test file: {single_test_file_location}'
 
 
 class TestFeatureEngineering(TestCase):
 
-    @skip  # TODO: fix this
+    @skip  # TODO: fix this test; currently unfinished
     def test__adaptively_filter_dlc_output__(self):
         # TODO: ensuring that cols like scorer, file_source, etc don't go missing
         # Arrange
@@ -57,8 +58,7 @@ TODO: improve error message
         new_feature_engineer: callable = bsoid.feature_engineering.engineer_7_features_dataframe_MISSING_1_ROW
         # Read in data
         df_input_data_original = pd.read_csv(single_test_file_location, nrows=bsoid.config.max_rows_to_read_in_from_csv)
-        arr_input_data_original_filtered, _ = bsoid.feature_engineering.process_raw_data_and_filter_adaptively(
-            df_input_data_original)
+        arr_input_data_original_filtered, _ = bsoid.feature_engineering.process_raw_data_and_filter_adaptively(df_input_data_original)
         # input_data_original_ready: List[np.ndarray] = bsoid.feature_engineering.extract_7_features_bsoid_tsne_py(
         #     [arr_input_data_original_filtered, ])
 
@@ -221,7 +221,7 @@ Actual output:
 """  # TODO: elaborate error message to suss out potential problems
         self.assertTrue(is_equal, err)
 
-    @skip
+    @skip  # Temporarily skipped while the test is being finished. It's not finished!
     def test__average_distance_between_n_features__shouldCalculateAverageLocationOfFeature__whenThreeArraysSubmitted(self):
         # TODO: finish the 3rd data set and also the expected data output
         # Arrange
@@ -229,11 +229,11 @@ Actual output:
                   [2, 2], ]
         data_2 = [[5, 2],
                   [1, 1], ]
-        data_3 = [[],
+        data_3 = [[],  # TODO 1/2
                   [], ]
         data_expected_output = [[2.5, 2.],
                                 [1.5, 1.5],
-                                [], ]
+                                [], ]  # TODO 2/2
         arr_input_1 = np.array(data_1)
         arr_input_2 = np.array(data_2)
         arr_input_3 = np.array(data_3)
