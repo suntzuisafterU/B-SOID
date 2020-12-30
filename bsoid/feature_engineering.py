@@ -192,17 +192,18 @@ def average_xy_between_2_features(df: pd.DataFrame, feature1, feature2, result_f
     return df
 
 
-def attach_velocity_of_feature(df: pd.DataFrame, bodypart, secs_between_points: float, output_feature_name: str, infer_bodypart_name_from_config=False, copy=False) -> pd.DataFrame:
+def attach_velocity_of_feature(df: pd.DataFrame, bodypart: str, action_duration: float, output_feature_name: str, infer_bodypart_name_from_config=False, copy=False) -> pd.DataFrame:
     """
     Attaches a new column to DataFrame that is the velocity of a SINGLE bodypart.
-
     :param df: (DataFrame)
     :param bodypart: (str) A feature in the DataFrame which has columns for "_x" and a "_y" suffixes.
-    :param secs_between_points: (float)
+    :param action_duration: (float) The number of seconds in which the action occurs.
     :param output_feature_name: (str) The name of the column that gets added to DataFrame
-    :param infer_bodypart_name_from_config: (bool) 
-    :param copy:
-    :return:
+    :param infer_bodypart_name_from_config: (bool) If true, input bodypart will be the CONFIG.INI name,
+        not the literal column name for that part
+    :param copy: (bool) If True, create a copy of the input DataFrame for result. Otherwise,
+        transform existing input DataFrame
+    :return: (DataFrame)
     """
     # Check args
     check_arg.ensure_type(df, pd.DataFrame)
@@ -214,7 +215,7 @@ def attach_velocity_of_feature(df: pd.DataFrame, bodypart, secs_between_points: 
     bodypart = config.get_part(bodypart) if infer_bodypart_name_from_config else bodypart
     df = df.copy() if copy else df
     # Calculate velocities
-    velocity_array: np.ndarray = velocity_of_xy_feature(df[[f'{bodypart}_x', f'{bodypart}_y']].values, secs_between_points)
+    velocity_array: np.ndarray = velocity_of_xy_feature(df[[f'{bodypart}_x', f'{bodypart}_y']].values, action_duration)
     # With output array of values, attach to DataFrame
     df[f'{output_feature_name}'] = velocity_array
 
