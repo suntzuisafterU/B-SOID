@@ -78,64 +78,6 @@ def attach_average_bodypart_xy(df: pd.DataFrame, feature_1: str, feature_2: str,
     return df
 
 
-def attach_average_hindpaw_xy(df: pd.DataFrame, hindpaw_left: str = None, hindpaw_right: str = None, avg_hindpaw_x='AvgHindpaw_x', avg_hindpaw_y='AvgHindpaw_y', copy=False) -> pd.DataFrame:
-    # TODO: low: deprecate later with generalized xy averaging function
-    """
-    Returns 2-d array where the average location of the hindpaws are
-
-    """
-    # Arg checking
-    check_arg.ensure_type(df, pd.DataFrame)
-    hindpaw_left = config.get_part('HINDPAW_LEFT') if hindpaw_left is None else hindpaw_left
-    hindpaw_right = config.get_part('HINDPAW_RIGHT') if hindpaw_right is None else hindpaw_right
-    for feat, xy in itertools.product((hindpaw_left, hindpaw_right), ['x', 'y']):
-        if f'{feat}_{xy}' not in df.columns:
-            err_missing_feature = f'{logging_bsoid.get_current_function()}(): missing feature column "{feat}_{xy}", so cannot calculate avg position. Columns = {list(df.columns)}'.replace('\\', '')
-            logging_bsoid.log_then_raise(err_missing_feature, logger, KeyError)
-    # Resolve kwargs
-    df = df.copy() if copy else df
-    # Execute
-    hindpaw_left_xy = df[[f'{hindpaw_left}_x', f'{hindpaw_left}_y']].values
-    hindpaw_right_xy = df[[f'{hindpaw_right}_x', f'{hindpaw_right}_y']].values
-    avg_hindpaw_xy: np.ndarray = np.array(list(map(average_vector_between_n_vectors, hindpaw_left_xy, hindpaw_right_xy)))
-    # Create DataFrame from result, attach to existing data
-    df_avg = pd.DataFrame(avg_hindpaw_xy, columns=[avg_hindpaw_x, avg_hindpaw_y])
-    df = pd.concat([df, df_avg], axis=1)
-
-    return df
-
-
-def attach_average_forepaw_xy(df: pd.DataFrame, avg_forepaw_x='AvgForepaw_x', avg_forepaw_y='AvgForepaw_y', copy=False) -> pd.DataFrame:
-    """
-    TODO
-    """
-    # TODO: consider deprecation for a more genrealized function later
-    # Arg checking
-    check_arg.ensure_type(df, pd.DataFrame)
-    forepaw_left, forepaw_right = config.get_part('FOREPAW_LEFT'), config.get_part('FOREPAW_RIGHT')
-    for feat, xy in itertools.product((forepaw_left, forepaw_right), ['x', 'y']):
-        if f'{feat}_{xy}' not in df.columns:
-            err_missing_feature = f'{logging_bsoid.get_current_function()}(): missing feature column "{feat}_{xy}", so cannot calculate avg position. Columns = {list(df.columns)}'
-            logging_bsoid.log_then_raise(err_missing_feature, logger, KeyError)
-
-    # Resolve kwargs
-    df = df.copy() if copy else df
-
-    # Execute #
-    # Grab data
-    forepaw_left_xy = df[[f'{forepaw_left}_x', f'{forepaw_left}_y']].values
-    forepaw_right_xy = df[[f'{forepaw_right}_x', f'{forepaw_right}_y']].values
-
-    # Use vector solution to quickly generate 2-d array for avg forepaw locations for x and y at each time point
-    avg_forepaw_xy: np.ndarray = np.array(list(map(average_vector_between_n_vectors, forepaw_left_xy, forepaw_right_xy)))
-
-    # Create DataFrame from result, attach to existing
-    df_avg = pd.DataFrame(avg_forepaw_xy, columns=[avg_forepaw_x, avg_forepaw_y])
-    df = pd.concat([df, df_avg], axis=1)
-
-    return df
-
-
 def attach_feature_distance_between_2_bodyparts(df: pd.DataFrame, feature_1, feature_2, output_feature_name, resolve_bodyparts_with_config_ini=False, copy=False) -> pd.DataFrame:
     """
 
