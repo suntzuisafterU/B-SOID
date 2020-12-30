@@ -293,24 +293,25 @@ actual actual_output_arr: {actual_output_arr}
         self.assertTrue(is_equals, err_msg)
 
     def test__attach_average_feature_xy__shouldOnlyAttach2ColumnsInResult(self):
-        """ Test that the number of output columns match what should be output """
+        """ Test that the number of output columns matches expected """
         # Arrange
         df = bsoid.io.read_csv(single_test_file_location)
         df_cols_set = set(df.columns)
         output_feature_name = 'AvgFeature'
-        expected_cols: int = len(df_cols_set) + 2
+        expected_num_cols: int = len(df_cols_set) + 2
 
         # (Ensure col names exist for test)
         feature1, feature2 = 'Forepaw/Shoulder1', 'Forepaw/Shoulder2'
-        for feat, xy in itertools.product((feature1, feature2), ('x','y')):
+        for feat, xy in itertools.product((feature1, feature2), ('x', 'y')):
             feat_xy = f'{feat}_{xy}'
             assert feat_xy in df_cols_set, f'Column "{feat_xy}" not found in DataFrame. Cannot complete test. Columns = {list(df.columns)}'
 
         # Act
         df_output: pd.DataFrame = bsoid.feature_engineering.attach_average_feature_xy(df, feature1, feature2, output_feature_name, copy=True)
-        actual_end_cols: int = len(df_output.columns)
+        actual_num_output_cols: int = len(df_output.columns)
+
         # Assert
-        self.assertEqual(expected_cols, actual_end_cols)
+        self.assertEqual(expected_num_cols, actual_num_output_cols)
 
 
 
