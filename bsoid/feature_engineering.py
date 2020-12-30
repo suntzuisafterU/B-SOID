@@ -38,6 +38,46 @@ logger = config.initialize_logger(__name__)
 
 ### Attach features as columns to a DataFrame of DLC data
 
+def attach_average_feature_xy(df: pd.DataFrame, feature_1: str, feature_2: str, output_feature: str, resolve_feature_with_config_ini=False, copy=False) -> pd.DataFrame:
+    # TODO: HIGH: implement flexible location creator
+    """
+    Returns 2-d array where the average location of the hindpaws are
+
+    """
+    feature_1 = config.get_part(feature_1) if resolve_feature_with_config_ini else feature_1
+    feature_2 = config.get_part(feature_2) if resolve_feature_with_config_ini else feature_2
+
+    # Arg checking
+    check_arg.ensure_type(df, pd.DataFrame)
+    for feature, xy in itertools.product((feature_1, feature_2), ('x', 'y')):
+        feat_xy = f'{feature}_{xy}'
+        if feat_xy not in set(df.columns):
+            err_missing_feature = f'{logging_bsoid.get_current_function()}(): missing feature column "{feat_xy}", ' \
+                                  f'so cannot calculate avg position. Columns = {list(df.columns)}'
+            logging_bsoid.log_then_raise(err_missing_feature, logger, KeyError)
+
+    # hindpaw_left = config.get_part('HINDPAW_LEFT') if hindpaw_left is None else hindpaw_left
+    # hindpaw_right = config.get_part('HINDPAW_RIGHT') if hindpaw_right is None else hindpaw_right
+    # for feat, xy in itertools.product((hindpaw_left, hindpaw_right), ['x', 'y']):
+    #     if f'{feat}_{xy}' not in df.columns:
+    #         err_missing_feature = f'{logging_bsoid.get_current_function()}(): missing feature column "{feat}_{xy}", so cannot calculate avg position. Columns = {list(df.columns)}'.replace('\\', '')
+    #         logging_bsoid.log_then_raise(err_missing_feature, logger, KeyError)
+
+    df = df.copy() if copy else df
+
+    # Execute
+    feature_1_xy = df[[f'{feature_1}_x', f'{feature_1}_y']].values
+    feature_2_xy = df[[f'{feature_2}_x', f'{feature_2}_y']].values
+
+    output_feature_xy: np.ndarray = np.array(list(map(average_vector_between_n_vectors, feature_1_xy, feature_2_xy)))
+
+    # Create DataFrame from result, attach to existing data
+    df_avg = pd.DataFrame(output_feature_xy, columns=[f'{output_feature}_x', f'{output_feature}_y'])
+    df = pd.concat([df, df_avg], axis=1)
+
+    return df
+
+
 def attach_average_hindpaw_xy(df: pd.DataFrame, hindpaw_left: str = None, hindpaw_right: str = None, avg_hindpaw_x='AvgHindpaw_x', avg_hindpaw_y='AvgHindpaw_y', copy=False) -> pd.DataFrame:
     # TODO: low: deprecate later with generalized xy averaging function
     """
@@ -205,7 +245,7 @@ def attach_tail_base_speed(df, output_feature_name: str, copy=False) -> pd.DataF
 
 def attach_snout_tail_angle(df, output_feature_name, copy=False) -> pd.DataFrame:
     df = df.copy() if copy else df
-
+    # TODO: HIGH
     return df
 
 
@@ -1462,7 +1502,8 @@ def process_raw_data_and_filter_adaptively(df_input_data: pd.DataFrame) -> Tuple
 @config.log_function_entry_exit(logger)
 def adaptive_filter_data_app(input_df: pd.DataFrame, BODYPARTS: dict):  # TODO: rename function for clarity?
     """
-    TODO: purpose
+    Adaptive filtering function for bsoid_app
+
     :param input_df: object, csv data frame
     :param BODYPARTS:
 
@@ -1558,3 +1599,4 @@ if __name__ == '__main__':
     # pass
 
 # streamlit run main.py streamlit -- -p "C:\Users\killian\projects\B-SOID\output\newdata5.pipeline"
+# cd $bsoid ; conda activate bsoid
