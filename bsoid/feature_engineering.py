@@ -66,12 +66,12 @@ def attach_average_feature_xy(df: pd.DataFrame, feature_1: str, feature_2: str, 
     df = df.copy() if copy else df
 
     # Execute
-    feature_1_xy = df[[f'{feature_1}_x', f'{feature_1}_y']].values
-    feature_2_xy = df[[f'{feature_2}_x', f'{feature_2}_y']].values
+    feature_1_xy: np.ndarray = df[[f'{feature_1}_x', f'{feature_1}_y']].values
+    feature_2_xy: np.ndarray = df[[f'{feature_2}_x', f'{feature_2}_y']].values
 
     output_feature_xy: np.ndarray = np.array(list(map(average_vector_between_n_vectors, feature_1_xy, feature_2_xy)))
 
-    # Create DataFrame from result, attach to existing data
+    # Create DataFrame from result; attach to existing data
     df_avg = pd.DataFrame(output_feature_xy, columns=[f'{output_feature}_x', f'{output_feature}_y'])
     df = pd.concat([df, df_avg], axis=1)
 
@@ -192,19 +192,31 @@ def average_xy_between_2_features(df: pd.DataFrame, feature1, feature2, result_f
     return df
 
 
-def attach_velocity_of_feature(df: pd.DataFrame, feature, secs_between_points: float, resultant_feature_name: str, infer_feature_name_from_config=False, copy=False) -> pd.DataFrame:
-    """"""  # TODO: low
+def attach_velocity_of_feature(df: pd.DataFrame, bodypart, secs_between_points: float, output_feature_name: str, infer_bodypart_name_from_config=False, copy=False) -> pd.DataFrame:
+    """
+    Attaches a new column to DataFrame that is the velocity of a SINGLE bodypart.
+
+    :param df: (DataFrame)
+    :param bodypart: (str) A feature in the DataFrame which has columns for "_x" and a "_y" suffixes.
+    :param secs_between_points: (float)
+    :param output_feature_name: (str) The name of the column that gets added to DataFrame
+    :param infer_bodypart_name_from_config: (bool) 
+    :param copy:
+    :return:
+    """
     # Check args
     check_arg.ensure_type(df, pd.DataFrame)
-    check_arg.ensure_type(feature, str)
-    # TODO: ensure more type checking
-    check_arg.ensure_type(resultant_feature_name, str)
+    check_arg.ensure_type(bodypart, str)
+    check_arg.ensure_type(output_feature_name, str)
+    check_arg.ensure_type(copy, bool)
+    check_arg.ensure_type(infer_bodypart_name_from_config, bool)
     # Resolve kwargs
-    feature = config.get_part(feature) if infer_feature_name_from_config else feature
+    bodypart = config.get_part(bodypart) if infer_bodypart_name_from_config else bodypart
     df = df.copy() if copy else df
-    # Execute
-    velocity_array = velocity_of_xy_feature(df[[f'{feature}_x', f'{feature}_y']].values, secs_between_points)
-    df[f'{resultant_feature_name}'] = velocity_array
+    # Calculate velocities
+    velocity_array: np.ndarray = velocity_of_xy_feature(df[[f'{bodypart}_x', f'{bodypart}_y']].values, secs_between_points)
+    # With output array of values, attach to DataFrame
+    df[f'{output_feature_name}'] = velocity_array
 
     return df
 
@@ -1566,9 +1578,9 @@ if __name__ == '__main__':
     # dfn = pd.DataFrame(data_n, columns=['nose_x', 'nose_y'])
     df2 = pd.concat([dfl, dfn], axis=1)
     # def attach_average_hindpaw_xy(df: pd.DataFrame, avg_hindpaw_x='AvgHindpaw_x', avg_hindpaw_y='AvgHindpaw_y', copy=False) -> pd.DataFrame:
-    df_attached = attach_average_hindpaw_xy(df2)  #, hindpaw_left='Hindpaw_Left', hindpaw_right='Hindpaw_Right')
+    # df_attached = attach_average_hindpaw_xy(df2)  #, hindpaw_left='Hindpaw_Left', hindpaw_right='Hindpaw_Right')
 
-    print(df_attached.to_string())
+    # print(df_attached.to_string())
 
     # # #
     data_l = [[1, 2, ],
