@@ -307,7 +307,7 @@ actual actual_output_arr: {actual_output_arr}
             assert feat_xy in df_cols_set, f'Column "{feat_xy}" not found in DataFrame. Cannot complete test. Columns = {list(df.columns)}'
 
         # Act
-        df_output: pd.DataFrame = bsoid.feature_engineering.attach_average_feature_xy(df, feature1, feature2, output_feature_name, copy=True)
+        df_output: pd.DataFrame = bsoid.feature_engineering.attach_average_bodypart_xy(df, feature1, feature2, output_feature_name, copy=True)
         actual_num_output_cols: int = len(df_output.columns)
 
         # Assert
