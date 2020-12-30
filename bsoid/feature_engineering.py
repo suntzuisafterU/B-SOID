@@ -38,14 +38,14 @@ logger = config.initialize_logger(__name__)
 
 ### Attach features as columns to a DataFrame of DLC data
 
-def attach_average_feature_xy(df: pd.DataFrame, feature_1: str, feature_2: str, output_feature: str, resolve_feature_with_config_ini=False, copy=False) -> pd.DataFrame:
+def attach_average_bodypart_xy(df: pd.DataFrame, feature_1: str, feature_2: str, output_bodypart: str, resolve_bodyparts_with_config_ini=False, copy=False) -> pd.DataFrame:
     # TODO: HIGH: implement flexible location creator
     """
     Returns 2-d array where the average location of the hindpaws are
 
     """
-    feature_1 = config.get_part(feature_1) if resolve_feature_with_config_ini else feature_1
-    feature_2 = config.get_part(feature_2) if resolve_feature_with_config_ini else feature_2
+    feature_1 = config.get_part(feature_1) if resolve_bodyparts_with_config_ini else feature_1
+    feature_2 = config.get_part(feature_2) if resolve_bodyparts_with_config_ini else feature_2
 
     # Arg checking
     check_arg.ensure_type(df, pd.DataFrame)
@@ -72,7 +72,7 @@ def attach_average_feature_xy(df: pd.DataFrame, feature_1: str, feature_2: str, 
     output_feature_xy: np.ndarray = np.array(list(map(average_vector_between_n_vectors, feature_1_xy, feature_2_xy)))
 
     # Create DataFrame from result; attach to existing data
-    df_avg = pd.DataFrame(output_feature_xy, columns=[f'{output_feature}_x', f'{output_feature}_y'])
+    df_avg = pd.DataFrame(output_feature_xy, columns=[f'{output_bodypart}_x', f'{output_bodypart}_y'])
     df = pd.concat([df, df_avg], axis=1)
 
     return df
@@ -136,21 +136,21 @@ def attach_average_forepaw_xy(df: pd.DataFrame, avg_forepaw_x='AvgForepaw_x', av
     return df
 
 
-def attach_distance_between_2_feats(df: pd.DataFrame, feature_1, feature_2, resultant_feature_name, resolve_features_with_config_ini=False, copy=False) -> pd.DataFrame:
+def attach_feature_distance_between_2_bodyparts(df: pd.DataFrame, feature_1, feature_2, output_feature_name, resolve_bodyparts_with_config_ini=False, copy=False) -> pd.DataFrame:
     """
 
     :param df: (DataFrame)
     :param feature_1: (str)
     :param feature_2: (str)
-    :param resultant_feature_name: (str)
-    :param resolve_features_with_config_ini: (bool)
+    :param output_feature_name: (str)
+    :param resolve_bodyparts_with_config_ini: (bool)
     :param copy: (bool)
     :return:
     """
     # Arg checking
     check_arg.ensure_type(df, pd.DataFrame)
-    feature_1 = config.get_part(feature_1) if resolve_features_with_config_ini else feature_1
-    feature_2 = config.get_part(feature_2) if resolve_features_with_config_ini else feature_2
+    feature_1 = config.get_part(feature_1) if resolve_bodyparts_with_config_ini else feature_1
+    feature_2 = config.get_part(feature_2) if resolve_bodyparts_with_config_ini else feature_2
     for feat, xy in itertools.product((feature_1, feature_2), ['x', 'y']):
         if f'{feat}_{xy}' not in set(df.columns):
             err_missing_feature = f'{logging_bsoid.get_current_function()}(): missing feature column "{feat}_{xy}", so cannot calculate avg position. Columns = {list(df.columns)}'
@@ -163,7 +163,7 @@ def attach_distance_between_2_feats(df: pd.DataFrame, feature_1, feature_2, resu
 
     distance_between_features_array: np.ndarray = np.array(list(map(distance_between_two_arrays, feature_1_xy_arr, feature_2_xy_arr)))
     # Create DataFrame from result, attach to existing data
-    df_avg = pd.DataFrame(distance_between_features_array, columns=[resultant_feature_name, ])
+    df_avg = pd.DataFrame(distance_between_features_array, columns=[output_feature_name, ])
     df = pd.concat([df, df_avg], axis=1)
 
     return df
@@ -192,7 +192,7 @@ def average_xy_between_2_features(df: pd.DataFrame, feature1, feature2, result_f
     return df
 
 
-def attach_velocity_of_feature(df: pd.DataFrame, bodypart: str, action_duration: float, output_feature_name: str, infer_bodypart_name_from_config=False, copy=False) -> pd.DataFrame:
+def attach_feature_velocity_of_bodypart(df: pd.DataFrame, bodypart: str, action_duration: float, output_feature_name: str, infer_bodypart_name_from_config=False, copy=False) -> pd.DataFrame:
     """
     Attaches a new column to DataFrame that is the velocity of a SINGLE bodypart.
     :param df: (DataFrame)

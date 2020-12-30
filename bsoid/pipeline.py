@@ -1293,26 +1293,26 @@ class PipelineTim(BasePipeline):
         df, _ = feature_engineering.adaptively_filter_dlc_output(df)
         # Engineer features
         # 1
-        df = feature_engineering.attach_distance_between_2_feats(df, 'FOREPAW_LEFT', 'NOSETIP', self.feat_name_dist_forepawleft_nosetip, resolve_features_with_config_ini=True)
+        df = feature_engineering.attach_feature_distance_between_2_bodyparts(df, 'FOREPAW_LEFT', 'NOSETIP', self.feat_name_dist_forepawleft_nosetip, resolve_bodyparts_with_config_ini=True)
         # 2
-        df = feature_engineering.attach_distance_between_2_feats(df, 'FOREPAW_RIGHT', 'NOSETIP', self.feat_name_dist_forepawright_nosetip, resolve_features_with_config_ini=True)
+        df = feature_engineering.attach_feature_distance_between_2_bodyparts(df, 'FOREPAW_RIGHT', 'NOSETIP', self.feat_name_dist_forepawright_nosetip, resolve_bodyparts_with_config_ini=True)
         # 3
-        df = feature_engineering.attach_distance_between_2_feats(df, 'FOREPAW_LEFT', 'HINDPAW_LEFT', self.feat_name_dist_forepawLeft_hindpawLeft, resolve_features_with_config_ini=True)
+        df = feature_engineering.attach_feature_distance_between_2_bodyparts(df, 'FOREPAW_LEFT', 'HINDPAW_LEFT', self.feat_name_dist_forepawLeft_hindpawLeft, resolve_bodyparts_with_config_ini=True)
         # 4
-        df = feature_engineering.attach_distance_between_2_feats(df, 'FOREPAW_RIGHT', 'HINDPAW_RIGHT', self.feat_name_dist_forepawRight_hindpawRight, resolve_features_with_config_ini=True)
+        df = feature_engineering.attach_feature_distance_between_2_bodyparts(df, 'FOREPAW_RIGHT', 'HINDPAW_RIGHT', self.feat_name_dist_forepawRight_hindpawRight, resolve_bodyparts_with_config_ini=True)
         # 5 & 6
         # Get avg forepaw
         # df = feature_engineering.attach_average_forepaw_xy(df)  # TODO: low: replace these two functions with the generalized xy averaging functions+output name?
-        df = feature_engineering.attach_average_feature_xy(df, 'FOREPAW_LEFT', 'FOREPAW_RIGHT', self.intermediate_avg_forepaw, resolve_feature_with_config_ini=True)
+        df = feature_engineering.attach_average_bodypart_xy(df, 'FOREPAW_LEFT', 'FOREPAW_RIGHT', self.intermediate_avg_forepaw, resolve_bodyparts_with_config_ini=True)
         # Get avg hindpaw
         # df = feature_engineering.attach_average_hindpaw_xy(df)
-        df = feature_engineering.attach_average_feature_xy(df, 'HINDPAW_LEFT', 'HINDPAW_RIGHT', self.intermediate_avg_hindpaw, resolve_feature_with_config_ini=True)
+        df = feature_engineering.attach_average_bodypart_xy(df, 'HINDPAW_LEFT', 'HINDPAW_RIGHT', self.intermediate_avg_hindpaw, resolve_bodyparts_with_config_ini=True)
 
-        df = feature_engineering.attach_distance_between_2_feats(df, self.intermediate_avg_hindpaw, config.get_part('NOSETIP'), self.feat_name_dist_AvgHindpaw_Nosetip)
+        df = feature_engineering.attach_feature_distance_between_2_bodyparts(df, self.intermediate_avg_hindpaw, config.get_part('NOSETIP'), self.feat_name_dist_AvgHindpaw_Nosetip)
         # 7
-        df = feature_engineering.attach_distance_between_2_feats(df, self.intermediate_avg_forepaw, config.get_part('NOSETIP'), self.feat_name_dist_AvgForepaw_NoseTip)
+        df = feature_engineering.attach_feature_distance_between_2_bodyparts(df, self.intermediate_avg_forepaw, config.get_part('NOSETIP'), self.feat_name_dist_AvgForepaw_NoseTip)
         # 8
-        df = feature_engineering.attach_velocity_of_feature(df, self.intermediate_avg_forepaw, 1/config.VIDEO_FPS, self.feat_name_velocity_AvgForepaw)
+        df = feature_engineering.attach_feature_velocity_of_bodypart(df, self.intermediate_avg_forepaw, 1 / config.VIDEO_FPS, output_feature_name=self.feat_name_velocity_AvgForepaw)
 
         # Binning
         map_feature_to_integrate_method = {
@@ -1345,6 +1345,8 @@ class PipelineCHBO(BasePipeline):
 
     """
     # Feature names
+    intermediate_bodypart_avgForepaw = 'AvgForepaw'
+    intermediate_bodypart_avgHindpaw = 'AvgHindpaw'
     feat_name_dist_forepawleft_nosetip = 'distForepawLeftNosetip'
     feat_name_dist_forepawright_nosetip = 'distForepawRightNosetip'
     feat_name_dist_forepawLeft_hindpawLeft = 'distForepawLeftHindpawLeft'
@@ -1387,21 +1389,29 @@ class PipelineCHBO(BasePipeline):
         df, _ = feature_engineering.adaptively_filter_dlc_output(df)
         # Engineer features
         # 1
-        df = feature_engineering.attach_distance_between_2_feats(df, 'FOREPAW_LEFT', 'NOSETIP', self.feat_name_dist_forepawleft_nosetip, resolve_features_with_config_ini=True)
+        df = feature_engineering.attach_feature_distance_between_2_bodyparts(df, 'FOREPAW_LEFT', 'NOSETIP', self.feat_name_dist_forepawleft_nosetip, resolve_bodyparts_with_config_ini=True)
         # 2
-        df = feature_engineering.attach_distance_between_2_feats(df, 'FOREPAW_RIGHT', 'NOSETIP', self.feat_name_dist_forepawright_nosetip, resolve_features_with_config_ini=True)
+        df = feature_engineering.attach_feature_distance_between_2_bodyparts(df, 'FOREPAW_RIGHT', 'NOSETIP', self.feat_name_dist_forepawright_nosetip, resolve_bodyparts_with_config_ini=True)
         # 3
-        df = feature_engineering.attach_distance_between_2_feats(df, 'FOREPAW_LEFT', 'HINDPAW_LEFT', self.feat_name_dist_forepawLeft_hindpawLeft, resolve_features_with_config_ini=True)
+        df = feature_engineering.attach_feature_distance_between_2_bodyparts(df, 'FOREPAW_LEFT', 'HINDPAW_LEFT', self.feat_name_dist_forepawLeft_hindpawLeft, resolve_bodyparts_with_config_ini=True)
         # 4
-        df = feature_engineering.attach_distance_between_2_feats(df, 'FOREPAW_RIGHT', 'HINDPAW_RIGHT', self.feat_name_dist_forepawRight_hindpawRight, resolve_features_with_config_ini=True)
+        df = feature_engineering.attach_feature_distance_between_2_bodyparts(df, 'FOREPAW_RIGHT', 'HINDPAW_RIGHT', self.feat_name_dist_forepawRight_hindpawRight, resolve_bodyparts_with_config_ini=True)
         # 5, 6
-        df = feature_engineering.attach_average_forepaw_xy(df)  # TODO: low: replace these two functions with the generalized xy averaging functions+output name?
-        df = feature_engineering.attach_average_hindpaw_xy(df)
-        df = feature_engineering.attach_distance_between_2_feats(df, 'AvgHindpaw', config.get_part('NOSETIP'), self.feat_name_dist_AvgHindpaw_Nosetip)
+        # df = feature_engineering.attach_average_forepaw_xy(df)  # BELOW SOLVES TODO: TODO: low: replace these two functions with the generalized xy averaging functions+output name?
+        df = feature_engineering.attach_average_bodypart_xy(df, 'FOREPAW_LEFT', 'FOREPAW_RIGHT', output_bodypart=self.intermediate_bodypart_avgForepaw, resolve_bodyparts_with_config_ini=True)
+
+        # df = feature_engineering.attach_average_hindpaw_xy(df)  # BELO SOLVES TODO: low: replace these two functions with the generalized xy averaging functions+output name?
+        df = feature_engineering.attach_average_bodypart_xy(df, 'HINDPAW_LEFT', 'HINDPAW_RIGHT', output_bodypart=self.intermediate_bodypart_avgHindpaw, resolve_bodyparts_with_config_ini=True)
+
+        df = feature_engineering.attach_feature_distance_between_2_bodyparts(df, self.intermediate_bodypart_avgHindpaw, config.get_part('NOSETIP'), self.feat_name_dist_AvgHindpaw_Nosetip)
+
         # 7
-        df = feature_engineering.attach_distance_between_2_feats(df, 'AvgForepaw', config.get_part('NOSETIP'), self.feat_name_dist_AvgForepaw_NoseTip)
+        # df = feature_engineering.attach_distance_between_2_feats(df, 'AvgForepaw', config.get_part('NOSETIP'), self.feat_name_dist_AvgForepaw_NoseTip)
+        df = feature_engineering.attach_feature_distance_between_2_bodyparts(df, self.intermediate_bodypart_avgForepaw, config.get_part('NOSETIP'), self.feat_name_dist_AvgForepaw_NoseTip)
+
         # 8
-        df = feature_engineering.attach_velocity_of_feature(df, 'AvgForepaw', 1/config.VIDEO_FPS, self.feat_name_velocity_AvgForepaw)
+        # df = feature_engineering.attach_velocity_of_feature(df, 'AvgForepaw', 1/config.VIDEO_FPS, self.feat_name_velocity_AvgForepaw)
+        df = feature_engineering.attach_feature_velocity_of_bodypart(df, self.intermediate_bodypart_avgForepaw, 1 / config.VIDEO_FPS, self.feat_name_velocity_AvgForepaw)
 
         # Binning
         map_feature_to_integrate_method = {
@@ -1447,6 +1457,8 @@ class PipelineMimic(BasePipeline):
 
     # Feature names
     feat_body_length = 'bodyLength'  # 1
+    intermediate_bodypart_avgForepaw = 'AvgForepaw'
+    intermediate_bodypart_avgHindpaw = 'AvgHindpaw'
     intermediate_dist_avgForepaw_to_tailbase = 'intermediate_dist_avgForepaw_to_tailbase'  # TODO: rename
     feat_dist_front_paws_to_tailbase_relative_to_body_length = 'feat_dist_front_paws_to_tailbase_relative_to_body_length'  # 2  # TODO: rename
     intermediate_dist_avgHindpaw_to_tailbase = 'intermediate_dist_avgHindpaw_to_tailbase'  # TODO: rename
@@ -1485,33 +1497,38 @@ class PipelineMimic(BasePipeline):
         df = df.sort_values('frame').copy()
 
         # 1 dist snout to tail
-        df = feature_engineering.attach_distance_between_2_feats(df, 'TAILBASE', 'NOSETIP', self.feat_body_length, resolve_features_with_config_ini=True)
+        df = feature_engineering.attach_feature_distance_between_2_bodyparts(df, config.get_part('TAILBASE'), config.get_part('NOSETIP'), self.feat_body_length)
 
-        # 2: dist front paws
-        ## Get AvgForepaw
-        df = feature_engineering.attach_average_forepaw_xy(df, avg_forepaw_x='AvgForepaw_x', avg_forepaw_y='AvgForepaw_y')
-        ## Get dist from forepaw to tailbase
-        df = feature_engineering.attach_distance_between_2_feats(df, 'AvgForepaw', config.get_part('TAILBASE'), self.intermediate_dist_avgForepaw_to_tailbase)
-        ## Finally, get body-length relative distance
+        # 2: Dist FrontPaws to tail relative to body length
+        ## 1/3: Get AvgForepaw location
+        df = feature_engineering.attach_average_bodypart_xy(df, config.get_part('FOREPAW_LEFT'), config.get_part('FOREPAW_RIGHT'), output_bodypart=self.intermediate_bodypart_avgForepaw)  # df = feature_engineering.attach_average_forepaw_xy(df, avg_forepaw_x='AvgForepaw_x', avg_forepaw_y='AvgForepaw_y')  # TODO: replace with generalize functions
+        ## 2/3: Get dist from forepaw to tailbase
+        df = feature_engineering.attach_feature_distance_between_2_bodyparts(df, self.intermediate_bodypart_avgForepaw, config.get_part('TAILBASE'), self.intermediate_dist_avgForepaw_to_tailbase)
+        ## 3/3: Get body-length relative distance
         df[self.feat_dist_front_paws_to_tailbase_relative_to_body_length] = df[self.feat_body_length] - df[self.intermediate_dist_avgForepaw_to_tailbase]
 
-        # 3 distance of bacpwas to base of tail relative to body olelngth
-        # TODO
-        # df = feature_engineering.attach_distance_between_2_feats(df, feature1, feature2, resultant_feature_name=)#  feature_1, feature_2, resultant_feature_name, resolve_features_with_config_ini=False, copy=False) -> pd.DataFrame:
+        # 3 Dist back paws to base of tail relative to body length
+        ## 1/3: Get AvgHindpaw location
+        df = feature_engineering.attach_average_bodypart_xy(df, config.get_part('HINDPAW_LEFT'), config.get_part('HINDPAW_RIGHT'), output_bodypart=self.intermediate_bodypart_avgHindpaw)
+        ## 2/3: Get dist from hindpaw to tailbase
+        df = feature_engineering.attach_feature_distance_between_2_bodyparts(df, self.intermediate_bodypart_avgHindpaw, config.get_part('TAILBASE'), output_feature_name=self.intermediate_dist_avgHindpaw_to_tailbase)
+        ## 3/3: Get body-length relative distance
+        df[self.feat_dist_hind_paws_to_tailbase_relative_to_body_length] = df[self.feat_body_length] - df[self.intermediate_dist_avgHindpaw_to_tailbase]
 
         # 4: distance between 2 front paws
-        df = feature_engineering.attach_distance_between_2_feats(df, 'FOREPAW_LEFT', 'FOREPAW_RIGHT', self.feat_dist_bw_front_paws, resolve_features_with_config_ini=True)
+        df = feature_engineering.attach_feature_distance_between_2_bodyparts(df, config.get_part('FOREPAW_LEFT'), config.get_part('FOREPAW_RIGHT'), self.feat_dist_bw_front_paws)
 
         # 5: snout speed
-        df = feature_engineering.attach_velocity_of_feature(df, 'NOSETIP', 1/self.input_videos_fps, resultant_feature_name=self.feat_snout_speed, infer_feature_name_from_config=True)
+        df = feature_engineering.attach_feature_velocity_of_bodypart(df, config.get_part('NOSETIP'), action_duration=1 / self.input_videos_fps, output_feature_name=self.feat_snout_speed)
 
         # 6 tail speed
-        df = feature_engineering.attach_velocity_of_feature(df, 'TAILBASE', 1/self.input_videos_fps, resultant_feature_name=self.feat_tail_base_speed, infer_feature_name_from_config=True)
+        df = feature_engineering.attach_feature_velocity_of_bodypart(df, config.get_part('TAILBASE'), action_duration=1 / self.input_videos_fps, output_feature_name=self.feat_tail_base_speed)
 
-        #7: snout to base of tail change in angle
+        # 7: snout to base of tail change in angle
         df = feature_engineering.attach_snout_tail_angle(df, self.feat_snout_tail_delta_angle)
-        # TODO
 
+        # BINNING #
+        # TODO: HIGH
 
         return df
 
