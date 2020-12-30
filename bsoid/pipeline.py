@@ -18,8 +18,6 @@ Add attrib checking for engineer_features? https://duckduckgo.com/?t=ffab&q=get+
 
 
 """
-from bhtsne import tsne as TSNE_bhtsne
-from pandas.core.common import SettingWithCopyWarning
 from sklearn.manifold import TSNE as TSNE_sklearn
 from sklearn.metrics import accuracy_score
 from sklearn.mixture import GaussianMixture
@@ -27,7 +25,7 @@ from sklearn.model_selection import cross_val_score
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 from sklearn.utils import shuffle as sklearn_shuffle_dataframe
-from typing import Any, Collection, Dict, List, Optional, Tuple, Union  # TODO: med: review all uses of Optional
+from typing import Any, Collection, Dict, List, Tuple  # TODO: med: review all uses of Optional
 import inspect
 import joblib
 import numpy as np
@@ -36,6 +34,8 @@ import pandas as pd
 import sys
 import time
 
+# from bhtsne import tsne as TSNE_bhtsne
+# from pandas.core.common import SettingWithCopyWarning
 # from tqdm import tqdm
 # import openTSNE  # openTSNE only supports n_components 2 or less
 # import warnings
@@ -581,7 +581,7 @@ class BasePipeline(PipelineAttributeHolder):
         self.df_features_train_scaled = df_scaled_data
         return self
 
-    def scale_transform_predict_data(self, features: Optional[List[str]] = None):
+    def scale_transform_predict_data(self, features: List[str] = None):
         """
         Scales prediction data. Utilizes existing scaler.
         If no feature set is explicitly specified, then the default features set in the Pipeline are used.
@@ -628,9 +628,8 @@ class BasePipeline(PipelineAttributeHolder):
         #         perplexity=np.sqrt(len(self.features_names_7)),  # TODO: implement math somewhere else
         #         rand_seed=self.random_state,
         #     )
-        if False:
-            pass
-        elif self.tsne_source == 'sklearn':
+
+        if self.tsne_source == 'sklearn':
             # TODO: high: Save the TSNE object
             arr_result = TSNE_sklearn(
                 perplexity=np.sqrt(len(data.columns)),  # Perplexity scales with sqrt, power law  # TODO: encapsulate this later
@@ -1112,7 +1111,7 @@ class PipelinePrime(BasePipeline):
         df_filtered, _ = feature_engineering.adaptively_filter_dlc_output(df)
         # Engineer features
         df_features: pd.DataFrame = feature_engineering.engineer_7_features_dataframe(
-            df_filtered, features_names_7=self.all_features)
+            df_filtered, features_names_7=list(self.all_features))
 
         # Ensure columns don't get dropped by accident
         for col in columns_to_save:
@@ -1211,7 +1210,7 @@ class PipelineEPM(BasePipeline):
         # Engineer features
         df_features: pd.DataFrame = feature_engineering.engineer_7_features_dataframe(
             df_filtered,
-            features_names_7=self.features_names_7,
+            features_names_7=list(self.all_features),
             map_names=map_mouse_point_to_config_name,
         )
         # Ensure columns don't get dropped by accident
@@ -1440,29 +1439,37 @@ class PipelineMimic(BasePipeline):
     """
 
     # Feature names
-    feat_body_length = 'bodyLength'
-    feat_dist_bw_front_paws = 'distBetweenFrontPaws'
-    feat_dist_front_paws_to_tailbase_relative_to_body_length = ''
-
+    feat_body_length = 'bodyLength'  # 1
+    intermediate_dist_avgForepaw_to_tailbase = 'intermediate_dist_avgForepaw_to_tailbase'  # TODO: rename
+    feat_dist_front_paws_to_tailbase_relative_to_body_length = 'feat_dist_front_paws_to_tailbase_relative_to_body_length'  # 2  # TODO: rename
+    intermediate_dist_avgHindpaw_to_tailbase = 'intermediate_dist_avgHindpaw_to_tailbase'  # TODO: rename
+    feat_dist_hind_paws_to_tailbase_relative_to_body_length = ''  # 3  # TODO: rename
+    feat_dist_bw_front_paws = 'distBetweenFrontPaws'  # 4
+    feat_snout_speed = 'snoutSpeed'  # 5
+    feat_tail_base_speed = 'tailSpeed'  # 6
+    feat_snout_tail_delta_angle = 'snoutTailAngle'  # 7
 
     _all_features = (
-
+        feat_body_length,
+        feat_dist_front_paws_to_tailbase_relative_to_body_length,
+        feat_dist_hind_paws_to_tailbase_relative_to_body_length,
         feat_dist_bw_front_paws,
-        feat_dist_front_paws_to_tailbase_relative_to_body_length
-
+        feat_snout_speed,
+        feat_tail_base_speed,
+        feat_snout_tail_delta_angle,
     )
 
     def engineer_features(self, df: pd.DataFrame):
         """
-        7 Features listed in paper (terms in brackets are cursive and were written in math format. See paper page 12/13):
-    1. body length (or "[d_ST]"): distance from snout to base of tail
-    2. [d_SF]: distance of front paws to base of tail relative to body length (formally: [d_SF] = [d_ST] - [d_FT], where [d_FT] is the distance between front paws and base of tail
-    3. [d_SB]: distance of back paws to base of tail relative to body length (formally: [d_SB] = [d_ST] - [d_BT]
-    4. Inter-forepaw distance (or "[d_FP]"): the distance between the two front paws
+            7 Features listed in paper (terms in brackets are cursive and were written in math format. See paper page 12/13):
+        1. body length (or "[d_ST]"): distance from snout to base of tail
+        2. [d_SF]: distance of front paws to base of tail relative to body length (formally: [d_SF] = [d_ST] - [d_FT], where [d_FT] is the distance between front paws and base of tail
+        3. [d_SB]: distance of back paws to base of tail relative to body length (formally: [d_SB] = [d_ST] - [d_BT]
+        4. Inter-forepaw distance (or "[d_FP]"): the distance between the two front paws
 
-    5. snout speed (or "[v_s]"): the displacement of the snout location over a period of 16ms
-    6. base-of-tail speed (or ["v_T"]): the displacement of the base of the tail over a period of 16ms
-    7. snout to base-of-tail change in angle:
+        5. snout speed (or "[v_s]"): the displacement of the snout location over a period of 16ms
+        6. base-of-tail speed (or ["v_T"]): the displacement of the base of the tail over a period of 16ms
+        7. snout to base-of-tail change in angle:
         """
 
         check_arg.ensure_type(df, pd.DataFrame)
@@ -1471,23 +1478,32 @@ class PipelineMimic(BasePipeline):
         df = df.sort_values('frame').copy()
 
         # 1 dist snout to tail
-        df = feature_engineering.attach_distance_between_2_feats(df, snout, baseOfTail, resultant_feature_name=)#  feature_1, feature_2, resultant_feature_name, resolve_features_with_config_ini=False, copy=False) -> pd.DataFrame:
+        df = feature_engineering.attach_distance_between_2_feats(df, 'TAILBASE', 'NOSETIP', self.feat_body_length, resolve_features_with_config_ini=True)
 
         # 2: dist front paws
-        df = feature_engineering.attach_distance_between_2_feats(df, feature1, feature2, resultant_feature_name=)  # feature_1, feature_2, resultant_feature_name, resolve_features_with_config_ini=False, copy=False) -> pd.DataFrame:
-        df = feature_engineering.attach_distance_front_paws_to_tail_base_relative_to_body_length(df, frontpawsavgname, tailbasename, resultant_feature_name=)
+        ## Get AvgForepaw
+        df = feature_engineering.attach_average_forepaw_xy(df, avg_forepaw_x='AvgForepaw_x', avg_forepaw_y='AvgForepaw_y')
+        ## Get dist from forepaw to tailbase
+        df = feature_engineering.attach_distance_between_2_feats(df, 'AvgForepaw', config.get_part('TAILBASE'), self.intermediate_dist_avgForepaw_to_tailbase)
+        ## Finally, get body-length relative distance
+        df[self.feat_dist_front_paws_to_tailbase_relative_to_body_length] = df[self.feat_body_length] - df[self.intermediate_dist_avgForepaw_to_tailbase]
+
         # 3 distance of bacpwas to base of tail relative to body olelngth
-        df = feature_engineering.attach_distance_between_2_feats(df, feature1, feature2, resultant_feature_name=)#  feature_1, feature_2, resultant_feature_name, resolve_features_with_config_ini=False, copy=False) -> pd.DataFrame:
+        # TODO
+        # df = feature_engineering.attach_distance_between_2_feats(df, feature1, feature2, resultant_feature_name=)#  feature_1, feature_2, resultant_feature_name, resolve_features_with_config_ini=False, copy=False) -> pd.DataFrame:
 
         # 4: distance between 2 front paws
-        df = feature_engineering.attach_distance_between_2_feats(df, feature1, feature2, resultant_feature_name=)  # feature_1, feature_2, resultant_feature_name, resolve_features_with_config_ini=False, copy=False) -> pd.DataFrame:
+        df = feature_engineering.attach_distance_between_2_feats(df, 'FOREPAW_LEFT', 'FOREPAW_RIGHT', self.feat_dist_bw_front_paws, resolve_features_with_config_ini=True)
+
         # 5: snout speed
-        df = feature_engineering.attach_velocity_of_feature(df, SNOUT, secs_between_points=, resultant_feature_name=)
+        df = feature_engineering.attach_velocity_of_feature(df, 'NOSETIP', 1/self.input_videos_fps, resultant_feature_name=self.feat_snout_speed, infer_feature_name_from_config=True)
 
         # 6 tail speed
-        df = feature_engineering.attach_velocity_of_feature(df, TAIL, secs_between_points=, resultant_feature_name=,)
+        df = feature_engineering.attach_velocity_of_feature(df, 'TAILBASE', 1/self.input_videos_fps, resultant_feature_name=self.feat_tail_base_speed, infer_feature_name_from_config=True)
 
         #7: snout to base of tail change in angle
+        df = feature_engineering.attach_snout_tail_angle(df, self.feat_snout_tail_delta_angle)
+        # TODO
 
 
         return df

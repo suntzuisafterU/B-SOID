@@ -23,7 +23,7 @@ Author also specifies that: the features are also smoothed over, or averaged acr
     a sliding window of size equivalent to 60ms (30ms prior to and after the frame of interest).
 """
 from tqdm import tqdm
-from typing import Collection, List, Tuple
+from typing import List, Tuple
 import inspect
 import itertools
 import math
@@ -169,40 +169,7 @@ def attach_velocity_of_feature(df: pd.DataFrame, feature, secs_between_points: f
     return df
 
 
-def attach_distance_from_forepaw_left_to_nose(df, new_feature_name='distLeftShoulderToNose', copy=False) -> pd.DataFrame:
-    """
-    Attaches new column to DataFrame with the distance from left forepaw to nose
-
-    :param df:
-    :param new_feature_name: (str)
-    :param copy:
-    :return:
-    """
-    #  TODO: MED: DEPRECATE THIS FUNCTION! use the generalized function in favour of this
-    # Arg checking
-    check_arg.ensure_type(df, pd.DataFrame)
-    forepaw_left = config.get_part('FOREPAW_LEFT')
-    nosetip = config.get_part('NOSETIP')
-    for feat, xy in itertools.product((forepaw_left, nosetip), ['x', 'y']):
-        feat = f'{feat}_{xy}'
-        if feat not in df.columns:
-            err_missing_feat = f'The feature "{feat}" is required but was not found as a column in the data. ' \
-                               f'Columns = {list(df.columns)}'
-            logging_bsoid.log_then_raise(err_missing_feat, logger, KeyError)
-    # Kwarg resolution
-    df = df.copy() if copy else df
-    # Execute
-    forepaw_left_arr = df[[f'{forepaw_left}_x', f'{forepaw_left}_y']].values
-    nosetip_arr = df[[f'{nosetip}_x', f'{nosetip}_y']]. values
-    distances_arr = np.array(list(map(distance_between_two_arrays, forepaw_left_arr, nosetip_arr)))
-    df[new_feature_name] = distances_arr
-
-    return df
-
-
-
-
-def attach_distance_front_paws_to_tail_base_relative_to_body_length(df, output_feature_name='', copy=False) -> pd.DataFrame:
+def attach_distance_front_paws_to_tail_base_relative_to_body_length(df, output_feature_name: str, copy=False) -> pd.DataFrame:
     """
     2. [d_SF]: distance of front paws to base of tail relative to body length (formally: [d_SF] = [d_ST] - [d_FT],
         where [d_FT] is the distance between front paws and base of tail
@@ -210,35 +177,36 @@ def attach_distance_front_paws_to_tail_base_relative_to_body_length(df, output_f
     df = df.copy() if copy else df
     # TODO: HIGH FINISH IMPLEMENTING
     return df
-def attach_distance_back_paws_to_tail_base_relative_to_body_length(df, output_feature_name="", copy=False) -> pd.DataFrame:
-    # 3. [d_SB]: distance of back paws to base of tail relative to body length (formally: [d_SB] = [d_ST] - [d_BT]
 
+
+def attach_distance_back_paws_to_tail_base_relative_to_body_length(df, output_feature_name: str, copy=False) -> pd.DataFrame:
+    # 3. [d_SB]: distance of back paws to base of tail relative to body length (formally: [d_SB] = [d_ST] - [d_BT]
 
     return df
 
 
-def attach_distance_between_forepaws(df, output_feature_name="",
-                                                                   copy=False) -> pd.DataFrame:
+def attach_distance_between_forepaws(df, output_feature_name: str, copy=False) -> pd.DataFrame:
     # 4. Inter-forepaw distance (or "[d_FP]"): the distance between the two front paws
 
     return df
 
 
-def attach_snout_speed(df, output_feature_name="", copy=False) -> pd.DataFrame:
+def attach_snout_speed(df, output_feature_name: str, copy=False) -> pd.DataFrame:
     # snout speed (or "[v_s]"): the displacement of the snout location over a period of 16ms
 
     return df
 
 
-def attach_tail_base_speed(df, output_feature_name="", copy=False) -> pd.DataFrame:
+def attach_tail_base_speed(df, output_feature_name: str, copy=False) -> pd.DataFrame:
     # 6. base-of-tail speed (or ["v_T"]): the displacement of the base of the tail over a period of 16ms
 
     return df
 
-def attach_snout_to_tail_base_change_in_angle(df, output_feature_name):
+
+def attach_snout_tail_angle(df, output_feature_name, copy=False) -> pd.DataFrame:
+    df = df.copy() if copy else df
 
     return df
-
 
 
 ### Numpy array feature creation (TODO: rename this section?)
@@ -1555,9 +1523,9 @@ if __name__ == '__main__':
     dfn = pd.DataFrame(data_n, columns=[f'{config.get_part("HINDPAW_RIGHT")}_x', f"{config.get_part('HINDPAW_RIGHT')}_y"])
 
     # dfn = pd.DataFrame(data_n, columns=['nose_x', 'nose_y'])
-    df = pd.concat([dfl, dfn], axis=1)
+    df2 = pd.concat([dfl, dfn], axis=1)
     # def attach_average_hindpaw_xy(df: pd.DataFrame, avg_hindpaw_x='AvgHindpaw_x', avg_hindpaw_y='AvgHindpaw_y', copy=False) -> pd.DataFrame:
-    df_attached = attach_average_hindpaw_xy(df)  #, hindpaw_left='Hindpaw_Left', hindpaw_right='Hindpaw_Right')
+    df_attached = attach_average_hindpaw_xy(df2)  #, hindpaw_left='Hindpaw_Left', hindpaw_right='Hindpaw_Right')
 
     print(df_attached.to_string())
 
@@ -1574,10 +1542,7 @@ if __name__ == '__main__':
     dfn = pd.DataFrame(data_n, columns=[f'{config.get_part("FOREPAW_LEFT")}_x', f"{config.get_part('HINDPAW_RIGHT')}_y"])
 
     # dfn = pd.DataFrame(data_n, columns=['nose_x', 'nose_y'])
-    df = pd.concat([dfl, dfn], axis=1)
-    print(attach_distance_from_forepaw_left_to_nose(df).to_string())
-
-
+    df2 = pd.concat([dfl, dfn], axis=1)
 
 
     #
