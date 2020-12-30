@@ -1308,11 +1308,11 @@ class PipelineTim(BasePipeline):
         # df = feature_engineering.attach_average_hindpaw_xy(df)
         df = feature_engineering.attach_average_feature_xy(df, 'HINDPAW_LEFT', 'HINDPAW_RIGHT', self.intermediate_avg_hindpaw, resolve_feature_with_config_ini=True)
 
-        df = feature_engineering.attach_distance_between_2_feats(df, 'AvgHindpaw', config.get_part('NOSETIP'), self.feat_name_dist_AvgHindpaw_Nosetip)
+        df = feature_engineering.attach_distance_between_2_feats(df, self.intermediate_avg_hindpaw, config.get_part('NOSETIP'), self.feat_name_dist_AvgHindpaw_Nosetip)
         # 7
-        df = feature_engineering.attach_distance_between_2_feats(df, 'AvgForepaw', config.get_part('NOSETIP'), self.feat_name_dist_AvgForepaw_NoseTip)
+        df = feature_engineering.attach_distance_between_2_feats(df, self.intermediate_avg_forepaw, config.get_part('NOSETIP'), self.feat_name_dist_AvgForepaw_NoseTip)
         # 8
-        df = feature_engineering.attach_velocity_of_feature(df, 'AvgForepaw', 1/config.VIDEO_FPS, self.feat_name_velocity_AvgForepaw)
+        df = feature_engineering.attach_velocity_of_feature(df, self.intermediate_avg_forepaw, 1/config.VIDEO_FPS, self.feat_name_velocity_AvgForepaw)
 
         # Binning
         map_feature_to_integrate_method = {
