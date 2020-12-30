@@ -1248,6 +1248,8 @@ class PipelineTim(BasePipeline):
 
     """
     # Feature names
+    intermediate_avg_forepaw = ''
+    intermediate_avg_hindpaw = ''
     feat_name_dist_forepawleft_nosetip = 'distForepawLeftNosetip'
     feat_name_dist_forepawright_nosetip = 'distForepawRightNosetip'
     feat_name_dist_forepawLeft_hindpawLeft = 'distForepawLeftHindpawLeft'
@@ -1298,9 +1300,14 @@ class PipelineTim(BasePipeline):
         df = feature_engineering.attach_distance_between_2_feats(df, 'FOREPAW_LEFT', 'HINDPAW_LEFT', self.feat_name_dist_forepawLeft_hindpawLeft, resolve_features_with_config_ini=True)
         # 4
         df = feature_engineering.attach_distance_between_2_feats(df, 'FOREPAW_RIGHT', 'HINDPAW_RIGHT', self.feat_name_dist_forepawRight_hindpawRight, resolve_features_with_config_ini=True)
-        # 5, 6
-        df = feature_engineering.attach_average_forepaw_xy(df)  # TODO: low: replace these two functions with the generalized xy averaging functions+output name?
-        df = feature_engineering.attach_average_hindpaw_xy(df)
+        # 5 & 6
+        # Get avg forepaw
+        # df = feature_engineering.attach_average_forepaw_xy(df)  # TODO: low: replace these two functions with the generalized xy averaging functions+output name?
+        df = feature_engineering.attach_average_feature_xy(df, 'FOREPAW_LEFT', 'FOREPAW_RIGHT', self.intermediate_avg_forepaw, resolve_feature_with_config_ini=True)
+        # Get avg hindpaw
+        # df = feature_engineering.attach_average_hindpaw_xy(df)
+        df = feature_engineering.attach_average_feature_xy(df, 'HINDPAW_LEFT', 'HINDPAW_RIGHT', self.intermediate_avg_hindpaw, resolve_feature_with_config_ini=True)
+
         df = feature_engineering.attach_distance_between_2_feats(df, 'AvgHindpaw', config.get_part('NOSETIP'), self.feat_name_dist_AvgHindpaw_Nosetip)
         # 7
         df = feature_engineering.attach_distance_between_2_feats(df, 'AvgForepaw', config.get_part('NOSETIP'), self.feat_name_dist_AvgForepaw_NoseTip)
