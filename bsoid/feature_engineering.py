@@ -1,7 +1,7 @@
 """
-Based on the natural statistics of the mouse configuration using (x,y) positions,
-we distill information down to 3 dimensions and run unsupervised pattern recognition.
-Then, we utilize these output and original feature space to train a B-SOiD neural network model.
+All data engineering goes here.
+
+For the functions that have a prefix of "attach_", these functions attach new columns to the input DataFrame.
 
 Potential abbreviations:
     sn: snout
