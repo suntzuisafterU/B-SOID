@@ -1088,8 +1088,11 @@ self._is_training_data_set_different_from_model_input: {self._is_training_data_s
 class DemoPipeline(BasePipeline):
     """ Demo pipeline used for demonstration on Pipeline usage. Do not implement this into any real projects. """
     def engineer_features(self, data: pd.DataFrame):
-        """ Sample feature engineering function since all
-        implementations of BasePipeline must implement this single function. """
+        """
+        Sample feature engineering function since all
+        implementations of BasePipeline must implement this single function.
+        """
+
         logger.debug(f'Engineering features for one data set...')
         logger.debug(f'Done engineering features.')
         return data
@@ -1151,7 +1154,6 @@ class PipelinePrime(BasePipeline):
             df_engineered_features: pd.DataFrame = self.engineer_features(df)
             list_dfs_engineered_features.append(df_engineered_features)
 
-
         # # Adaptively filter features
         # dfs_list_adaptively_filtered: List[Tuple[pd.DataFrame, List[float]]] = [feature_engineering.adaptively_filter_dlc_output(df) for df in list_dfs_raw_data]
         #
@@ -1184,7 +1186,7 @@ class PipelinePrime(BasePipeline):
 
 class PipelineEPM(BasePipeline):
     """
-
+    First try implementation for [EPM] (what does the acronym stand for again?) which matches BSOID specs
     """
 
     def engineer_features(self, in_df) -> pd.DataFrame:
@@ -1459,10 +1461,10 @@ class PipelineMimic(BasePipeline):
     feat_body_length = 'bodyLength'  # 1
     intermediate_bodypart_avgForepaw = 'AvgForepaw'
     intermediate_bodypart_avgHindpaw = 'AvgHindpaw'
-    intermediate_dist_avgForepaw_to_tailbase = 'intermediate_dist_avgForepaw_to_tailbase'  # TODO: rename
-    feat_dist_front_paws_to_tailbase_relative_to_body_length = 'feat_dist_front_paws_to_tailbase_relative_to_body_length'  # 2  # TODO: rename
-    intermediate_dist_avgHindpaw_to_tailbase = 'intermediate_dist_avgHindpaw_to_tailbase'  # TODO: rename
-    feat_dist_hind_paws_to_tailbase_relative_to_body_length = ''  # 3  # TODO: rename
+    intermediate_dist_avgForepaw_to_tailbase = 'dist_avgForepaw_to_tailbase'  # TODO: rename
+    feat_dist_front_paws_to_tailbase_relative_to_body_length = 'dist_front_paws_to_tailbase_relative_to_body_length'  # 2  # TODO: rename
+    intermediate_dist_avgHindpaw_to_tailbase = 'dist_avgHindpaw_to_tailbase'  # TODO: rename
+    feat_dist_hind_paws_to_tailbase_relative_to_body_length = 'distHindpawsToTailBaseRelativetobodylength'  # 3  # TODO: rename str
     feat_dist_bw_front_paws = 'distBetweenFrontPaws'  # 4
     feat_snout_speed = 'snoutSpeed'  # 5
     feat_tail_base_speed = 'tailSpeed'  # 6
@@ -1519,16 +1521,29 @@ class PipelineMimic(BasePipeline):
         df = feature_engineering.attach_feature_distance_between_2_bodyparts(df, config.get_part('FOREPAW_LEFT'), config.get_part('FOREPAW_RIGHT'), self.feat_dist_bw_front_paws)
 
         # 5: snout speed
-        df = feature_engineering.attach_feature_velocity_of_bodypart(df, config.get_part('NOSETIP'), action_duration=1 / self.input_videos_fps, output_feature_name=self.feat_snout_speed)
+        df = feature_engineering.attach_feature_velocity_of_bodypart(df, config.get_part('NOSETIP'), action_duration=1/self.input_videos_fps, output_feature_name=self.feat_snout_speed)
 
         # 6 tail speed
-        df = feature_engineering.attach_feature_velocity_of_bodypart(df, config.get_part('TAILBASE'), action_duration=1 / self.input_videos_fps, output_feature_name=self.feat_tail_base_speed)
+        df = feature_engineering.attach_feature_velocity_of_bodypart(df, config.get_part('TAILBASE'), action_duration=1/self.input_videos_fps, output_feature_name=self.feat_tail_base_speed)
 
         # 7: snout to base of tail change in angle
         df = feature_engineering.attach_snout_tail_angle(df, self.feat_snout_tail_delta_angle)
 
         # BINNING #
-        # TODO: HIGH
+        # TODO: fix the copy pasta job
+        map_feature_to_integrate_method = {
+            self.feat_body_length: 'avg',
+            self.feat_dist_front_paws_to_tailbase_relative_to_body_length: 'avg',
+            self.feat_dist_hind_paws_to_tailbase_relative_to_body_length: 'avg',
+            self.feat_dist_bw_front_paws: 'avg',
+            self.feat_snout_speed: 'sum',
+            self.feat_tail_base_speed: 'sum',
+            self.feat_snout_tail_delta_angle: 'sum',
+        }
+
+        logger.debug(f'{get_current_function()}(): # of rows in DataFrame before binning = {len(df)}')
+        df = feature_engineering.integrate_df_feature_into_bins(df, map_feature_to_integrate_method, self.average_over_n_frames)
+        logger.debug(f'{get_current_function()}(): # of rows in DataFrame after binning = {len(df)}')
 
         return df
 
