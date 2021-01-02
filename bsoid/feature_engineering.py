@@ -186,18 +186,6 @@ def attach_distance_between_forepaws(df, output_feature_name: str, copy=False) -
     return df
 
 
-def attach_snout_speed(df, output_feature_name: str, copy=False) -> pd.DataFrame:
-    # snout speed (or "[v_s]"): the displacement of the snout location over a period of 16ms
-
-    return df
-
-
-def attach_tail_base_speed(df, output_feature_name: str, copy=False) -> pd.DataFrame:
-    # 6. base-of-tail speed (or ["v_T"]): the displacement of the base of the tail over a period of 16ms
-
-    return df
-
-
 def attach_snout_tail_angle(df, output_feature_name, copy=False) -> pd.DataFrame:
     df = df.copy() if copy else df
     # TODO: HIGH
