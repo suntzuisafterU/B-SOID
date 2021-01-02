@@ -69,7 +69,7 @@ key_button_create_new_example_videos = 'key_button_create_new_example_videos'
 key_button_menu_label_entire_video = 'key_button_menu_label_entire_video'
 default_n_seconds_wait_until_auto_refresh = 'default_n_seconds_wait_until_auto_refresh'
 ### Page variables data ###
-streamlit_persitency_variables = {  # Instantiate default variable values here
+streamlit_persistency_variables = {  # Instantiate default variable values here
     key_pipeline_path: '',  #  TODO: deprecate? Doesn't see much use
     key_open_pipeline_path: config.BSOID_BASE_PROJECT_PATH,
     key_iteration_page_refresh_count: 0,
@@ -152,7 +152,7 @@ def home(**kwargs):
     logger.debug('    < Start of streamlit page >    ')
     ### Set up session variables
     global file_session
-    file_session = streamlit_session_state.get(**streamlit_persitency_variables)
+    file_session = streamlit_session_state.get(**streamlit_persistency_variables)
     matplotlib.use('TkAgg')  # For allowing graphs to pop out as separate windows
     file_session[key_iteration_page_refresh_count] = file_session[key_iteration_page_refresh_count] + 1
 
@@ -680,7 +680,7 @@ def see_model_diagnostics(p, pipeline_file_path):
         file_session[key_button_view_assignments_distribution] = not file_session[key_button_view_assignments_distribution]
     if file_session[key_button_view_assignments_distribution]:
         if p.is_built:
-            matplotlib.use('Agg')  # <- Hopefully this fixes crashes
+            matplotlib.use('Agg')  # <- Hopefully this fixes crashes; no guarantees. TODO: review this line later.
             fig, ax = p.get_plot_svm_assignments_distribution()
             st.pyplot(fig)
             matplotlib.use('TkAgg')
