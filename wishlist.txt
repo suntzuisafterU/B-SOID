@@ -1,4 +1,5 @@
 Wishlist of things to implement
+[ ] Killian: rename internal vars for Pipelines from _, scaled to unscaled, _
 [ ] Multiple features select
 [ ] Test: ensure new features selected
 [x] Add colour to video assignment
