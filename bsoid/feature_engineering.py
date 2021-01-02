@@ -189,6 +189,7 @@ def attach_distance_between_forepaws(df, output_feature_name: str, copy=False) -
 def attach_snout_tail_angle(df, output_feature_name, copy=False) -> pd.DataFrame:
     df = df.copy() if copy else df
     # TODO: HIGH
+    df[output_feature_name] = 1
     return df
 
 
@@ -360,7 +361,7 @@ def integrate_df_feature_into_bins(df: pd.DataFrame, map_features_to_bin_methods
     check_arg.ensure_type(n_rows, int)
     for feature in map_features_to_bin_methods.keys():
         if feature not in df.columns:
-            err = f'{logging_bsoid.get_current_function()}(): TODO: elaborate: feature not found. ' \
+            err = f'{logging_bsoid.get_current_function()}(): TODO: elaborate: feature not found: "{feature}". ' \
                   f'Cannot integrate into ?ms bins.'
             logger.error(err)
             raise ValueError(err)
