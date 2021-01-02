@@ -9,12 +9,12 @@ from mpl_toolkits.mplot3d import Axes3D  # Despite being "unused", this import M
 from typing import Collection, Tuple
 import inspect
 import os
-# import matplotlib
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sn
 
-from bsoid import config, logging_bsoid
+from bsoid import check_arg, config, logging_bsoid
 
 
 logger = config.initialize_logger(__name__)
@@ -354,11 +354,9 @@ def plot_GM_assignments_in_3d_tuple(data: np.ndarray, assignments, save_fig_to_f
     :param fig_file_prefix:
     :param show_later: use draw() instead of show()
     """
-    # TODO: find out why attaching the log entry/exit decorator kills the streamlit rotation app. For now, do not attach.
-    if not isinstance(data, np.ndarray):
-        err = f'Expected `data` to be of type numpy.ndarray but instead found: {type(data)} (value = {data}).'
-        logger.error(err)
-        raise TypeError(err)
+    # TODO: find out why attaching the log entry/exit decorator kills the streamlit rotation app. For now, do not attach
+    check_arg.ensure_type(data, np.ndarray)
+
     # Parse kwargs
     s = kwargs.get('s', 0.5)
     marker = kwargs.get('marker', 'o')
@@ -463,7 +461,7 @@ def plot_accuracy_MLP(scores, show_plot=config.PLOT_GRAPHS, save_fig_to_file=con
     return fig, plt
 
 
-def plot_cross_validation_scores(scores, save_to_file=False, fig_file_prefix='classifier_accuracy_score', **kwargs):
+def plot_cross_validation_scores(scores, save_to_file=False, fig_file_prefix='classifier_accuracy_score', **kwargs) -> Tuple[object, object]:
     """
         TODO: elaborate
     :param scores:
