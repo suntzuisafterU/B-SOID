@@ -1,10 +1,11 @@
 Wishlist of things to implement
 [ ] Multiple features select
 [ ] Test: ensure new features selected
-[ ] Add colour to video assignment
+[x] Add colour to video assignment
 [x] Add binning feature slider
 [x] Add FPS input into params
 [x] Add colour to text in example behaviour videos
 [ ] GMM plot should modify labels to match behaviours instead of just assignment number (WHEN POSSIBLE)
 [ ] Confusion matrix for diagnostics (Aaron)
+[ ] Add PCA plotting for training data for BasePipeline
 
