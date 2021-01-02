@@ -78,12 +78,12 @@ def attach_average_bodypart_xy(df: pd.DataFrame, feature_1: str, feature_2: str,
     return df
 
 
-def attach_feature_distance_between_2_bodyparts(df: pd.DataFrame, feature_1, feature_2, output_feature_name, resolve_bodyparts_with_config_ini=False, copy=False) -> pd.DataFrame:
+def attach_feature_distance_between_2_bodyparts(df: pd.DataFrame, bodypart_1, bodypart_2, output_feature_name, resolve_bodyparts_with_config_ini=False, copy=False) -> pd.DataFrame:
     """
 
     :param df: (DataFrame)
-    :param feature_1: (str)
-    :param feature_2: (str)
+    :param bodypart_1: (str)
+    :param bodypart_2: (str)
     :param output_feature_name: (str)
     :param resolve_bodyparts_with_config_ini: (bool)
     :param copy: (bool)
@@ -91,17 +91,17 @@ def attach_feature_distance_between_2_bodyparts(df: pd.DataFrame, feature_1, fea
     """
     # Arg checking
     check_arg.ensure_type(df, pd.DataFrame)
-    feature_1 = config.get_part(feature_1) if resolve_bodyparts_with_config_ini else feature_1
-    feature_2 = config.get_part(feature_2) if resolve_bodyparts_with_config_ini else feature_2
-    for feat, xy in itertools.product((feature_1, feature_2), ['x', 'y']):
+    bodypart_1 = config.get_part(bodypart_1) if resolve_bodyparts_with_config_ini else bodypart_1
+    bodypart_2 = config.get_part(bodypart_2) if resolve_bodyparts_with_config_ini else bodypart_2
+    for feat, xy in itertools.product((bodypart_1, bodypart_2), ['x', 'y']):
         if f'{feat}_{xy}' not in set(df.columns):
             err_missing_feature = f'{logging_bsoid.get_current_function()}(): missing feature column "{feat}_{xy}", so cannot calculate avg position. Columns = {list(df.columns)}'
             logging_bsoid.log_then_raise(err_missing_feature, logger, KeyError)
     # Resolve kwargs
     df = df.copy() if copy else df
     # Execute
-    feature_1_xy_arr = df[[f'{feature_1}_x', f'{feature_1}_y']].values
-    feature_2_xy_arr = df[[f'{feature_2}_x', f'{feature_2}_y']].values
+    feature_1_xy_arr = df[[f'{bodypart_1}_x', f'{bodypart_1}_y']].values
+    feature_2_xy_arr = df[[f'{bodypart_2}_x', f'{bodypart_2}_y']].values
 
     distance_between_features_array: np.ndarray = np.array(list(map(distance_between_two_arrays, feature_1_xy_arr, feature_2_xy_arr)))
     # Create DataFrame from result, attach to existing data
@@ -111,24 +111,26 @@ def attach_feature_distance_between_2_bodyparts(df: pd.DataFrame, feature_1, fea
     return df
 
 
-def average_xy_between_2_features(df: pd.DataFrame, feature1, feature2, result_feature_prefix, copy=False) -> pd.DataFrame:
+def average_xy_between_2_features(df: pd.DataFrame, bodypart_1, bodypart_2, output_bodypart, copy=False) -> pd.DataFrame:
     """
     Returns 2-d array where the average location between feature1 and feature2
     """
     # Arg checking
     check_arg.ensure_type(df, pd.DataFrame)
-    for feat, xy in itertools.product((feature1, feature2), ['x', 'y']):
-        if f'{feat}_{xy}' not in df.columns:
-            err_missing_feature = f'{logging_bsoid.get_current_function()}(): missing feature column "{feat}_{xy}", so cannot calculate avg position. Columns = {list(df.columns)}'
+    for feat, xy in itertools.product((bodypart_1, bodypart_2), ['x', 'y']):
+        featxy = f'{feat}_{xy}'
+        if featxy not in df.columns:
+            err_missing_feature = f'{logging_bsoid.get_current_function()}(): missing feature column "{featxy}", ' \
+                                  f'so cannot calculate avg position. Columns = {list(df.columns)}'
             logging_bsoid.log_then_raise(err_missing_feature, logger, KeyError)
     # Resolve kwargs
     df = df.copy() if copy else df
     # Execute
-    feature1_xy_arr = df[[f'{feature1}_x', f'{feature1}_y']].values
-    feature2_xy_arr = df[[f'{feature2}_x', f'{feature2}_y']].values
+    feature1_xy_arr = df[[f'{bodypart_1}_x', f'{bodypart_1}_y']].values
+    feature2_xy_arr = df[[f'{bodypart_2}_x', f'{bodypart_2}_y']].values
     avg_feature1_feature2_xy_arr: np.ndarray = np.array(list(map(average_vector_between_n_vectors, feature1_xy_arr, feature2_xy_arr)))
     # Create DataFrame from result, attach to existing data
-    df_avg = pd.DataFrame(avg_feature1_feature2_xy_arr, columns=[f'{result_feature_prefix}_x', f'{result_feature_prefix}_y'])
+    df_avg = pd.DataFrame(avg_feature1_feature2_xy_arr, columns=[f'{output_bodypart}_x', f'{output_bodypart}_y'])
     df = pd.concat([df, df_avg], axis=1)
 
     return df
@@ -164,32 +166,27 @@ def attach_feature_velocity_of_bodypart(df: pd.DataFrame, bodypart: str, action_
     return df
 
 
-def attach_distance_front_paws_to_tail_base_relative_to_body_length(df, output_feature_name: str, copy=False) -> pd.DataFrame:
-    """
-    2. [d_SF]: distance of front paws to base of tail relative to body length (formally: [d_SF] = [d_ST] - [d_FT],
-        where [d_FT] is the distance between front paws and base of tail
-    """
-    df = df.copy() if copy else df
-    # TODO: HIGH FINISH IMPLEMENTING
-    return df
-
-
-def attach_distance_back_paws_to_tail_base_relative_to_body_length(df, output_feature_name: str, copy=False) -> pd.DataFrame:
-    # 3. [d_SB]: distance of back paws to base of tail relative to body length (formally: [d_SB] = [d_ST] - [d_BT]
-
-    return df
-
-
-def attach_distance_between_forepaws(df, output_feature_name: str, copy=False) -> pd.DataFrame:
-    # 4. Inter-forepaw distance (or "[d_FP]"): the distance between the two front paws
-
-    return df
-
-
 def attach_snout_tail_angle(df, output_feature_name, copy=False) -> pd.DataFrame:
     df = df.copy() if copy else df
     # TODO: HIGH
-    df[output_feature_name] = 1
+    df[output_feature_name] = 1  # <- this is a stand-in
+    return df
+
+
+def attach_angle_between_bodyparts(df, bodypart1, bodypart2, output_feature_name, copy=False) -> pd.DataFrame:
+    """
+
+    :param df: (DataFrame)
+    :param bodypart1: (str)
+    :param bodypart2: (str)
+    :param output_feature_name: (str)
+    :param copy: (bool)
+    :return: (DataFrame)
+    """
+    df = df.copy() if copy else df
+    # TODO: HIGH
+    df[output_feature_name] = 1  # <- this is a stand-in
+
     return df
 
 

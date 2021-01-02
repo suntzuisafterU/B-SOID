@@ -1533,7 +1533,7 @@ class PipelineMimic(BasePipeline):
         df = feature_engineering.attach_feature_velocity_of_bodypart(df, config.get_part('TAILBASE'), action_duration=1/self.input_videos_fps, output_feature_name=self.feat_tail_base_speed)
 
         # 7: snout to base of tail change in angle
-        df = feature_engineering.attach_snout_tail_angle(df, self.feat_snout_tail_delta_angle)
+        df = feature_engineering.attach_angle_between_bodyparts(df, config.get_part('NOSETIP'), config.get_part('TAILBASE'), self.feat_snout_tail_delta_angle)
 
         # BINNING #
         # TODO: fix the copy pasta job
