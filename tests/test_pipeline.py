@@ -12,13 +12,15 @@ import time
 
 import bsoid
 
-# long_csv_test_file_path = "FullSample_Video1DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000.csv"
-# csv_test_file_path = os.path.join(bsoid.config.BSOID_BASE_PROJECT_PATH, 'tests', 'test_data', long_csv_test_file_path)
+
+def get_random():
+    return random.randint(0, 100_000_000_000)
+
+
 csv_test_file_path = bsoid.config.DEFAULT_PIPELINE__PRIME__CSV_TEST_FILE_PATH
 assert os.path.isfile(csv_test_file_path)
 
 
-# TODO: add test for pipeline.set_params()
 class TestPipeline(TestCase):
 
     # Param adds, changes, checks
@@ -42,7 +44,7 @@ class TestPipeline(TestCase):
         cv = expected_cv = 5
 
         # Act
-        p = bsoid.pipeline.PipelinePrime(f'TestPipeline_{random.randint(0, 100_000_000)}', cross_validation_k=cv)
+        p = bsoid.pipeline.PipelinePrime(f'TestPipeline_{get_random()}', cross_validation_k=cv)
         actual_cv = p.cross_validation_k
 
         # Assert
@@ -101,17 +103,18 @@ list_of_sources_after_addition = {num_of_sources_actually_this_after_addition}
         """"""
         # Arrange
         p = bsoid.pipeline.PipelinePrime('Test_6546df5465465')
-        expected_amount_of_dataframes = 0
+        expected_amount_of_sources = 0
 
         # Act
         actual_amount_of_dataframes = len(p.training_data_sources)
 
         # Assert
         err_msg = f"""
-expected_amount_of_dataframes = {expected_amount_of_dataframes}
+expected_amount_of_dataframes = {expected_amount_of_sources}
+
 actual_amount_of_dataframes = {actual_amount_of_dataframes}
 """
-        self.assertEqual(expected_amount_of_dataframes, actual_amount_of_dataframes, err_msg)
+        self.assertEqual(expected_amount_of_sources, actual_amount_of_dataframes, err_msg)
 
     @skip  # TODO: review if test completely built
     def test__pipeline_adding_train_data_file_source__shouldAddParticularFileTo____when____(self):
@@ -119,7 +122,6 @@ actual_amount_of_dataframes = {actual_amount_of_dataframes}
         # Arrange
         p = bsoid.pipeline.PipelinePrime('Test1231asdf23123')
         data_source_file_path = csv_test_file_path
-        self.assertTrue(data_source_file_path not in p.train_data_files_paths)
 
         # Act
         p = p.add_train_data_source(data_source_file_path)
@@ -147,7 +149,7 @@ p.train_data_files_paths = {p.train_data_files_paths}
 """
         self.assertTrue(is_equal, err_msg)
 
-    @skip
+    # @skip
     def test__add_train_data_AND_build__shouldHaveSameNumRowsInRawDataAsBuiltData__whenRawDataBuilt(self):
         """
         After adding just 1 train data source,
@@ -157,7 +159,7 @@ p.train_data_files_paths = {p.train_data_files_paths}
         # Arrange
         p = bsoid.pipeline.PipelinePrime('asdfasdfdfs44444')
         p = p.add_train_data_source(csv_test_file_path)
-        original_number_of_data_rows = len(bsoid.read_csv(csv_test_file_path))
+        original_number_of_data_rows = len(bsoid.io.read_csv(csv_test_file_path))
 
         # Act
         p = p.build()
@@ -167,7 +169,10 @@ p.train_data_files_paths = {p.train_data_files_paths}
         err_msg = f'TODO: err msg'
         self.assertEqual(original_number_of_data_rows, actual_total_rows_after_feature_engineering, err_msg)
 
-    def test__stub3(self):  # TODO: rename func for accuracy
+
+
+
+    def test__get_assignment_label__shouldReturnEmptyString__whenLabelNotSet(self):
         """
         Test to see if output is None if no assignment label found
         """
@@ -179,7 +184,7 @@ p.train_data_files_paths = {p.train_data_files_paths}
         # Assert
         self.assertEqual(expected_label, actual_label)
 
-    def test__updatingAssignmentActuallyworks(self):
+    def test__set_label__shouldUpdateAssignment__whenUsed(self):
         # Arrange
         p = bsoid.pipeline.PipelinePrime('DeleteMe___6APipelineName12398asdfasdfaasdfdf989dsdf7')
         assignment, input_label = 1, 'Behaviour1'
