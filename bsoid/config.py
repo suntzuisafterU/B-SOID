@@ -130,6 +130,7 @@ def get_part(part) -> str:
 
 
 ### MODEL ###############################################################
+DEFAULT_CLASSIFIER: str = configuration.get('MODEL', 'DEFAULT_CLASSIFIER')
 RANDOM_STATE: int = configuration.getint('MODEL', 'RANDOM_STATE', fallback=random.randint(1, 100_000_000))
 HOLDOUT_PERCENT: float = configuration.getfloat('MODEL', 'HOLDOUT_TEST_PCT')
 CROSSVALIDATION_K: int = configuration.getint('MODEL', 'CROSS_VALIDATION_K')
@@ -348,6 +349,10 @@ assert isinstance(DEFAULT_TEXT_BACKGROUND_BGR, tuple), f'DEFAULT_TEXT_BACKGROUND
 
 assert len(DEFAULT_TEXT_BACKGROUND_BGR) == 3, f'DEFAULT_TEXT_BACKGROUND_BGR was expected to have 3 elements but ' \
                                    f'instead found: {len(DEFAULT_TEXT_BACKGROUND_BGR)}'
+
+
+###
+
 
 
 ##### LEGACY VARIABLES #################################################################################################
