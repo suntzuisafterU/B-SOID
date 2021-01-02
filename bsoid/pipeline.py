@@ -101,8 +101,10 @@ class PipelineAttributeHolder(object):
     gmm_max_iter, gmm_n_init, gmm_init_params = None, None, None
     gmm_verbose: int = None
     gmm_verbose_interval: int = None
+
     # SVM
     svm_c, svm_gamma, svm_probability, svm_verbose = None, None, None, None
+
 
     # Column names
     features_which_average_by_mean = ['DistFrontPawsTailbaseRelativeBodyLength',
@@ -776,8 +778,12 @@ class BasePipeline(PipelineAttributeHolder):
             self.scale_transform_predict_data()
 
         # Add prediction labels
-        self.df_features_predict_scaled[self.svm_assignment_col_name] = self.clf_svm.predict(
-            self.df_features_predict_scaled[list(self.all_features)].values)
+        if len(self.df_features_predict_scaled) > 0:
+            self.df_features_predict_scaled[self.svm_assignment_col_name] = self.clf_svm.predict(
+                self.df_features_predict_scaled[list(self.all_features_list)].values)
+        else:
+            logger.debug(f'{get_current_function()}(): 0 records were detected '
+                         f'for PREDICT data. No data was predicted with model.')
 
         return self
 
