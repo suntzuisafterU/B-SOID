@@ -19,6 +19,36 @@ single_test_file_location = os.path.join(bsoid.config.BSOID_BASE_PROJECT_PATH, '
 
 class TestCheckArg(TestCase):
 
+    def test__ensure_numpy_arrays_are_same_shape__ShouldErrorOut__whenArraysDifferentShapes(self):
+        # Arrange
+        data1 = [[1, 2, 3], [1, 2, 3]]
+        data2 = [[1, 2, 3, 4], [1, 2, 3, 4]]
+        expected_error = ValueError
+
+        arr1 = np.array(data1)
+        arr2 = np.array(data2)
+        func = bsoid.check_arg.ensure_numpy_arrays_are_same_shape
+
+        # Act/Assert
+        self.assertRaises(expected_error, func, arr1, arr2)
+
+    def test__ensure_numpy_arrays_are_same_shape__shouldRunWithoutError__whenArraysAreSameShape(self):
+        data1 = [[1, 2, 3], [1, 2, 3,]]
+        data2 = [[1, 2, 3], [1, 2, 3]]
+        arr1 = np.array(data1)
+        arr2 = np.array(data2)
+        bsoid.check_arg.ensure_numpy_arrays_are_same_shape(arr1, arr2)
+
+    def test__ensure_numpy_arrays_are_same_shape__shouldErrorOut__whenOneInputIsNotAnArray(self):
+        data1 = [[1, 2, 3], [1, 2, 3]]
+        data2 = [[1, 2, 3, 4], [1, 2, 3, 4]]
+        arr1 = np.array(data1)
+        list2 = data2
+        expected_err = TypeError
+        func = bsoid.check_arg.ensure_numpy_arrays_are_same_shape
+        #     def assertRaises(self, expected_exception, *args, **kwargs):
+        self.assertRaises(expected_err, func, arr1, list2)
+
     def test__(self):
         # Arrange
 
