@@ -6,6 +6,7 @@ Since the patterns we use to log and raise exceptions are so frequent and
 from typing import Collection, Optional
 import errno
 import inspect
+import numpy as np
 import os
 import pandas as pd
 import sys
@@ -90,12 +91,14 @@ def ensure_frame_indices_are_integers(df: pd.DataFrame, frame_column_name='frame
 
 
 def ensure_numpy_arrays_are_same_shape(*arrays):
+    for a in arrays:
+        ensure_type(a, np.ndarray)
     # Ensure that at least one array is put in
     if len(arrays) < 1:
         err = f'Caller = "{get_caller_function()}()". Error: 0 arrays were submitted in checkarg.thisfunction'
         logger.error(err)
-        raise Exception(err)
-    # Do heavy lifting
+        raise ValueError(err)
+    # Execute
     set_of_shapes = set([arr.shape for arr in arrays])
     if len(set_of_shapes) != 1:
         err = f'Caller = "{get_caller_function()}()". Error: One of the following ' \
@@ -108,7 +111,7 @@ def ensure_numpy_arrays_are_same_shape(*arrays):
 
 ###
 
-def has_invalid_chars_in_name_for_a_file(file_name, additional_characters: Optional[Collection[str]] = None) -> bool:
+def has_invalid_chars_in_name_for_a_file(file_name, additional_characters: Collection[str] = None) -> bool:
     """
     Checks if an invalid characters have been included in a potential path. Useful for checking user
     input before attempting to save files. The list of invalid characters
@@ -124,12 +127,13 @@ def has_invalid_chars_in_name_for_a_file(file_name, additional_characters: Optio
                        f'found: {type(additional_characters)} (value: {additional_characters})'
         logger.error(invalid_type_err)
         raise TypeError(invalid_type_err)
-
     invalid_chars_for_windows_files = {':', '*', '\\', '/', '?', '"', '<', '>', '|'}
     if additional_characters is not None:
         invalid_chars_for_windows_files = invalid_chars_for_windows_files.union(set(additional_characters))
+
     if not isinstance(file_name, str) or not file_name:
         return True
+
     union_of_string_and_invalid_chars = set(file_name).intersection(invalid_chars_for_windows_files)
     if len(union_of_string_and_invalid_chars) != 0:
         logger.error(f'Union = {union_of_string_and_invalid_chars}')
