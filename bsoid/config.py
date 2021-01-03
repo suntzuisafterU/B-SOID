@@ -130,7 +130,7 @@ def get_part(part) -> str:
 
 
 ### MODEL ###############################################################
-DEFAULT_CLASSIFIER: str = configuration.get('MODEL', 'DEFAULT_CLASSIFIER').upper()
+DEFAULT_CLASSIFIER: str = configuration.get('MODEL', 'DEFAULT_CLASSIFIER')
 RANDOM_STATE: int = configuration.getint('MODEL', 'RANDOM_STATE', fallback=random.randint(1, 100_000_000))
 HOLDOUT_PERCENT: float = configuration.getfloat('MODEL', 'HOLDOUT_TEST_PCT')
 CROSSVALIDATION_K: int = configuration.getint('MODEL', 'CROSS_VALIDATION_K')
@@ -232,7 +232,7 @@ MLP_PARAMS = {
 }
 
 
-### RANDOMFOREST ###
+### RANDOM FOREST ###
 rf_n_estimators = configuration.getint('RANDOMFOREST', 'n_estimators')
 
 
@@ -268,7 +268,7 @@ TSNE_N_JOBS: int = configuration.getint('TSNE', 'n_jobs')
 TSNE_THETA: float = configuration.getfloat('TSNE', 'theta')
 TSNE_VERBOSE: int = configuration.getint('TSNE', 'verbose')
 
-TSNE_SKLEARN_PARAMS = {  # TODO: low: deprecate? This was the old, opaque way of packing kwargs. Not used much anymore.
+TSNE_SKLEARN_PARAMS = {  # TODO: med: deprecate. This was the old, opaque way of packing kwargs. Not used much anymore.
     'n_components': TSNE_N_COMPONENTS,
     'n_jobs': TSNE_N_JOBS,
     'verbose': TSNE_VERBOSE,

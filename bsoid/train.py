@@ -1178,7 +1178,7 @@ def train_mlp_classifier_voc(feats, labels, comp: int = config.COMPILE_CSVS_FOR_
     return classifier, scores
 
 
-def bsoid_tsne_voc(data: list, bodyparts=config.BODYPARTS_VOC_LEGACY, fps=config.VIDEO_FPS, comp: int = config.COMPILE_CSVS_FOR_TRAINING, tsne_params=config.TSNE_SKLEARN_PARAMS) -> Tuple[List, List, np.ndarray]:
+def bsoid_tsne_voc(data: list, bodyparts=config.BODYPARTS_VOC_LEGACY, fps=config.VIDEO_FPS, comp: int = config.COMPILE_CSVS_FOR_TRAINING, tsne_params: dict = None) -> Tuple[List, List, np.ndarray]:
     """
     Trains t-SNE (unsupervised) given a set of features based on (x,y) positions
 
@@ -1190,6 +1190,15 @@ def bsoid_tsne_voc(data: list, bodyparts=config.BODYPARTS_VOC_LEGACY, fps=config
     :retrun f_10fps_sc: 2D array, standardized features
     :return trained_tsne: 2D array, trained t-SNE space
     """
+    if tsne_params is None:
+        tsne_params = {
+            'n_components': config.TSNE_N_COMPONENTS,
+            'n_jobs': config.TSNE_N_JOBS,
+            'verbose': config.TSNE_VERBOSE,
+            'random_state': config.RANDOM_STATE,
+            'n_iter': config.TSNE_N_ITER,
+            'early_exaggeration': config.TSNE_EARLY_EXAGGERATION,
+        }
     if len(data) <= 0:
         err = f'`data` was expected to be list of data (specifically arrays) but no data was found. data = {data}'
         logger.error(err)
