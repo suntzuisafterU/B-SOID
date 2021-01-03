@@ -20,11 +20,15 @@ logger = bsoid.config.initialize_logger(__file__)
 ###
 
 def ensure_type(var, *expected_types):
-    """"""
+    """
+    Checks that input variable `var` matches at least 1 of the expected types.
+    If it does match an expected type, function returns immediately without problem.
+    If the variables does not match any of the expected types, then a TypeError is raised.
+    """
     for t in expected_types:
         if isinstance(var, t):
             return
-    type_err = f'Caller: {get_caller_function()}(): For object (value = {var}), ' \
+    type_err = f'Type-checking caller: {get_caller_function()}(): For object (value = {var}), ' \
                f'expected type(s) was {expected_types} but instead found {type(var)}'
     logger.error(type_err)
     raise TypeError(type_err)
