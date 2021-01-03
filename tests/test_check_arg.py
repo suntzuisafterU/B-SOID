@@ -19,6 +19,7 @@ single_test_file_location = os.path.join(bsoid.config.BSOID_BASE_PROJECT_PATH, '
 
 class TestCheckArg(TestCase):
 
+    # ensure_numpy_arrays_are_same_shape
     def test__ensure_numpy_arrays_are_same_shape__ShouldErrorOut__whenArraysDifferentShapes(self):
         # Arrange
         data1 = [[1, 2, 3], [1, 2, 3]]
@@ -58,6 +59,29 @@ class TestCheckArg(TestCase):
 
         self.assertEqual(None, None)
         # self.assertRaises()
+
+    # Ensure type
+    def test__ensure_type__shouldRunWithoutError__whenGivenSingularCorrectExpectedType(self):
+        # Arrange
+        integer_var = 1
+        expected_type = int
+
+        self.assertRaises(TypeError, bsoid.check_arg.ensure_type, integer_var, expected_type)
+
+    def test__ensure_type__shouldRunWithoutError__whenGivenMultipleCorrectExpectedTypes(self):
+        # Arrange
+        integer_var = 1
+        expected_types_tuple = (int, float)
+        # Act, Assert
+        self.assertRaises(TypeError, bsoid.check_arg.ensure_type, integer_var, expected_types_tuple)
+
+    def test__ensure_type__shouldRunWithoutError__whenGivenMultipleCorrectExpectedTypesAsStarArgs(self):
+        # Arrange
+        integer_var = 1
+        expected_types_tuple = (int, float)
+        # Act, Assert
+        self.assertRaises(TypeError, bsoid.check_arg.ensure_type, integer_var, *expected_types_tuple)
+
 
 
 
