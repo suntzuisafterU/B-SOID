@@ -870,7 +870,7 @@ def results_section(p, pipeline_file_path, **kwargs):
             if not error_detected:
                 with st.spinner('(WIP) Creating labeled video now. This could take a few minutes...'):
                     p.make_video(
-                        video_to_be_labeled=input_video_to_label,
+                        video_to_be_labeled_path=input_video_to_label,
                         data_source=selected_data_source,
                         video_name=input_new_video_name,
                         output_dir=output_folder)
