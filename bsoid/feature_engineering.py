@@ -38,18 +38,17 @@ logger = config.initialize_logger(__name__)
 
 ### Attach features as columns to a DataFrame of DLC data
 
-def attach_average_bodypart_xy(df: pd.DataFrame, feature_1: str, feature_2: str, output_bodypart: str, resolve_bodyparts_with_config_ini=False, copy=False) -> pd.DataFrame:
-    # TODO: HIGH: implement flexible location creator
+def attach_average_bodypart_xy(df: pd.DataFrame, bodypart_1: str, bodypart_2: str, output_bodypart: str, resolve_bodyparts_with_config_ini=False, copy=False) -> pd.DataFrame:
     """
     Returns 2-d array where the average location of the hindpaws are
 
     """
-    feature_1 = config.get_part(feature_1) if resolve_bodyparts_with_config_ini else feature_1
-    feature_2 = config.get_part(feature_2) if resolve_bodyparts_with_config_ini else feature_2
+    bodypart_1 = config.get_part(bodypart_1) if resolve_bodyparts_with_config_ini else bodypart_1
+    bodypart_2 = config.get_part(bodypart_2) if resolve_bodyparts_with_config_ini else bodypart_2
 
     # Arg checking
     check_arg.ensure_type(df, pd.DataFrame)
-    for feature, xy in itertools.product((feature_1, feature_2), ('x', 'y')):
+    for feature, xy in itertools.product((bodypart_1, bodypart_2), ('x', 'y')):
         feat_xy = f'{feature}_{xy}'
         if feat_xy not in set(df.columns):
             err_missing_feature = f'{logging_bsoid.get_current_function()}(): missing feature column "{feat_xy}", ' \
@@ -63,11 +62,12 @@ def attach_average_bodypart_xy(df: pd.DataFrame, feature_1: str, feature_2: str,
     #         err_missing_feature = f'{logging_bsoid.get_current_function()}(): missing feature column "{feat}_{xy}", so cannot calculate avg position. Columns = {list(df.columns)}'.replace('\\', '')
     #         logging_bsoid.log_then_raise(err_missing_feature, logger, KeyError)
 
+    #
     df = df.copy() if copy else df
 
     # Execute
-    feature_1_xy: np.ndarray = df[[f'{feature_1}_x', f'{feature_1}_y']].values
-    feature_2_xy: np.ndarray = df[[f'{feature_2}_x', f'{feature_2}_y']].values
+    feature_1_xy: np.ndarray = df[[f'{bodypart_1}_x', f'{bodypart_1}_y']].values
+    feature_2_xy: np.ndarray = df[[f'{bodypart_2}_x', f'{bodypart_2}_y']].values
 
     output_feature_xy: np.ndarray = np.array(list(map(average_vector_between_n_vectors, feature_1_xy, feature_2_xy)))
 
@@ -173,12 +173,12 @@ def attach_snout_tail_angle(df, output_feature_name, copy=False) -> pd.DataFrame
     return df
 
 
-def attach_angle_between_bodyparts(df, bodypart1, bodypart2, output_feature_name, copy=False) -> pd.DataFrame:
+def attach_angle_between_bodyparts(df, bodypart_1, bodypart_2, output_feature_name, copy=False) -> pd.DataFrame:
     """
 
     :param df: (DataFrame)
-    :param bodypart1: (str)
-    :param bodypart2: (str)
+    :param bodypart_1: (str)
+    :param bodypart_2: (str)
     :param output_feature_name: (str)
     :param copy: (bool)
     :return: (DataFrame)
@@ -236,13 +236,13 @@ def velocity_of_xy_feature(arr, secs_between_rows) -> np.ndarray:
     # Arg checking
     check_arg.ensure_type(arr, np.ndarray)
     # TODO: add array shape check (should be shape of (n_rows, 2 columns)
+    check_arg.ensure_type(secs_between_rows, float, int)
     # Execute
     # TODO: low: implement a vectorized function later
-    veloc_values = [np.NaN for _ in range(len(arr))]  # velocity cannot be determined for t0
+    veloc_values = [np.NaN for _ in range(len(arr))]  # velocity cannot be determined for t0, so remains as NAN
     for i in range(1, arr.shape[0]):
         veloc_i = distance_between_two_arrays(arr[i], arr[i-1]) / secs_between_rows
         veloc_values[i] = veloc_i
-
 
     # Last minute result checking
     if len(veloc_values) != arr.shape[0]:
@@ -381,7 +381,7 @@ def integrate_df_feature_into_bins(df: pd.DataFrame, map_features_to_bin_methods
     return out_df
 
 
-#### New, reworked feature engineer from previous authors ############################
+#### Newer, reworked feature engineer from previous authors ############################
 
 def adaptively_filter_dlc_output(in_df: pd.DataFrame, copy=False) -> Tuple[pd.DataFrame, List[float]]:  # TODO: implement new adaptive-filter_data for new data pipelineing
     """ *NEW* --> Successor function to old method in likelikhood processing. Uses new DataFrame type for input/output.
@@ -585,11 +585,10 @@ def average_vector_between_n_vectors(*arrays) -> np.ndarray:
         cannot_average_0_arrays_err = f'Cannot average between 0 arrays'  # TODO: improve err message
         logger.error(cannot_average_0_arrays_err)
         raise ValueError(cannot_average_0_arrays_err)
-    # Check for proper types
     for arr in arrays:
         check_arg.ensure_type(arr, np.ndarray)
-    # Ensure all array shapes are the same
     check_arg.ensure_numpy_arrays_are_same_shape(*arrays)
+    #
     set_of_shapes = set([arr.shape for arr in arrays])
     if len(set_of_shapes) > 1:
         err_disparate_shapes_of_arrays = f'Array shapes are not the same. Shapes: [{set_of_shapes}]'  # TODO
@@ -605,7 +604,7 @@ def average_vector_between_n_vectors(*arrays) -> np.ndarray:
 
 
 def engineer_7_features_dataframe(df: pd.DataFrame, features_names_7: List[str] = ['DistFrontPawsTailbaseRelativeBodyLength', 'DistBackPawsBaseTailRelativeBodyLength', 'InterforepawDistance', 'BodyLength', 'SnoutToTailbaseChangeInAngle', 'SnoutSpeed', 'TailbaseSpeed', ], map_names: dict = None, copy: bool = False, win_len: int = None) -> pd.DataFrame:
-    # TODO: high: ensure ALL columns in input DataFrame also come out of the output
+    # TODO: med: ensure ALL columns in input DataFrame also come out of the output
     # TODO: review https://stackoverflow.com/questions/35215161/most-efficient-way-to-map-function-over-numpy-array
     #   Computationally intensive! Work on performance later.
     """ *NEW*
@@ -841,7 +840,7 @@ def engineer_7_features_dataframe(df: pd.DataFrame, features_names_7: List[str] 
 
 
 def engineer_7_features_dataframe_MISSING_1_ROW(df: pd.DataFrame, features_names_7: List[str] = ['DistFrontPawsTailbaseRelativeBodyLength', 'DistBackPawsBaseTailRelativeBodyLength', 'InterforepawDistance', 'BodyLength', 'SnoutToTailbaseChangeInAngle', 'SnoutSpeed', 'TailbaseSpeed', ], map_names: dict = None, copy: bool = False, win_len: int = None) -> pd.DataFrame:
-    # TODO: high: keep scorer col?  <----------------------------------------------------------------------------------------------------------------****
+    # TODO: med: keep scorer col?  <----------------------------------------------------------------------------------------------------------------****
     # TODO: review https://stackoverflow.com/questions/35215161/most-efficient-way-to-map-function-over-numpy-array
     #   Computationally intensive! Work on performance later.
     """ *NEW*
