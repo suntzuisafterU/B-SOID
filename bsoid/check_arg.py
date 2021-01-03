@@ -119,18 +119,21 @@ def has_invalid_chars_in_name_for_a_file(file_name, additional_characters: Colle
     """
     Checks if an invalid characters have been included in a potential path. Useful for checking user
     input before attempting to save files. The list of invalid characters
-    :param file_name:
-    :param additional_characters:
+    :param file_name: (str)
+    :param additional_characters: (collection of strings)
     :return:
     """
-    if additional_characters is not None \
-            and not isinstance(additional_characters, list) \
-            and not isinstance(additional_characters, tuple) \
-            and not isinstance(additional_characters, set):
-        invalid_type_err = f'{inspect.stack()[0][3]}(): Invalid type ' \
-                       f'found: {type(additional_characters)} (value: {additional_characters})'
-        logger.error(invalid_type_err)
-        raise TypeError(invalid_type_err)
+    if additional_characters is not None:
+        ensure_type(additional_characters, list, tuple, set)
+    # if additional_characters is not None \
+    #         and not isinstance(additional_characters, list) \
+    #         and not isinstance(additional_characters, tuple) \
+    #         and not isinstance(additional_characters, set):
+    #     invalid_type_err = f'{inspect.stack()[0][3]}(): Invalid type ' \
+    #                    f'found: {type(additional_characters)} (value: {additional_characters})'
+    #     logger.error(invalid_type_err)
+    #     raise TypeError(invalid_type_err)
+    
     invalid_chars_for_windows_files = {':', '*', '\\', '/', '?', '"', '<', '>', '|'}
     if additional_characters is not None:
         invalid_chars_for_windows_files = invalid_chars_for_windows_files.union(set(additional_characters))
