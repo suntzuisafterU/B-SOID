@@ -2,6 +2,7 @@ name: bsoid
 channels:
   - msys2
   - defaults
+  - conda-forge
 dependencies:
   - argon2-cffi=20.1.0=py38he774522_1
   - async_generator=1.10=py_0
