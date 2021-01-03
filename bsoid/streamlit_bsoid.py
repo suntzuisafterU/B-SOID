@@ -99,7 +99,7 @@ streamlit_persistency_variables = {  # Instantiate default variable values here
 
 def st_file_selector(st_placeholder, label='', path='.'):
     """
-    TODO: THIS FUNCTION DOES NOT CURRENTLY WORK!!!
+    TODO: NOTE: THIS FUNCTION DOES NOT CURRENTLY WORK!!!
     """
     # get base path (directory)
     logger.debug(f'st_file_selector(): label = {label} / path = {path}')
@@ -175,9 +175,9 @@ def home(**kwargs):
     ### MAIN ###
     st.markdown(f'# {title}')
     st.markdown('------------------------------------------------------------------------------------------')
+    is_pipeline_loaded = False
 
     ## Start/open project using drop-down menu ##
-    is_pipeline_loaded = False
     start_select_option = st.selectbox(
         label='Start a new project or load an existing one?',
         options=('', start_new_project_option_text, load_existing_project_option_text),
@@ -289,8 +289,6 @@ Success! Your new project pipeline has been saved to disk to the following path:
         logger.error(f'{repr(e)} // {str(traceback.extract_stack())}')
         return
 
-    # logger.debug(f"After all dropdown menu work is done, `is_pipeline_loaded` = {is_pipeline_loaded} // pipeline_file_path = {pipeline_file_path}")
-    # logger.debug(f'is_pipeline_loaded = {is_pipeline_loaded}')
     if is_pipeline_loaded:
         logger.debug(f"Leaving home: pipeline_file_path = {pipeline_file_path}")
         # logger.debug(f'file_session[pipe] = {file_session[key_pipeline_path]}')
@@ -308,7 +306,7 @@ Success! Your new project pipeline has been saved to disk to the following path:
 
 def show_pipeline_info(p: pipeline.PipelinePrime, pipeline_path, **kwargs):
     """  """
-    logger.debug(f'{logging_bsoid.get_current_function()}(): Starting. pipeline_path = {pipeline_path}')
+    logger.debug(f'{logging_bsoid.get_current_function()}(): Starting. pipeline_path = {pipeline_path}')  # Debugging effort
 
     ### SIDEBAR ###
 
@@ -576,6 +574,7 @@ def show_actions(p: pipeline.PipelinePrime, pipeline_file_path):
         st.markdown('')
         ### Advanced Parameters ###
         st.markdown('### Advanced Parameters')
+        # TODO: HIGH IMPORTANCE! The advanced parameters should reflect the classifier type being used (SVM vs RF vs something new in the future)
         st.markdown('*Toggle advanced parameters at your own risk. Many require special knowledge of ML parameters*')
         button_see_advanced_options = st.button('Toggle: advanced parameters')
         if button_see_advanced_options:
@@ -680,7 +679,7 @@ def see_model_diagnostics(p, pipeline_file_path):
         file_session[key_button_view_assignments_distribution] = not file_session[key_button_view_assignments_distribution]
     if file_session[key_button_view_assignments_distribution]:
         if p.is_built:
-            matplotlib.use('Agg')  # <- Hopefully this fixes crashes; no guarantees. TODO: review this line later.
+            matplotlib.use('Agg')  # <- Hopefully this fixes crashes; no guarantees. TODO: med: review this line later.
             fig, ax = p.get_plot_svm_assignments_distribution()
             st.pyplot(fig)
             matplotlib.use('TkAgg')
@@ -690,7 +689,7 @@ def see_model_diagnostics(p, pipeline_file_path):
 
     ###
     # View 3d Plot
-    st.markdown(f'### See GMM distributions according to TSNE-reduced feature dimensions')  # TODO: phrase beter?
+    st.markdown(f'### See GMM distributions according to TSNE-reduced feature dimensions')  # TODO: phrase better?
     gmm_button = st.button('Pop out window of cluster/assignment distribution')  # TODO: low: phrase this button better?
     if gmm_button:
         if p.is_built:
@@ -698,7 +697,6 @@ def see_model_diagnostics(p, pipeline_file_path):
                 p.plot_assignments_in_3d(show_now=True)
             except ValueError:
                 st.error('Cannot plot cluster distribution since the model is not currently built.')
-                # st.stop()
         else:
             st.info('A 3d plot of the cluster distributions could not be created because '
                     'the model is not built. ')
@@ -744,7 +742,7 @@ def review_behaviours(p, pipeline_file_path):
     if button_create_new_ex_videos:
         file_session[key_button_show_example_videos_options] = not file_session[key_button_show_example_videos_options]
     if file_session[key_button_show_example_videos_options]:
-        # st.markdown(f'Fill in variables for making new example videos of behaviours')
+        st.markdown(f'Fill in variables for making new example videos of behaviours. Does this line of text need to be altered or even removed?')
         select_data_source = st.selectbox('Select a data source', options=['']+p.training_data_sources)
         input_video = st.text_input(f'Input path to corresponding video relative to selected data source', value=config.BSOID_BASE_PROJECT_PATH)
         if input_video and not os.path.isfile(input_video):
@@ -813,7 +811,7 @@ def review_behaviours(p, pipeline_file_path):
                 file_session[str(assignment_a)] = p.get_assignment_label(assignment_a)
                 existing_behaviour_label = p.get_assignment_label(assignment_a)
                 # st.markdown(f'Debug info: Current label = {existing_behaviour_label}')
-                existing_behaviour_label = existing_behaviour_label if existing_behaviour_label else ''  # '(Behaviour label not yet assigned)'
+                existing_behaviour_label = existing_behaviour_label if existing_behaviour_label else ''
                 text_input_new_label = st.text_input(f'Add behaviour label to assignment # {assignment_a}', value=existing_behaviour_label, key=f'key_new_behaviour_label_{assignment_a}')
                 if text_input_new_label != existing_behaviour_label:
                     # st.markdown(f'Attempting to save label ({text_input_new_label}) to pipeline (found at: {pipeline_file_path})')
@@ -869,11 +867,10 @@ def results_section(p, pipeline_file_path, **kwargs):
                 st.error(f'Invalid characters for new video name detected. Please review name: {input_new_video_name}')
             if not error_detected:
                 with st.spinner('(WIP) Creating labeled video now. This could take a few minutes...'):
-                    p.make_video(
-                        video_to_be_labeled_path=input_video_to_label,
-                        data_source=selected_data_source,
-                        video_name=input_new_video_name,
-                        output_dir=output_folder)
+                    p.make_video(video_to_be_labeled_path=input_video_to_label,
+                                 data_source=selected_data_source,
+                                 video_name=input_new_video_name,
+                                 output_dir=output_folder)
                 st.balloons()
                 st.success('Success! Video was created at: TODO: get video out path')  # todo: MED
         st.markdown('---------------------------------------------------------------------------------------')
@@ -884,8 +881,6 @@ def results_section(p, pipeline_file_path, **kwargs):
 def display_footer(p, pipeline_file_path, *args, **kwargs):
     """ Footer of Streamlit page """
     st.markdown('')
-    # st.markdown('---')
-    # st.markdown(f'*Click on the page and press "R" to refresh.*')
     logger.debug('   < End of streamlit page >   ')
     return p
 
@@ -893,7 +888,6 @@ def display_footer(p, pipeline_file_path, *args, **kwargs):
 # Accessory functions #
 
 def get_video_bytes(path_to_video):
-    """  """
     check_arg.ensure_is_file(path_to_video)
     with open(path_to_video, 'rb') as video_file:
         video_bytes = video_file.read()
@@ -903,6 +897,7 @@ def get_video_bytes(path_to_video):
 # Misc.
 
 def example_of_value_saving():
+    """ A toy function for showing patterns of saving button presses/values """
     session_state = streamlit_session_state.get(**{'TestButton1': False, 'TestButton2': False})
     st.markdown("# [Title]")
     button1_is_clicked = st.button('Test Button 1', 'TestButton1')
@@ -929,3 +924,4 @@ if __name__ == '__main__':
         sys.path.insert(0, BSOID_project_path)
     # home()
     example_of_value_saving()
+
