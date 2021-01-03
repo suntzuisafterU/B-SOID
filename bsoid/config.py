@@ -227,6 +227,11 @@ MLP_PARAMS = {
     'verbose': configuration.getint('MLP', 'verbose'),
 }
 
+
+### RANDOMFOREST ###
+rf_n_estimators = configuration.getint('RANDOMFOREST', 'n_estimators')
+
+
 ### SVM ################################################################################################################
 svm_c = configuration.getfloat('SVM', 'C')
 svm_gamma = configuration.getfloat('SVM', 'gamma')
