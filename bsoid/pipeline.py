@@ -18,6 +18,7 @@ Add attrib checking for engineer_features? https://duckduckgo.com/?t=ffab&q=get+
 
 
 """
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.manifold import TSNE as TSNE_sklearn
 from sklearn.metrics import accuracy_score
 from sklearn.mixture import GaussianMixture
@@ -88,7 +89,7 @@ class PipelineAttributeHolder(object):
     # Model objects
     _scaler: StandardScaler = None
     _clf_gmm: GaussianMixture = None
-    _clf_svm: SVC = None
+
     # TSNE
     tsne_source: str = 'sklearn'
     tsne_n_components: int = 3
@@ -102,9 +103,13 @@ class PipelineAttributeHolder(object):
     gmm_verbose: int = None
     gmm_verbose_interval: int = None
 
-    # SVM
+    # Classifier
+    _classifier = None
+    clf_type: str = config.DEFAULT_CLASSIFIER
+    # Classifier: SVM
     svm_c, svm_gamma, svm_probability, svm_verbose = None, None, None, None
-
+    # Classifier: Random Forest
+    rf_n_estimators = config.rf_n_estimators
 
     # Column names
     features_which_average_by_mean = ['DistFrontPawsTailbaseRelativeBodyLength',
@@ -112,7 +117,7 @@ class PipelineAttributeHolder(object):
     features_which_average_by_sum = ['SnoutToTailbaseChangeInAngle', 'SnoutSpeed', 'TailbaseSpeed']
     _all_features: Tuple[str] = tuple(features_which_average_by_mean + features_which_average_by_sum)
     test_col_name = 'is_test_data'
-
+    # All label properties for respective assignments instantiated below to ensure no missing properties b/w Pipelines (aka: quick fix, not enough time to debug in full)
     label_0, label_1, label_2, label_3, label_4, label_5, label_6, label_7, label_8, label_9 = ['' for _ in range(10)]
     label_10, label_11, label_12, label_13, label_14, label_15, label_16, label_17, label_18 = ['' for _ in range(9)]
     label_19, label_20, label_21, label_22, label_23, label_24, label_25, label_26, label_27 = ['' for _ in range(9)]
@@ -126,10 +131,14 @@ class PipelineAttributeHolder(object):
     _acc_score: float = None
     _cross_val_scores: np.ndarray = np.array([])
     seconds_to_engineer_train_features: float = None
+    seconds_to_build: float = -1
 
-    # TODO: high: evaluate
+    # TODO: med/high: create tests for this func below
     def get_assignment_label(self, assignment: int) -> str:
-        """ Get behavioural label according to assignment value (number) """
+        """
+        Get behavioural label according to assignment value (number).
+        If a label does not exist for a given assignment, then return empty string.
+        """
         try:
             assignment = int(assignment)
         except ValueError:
@@ -164,7 +173,7 @@ class PipelineAttributeHolder(object):
     @property
     def clf_gmm(self): return self._clf_gmm
     @property
-    def clf_svm(self): return self._clf_svm
+    def clf_svm(self): return self._classifier
     @property
     def random_state(self): return self._random_state
     def get_desc(self) -> str: return self._description
@@ -239,14 +248,20 @@ class BasePipeline(PipelineAttributeHolder):
     tsne_source : {'sklearn', 'bhtsne'}
         Specify a TSNE implementation to use for dimensionality reduction.
 
+    clf_type : {'svm', 'rf' }
+        Specify a classifier to use.
+        Default is 'svm'.
+        - 'svm' : Support Vector Machine
+        - 'rf' : Random Forest
+
+
         # TODO: med: expand on further kwargs
     """
     # Init
-    def __init__(self, name: str, save_folder: str = None, **kwargs):
+    def __init__(self, name: str, **kwargs):
         # Pipeline name
         check_arg.ensure_type(name, str)
         self.set_name(name)
-        # TODO: low: evaluate remove tsne source since its in set_params?
         # TSNE source
         tsne_source = kwargs.get('tsne_source', '')
         check_arg.ensure_type(tsne_source, str)
@@ -257,7 +272,7 @@ class BasePipeline(PipelineAttributeHolder):
         # Final setup
         self.set_params(read_config_on_missing_param=True, **kwargs)
 
-    def set_params(self, read_config_on_missing_param=False, **kwargs):
+    def set_params(self, read_config_on_missing_param: bool = False, **kwargs):
         """
         Reads in variables to change for pipeline.
 
@@ -273,9 +288,10 @@ class BasePipeline(PipelineAttributeHolder):
             - tsne_early_exaggeration
             - tsne_n_jobs
             - tsne_verbose
-            TODO: complete list
+            TODO: low: complete list
 
         """
+        check_arg.ensure_type(read_config_on_missing_param, bool)
         ### General Params ###
         # TODO: MED: ADD KWARGS OPTION FOR OVERRIDING VERBOSE in CONFIG.INI!!!!!!!! ?
         video_fps = kwargs.get('input_videos_fps', config.VIDEO_FPS if read_config_on_missing_param else self.input_videos_fps)
@@ -333,6 +349,13 @@ class BasePipeline(PipelineAttributeHolder):
         gmm_verbose_interval = kwargs.get('gmm_verbose_interval', config.gmm_verbose_interval if read_config_on_missing_param else self.gmm_verbose_interval)
         check_arg.ensure_type(gmm_verbose_interval, int)
         self.gmm_verbose_interval = gmm_verbose_interval
+        # Classifier vars
+        clf_type = kwargs.get('clf_type', config.DEFAULT_CLASSIFIER if read_config_on_missing_param else self.clf_type)
+        self.clf_type = clf_type
+        # Random Forest vars
+        rf_n_estimators = kwargs.get('rf_n_estimators', config.rf_n_estimators if read_config_on_missing_param else self.rf_n_estimators)
+        check_arg.ensure_type(rf_n_estimators, int)
+        self.rf_n_estimators = rf_n_estimators
         # SVM vars
         svm_c = kwargs.get('svm_c', config.svm_c if read_config_on_missing_param else self.svm_c)
         self.svm_c = svm_c
@@ -505,8 +528,7 @@ class BasePipeline(PipelineAttributeHolder):
         """
         # TODO: low: save feature engineering time for train data
         start = time.perf_counter()
-        # Queue data
-
+        # Queue up data according to data source
         list_dfs_raw_data = [self.df_features_train_raw.loc[self.df_features_train_raw['data_source'] == src]
                                  .astype({'frame': float}).sort_values('frame').copy()
                              for src in set(self.df_features_train_raw['data_source'].values)]
@@ -671,6 +693,7 @@ class BasePipeline(PipelineAttributeHolder):
         return assignments
 
     def train_SVM(self):
+        # TODO: HIGH: DEPRECATED. ENSURE EVERYTING WORKS THEN DELETE
         """ Use scaled training data to train SVM classifier """
         df = self.df_features_train_scaled
         # Instantiate SVM object
@@ -687,7 +710,53 @@ class BasePipeline(PipelineAttributeHolder):
             y=df.loc[~df[self.test_col_name]][self.gmm_assignment_col_name],
         )
         return self
-    
+
+    def train_classifier(self):
+        # TODO: finish this function!
+        df = self.df_features_train_scaled
+
+        if self.clf_type == 'SVM':
+            clf = SVC(
+                C=self.svm_c,
+                gamma=self.svm_gamma,
+                probability=self.svm_probability,
+                verbose=self.svm_verbose,
+                random_state=self.random_state,
+            )
+        elif self.clf_type == 'RANDOMFOREST':
+            clf = RandomForestClassifier(
+                n_estimators=self.rf_n_estimators,
+                # criterion='gini',
+                # max_depth=None,
+                # min_samples_split=2,
+                # min_samples_leaf=1,
+                # min_weight_fraction_leaf=0,
+                # max_features="auto",
+                # max_leaf_nodes=None,
+                # min_impurity_decrease=0.,
+                # min_impurity_split=None,
+                # bootstrap=True,
+                # oob_score=False,
+                # n_jobs=None,
+                # random_state=None,
+                # verbose=0,
+                # warm_start=False,
+                # class_weight=None,
+                # ccp_alpha=0.0,
+                # max_samples=None,
+            )
+        else:
+            err = f'TODO: elaborate: an invalid classifier type was detected: {self.clf_type}'
+            logger.error(err)
+            raise KeyError(err)
+        # Fit classifier to non-test data
+        clf.fit(
+            X=df.loc[~df[self.test_col_name]][list(self.all_features)],  # TODO: too specific
+            y=df.loc[~df[self.test_col_name]][self.gmm_assignment_col_name],
+        )
+        # Save classifier
+        self._classifier = clf
+
     # Higher level data processing functions
     def tsne_reduce_df_features_train(self):
         arr_tsne_result = self.train_tsne_get_dimension_reduced_data(self.df_features_train)
@@ -725,13 +794,13 @@ class BasePipeline(PipelineAttributeHolder):
         # Test-train split
         self.add_test_data_column_to_scaled_train_data()
 
-        # # Train SVM
-        logger.debug(f'Training SVM now...')
-        self.train_SVM()
-        self.df_features_train_scaled[self.svm_assignment_col_name] = self.clf_svm.predict(
-            self.df_features_train_scaled[list(self.all_features)].values)
-        self.df_features_train_scaled[self.svm_assignment_col_name] = self.df_features_train_scaled[
-            self.svm_assignment_col_name].astype(int)
+        # # Train Classifier
+        logger.debug(f'Training classifier now...')
+        self.train_classifier()  # # self.train_SVM()
+
+        # Set predictions
+        self.df_features_train_scaled[self.svm_assignment_col_name] = self.clf_svm.predict(self.df_features_train_scaled[list(self.all_features)].values)  # Get predictions
+        self.df_features_train_scaled[self.svm_assignment_col_name] = self.df_features_train_scaled[self.svm_assignment_col_name].astype(int)  # Coerce into int
 
         logger.debug(f'Generating cross-validation scores...')
         # # Get cross-val accuracy scores
@@ -791,10 +860,13 @@ class BasePipeline(PipelineAttributeHolder):
         """
         Build all classifiers and get predictions from predict data
         """
+        start = time.perf_counter()
         # Build model
         self.build_model(reengineer_train_features=reengineer_train_features)
         # Get predict data
         self.generate_predict_data_assignments(reengineer_predict_features=reengineer_predict_features)
+        end = time.perf_counter()
+        self.seconds_to_build = round(end - start, 3)
         return self
     
     # More data transformations
@@ -879,20 +951,32 @@ class BasePipeline(PipelineAttributeHolder):
 
     # Video stuff
 
-    def make_video(self, video_to_be_labeled: str, data_source: str, video_name: str, output_dir: str, output_fps: int = config.OUTPUT_VIDEO_FPS):
+    def make_video(self, video_to_be_labeled_path: str, data_source: str, video_name: str, output_dir: str, output_fps: float = config.OUTPUT_VIDEO_FPS):
         """
 
-        :param video_to_be_labeled:
-        :param output_fps:
+        :param video_to_be_labeled_path: (str) Path to a video that will be labeled
+            e.g.: "/home/videos/Vid1.mp4"
+        :param data_source: (str) Name of data source set that corresponds to the video which
+            is going to be labeled. If you input the wrong data source relative to corresponding video,
+            the behaviours associated with the video will not properly line up and the output
+            video will have labels that make no sense
+            e.g.: "Vid1DLC_sourceABC"
+        :param video_name:  (str) Name of the output video. Do NOT include the extension in the name.
+            e.g.: "Vid1Labeled"
+        :param output_dir: (str) Path to a directory into which the labeled video will be saved.
+        :param output_fps: (either: int OR float)The FPS of the labeled video output
         :return:
         """
 
         # Arg checking
-        if not os.path.isfile(video_to_be_labeled):
-            not_a_video_err = f'The video to be labeled is not a valid file/path. ' \
-                              f'Submitted video path: {video_to_be_labeled}. '
-            logger.error(not_a_video_err)
-            raise FileNotFoundError(not_a_video_err)
+        check_arg.ensure_is_file(video_to_be_labeled_path)
+        # if not os.path.isfile(video_to_be_labeled_path):
+        #     not_a_video_err = f'The video to be labeled is not a valid file/path. ' \
+        #                       f'Submitted video path: {video_to_be_labeled_path}. '
+        #     logger.error(not_a_video_err)
+        #     raise FileNotFoundError(not_a_video_err)
+
+        check_arg.ensure_is_dir(output_dir)
         if not self.is_built:
             err = f'Model is not built so cannot make labeled video'
             logger.error(err)
@@ -918,22 +1002,14 @@ class BasePipeline(PipelineAttributeHolder):
         # Generate video with variables
         logger.debug(f'{get_current_function()}(): labels indices example: {labels[:5]}')
         logger.debug(f'Frame indices example: {frames[:5]}')
-        videoprocessing.make_labeled_video_according_to_frame(   # labels_list: Union[List, Tuple], frames_indices_list: Union[List, Tuple], output_file_name: str, video_source: str, current_behaviour_list: List[str] = [], output_fps=15, fourcc='H264', output_dir=config.EXAMPLE_VIDEOS_OUTPUT_PATH, **kwargs):
+        videoprocessing.make_labeled_video_according_to_frame(
             labels,
             frames,
             video_name,
-            video_to_be_labeled,
+            video_to_be_labeled_path,
             output_fps=output_fps,
             output_dir=output_dir,
-
         )
-
-        # videoprocessing.generate_video_with_labels(
-        #     labels,
-        #     video_to_be_labeled,
-        #     video_name,
-        #     output_fps,  # TODO: med/high: magic variable: output fps for video
-        # )
 
         return self
 
@@ -951,13 +1027,14 @@ class BasePipeline(PipelineAttributeHolder):
         # Args checking
         check_arg.ensure_type(num_frames_buffer, int)
         check_arg.ensure_is_file(video_file_path)
+        check_arg.ensure_type(output_fps, int, float)
         # Solve kwargs
         if file_name_prefix is None:
             file_name_prefix = ''
         else:
             check_arg.ensure_type(file_name_prefix, str)
             check_arg.ensure_has_valid_chars_for_path(file_name_prefix)
-            file_name_prefix += '__'
+            file_name_prefix += '__'  # TODO: low: remove hidden formatting here?
 
         # Get data from data source name
         if data_source in self.training_data_sources:
@@ -1018,8 +1095,8 @@ class BasePipeline(PipelineAttributeHolder):
                 current_behaviour_list = [self.get_assignment_label(a) for a in assignments_list]
                 frames_indices_list = list(df_frames_selection['frame'].astype(int).values)
                 color_map_array = visuals.generate_color_map(len(self.unique_assignments))
-                text_colors_list: List[Tuple[float]] = [tuple(float(min(255.*x, 255.))
-                                                              for x in tuple(color_map_array[a][:3]))
+                text_colors_list: List[Tuple[float]] = [tuple(float(min(255.*x, 255.))  # Multiply the 3 values by 255 since existing values are on a 0 to 1 scale
+                                                              for x in tuple(color_map_array[a][:3]))  # Takes only the first 3 elements since the 4th appears to be brightness value?
                                                         for a in assignments_list]
 
                 #
