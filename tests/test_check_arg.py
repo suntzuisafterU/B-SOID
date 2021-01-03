@@ -50,6 +50,63 @@ class TestCheckArg(TestCase):
         #     def assertRaises(self, expected_exception, *args, **kwargs):
         self.assertRaises(expected_err, func, arr1, list2)
 
+    # Ensure type
+    def test__ensure_type__shouldRunWithoutError__whenGivenSingularCorrectExpectedType(self):
+        # Arrange
+        integer_var = 1
+        expected_type = int
+        # Act, Assert
+        try:
+            bsoid.check_arg.ensure_type(integer_var, expected_type)
+            self.assertTrue(True)  # TODO: low: is this line necessary for test to pass?
+        except TypeError as te:
+            raise te
+
+    def test__ensure_type__shouldRunWithoutError__whenGivenMultipleCorrectExpectedTypes(self):
+        # Arrange
+        integer_var = 1
+        expected_types_tuple = (int, float)
+        # Act, Assert
+        try:
+            bsoid.check_arg.ensure_type(integer_var, expected_types_tuple)
+            self.assertTrue(True)  # TODO: low: is this line necessary for test to pass?
+        except TypeError as te:
+            raise te
+
+    def test__ensure_type__shouldRunWithoutError__whenGivenMultipleCorrectExpectedTypesAsStarArgs(self):
+        # Arrange
+        integer_var = 1
+        expected_types_tuple = (int, float)
+        # Act, Assert
+        try:
+            bsoid.check_arg.ensure_type(integer_var, *expected_types_tuple)
+            self.assertTrue(True)  # TODO: low: is this line necessary for test to pass?
+        except TypeError as te:
+            raise te
+
+    def test__ensure_type__shouldProduceError__whenGivenSingularIncorrectExpectedType(self):
+        # Arrange
+        integer_var = 1
+        expected_type = float
+
+        self.assertRaises(TypeError, bsoid.check_arg.ensure_type, integer_var, expected_type)
+
+    def test__ensure_type__shouldProduceError__whenGivenMultipleIncorrectExpectedTypes(self):
+        # Arrange
+        integer_var = 1
+        expected_type = (float, str)
+
+        self.assertRaises(TypeError, bsoid.check_arg.ensure_type, integer_var, expected_type)
+
+    def test__ensure_type__shouldProduceError__whenGivenSingularIncorrectExpectedTypeAsStarArgs(self):
+        # Arrange
+        integer_var = 1
+        expected_type = (float, str)
+
+        self.assertRaises(TypeError, bsoid.check_arg.ensure_type, integer_var, *expected_type)
+
+
+
     def test__(self):
         # Arrange
 
@@ -59,32 +116,4 @@ class TestCheckArg(TestCase):
 
         self.assertEqual(None, None)
         # self.assertRaises()
-
-    # Ensure type
-    def test__ensure_type__shouldRunWithoutError__whenGivenSingularCorrectExpectedType(self):
-        # Arrange
-        integer_var = 1
-        expected_type = int
-
-        self.assertRaises(TypeError, bsoid.check_arg.ensure_type, integer_var, expected_type)
-
-    def test__ensure_type__shouldRunWithoutError__whenGivenMultipleCorrectExpectedTypes(self):
-        # Arrange
-        integer_var = 1
-        expected_types_tuple = (int, float)
-        # Act, Assert
-        self.assertRaises(TypeError, bsoid.check_arg.ensure_type, integer_var, expected_types_tuple)
-
-    def test__ensure_type__shouldRunWithoutError__whenGivenMultipleCorrectExpectedTypesAsStarArgs(self):
-        # Arrange
-        integer_var = 1
-        expected_types_tuple = (int, float)
-        # Act, Assert
-        self.assertRaises(TypeError, bsoid.check_arg.ensure_type, integer_var, *expected_types_tuple)
-
-
-
-
-
-
 
