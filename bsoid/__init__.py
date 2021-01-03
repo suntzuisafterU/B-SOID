@@ -1,11 +1,10 @@
 """
-TODO: med: Add in description of the `bsoid` module
+TODO: med: Add in description of [this package]
 """
-# from bsoid import *  # TODO: ???
+
 __version__ = '0.0.1'  # TODO: HIGH: ensure version number is correct before pushing. See setup.py for version.
 
 # General imports for packages
-# from bsoid import *
 from . import (
     app,
     check_arg,
@@ -25,13 +24,10 @@ from . import (
     visuals,
 )
 
-# # user-facing io api
+# # User-facing io api
 from .io import (  # TODO: change to "from .io ..."
     read_csv,
     read_dlc_data,
     read_pipeline,
     save_pipeline,
 )
-
-# from .util import io
-# from .util import check_arg, io, likelihoodprocessing, bsoid_logging, statistics, videoprocessing, visuals
