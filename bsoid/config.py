@@ -355,13 +355,8 @@ assert len(DEFAULT_TEXT_BGR) == 3, f'DEFAULT_TEXT_BGR was expected to have 3 ele
 assert isinstance(DEFAULT_TEXT_BACKGROUND_BGR, tuple), f'DEFAULT_TEXT_BACKGROUND_BGR was expected to be a tuple but ' \
                                             f'instead found type: {type(DEFAULT_TEXT_BACKGROUND_BGR)}  ' \
                                                        f'(value = {DEFAULT_TEXT_BACKGROUND_BGR}'
-
 assert len(DEFAULT_TEXT_BACKGROUND_BGR) == 3, f'DEFAULT_TEXT_BACKGROUND_BGR was expected to have 3 elements but ' \
                                    f'instead found: {len(DEFAULT_TEXT_BACKGROUND_BGR)}'
-
-
-###
-
 
 
 ##### LEGACY VARIABLES #################################################################################################
