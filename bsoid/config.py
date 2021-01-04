@@ -454,7 +454,7 @@ More example videos are in [this](../examples) directory .
 """
 
 
-### Debugging efforts below. __main__ not integral to file, can delete later. ########################################
+### Debugging efforts below. __main__ not integral to file. Use __main__ to check in on config vars.
 
 if __name__ == '__main__':
     # print(get_config_str())
@@ -467,4 +467,5 @@ if __name__ == '__main__':
     # print(type(RANDOM_STATE))
     # print(VIDEO_TO_LABEL_PATH)
     # print('OUTPUT_VIDEO_FPS', OUTPUT_VIDEO_FPS)
+    print(f'DEFAULT_PIPELINE__PRIME__CSV_TEST_FILE_PATH = {DEFAULT_PIPELINE__PRIME__CSV_TEST_FILE_PATH}')
     pass

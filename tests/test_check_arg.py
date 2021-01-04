@@ -9,17 +9,28 @@ import bsoid
 
 ########################################################################################################################
 
-# test_file_name = 'TRUNCATED_sample__Video1DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000 - Copy.csv'
-# test_file_name = 'FullSample_Video1DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000.csv'
-# test_file_name = 'RowsDeleted_FullSample_Video1DLC_resnet50_EPM_DLC_BSOIDAug25shuffle1_495000.csv'
-test_file_name = bsoid.config.DEFAULT_PIPELINE__PRIME__CSV_TEST_FILE_PATH
-
-single_test_file_location = os.path.join(bsoid.config.BSOID_BASE_PROJECT_PATH, 'tests', 'test_data', test_file_name)
+single_test_file_location = bsoid.config.DEFAULT_PIPELINE__PRIME__CSV_TEST_FILE_PATH
 
 
 class TestCheckArg(TestCase):
 
     # ensure_numpy_arrays_are_same_shape
+    def test__ensure_numpy_arrays_are_same_shape__shouldRunWithoutError__whenArraysAreSameShape(self):
+        data1 = [[1, 2, 3], [1, 2, 3]]
+        data2 = [[1, 2, 3], [1, 2, 3]]
+        arr1 = np.array(data1)
+        arr2 = np.array(data2)
+        bsoid.check_arg.ensure_numpy_arrays_are_same_shape(arr1, arr2)
+
+    def test__ensure_numpy_arrays_are_same_shape__shouldRunWithoutError__whenOnlyOneArraySubmitted(self):
+        data1 = [[1, 2, 3], [1, 2, 3]]
+        arr1 = np.array(data1)
+        try:
+            bsoid.check_arg.ensure_numpy_arrays_are_same_shape(arr1)
+            self.assertTrue(True)
+        except TypeError as te:
+            raise te
+
     def test__ensure_numpy_arrays_are_same_shape__ShouldErrorOut__whenArraysDifferentShapes(self):
         # Arrange
         data1 = [[1, 2, 3], [1, 2, 3]]
@@ -33,13 +44,6 @@ class TestCheckArg(TestCase):
         # Act/Assert
         self.assertRaises(expected_error, func, arr1, arr2)
 
-    def test__ensure_numpy_arrays_are_same_shape__shouldRunWithoutError__whenArraysAreSameShape(self):
-        data1 = [[1, 2, 3], [1, 2, 3,]]
-        data2 = [[1, 2, 3], [1, 2, 3]]
-        arr1 = np.array(data1)
-        arr2 = np.array(data2)
-        bsoid.check_arg.ensure_numpy_arrays_are_same_shape(arr1, arr2)
-
     def test__ensure_numpy_arrays_are_same_shape__shouldErrorOut__whenOneInputIsNotAnArray(self):
         data1 = [[1, 2, 3], [1, 2, 3]]
         data2 = [[1, 2, 3, 4], [1, 2, 3, 4]]
@@ -47,7 +51,7 @@ class TestCheckArg(TestCase):
         list2 = data2
         expected_err = TypeError
         func = bsoid.check_arg.ensure_numpy_arrays_are_same_shape
-        #     def assertRaises(self, expected_exception, *args, **kwargs):
+
         self.assertRaises(expected_err, func, arr1, list2)
 
     # Ensure type
@@ -104,7 +108,6 @@ class TestCheckArg(TestCase):
         expected_type = (float, str)
 
         self.assertRaises(TypeError, bsoid.check_arg.ensure_type, integer_var, *expected_type)
-
 
 
     def test__(self):

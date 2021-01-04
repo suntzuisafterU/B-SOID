@@ -1586,7 +1586,7 @@ class PipelineMimic(BasePipeline):
 
         # 2: Dist FrontPaws to tail relative to body length
         ## 1/3: Get AvgForepaw location
-        df = feature_engineering.attach_average_bodypart_xy(df, config.get_part('FOREPAW_LEFT'), config.get_part('FOREPAW_RIGHT'), output_bodypart=self.intermediate_bodypart_avgForepaw)  # df = feature_engineering.attach_average_forepaw_xy(df, avg_forepaw_x='AvgForepaw_x', avg_forepaw_y='AvgForepaw_y')  # TODO: replace with generalize functions
+        df = feature_engineering.attach_average_bodypart_xy(df, config.get_part('FOREPAW_LEFT'), config.get_part('FOREPAW_RIGHT'), output_bodypart=self.intermediate_bodypart_avgForepaw)
         ## 2/3: Get dist from forepaw to tailbase
         df = feature_engineering.attach_feature_distance_between_2_bodyparts(df, self.intermediate_bodypart_avgForepaw, config.get_part('TAILBASE'), self.intermediate_dist_avgForepaw_to_tailbase)
         ## 3/3: Get body-length relative distance
@@ -1613,7 +1613,6 @@ class PipelineMimic(BasePipeline):
         df = feature_engineering.attach_angle_between_bodyparts(df, config.get_part('NOSETIP'), config.get_part('TAILBASE'), self.feat_snout_tail_delta_angle)
 
         # BINNING #
-        # TODO: fix the copy pasta job
         map_feature_to_integrate_method = {
             self.feat_body_length: 'avg',
             self.feat_dist_front_paws_to_tailbase_relative_to_body_length: 'avg',

@@ -208,7 +208,7 @@ def distance_between_two_arrays(arr1, arr2) -> float:
         Example output: 20.573040611440984
 
     """
-    # check_arg.ensure_numpy_arrays_are_same_shape(arr1, arr2)  # TODO: low: Uncomment later when test for function implemented
+    check_arg.ensure_numpy_arrays_are_same_shape(arr1, arr2)
 
     # Execute
     try:
@@ -223,7 +223,7 @@ def distance_between_two_arrays(arr1, arr2) -> float:
     return distance
 
 
-def velocity_of_xy_feature(arr, secs_between_rows) -> np.ndarray:
+def velocity_of_xy_feature(arr: np.ndarray, secs_between_rows: float) -> np.ndarray:
     """
 
     :param arr:
@@ -231,7 +231,7 @@ def velocity_of_xy_feature(arr, secs_between_rows) -> np.ndarray:
 
     :param secs_between_rows: (float) Should be the value obtained from (t_n - t_n-1).
     :return: outputs a 1-d array of velocities of each row
-        since v(xy1) = (xy1 - xy0) / (t1 - t0), we will also need the time between each row
+        since v(xy@t=1) = (xy1 - xy0) / (t1 - t0), we will also need the time between each row
     """
     # Arg checking
     check_arg.ensure_type(arr, np.ndarray)
@@ -1437,58 +1437,6 @@ def process_raw_data_and_filter_adaptively(df_input_data: pd.DataFrame) -> Tuple
     final__array_filtered_data = array_filtered_data_without_first_row.astype(np.float)  # TODO: remove this line? np.float is just an alias for Python's built-in float
 
     return final__array_filtered_data, percent_filterd_per_bodypart__perc_rect
-
-
-@config.log_function_entry_exit(logger)
-def adaptive_filter_data_app(input_df: pd.DataFrame, BODYPARTS: dict):  # TODO: rename function for clarity?
-    """
-    Adaptive filtering function for bsoid_app
-
-    :param input_df: object, csv data frame
-    :param BODYPARTS:
-
-    :return currdf_filt: 2D array, filtered data
-    :return perc_rect: 1D array, percent filtered per BODYPART
-    """
-    l_index, x_index, y_index = [], [], []
-    currdf = np.array(input_df[1:])  # Removes first row (why?)
-    for body_part_key in BODYPARTS:  # TODO: indexing off of BODYPARTS keys should cause an error?
-        if currdf[0][body_part_key + 1] == "likelihood":
-            l_index.append(body_part_key)
-        elif currdf[0][body_part_key + 1] == "x":
-            x_index.append(body_part_key)
-        elif currdf[0][body_part_key + 1] == "y":
-            y_index.append(body_part_key)
-
-    logger.debug('Extracting likelihood value...')
-    curr_df1 = currdf[:, 1:]
-    data_x = curr_df1[1:, np.array(x_index)]
-    data_y = curr_df1[1:, np.array(y_index)]
-    data_lh = curr_df1[1:, np.array(l_index)]
-    currdf_filt = np.zeros((data_x.shape[0] - 1, (data_x.shape[1]) * 2))
-    perc_rect = []
-
-    logger.debug('Computing data threshold to forward fill any sub-threshold (x,y)...')
-    for i in range(data_lh.shape[1]):
-        perc_rect.append(0)
-    for x in tqdm(range(data_lh.shape[1])):
-        a, b = np.histogram(data_lh[1:, x].astype(np.float))
-        rise_a = np.where(np.diff(a) >= 0)
-        if rise_a[0][0] > 1:
-            llh = b[rise_a[0][0]]
-        else:
-            llh = b[rise_a[0][1]]
-        data_lh_float = data_lh[1:, x].astype(np.float)
-        perc_rect[x] = np.sum(data_lh_float < llh) / data_lh.shape[0]
-        currdf_filt[0, (2 * x):(2 * x + 2)] = np.hstack([data_x[0, x], data_y[0, x]])
-        for i in range(1, data_lh.shape[0] - 1):
-            if data_lh_float[i] < llh:
-                currdf_filt[i, (2 * x):(2 * x + 2)] = currdf_filt[i - 1, (2 * x):(2 * x + 2)]
-            else:
-                currdf_filt[i, (2 * x):(2 * x + 2)] = np.hstack([data_x[i, x], data_y[i, x]])
-    currdf_filt = np.array(currdf_filt)
-    currdf_filt = currdf_filt.astype(np.float)
-    return currdf_filt, perc_rect
 
 
 if __name__ == '__main__':
