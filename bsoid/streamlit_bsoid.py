@@ -42,6 +42,8 @@ pipeline_options = {
     'pipeline_epm_name': pipeline.PipelineEPM,
     'PipelineTim': pipeline.PipelineTim,
     'Change Blindness Odor Test Pipeline': pipeline.PipelineCHBO,
+    'piplineretreat': pipeline.PipelineRetreat,
+
 }
 # pipeline_prime_name, pipeline_epm_name, pipelineTimName, pipelineCHBO = 'PipelinePrime', 'pipeline_epm_name', 'PipelineTim', 'CHBO Pipeline'  # TODO: deprecate this line
 training_data_option, predict_data_option = 'Training Data', 'Predict Data'
