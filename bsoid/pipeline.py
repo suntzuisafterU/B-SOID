@@ -1643,8 +1643,24 @@ class PipelineRetreat(BasePipeline):
         df_filtered, _ = feature_engineering.adaptively_filter_dlc_output(df)
         # Engineer features
         df_features: pd.DataFrame = feature_engineering.engineer_7_features_dataframe(
-            df_filtered, features_names_7=list(self.all_features), map_names={'Head': 'NOSETIP'})
-
+            df_filtered,
+            features_names_7=list(self.all_features),
+            map_names={
+                'Head': 'NOSETIP',
+                'ForepawLeft': 'FOREPAW_LEFT',
+                'ForepawRight': 'FOREPAW_RIGHT',
+                'HindpawLeft': 'HINDPAW_LEFT',
+                'HindpawRight': 'HINDPAW_RIGHT',
+                'Tailbase': 'TAILBASE',
+            })
+        """
+        TAILBASE = TailBase
+        NOSETIP = NoseTip
+        FOREPAW_LEFT = ForepawLeft
+        FOREPAW_RIGHT = ForepawRight
+        HINDPAW_LEFT = HindpawLeft
+        HINDPAW_RIGHT = HindpawRight
+        """
         # Ensure columns don't get dropped by accident
         for col in columns_to_save:
             if col in in_df.columns and col not in df_features.columns:
