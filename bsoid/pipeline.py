@@ -1630,6 +1630,89 @@ class PipelineMimic(BasePipeline):
         return df
 
 
+class PipelineRetreat(BasePipeline):
+    """
+    A one-off pipeline for Tim to use at his retreat :)
+    """
+
+    def engineer_features(self, in_df) -> pd.DataFrame:
+        columns_to_save = ['scorer', 'source', 'file_source', 'data_source', 'frame']
+        df = in_df.sort_values('frame').copy()
+
+        # Filter
+        df_filtered, _ = feature_engineering.adaptively_filter_dlc_output(df)
+        # Engineer features
+        df_features: pd.DataFrame = feature_engineering.engineer_7_features_dataframe(
+            df_filtered, features_names_7=list(self.all_features), map_names={'Head': 'NOSETIP'})
+
+        # Ensure columns don't get dropped by accident
+        for col in columns_to_save:
+            if col in in_df.columns and col not in df_features.columns:
+                df_features[col] = df[col].values
+
+        # Smooth over n-frame windows
+        for feature in self.features_which_average_by_mean:
+            df_features[feature] = feature_engineering.average_values_over_moving_window(
+                df_features[feature].values, 'avg', self.average_over_n_frames)
+        # Sum
+        for feature in self.features_which_average_by_sum:
+            df_features[feature] = feature_engineering.average_values_over_moving_window(
+                df_features[feature].values, 'sum', self.average_over_n_frames)
+
+        return df_features
+
+    def engineer_features_all_dfs(self, list_dfs_of_raw_data: List[pd.DataFrame]) -> pd.DataFrame:
+        """
+        The main function that can build features for BOTH training and prediction data.
+        Here we are ensuring that the data processing for both training and prediction occurs in the same way.
+        """
+        # TODO: MED: these cols really should be saved in
+        #  engineer_7_features_dataframe_NOMISSINGDATA(),
+        #  but that func can be amended later due to time constraints
+
+        list_dfs_raw_data = list_dfs_of_raw_data
+
+        # Reconcile args
+        if isinstance(list_dfs_raw_data, pd.DataFrame):
+            list_dfs_raw_data = [list_dfs_raw_data, ]
+
+        check_arg.ensure_type(list_dfs_raw_data, list)
+
+        list_dfs_engineered_features: List[pd.DataFrame] = []
+        for df in list_dfs_raw_data:
+            df_engineered_features: pd.DataFrame = self.engineer_features(df)
+            list_dfs_engineered_features.append(df_engineered_features)
+
+        # # Adaptively filter features
+        # dfs_list_adaptively_filtered: List[Tuple[pd.DataFrame, List[float]]] = [feature_engineering.adaptively_filter_dlc_output(df) for df in list_dfs_raw_data]
+        #
+        # # Engineer features as necessary
+        # dfs_features: List[pd.DataFrame] = []
+        # for df_i, _ in tqdm(dfs_list_adaptively_filtered, desc='Engineering features...'):
+        #     # Save scorer, source values because the current way of engineering features strips out that info.
+        #     df_features_i = feature_engineering.engineer_7_features_dataframe_NOMISSINGDATA(df_i, features_names_7=self.features_names_7)
+        #     for col in columns_to_save:
+        #         if col not in df_features_i.columns and col in df_i.columns:
+        #             df_features_i[col] = df_i[col].values
+        #     dfs_features.append(df_features_i)
+        #
+        # # Smooth over n-frame windows
+        # for i, df in tqdm(enumerate(dfs_features), desc='Smoothing values over frames...'):
+        #     # Mean
+        #     for feature in self.features_which_average_by_mean:
+        #         dfs_features[i][feature] = feature_engineering.average_values_over_moving_window(
+        #             df[feature].values, 'avg', self.average_over_n_frames)
+        #     # Sum
+        #     for feature in self.features_which_average_by_sum:
+        #         dfs_features[i][feature] = feature_engineering.average_values_over_moving_window(
+        #             df[feature].values, 'sum', self.average_over_n_frames)
+
+        # # Aggregate all data
+        df_features = pd.concat(list_dfs_engineered_features)
+
+        return df_features
+
+
 ### Accessory functions ###
 
 def generate_pipeline_filename(name: str):
